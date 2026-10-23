@@ -34,14 +34,12 @@ jobs:
       - name: Wails version consistency
         run: node scripts/check-wails-version.mjs
 
-      - name: Install Linux Wails dependencies
-        run: |
-          sudo rm -f /etc/apt/sources.list.d/*google* /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure-cli*
-          sudo apt-get update -q
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev
+      # Stessa installazione degli altri workflow (azione condivisa). Il frontend reale si compila più sotto,
+      # quindi niente stub di frontend/dist. Il timeout evita che un mirror apt bloccato tenga il job per ore.
+      - uses: ./.github/actions/go-wails-prereqs
+        timeout-minutes: 10
+        with:
+          embed-placeholder: 'false'
 
       - name: Installation scripts acceptance
         run: |
