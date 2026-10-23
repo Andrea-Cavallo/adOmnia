@@ -23,4 +23,12 @@ describe('repeated sanitization', () => {
     expect(hostile.replace(/[a-z0-9-]/g, '')).toBe('')
     expect(hostile).not.toContain('script')
   })
+
+  it('strips tags in linear time even with many "<" and no closing ">"', () => {
+    const started = performance.now()
+    const id = headingId('# ' + '<'.repeat(50_000))
+    expect(performance.now() - started).toBeLessThan(500)
+    expect(id).toBe('section') // no usable characters left: the slug falls back to its default
+    expect(headingId('# a<b>c<i>d' + '<'.repeat(50_000) + 'e')).toBe('acde')
+  })
 })

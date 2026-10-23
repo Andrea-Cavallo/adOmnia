@@ -238,7 +238,9 @@ func TestDevPluginHotReload(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "main.js"), []byte("export function run() { return { version: 2 } }\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(5 * time.Second)
+	// The reload is driven by a file watcher with a debounce: under the CI coverage run (SonarCloud job) it can
+	// take well over 5s, so the wait is generous; the loop returns as soon as the reload is seen.
+	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		if result := manager.ExecuteAction("dev", "run", nil); result.Success && result.Data.(map[string]interface{})["version"] == float64(2) {
 			logs := manager.GetPluginLogs("dev")

@@ -222,16 +222,35 @@ export function compileQuery(input: string): CompiledQuery {
   return { clauses, highlights, error }
 }
 
+// Token kinds, tried in this order at each position (same order as the single alternation they replace). The two
+// quoted forms have disjoint alternatives (a plain character vs a backslash pair), so a run of escapes cannot backtrack.
+const TOKEN_SPACE = /\s*/y
+const TOKEN_OPERATOR = />=|<=|!=|[=<>()]/y
+const TOKEN_DOUBLE_QUOTED = /"(?:[^"\\]|\\[\s\S])*\\?"/y
+const TOKEN_SINGLE_QUOTED = /'(?:[^'\\]|\\[\s\S])*\\?'/y
+const TOKEN_WORD = /[^\s()<>!=]+/y
+const TOKEN_KINDS = [TOKEN_OPERATOR, TOKEN_DOUBLE_QUOTED, TOKEN_SINGLE_QUOTED, TOKEN_WORD]
+
+/** The token starting at `from` (after the whitespace before it) and the offset right after it, or null. */
+function nextExpressionToken(input: string, from: number): { token: string; end: number } | null {
+  TOKEN_SPACE.lastIndex = from
+  const start = TOKEN_SPACE.test(input) ? TOKEN_SPACE.lastIndex : from
+  for (const kind of TOKEN_KINDS) {
+    kind.lastIndex = start
+    const match = kind.exec(input)
+    if (match) return { token: match[0], end: kind.lastIndex }
+  }
+  return null
+}
+
 function expressionTokens(input: string): string[] {
   const tokens: string[] = []
-  const pattern = /\s*(>=|<=|!=|=|>|<|\(|\)|"(?:[^"\\]|\\[\s\S])*\\?"|'(?:[^'\\]|\\[\s\S])*\\?'|[^\s()<>!=]+)/gy
   let offset = 0
   while (offset < input.length) {
-    pattern.lastIndex = offset
-    const match = pattern.exec(input)
-    if (!match || match.index !== offset) throw new Error(`Unexpected token at character ${offset + 1}`)
-    tokens.push(match[1])
-    offset = pattern.lastIndex
+    const next = nextExpressionToken(input, offset)
+    if (!next) throw new Error(`Unexpected token at character ${offset + 1}`)
+    tokens.push(next.token)
+    offset = next.end
   }
   return tokens
 }

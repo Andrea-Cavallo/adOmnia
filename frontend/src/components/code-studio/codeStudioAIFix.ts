@@ -19,10 +19,33 @@ export const MAX_AI_FIX_FILE_CHARS = 60_000
 /** File del package importato inviati come contesto, oltre al file con l'errore. */
 export const MAX_AI_FIX_RELATED_FILES = 3
 
-// A Go file starts (after whitespace and comments) with its package clause. One alternation of single whitespace
-// characters, line comments (that keep their newline) and block comments: nothing is matched two ways, so there is
-// no backtracking blow-up on long runs of comments or spaces.
-const GO_PACKAGE_CLAUSE = /^(?:\s|\/\/[^\n]*\n|\/\*(?:[^*]|\*(?!\/))*\*\/)*package\s+\w+/
+const PACKAGE_CLAUSE = /package\s+\w+/y
+
+/**
+ * A Go file starts (after whitespace and comments) with its package clause. Skips whitespace, line comments (that
+ * need their newline) and block comments (up to the first star-slash) in one left-to-right pass, then expects the
+ * clause: every position is read one way only, so long runs of comments or spaces stay linear.
+ */
+function startsWithGoPackageClause(source: string): boolean {
+  let at = 0
+  while (at < source.length) {
+    if (/\s/.test(source[at])) {
+      at += 1
+    } else if (source.startsWith('//', at)) {
+      const end = source.indexOf('\n', at)
+      if (end === -1) return false
+      at = end + 1
+    } else if (source.startsWith('/*', at)) {
+      const end = source.indexOf('*/', at + 2)
+      if (end === -1) return false
+      at = end + 2
+    } else {
+      break
+    }
+  }
+  PACKAGE_CLAUSE.lastIndex = at
+  return PACKAGE_CLAUSE.test(source)
+}
 const FILE_OPEN = /^=== FILE: (.+?) ===\s*$/
 const FILE_CLOSE = /^=== END FILE ===\s*$/
 
@@ -89,7 +112,7 @@ export function parseAIFixResponse(response: string, allowedPaths: readonly stri
       if (/^```/.test(lines[0] ?? '')) lines.shift()
       if (/^```\s*$/.test(lines[lines.length - 1] ?? '')) lines.pop()
       const content = `${lines.join('\n').replace(/\n+$/, '')}\n`
-      if (allowed.has(current.relativePath) && GO_PACKAGE_CLAUSE.test(content)) {
+      if (allowed.has(current.relativePath) && startsWithGoPackageClause(content)) {
         files.push({ relativePath: current.relativePath, content })
       }
       current = null
