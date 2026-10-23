@@ -1,5 +1,5 @@
 # Multi-stage build for adOmnia
-FROM golang:1.27.3-alpine3.24 AS builder
+FROM golang:1.27.3-alpine3.24@sha256:bff16a94c0b4b6d9642581e2a3aa81beb3edb940b2f5a3aac1d22c6a68cb7747 AS builder
 
 # Install build dependencies
 # Alpine package versions are dropped from the mirrors as new builds land; the base image tag pins the release.
@@ -42,7 +42,7 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
     -o adomnia .
 
 # Final stage - minimal runtime
-FROM alpine:3.24
+FROM alpine:3.24@sha256:c26612752c78b18faacd63c7d50f4592c2e7b0f25e0e20e82bd74e465c57ab0d
 
 # Alpine package versions are dropped from the mirrors as new builds land; the base image tag pins the release.
 # hadolint ignore=DL3018

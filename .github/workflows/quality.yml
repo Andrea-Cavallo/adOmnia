@@ -11,14 +11,19 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+# Least-privilege default for GITHUB_TOKEN; the gitleaks job raises pull-requests: write to
+# keep its PR commenting feature (see the job below).
+permissions:
+  contents: read
+
 jobs:
   go-quality:
     name: Go lint and vulnerabilities
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           cache: true
@@ -45,8 +50,13 @@ jobs:
   secrets:
     name: Secret scanning (gitleaks)
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      # gitleaks-action calls the PR review comment API with the GITHUB_TOKEN
+      # (GITLEAKS_ENABLE_COMMENTS defaults to true).
+      pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
@@ -62,9 +72,9 @@ jobs:
     name: npm audit and lint
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '22.13.0'
           cache: npm
@@ -87,7 +97,7 @@ jobs:
     runs-on: ubuntu-22.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       # Virtualenv: con `pip --user` urllib3 2.x si mescola con il `requests` di sistema (Python 3.10) e
       # stampa FutureWarning rumorosi; isolato, l'output resta quello di Semgrep.
@@ -102,7 +112,7 @@ jobs:
     runs-on: ubuntu-22.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -115,7 +125,7 @@ jobs:
     name: Scripts and workflows
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: ShellCheck (install and build scripts)
         run: |
@@ -148,9 +158,9 @@ jobs:
     name: gosec (Go security rules)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           cache: true
