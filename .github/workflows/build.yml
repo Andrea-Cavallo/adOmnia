@@ -41,7 +41,8 @@ jobs:
       # Stessa installazione degli altri workflow (azione condivisa). Il frontend reale si compila più sotto,
       # quindi niente stub di frontend/dist. Il timeout evita che un mirror apt bloccato tenga il job per ore.
       - uses: ./.github/actions/go-wails-prereqs
-        timeout-minutes: 10
+        # Headroom for the apt retry loop: one stalled mirror attempt must not eat the whole budget.
+        timeout-minutes: 20
         with:
           embed-placeholder: 'false'
 
