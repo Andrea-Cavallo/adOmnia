@@ -54,7 +54,7 @@ jobs:
       # personali (per le organization serve GITLEAKS_LICENSE).
       # Pinned to the commit the v2 tag pointed at: a mutable tag would let whoever controls it
       # change what runs in this repository's CI.
-      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
