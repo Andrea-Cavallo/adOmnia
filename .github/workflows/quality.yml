@@ -1,7 +1,7 @@
 name: Quality
 
 # Qualità del codice Go/TS di adOmnia: golangci-lint, govulncheck, SAST e scansioni dei segreti.
-# SonarCloud ha il suo workflow (sonar.yml): così questo resta verde senza dipendere dal token Sonar.
+# SonarCloud è temporaneamente staccato: il suo workflow è stato rimosso e i badge non sono più nel README.
 # I comandi locali equivalgenti stanno in docs/QUALITY.md.
 
 on:
