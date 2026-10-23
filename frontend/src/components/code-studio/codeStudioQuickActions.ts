@@ -81,7 +81,7 @@ export function changedPackageTestRequests(session: Pick<GoIDESession, 'id' | 'p
     const packages = byModule.get(scope.moduleDirectory) ?? new Set<string>()
     byModule.set(scope.moduleDirectory, packages.add(scope.packageTarget))
   }
-  return [...byModule].map(([workingDirectory, packages]) => ({ sessionId: session.id, workingDirectory, packages: [...packages].sort(), run: '', bench: '', coverage: false }))
+  return [...byModule].map(([workingDirectory, packages]) => ({ sessionId: session.id, workingDirectory, packages: [...packages].sort((a, b) => a.localeCompare(b)), run: '', bench: '', coverage: false }))
 }
 
 /** Esegue i test dei package toccati dalle modifiche locali e di quelli che li importano. */
@@ -264,6 +264,6 @@ export async function runCodeStudioNamedTests(sessionId: string, tests: readonly
     groups.set(key, group)
   }
   for (const group of groups.values()) {
-    await useCodeStudioTestsStore.getState().start({ sessionId, workingDirectory: group.workingDirectory, packages: [group.packagePath], run: `^(${[...group.names].sort().join('|')})$`, bench: '', coverage: false })
+    await useCodeStudioTestsStore.getState().start({ sessionId, workingDirectory: group.workingDirectory, packages: [group.packagePath], run: `^(${[...group.names].sort((a, b) => a.localeCompare(b)).join('|')})$`, bench: '', coverage: false })
   }
 }

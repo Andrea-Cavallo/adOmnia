@@ -1727,6 +1727,12 @@ func (g *GoIDE) SetRustToolchain(sessionID, path string) error {
 	return g.service.SetRustToolchain(sessionID, path)
 }
 
+// SetRustLowResources è l'opzione "Low resources" di rust-analyzer (RS-9.5): proc-macro e build
+// script spengono senza riavviare il server.
+func (g *GoIDE) SetRustLowResources(sessionID string, enabled bool) error {
+	return g.service.SetRustLowResources(sessionID, enabled)
+}
+
 // PreviewRustComponentInstall mostra il comando esatto che installerebbe un componente rustup.
 func (g *GoIDE) PreviewRustComponentInstall(sessionID, component string) (codestudio.ServerInstallPreview, error) {
 	return g.service.PreviewRustComponentInstall(sessionID, component)

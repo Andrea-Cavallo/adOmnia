@@ -54,12 +54,25 @@ describe('findRustTestTargets', () => {
   it('builds the exact libtest path from file and inline modules, with braces in strings ignored', () => {
     const targets = findRustTestTargets('crates/api/src/handlers/user.rs', source)
     expect(targets.map((target) => [target.line, target.testPath])).toEqual([
+      [4, 'handlers::user::tests::'],
       [8, 'handlers::user::tests::adds'],
       [12, 'handlers::user::tests::adds_later'],
+      [14, 'handlers::user::tests::nested::'],
       [16, 'handlers::user::tests::nested::deep'],
       [20, 'handlers::user::tests::after_nested'],
     ])
-    expect(targets[0].crateDirectory).toBe('crates/api')
+    expect(targets[1].crateDirectory).toBe('crates/api')
+  })
+
+  it('puts the run glyph on mod tests and on every module that contains tests (RS-5.5)', () => {
+    const targets = findRustTestTargets('crates/api/src/handlers/user.rs', source)
+    const modules = targets.filter((target) => target.module)
+    expect(modules.map((target) => [target.line, target.name, target.testPath])).toEqual([
+      [4, 'tests', 'handlers::user::tests::'],
+      [14, 'nested', 'handlers::user::tests::nested::'],
+    ])
+    // Un modulo senza test dentro non riceve il ▶.
+    expect(findRustTestTargets('src/lib.rs', 'mod empty {\n    fn helper() {}\n}\n#[test]\nfn top() {}').filter((target) => target.module)).toEqual([])
   })
 
   it('treats lib.rs as the crate root and integration tests as their own crate', () => {

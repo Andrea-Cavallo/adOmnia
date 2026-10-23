@@ -850,12 +850,14 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (isRustTestTarget(target)) {
       if (!activeSession) return
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its tests' })
+      // Debug del test (RS-5.5): cargo test --no-run → CodeLLDB sul filtro --exact del test.
+      if (action === 'debug') return void useCodeStudioDebugStore.getState().startRust({ sessionId: activeSession.id, test: target.testPath, testFile: target.relativePath, workingDirectory: target.crateDirectory })
       return void useCodeStudioTestsStore.getState().start({ sessionId: activeSession.id, language: 'rust', workingDirectory: target.crateDirectory, packages: [], run: target.testPath })
     }
     if (isRustTarget(target)) {
       if (!activeSession) return
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
-      const cargoTarget = target.example ? { example: target.example } : target.bin ? { bin: target.bin } : {}
+      const cargoTarget = target.source ? { source: target.source } : target.example ? { example: target.example } : target.bin ? { bin: target.bin } : {}
       if (action === 'debug') return void useCodeStudioDebugStore.getState().startRust({ sessionId: activeSession.id, ...cargoTarget, workingDirectory: target.crateDirectory })
       return void store.startRun(target.example ? 'example' : 'bin', { language: 'rust', target: '.', workingDirectory: target.crateDirectory, languageOptions: cargoTarget })
     }

@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight, Copy, ExternalLink, Info, Loader2, ShieldAle
 import { scanGoIDEVulnerabilities, startGoIDEDependencyAction, type GoIDESession, type GoIDEVulnFinding, type GoIDEVulnFrame, type GoIDEVulnReport } from '@/lib/code-studio-api'
 import { goModules } from '@/lib/code-studio/goProject'
 import { confirm } from '@/lib/confirmDialog'
+import { withContentKeys } from '@/lib/contentKeys'
 import { openExternal } from '@/lib/openExternal'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { CodeStudioPerfExport } from './CodeStudioPerfExport'
@@ -184,10 +185,10 @@ function FindingDetail({ finding, onUpgrade }: { finding: GoIDEVulnFinding; onUp
 
       {!!finding.callPaths?.length && (
         <Section title={`Call paths · ${finding.callPaths.length}`}>
-          {finding.callPaths.map((path, index) => (
-            <ol key={index} className="mb-2 rounded-lg bg-[var(--gs-ground)] p-1.5">
-              {path.map((frame, step) => (
-                <li key={`${step}-${frame.function}`}>
+          {withContentKeys(finding.callPaths, (callPath) => callPath.map((frame) => frame.function).join('>')).map(({ key: pathKey, item: path }) => (
+            <ol key={pathKey} className="mb-2 rounded-lg bg-[var(--gs-ground)] p-1.5">
+              {withContentKeys(path, (frame) => frame.function ?? '').map(({ key: frameKey, item: frame }, step) => (
+                <li key={frameKey}>
                   <button type="button" onClick={() => openFrame(frame)} disabled={!frame.file} title={frame.file ? 'Open source' : undefined} className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-surface-2/70 disabled:cursor-default">
                     <span className="w-4 shrink-0 text-right font-mono text-[10px] text-text-4">{step + 1}</span>
                     <span className={`h-2 w-2 shrink-0 rounded-full ${frame.inProject ? 'bg-accent' : step === path.length - 1 ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />

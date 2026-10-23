@@ -38,6 +38,8 @@ interface PaletteCommand {
   run: () => void
 }
 
+const NO_SYMBOLS: GoIDEWorkspaceSymbol[] = []
+
 const KIND_ICONS: Record<EntityKind, ElementType> = {
   module: Package, route: Route, service: Server, datasource: Database, envvar: Variable,
   contract: FileCode, table: Table, topic: Radio, grpc: Server, websocket: Radio, symbol: Braces, artifact: FileCode,
@@ -73,20 +75,35 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const featureFlags = useSettingsStore((s) => s.settings.features)
   const goSessionId = useCodeStudioStore((s) => s.activeSessionId)
   const snapshot = useDevContextStore((s) => (goSessionId ? s.snapshots[goSessionId] : undefined))
-  const [symbols, setSymbols] = useState<GoIDEWorkspaceSymbol[]>([])
+  const [symbolResult, setSymbolResult] = useState<{ sessionId: string; items: GoIDEWorkspaceSymbol[] } | null>(null)
   const [actionRef, setActionRef] = useState<EntityRef | null>(null)
+
+  // Each time the palette opens it starts from a clean slate (adjusted during render, not in an effect).
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setQuery('')
+      setSelectedIndex(0)
+      setActionRef(null)
+    }
+  }
 
   useEffect(() => {
     if (open && goSessionId) void useDevContextStore.getState().ensure(goSessionId)
-    if (open) setActionRef(null)
   }, [open, goSessionId])
 
+  const symbolsActive = open && !!goSessionId && query.trim().length >= 2
+  const symbols = symbolsActive && symbolResult?.sessionId === goSessionId ? symbolResult.items : NO_SYMBOLS
   useEffect(() => {
-    if (!open || !goSessionId || query.trim().length < 2) { setSymbols([]); return }
+    if (!open || !goSessionId || query.trim().length < 2) return
     let request: ReturnType<typeof requestWorkspaceSymbols> | undefined
     const timer = window.setTimeout(() => {
       request = requestWorkspaceSymbols(goSessionId, query.trim())
-      request.then(setSymbols, () => setSymbols([])) // language server off → no symbols, no error
+      request.then(
+        (items) => setSymbolResult({ sessionId: goSessionId, items }),
+        () => setSymbolResult({ sessionId: goSessionId, items: [] }), // language server off → no symbols, no error
+      )
     }, 150)
     return () => { window.clearTimeout(timer); request?.cancel() }
   }, [goSessionId, open, query])
@@ -94,13 +111,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   useEffect(() => {
     if (!open) return
-    setQuery('')
-    setSelectedIndex(0)
     window.requestAnimationFrame(() => inputRef.current?.focus())
   }, [open])
 
   useLiveCore()
-  const devSession = useDevSessionStore.getState()
+  const devSession = useDevSessionStore((state) => state)
   const commands = useMemo<PaletteCommand[]>(() => {
     const actions: PaletteCommand[] = [
       {
@@ -187,8 +202,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       .map((entry) => entry.command)
   }, [actionRef, commands, query, tr])
 
-  useEffect(() => setSelectedIndex(0), [query])
-
   if (!open) return null
 
   const execute = (command: PaletteCommand | undefined) => {
@@ -234,7 +247,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           <input
             ref={inputRef}
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0) }}
             onKeyDown={handleKeyDown}
             placeholder={tr('Search panels, requests, routes, tables, topics, symbols...')}
             className="h-full flex-1 border-0 bg-transparent text-sm text-text-1 shadow-none outline-none placeholder:text-text-4 focus:shadow-none"

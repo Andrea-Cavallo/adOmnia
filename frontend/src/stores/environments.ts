@@ -9,6 +9,17 @@ import { decodePersistedJSON } from '@/lib/persistedJson'
 const BUCKET = 'environments'
 const KEY = 'all'
 
+/** Enabled variables of the active environment as a key/value map. */
+function resolveVars(environments: Environment[], activeEnvId: string | null): Record<string, string> {
+  const env = environments.find((e) => e.id === activeEnvId)
+  const vars: Record<string, string> = {}
+  if (!env) return vars
+  for (const v of env.variables) {
+    if (v.enabled && v.key) vars[v.key] = v.value
+  }
+  return vars
+}
+
 interface EnvironmentsState {
   environments: Environment[]
   activeEnvId: string | null
@@ -111,13 +122,7 @@ export const useEnvironmentsStore = create<EnvironmentsState>((set, get) => ({
 
   getResolvedVars: () => {
     const { environments, activeEnvId } = get()
-    const env = environments.find((e) => e.id === activeEnvId)
-    if (!env) return {}
-    const vars: Record<string, string> = {}
-    for (const v of env.variables) {
-      if (v.enabled && v.key) vars[v.key] = v.value
-    }
-    return vars
+    return resolveVars(environments, activeEnvId)
   },
 }))
 
@@ -125,5 +130,5 @@ export const useEnvironmentsStore = create<EnvironmentsState>((set, get) => ({
 export function useResolvedVars(): Record<string, string> {
   const environments = useEnvironmentsStore((s) => s.environments)
   const activeEnvId = useEnvironmentsStore((s) => s.activeEnvId)
-  return useMemo(() => useEnvironmentsStore.getState().getResolvedVars(), [environments, activeEnvId])
+  return useMemo(() => resolveVars(environments, activeEnvId), [environments, activeEnvId])
 }

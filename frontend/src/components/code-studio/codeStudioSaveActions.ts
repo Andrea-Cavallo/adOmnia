@@ -79,7 +79,8 @@ async function applyNonGoWhitespace(document: GoIDEEditorDocument): Promise<void
   if (editor && model && model.uri.toString() === editorModelUri(document.document)) {
     // Modifiche minime (solo gli spazi in coda e la newline finale): il cursore resta dov'è.
     const edits: monaco.editor.IIdentifiedSingleEditOperation[] = []
-    for (let line = 1; trim && line <= model.getLineCount(); line++) {
+    const lineCount = trim ? model.getLineCount() : 0
+    for (let line = 1; line <= lineCount; line++) {
       const content = model.getLineContent(line)
       const kept = content.replace(/[ \t]+$/, '').length
       if (kept < content.length) edits.push({ range: new monaco.Range(line, kept + 1, line, content.length + 1), text: '' })

@@ -399,7 +399,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => {
       }
       const raw = rawOverride || await StorageGet(BUCKET, KEY)
       if (raw) {
-        const parsed = decodePersistedJSON<any>(raw)
+        const parsed = decodePersistedJSON<Record<string, unknown>>(raw)
         let collections: Collection[]
         let workspaces: CollectionWorkspace[]
         let activeWorkspaceId: string

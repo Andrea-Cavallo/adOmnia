@@ -183,7 +183,7 @@ export function staticConcurrencyDiagnostics(source: string, relativePath: strin
   for (const edge of byDirection.values()) {
     const reverse = byDirection.get(`${edge.to}\u0000${edge.from}`)
     if (!reverse) continue
-    const pair = [edge.from, edge.to].sort().join('\u0000')
+    const pair = [edge.from, edge.to].sort((a, b) => a.localeCompare(b)).join('\u0000')
     if (reported.has(pair)) continue
     reported.add(pair)
     diagnostics.push({

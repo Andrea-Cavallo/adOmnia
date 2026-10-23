@@ -24,6 +24,20 @@ func TestWorkspacePathsResolveRelativeToTheWorkspaceRoot(t *testing.T) {
 	}
 }
 
+func TestWorkspacePathsRootRelativeUsesTheProjectRoot(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "crates/api/src/main.rs", "fn main() {}\n")
+	paths := workspacePaths{directory: filepath.Join(root, "crates", "api"), root: root}
+
+	// Il frontend apre i fallimenti per il percorso relativo alla radice del progetto (RS-5.5).
+	if got := paths.rootRelative("src/main.rs"); got != "crates/api/src/main.rs" {
+		t.Fatalf("rootRelative = %q", got)
+	}
+	if got := paths.rootRelative(filepath.Join(root, "util", "src", "lib.rs")); got != "util/src/lib.rs" {
+		t.Fatalf("rootRelative of an absolute path = %q", got)
+	}
+}
+
 func TestPathFixingConsoleRewritesDiagnosticsAndPanicsButNotOtherOutput(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "crates/api/src/main.rs", "fn main() {}\n")

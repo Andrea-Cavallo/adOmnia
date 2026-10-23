@@ -1,5 +1,5 @@
 import { goModules } from '@/lib/code-studio/goProject'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Globe, FolderGit2} from 'lucide-react'
 import { CodeStudioButton, CodeStudioField } from './CodeStudioModal'
 import { CodeStudioPrivateModules } from './CodeStudioPrivateModules'
@@ -48,24 +48,29 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
   const setCorporate = (patch: Partial<CodeStudioCorporateNetwork>) => setForm((current) => withCorporateNetwork(current, { ...corporateNetworkOf(current), ...patch }))
   const problems = [...TEXT_FIELDS.map(({ key }) => modulePatternProblem(key, form.fields[key])), proxyProblem(corporate.proxy)].filter((problem): problem is string => !!problem)
 
-  const load = async (nextScope: Scope, current = settings) => {
+  const load = useCallback((nextScope: Scope, current: GoIDEToolchainSettings | null) => {
     const config = nextScope === 'project' ? current?.project ?? current?.global : current?.global
     setGoBinary(config?.goBinary ?? '')
     setForm(toolchainFormFromEnv(config?.environment))
-  }
+  }, [])
 
+  const onErrorRef = useRef(onError)
+  useEffect(() => { onErrorRef.current = onError }, [onError])
   useEffect(() => {
-    void getGoIDEToolchainSettings(sessionId).then((loaded) => {
+    let live = true
+    getGoIDEToolchainSettings(sessionId).then((loaded) => {
+      if (!live) return
       setSettings(loaded)
       const initial: Scope = loaded.project ? 'project' : 'global'
       setScope(initial)
-      void load(initial, loaded)
-    }).catch((reason) => onError(String(reason)))
-  }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+      load(initial, loaded)
+    }).catch((reason: unknown) => { if (live) onErrorRef.current(String(reason)) })
+    return () => { live = false }
+  }, [sessionId, load])
 
   const refresh = async () => setSettings(await getGoIDEToolchainSettings(sessionId))
   const setField = (key: ToolchainField, value: string) => setForm((current) => ({ ...current, fields: { ...current.fields, [key]: value } }))
-  const switchScope = (next: Scope) => { setScope(next); void load(next) }
+  const switchScope = (next: Scope) => { setScope(next); load(next, settings) }
 
   const save = async () => {
     setBusy(true); onError(null)

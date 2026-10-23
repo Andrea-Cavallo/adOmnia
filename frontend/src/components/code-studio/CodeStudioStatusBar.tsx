@@ -45,8 +45,12 @@ const WATCHER_STATUS_DELAYS_MS = [1500, 10_000, 60_000]
 
 function useWatcherStatus(sessionId: string): GoIDEWatcherStatus | null {
   const [status, setStatus] = useState<GoIDEWatcherStatus | null>(null)
-  useEffect(() => {
+  const [statusSession, setStatusSession] = useState(sessionId)
+  if (statusSession !== sessionId) {
+    setStatusSession(sessionId)
     setStatus(null)
+  }
+  useEffect(() => {
     const timers = WATCHER_STATUS_DELAYS_MS.map((delay) => window.setTimeout(() => {
       getGoIDEWatcherStatus(sessionId).then(setStatus).catch(logBackgroundError('watcher status'))
     }, delay))

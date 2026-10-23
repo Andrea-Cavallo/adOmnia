@@ -113,7 +113,13 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
     }
   }
 
-  useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => {
+    let cancelled = false
+    getRepoState(repoPath)
+      .then((state) => { if (!cancelled) setConflicts(state.conflictedFiles) })
+      .catch((e: unknown) => { if (!cancelled) setError(String(e)) })
+    return () => { cancelled = true }
+  }, [repoPath])
 
   const unresolved = conflicts.length
   const blocks = editor ? findConflictBlocks(editor.result) : []
@@ -192,7 +198,7 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
               {blocks.length > 0 && (
                 <div className="max-h-28 shrink-0 overflow-y-auto border-b border-border-1 bg-surface-0">
                   {blocks.map((block, index) => (
-                    <div key={`${block.start}-${index}`} className="flex h-7 items-center gap-1.5 border-b border-border-1 px-3 last:border-b-0">
+                    <div key={block.start} className="flex h-7 items-center gap-1.5 border-b border-border-1 px-3 last:border-b-0">
                       <span className="w-28 shrink-0 font-mono text-[10px] text-warning">#{index + 1} · line {block.start + 1}</span>
                       <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-4" title={[...block.ours, '───', ...block.theirs].join('\n')}>{block.ours[0] ?? '(empty)'} ⇄ {block.theirs[0] ?? '(empty)'}</span>
                       {([['ours', `Ours${block.oursLabel ? ` (${block.oursLabel})` : ''}`], ['theirs', `Theirs${block.theirsLabel ? ` (${block.theirsLabel})` : ''}`], ['both', 'Both'], ...(block.base ? [['base', 'Base'] as const] : [])] as const).map(([choice, text]) => (

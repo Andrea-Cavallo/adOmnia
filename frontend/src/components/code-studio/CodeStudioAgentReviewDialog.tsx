@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Check, FileDiff, FileText, Loader2, Undo2 } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { confirm } from '@/lib/confirmDialog'
@@ -26,11 +26,11 @@ function wholeFileLines(file: AgentReviewFile): AgentReviewLine[] {
 function DiffLines({ lines }: { lines: AgentReviewLine[] }) {
   return (
     <div className="font-mono text-[11px] leading-[18px]">
-      {lines.map((line, index) => {
+      {lines.map((line) => {
         const tone = line.kind === 'added' ? 'bg-success/10' : line.kind === 'removed' ? 'bg-danger/10' : ''
         const sign = line.kind === 'added' ? '+' : line.kind === 'removed' ? '−' : ' '
         return (
-          <div key={index} className={`flex whitespace-pre ${tone}`}>
+          <div key={`${line.kind}:${line.oldNumber ?? ''}:${line.newNumber ?? ''}`} className={`flex whitespace-pre ${tone}`}>
             <span className="w-10 shrink-0 select-none pr-2 text-right text-text-4">{line.oldNumber ?? ''}</span>
             <span className="w-10 shrink-0 select-none pr-2 text-right text-text-4">{line.newNumber ?? ''}</span>
             <span className={`w-4 shrink-0 select-none ${line.kind === 'added' ? 'text-success' : line.kind === 'removed' ? 'text-danger' : 'text-text-4'}`}>{sign}</span>
@@ -44,7 +44,8 @@ function DiffLines({ lines }: { lines: AgentReviewLine[] }) {
 
 function FileRow({ file, selected, onSelect }: { file: AgentReviewFile; selected: boolean; onSelect: () => void }) {
   const status = STATUS_LABEL[file.status] ?? STATUS_LABEL.modified
-  const stats = useMemo(() => (file.reviewable && file.status === 'modified' ? agentReviewStats(file.baseline, file.current) : null), [file])
+  const { reviewable, status: fileStatus, baseline, current } = file
+  const stats = useMemo(() => (reviewable && fileStatus === 'modified' ? agentReviewStats(baseline, current) : null), [reviewable, fileStatus, baseline, current])
   const slash = file.path.lastIndexOf('/')
   return (
     <button type="button" onClick={onSelect} aria-current={selected} title={`${file.path} · ${status.title}`}
@@ -60,8 +61,9 @@ function FileRow({ file, selected, onSelect }: { file: AgentReviewFile; selected
 }
 
 function FileReview({ root, file, busy }: { root: string; file: AgentReviewFile; busy: boolean }) {
-  const store = useAgentReviewStore.getState()
-  const hunks = useMemo(() => (file.reviewable && file.status === 'modified' ? agentReviewHunks(file.baseline, file.current) : []), [file])
+  const store = useAgentReviewStore((state) => state)
+  const { reviewable, status: fileStatus, baseline, current } = file
+  const hunks = useMemo(() => (reviewable && fileStatus === 'modified' ? agentReviewHunks(baseline, current) : []), [reviewable, fileStatus, baseline, current])
   const canOpen = file.status !== 'deleted'
 
   const rejectFile = async () => {
@@ -113,10 +115,9 @@ export function CodeStudioAgentReviewDialog() {
   const busy = useAgentReviewStore((state) => state.busy)
   const error = useAgentReviewStore((state) => state.error)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const store = useAgentReviewStore.getState()
+  const store = useAgentReviewStore((state) => state)
 
   const selected = files.find((file) => file.path === selectedPath) ?? files[0] ?? null
-  useEffect(() => { if (selected && selected.path !== selectedPath) setSelectedPath(selected.path) }, [selected, selectedPath])
 
   if (!root) return null
 

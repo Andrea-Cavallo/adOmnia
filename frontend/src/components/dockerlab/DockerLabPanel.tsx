@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   AlertCircle, Check, ChevronRight, Copy, Cpu, Database, Download,
   Loader2, Play, Radio, RefreshCw, RotateCcw, Square, Terminal,
@@ -124,7 +124,6 @@ export function DockerLabPanel() {
     ? [...PRESETS.filter((preset) => suggestion.presetIds.includes(preset.id)), ...PRESETS.filter((preset) => !suggestion.presetIds.includes(preset.id))]
     : PRESETS
 
-  const logsEndRef = useRef<HTMLDivElement>(null)
 
   // Poll container status when a lab is running
   useEffect(() => {
@@ -137,10 +136,10 @@ export function DockerLabPanel() {
     return visibleInterval(poll, 3000, { scope: "dockerlab", kind: "live" })
   }, [runningLab])
 
-  // Auto-scroll logs
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [logs])
+  // Auto-scroll logs: the sentinel is re-keyed whenever the log text changes, so it re-mounts and scrolls itself into view.
+  const scrollIntoViewRef = useCallback((node: HTMLDivElement | null) => {
+    node?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
 
   const selectPreset = async (preset: Preset) => {
     setSelected(preset)
@@ -546,7 +545,7 @@ export function DockerLabPanel() {
               <pre className="text-[10px] font-mono text-text-3 whitespace-pre-wrap leading-5">
                 {logs || (runningLab ? 'Press Refresh to load the logs.' : 'Start a lab to see its logs.')}
               </pre>
-              <div ref={logsEndRef} />
+              <div key={logs.length} ref={scrollIntoViewRef} />
             </div>
           </div>
         )}

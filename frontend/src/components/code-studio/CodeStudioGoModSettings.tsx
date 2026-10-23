@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Ban, Check, FileDiff, Plus, Undo2 } from 'lucide-react'
 import type { GoIDEDependencyActionRequest, GoIDEDependencyState } from '@/lib/code-studio-api'
 import { CodeStudioButton, CodeStudioField } from './CodeStudioModal'
@@ -28,11 +28,13 @@ export function CodeStudioGoModSettings({ state, running, onEdit }: CodeStudioGo
   const [excludePath, setExcludePath] = useState('')
   const [excludeVersion, setExcludeVersion] = useState('')
   const [retract, setRetract] = useState('')
-  useEffect(() => {
+  const [synced, setSynced] = useState({ goVersion: state.goVersion, toolchain: state.toolchain, modulePath: state.modulePath })
+  if (synced.goVersion !== state.goVersion || synced.toolchain !== state.toolchain || synced.modulePath !== state.modulePath) {
+    setSynced({ goVersion: state.goVersion, toolchain: state.toolchain, modulePath: state.modulePath })
     setGoVersion(state.goVersion ?? '')
     setToolchain(state.toolchain ?? '')
     setModulePath(state.modulePath)
-  }, [state.goVersion, state.toolchain, state.modulePath])
+  }
 
   const directive = (label: string, value: string, current: string, placeholder: string, setValue: (value: string) => void, edit: () => GoModEdit, hint?: string) => (
     <div className="flex items-end gap-2">

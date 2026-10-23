@@ -3,6 +3,7 @@ import { GitFork, Loader2, Search } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { getJavaDependencyTree } from '@/lib/code-studio-api'
 import type { TreeNode } from '../../../bindings/adomnia/internal/languages/java/models'
+import { withContentKeys } from '@/lib/contentKeys'
 
 interface TreeRequest {
   sessionId: string
@@ -76,10 +77,10 @@ export function CodeStudioJavaTree() {
         {!nodes && !error && <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> Maven may download its dependency plugin the first time…</p>}
         {error && <p className="whitespace-pre-wrap px-3 py-3 text-[11px] text-danger">{error}</p>}
         <div className="gs-list min-h-0 flex-1 overflow-auto font-mono text-[11.5px]">
-          {visible.map((node, position) => {
+          {withContentKeys(visible, (n) => `${n.depth}:${n.groupId}:${n.artifactId}:${n.version}`).map(({ key, item: node }) => {
             const badge = BADGES[node.status]
             return (
-              <div key={`${position}:${node.groupId}:${node.artifactId}`} className="gs-list-row" style={{ paddingLeft: 12 + node.depth * 14 }}>
+              <div key={key} className="gs-list-row" style={{ paddingLeft: 12 + node.depth * 14 }}>
                 <span className={`min-w-0 flex-1 truncate ${node.status === 'resolved' ? 'text-text-1' : 'text-text-3'}`}>
                   {node.groupId}:{node.artifactId}:<span className="text-accent">{node.version}</span>
                   {node.classifier ? `:${node.classifier}` : ''}

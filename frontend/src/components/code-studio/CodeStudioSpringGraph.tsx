@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { AlertTriangle, Loader2, Network } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -73,12 +74,12 @@ export function CodeStudioSpringGraph() {
         {graph && graph.nodes.length === 0 && <p className="px-3 py-3 text-[11px] text-text-3">No Spring bean found in this project.</p>}
         {graph && graph.nodes.length > 0 && (
           <svg width={graph.width + 24} height={graph.height + 24} viewBox={`-12 -12 ${graph.width + 24} ${graph.height + 24}`} className="shrink-0" role="img" aria-label="Spring beans and their injections">
-            {graph.edges.map((edge, position) => {
+            {withContentKeys(graph.edges, (edge) => `${edge.from}->${edge.to}`).map(({ key, item: edge }) => {
               const from = byId.get(edge.from)
               const to = byId.get(edge.to)
               if (!from || !to) return null
               const dim = hovered !== null && !(edge.from === hovered || edge.to === hovered)
-              return <path key={position} d={edgePath(from, to)} fill="none" className="stroke-text-4" strokeWidth={1.4} opacity={dim ? 0.12 : 0.75} />
+              return <path key={key} d={edgePath(from, to)} fill="none" className="stroke-text-4" strokeWidth={1.4} opacity={dim ? 0.12 : 0.75} />
             })}
             {graph.nodes.map((node) => {
               const dim = hovered !== null && !related.has(node.id)
@@ -96,8 +97,8 @@ export function CodeStudioSpringGraph() {
           <div className="border-t border-border-1 px-3 py-2">
             <p className="flex items-center gap-1.5 text-[11px] font-medium text-warning"><AlertTriangle size={12} /> {graph.unresolved.length} injection(s) without a matching bean</p>
             <ul className="mt-1 space-y-0.5 text-[11px] text-text-3">
-              {graph.unresolved.slice(0, 30).map((injection, position) => (
-                <li key={position}>
+              {withContentKeys(graph.unresolved.slice(0, 30), (injection) => `${injection.file ?? ''}:${injection.line}:${injection.class ?? ''}:${injection.type}`).map(({ key, item: injection }) => (
+                <li key={key}>
                   <button type="button" className="text-left hover:text-text-1" onClick={() => { if (injection.file) void useCodeStudioStore.getState().openLocation(injection.file, injection.line || 1, injection.startColumn || 1); setSessionId(null) }}>
                     {shortType(injection.class ?? '')} needs <span className="font-mono text-text-2">{injection.type}</span>
                   </button>

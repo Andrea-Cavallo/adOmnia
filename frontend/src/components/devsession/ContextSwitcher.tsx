@@ -55,9 +55,11 @@ export function ContextSwitcher({ onOpenLogs }: { onOpenLogs: (sessionId: string
   const [items, setItems] = useState<FlowItem[] | null>(null)
   const [index, setIndex] = useState(0)
   const indexRef = useRef(0)
-  indexRef.current = index
   const itemsRef = useRef<FlowItem[] | null>(null)
-  itemsRef.current = items
+  useEffect(() => {
+    indexRef.current = index
+    itemsRef.current = items
+  }, [index, items])
 
   useEffect(() => {
     const close = (activate: boolean) => {

@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { openExternal } from '@/lib/openExternal'
+import { withContentKeys } from '@/lib/contentKeys'
 
 // Safe, dependency-free markdown for OpenAPI descriptions. Renders React nodes
 // (never innerHTML) so a spec fetched from an untrusted URL cannot inject markup.
@@ -51,22 +52,22 @@ export function MiniMarkdown({ text, className }: { text: string; className?: st
   const blocks = text.trim().split(/\n{2,}/)
   return (
     <div className={className}>
-      {blocks.map((block, bi) => {
+      {withContentKeys(blocks, (b) => b).map(({ key: blockKey, item: block }, bi) => {
         const lines = block.split(/\n/)
         const isList = lines.every((l) => /^\s*[-*]\s+/.test(l))
         if (isList) {
           return (
-            <ul key={bi} className="my-1.5 list-disc space-y-0.5 pl-5">
-              {lines.map((l, li) => (
-                <li key={li}>{inlineNodes(l.replace(/^\s*[-*]\s+/, ''), `${bi}-${li}`)}</li>
+            <ul key={blockKey} className="my-1.5 list-disc space-y-0.5 pl-5">
+              {withContentKeys(lines, (l) => l).map(({ key: lineKey, item: l }, li) => (
+                <li key={lineKey}>{inlineNodes(l.replace(/^\s*[-*]\s+/, ''), `${bi}-${li}`)}</li>
               ))}
             </ul>
           )
         }
         return (
-          <p key={bi} className="my-1.5 first:mt-0 last:mb-0">
-            {lines.map((l, li) => (
-              <Fragment key={li}>
+          <p key={blockKey} className="my-1.5 first:mt-0 last:mb-0">
+            {withContentKeys(lines, (l) => l).map(({ key: lineKey, item: l }, li) => (
+              <Fragment key={lineKey}>
                 {li > 0 && <br />}
                 {inlineNodes(l, `${bi}-${li}`)}
               </Fragment>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GitCompare, RefreshCw } from 'lucide-react'
+import { withContentKeys } from '@/lib/contentKeys'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import { useDevContextStore } from '@/stores/devcontext'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -96,8 +97,8 @@ export function CodeStudioConfigPanel({ session }: { session: GoIDESession }) {
                 <td className="px-2 py-1 font-mono text-text-1">{key.name}</td>
                 <td className="px-2 py-1"><span title={STATUS[key.status].hint} className={cn('rounded px-1.5 py-0.5 text-[10px]', STATUS[key.status].tone)}>{STATUS[key.status].label}</span></td>
                 <td className="px-2 py-1">
-                  {key.usedIn.length ? key.usedIn.map((source, index) => (
-                    <button key={index} type="button" onClick={() => openSource(source.file, source.line)} className="mr-2 font-mono text-text-2 hover:text-accent hover:underline">{source.file}:{source.line}</button>
+                  {key.usedIn.length ? withContentKeys(key.usedIn, (source) => `${source.file}:${source.line}`).map(({ key: sourceKey, item: source }) => (
+                    <button key={sourceKey} type="button" onClick={() => openSource(source.file, source.line)} className="mr-2 font-mono text-text-2 hover:text-accent hover:underline">{source.file}:{source.line}</button>
                   )) : <span className="text-text-4">—</span>}
                 </td>
                 {report.profiles.map((profile) => {

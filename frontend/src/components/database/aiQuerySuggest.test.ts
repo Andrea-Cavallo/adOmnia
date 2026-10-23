@@ -31,7 +31,7 @@ describe('buildQueryPrompt', () => {
   })
 
   it('bounds tables and columns', () => {
-    const many = Array.from({ length: 60 }, (_, i) => ({ name: `t${i}`, columns: Array.from({ length: 60 }, (_, j) => ({ name: `c${j}` })) }))
+    const many = Array.from({ length: 60 }, (_, i) => ({ name: `t${i}`, columns: Array.from({ length: 60 }, (__, j) => ({ name: `c${j}` })) }))
     const { user } = buildQueryPrompt({ driver: 'sqlite', intent: 'x', currentQuery: '', schema: many })
     expect(user).toContain('… and 20 more')
     expect(user.match(/c39/g)).toHaveLength(40)

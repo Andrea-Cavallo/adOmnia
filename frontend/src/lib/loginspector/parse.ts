@@ -520,6 +520,7 @@ export async function parseLogTextChunked(
     hooks.onProgress?.(end, lines.length, parser.peek())
     if (parser.isFull()) break
     if (end < lines.length) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- sequential by design: yield a macrotask between parse slices
       await YIELD()
       if (hooks.shouldAbort?.()) {
         aborted = true

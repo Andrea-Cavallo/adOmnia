@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { RotateCcw, Save } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PluginInstance, PluginSetting } from '@/stores/plugins'
@@ -13,15 +13,15 @@ export function PluginSettings({ plugin, onSaved }: PluginSettingsProps) {
   const [values, setValues] = useState<Record<string, string>>({})
   const [dirty, setDirty] = useState(false)
 
-  const loadSettings = useCallback(async () => {
-    const loaded = await getPluginSettings(plugin.manifest.id)
-    setValues(loaded)
-    setDirty(false)
-  }, [plugin.manifest.id])
-
   useEffect(() => {
-    loadSettings()
-  }, [loadSettings])
+    let cancelled = false
+    void getPluginSettings(plugin.manifest.id).then((loaded) => {
+      if (cancelled) return
+      setValues(loaded)
+      setDirty(false)
+    })
+    return () => { cancelled = true }
+  }, [plugin.manifest.id])
 
   const handleChange = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }))
@@ -29,8 +29,8 @@ export function PluginSettings({ plugin, onSaved }: PluginSettingsProps) {
   }
 
   const handleSave = async () => {
-    const entries = Object.entries(values)
-    for (const [key, value] of entries) {
+    for (const [key, value] of Object.entries(values)) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- keys are written one at a time so the plugin settings store never sees concurrent writes
       await setPluginSetting(plugin.manifest.id, key, value)
     }
     setDirty(false)

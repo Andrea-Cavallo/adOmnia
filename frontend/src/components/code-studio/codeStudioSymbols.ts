@@ -33,6 +33,8 @@ export function useCodeStudioDocumentSymbols(document: GoIDEEditorDocument | nul
   const server = useCodeStudioSymbolServer(sessionId, document?.document.language ?? '')
   const hasSymbols = server.supported
   const lspReady = server.state === 'ready'
+  const buffer = document?.buffer
+  const readOnly = document?.document.readOnly
 
   useEffect(() => {
     if (!documentId || !hasSymbols || !lspReady) return
@@ -46,16 +48,16 @@ export function useCodeStudioDocumentSymbols(document: GoIDEEditorDocument | nul
         request.then((result) => {
           if (disposed) return
           const latest = useCodeStudioStore.getState().documents.find(item => item.document.id === documentId && item.document.sessionId === sessionId)
-          if (!latest || latest.buffer !== document?.buffer) return
+          if (!latest || latest.buffer !== buffer) return
           const current = currentCodeStudioDocumentVersion(documentId)
-          if (current !== null && current !== result.version && !document?.document.readOnly) return
+          if (current !== null && current !== result.version && !readOnly) return
           symbolBuffers.set(result.symbols, latest.buffer)
           useCodeStudioLspStore.setState((state) => ({ symbols: { ...state.symbols, [documentId]: result.symbols } }))
         }).catch(() => undefined)
       }).catch(() => undefined)
     }, REFRESH_DEBOUNCE_MS)
     return () => { disposed = true; window.clearTimeout(timer); cancel?.() }
-  }, [document?.buffer, documentId, hasSymbols, lspReady, sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [buffer, readOnly, documentId, hasSymbols, lspReady, sessionId])
 }
 
 /** Same snapshot for Structure and breadcrumbs; local syntax remains available during JDT import. */

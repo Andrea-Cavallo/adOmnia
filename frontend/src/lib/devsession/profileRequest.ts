@@ -18,12 +18,13 @@ export async function profileRequest(run: RequestRun, session: LiveSession, onPr
   if (!session.port) throw new Error('The service port is unknown: set it in the live bar first.')
   const [{ captureGoIDELiveProfile }, { focusArtifact }] = await Promise.all([import('@/lib/code-studio-api'), import('@/lib/code-studio/codeStudioRemote')])
   const vars = liveVars(useEnvironmentsStore.getState().getResolvedVars())
-  let settled = false
+  const capturing = { settled: false }
   const capture = captureGoIDELiveProfile({ sessionId: session.goSessionId, url: `http://127.0.0.1:${session.port}`, kind: 'profile', seconds: PROFILE_SECONDS })
-    .finally(() => { settled = true })
+    .finally(() => { capturing.settled = true })
   let sent = 0
   const deadline = Date.now() + PROFILE_SECONDS * 1000
-  while (!settled && Date.now() < deadline) {
+  while (!capturing.settled && Date.now() < deadline) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- requests are deliberately resent one after another while the profile is captured
     const response = await sendRequest(tab.request, vars)
     if (response.error && sent === 0) throw new Error(`The request failed: ${response.error.message}`)
     sent++

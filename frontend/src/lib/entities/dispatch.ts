@@ -29,7 +29,9 @@ export function useEntityHandoff(
   handler: (ref: EntityRef, intent: string, payload: Record<string, unknown>) => boolean | void,
 ): void {
   const handlerRef = useRef(handler)
-  handlerRef.current = handler
+  useEffect(() => {
+    handlerRef.current = handler
+  })
   useEffect(() => {
     const listener = (event: Event) => {
       const detail = (event as CustomEvent<{ rail: RailItem; ref: EntityRef; intent: string; payload: Record<string, unknown>; handled: boolean }>).detail

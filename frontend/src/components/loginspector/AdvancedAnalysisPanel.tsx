@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Bot, Clock3, Download, Gauge, Puzzle, Save, Settings2, ShieldAlert, X } from 'lucide-react'
 import { downloadText } from '@/lib/fileUtils'
+import { withContentKeys } from '@/lib/contentKeys'
 import {
   BUILTIN_DIAGNOSTIC_RULES,
   DEFAULT_PARSING_PROFILE,
@@ -125,8 +126,8 @@ export function AdvancedAnalysisPanel({ events, analysis, sources, selectedReque
             {tab === 'integrity' && (
               <div>
                 <p className="mb-3 text-[11px] text-text-3">Corrections are always explicit. The event detail preserves the original timestamp beside corrected time.</p>
-                {analysis.integrityIssues.length ? analysis.integrityIssues.map((issue, index) => (
-                  <button key={`${issue.kind}-${index}`} onClick={() => issue.eventIds[0] !== undefined && onSelectEventId(issue.eventIds[0])} className="mb-2 block w-full rounded border border-border-1 bg-surface-1 p-3 text-left hover:border-accent/40">
+                {analysis.integrityIssues.length ? withContentKeys(analysis.integrityIssues, (issue) => `${issue.kind}-${issue.title}-${issue.eventIds.join(",")}`).map(({ key, item: issue }) => (
+                  <button key={key} onClick={() => issue.eventIds[0] !== undefined && onSelectEventId(issue.eventIds[0])} className="mb-2 block w-full rounded border border-border-1 bg-surface-1 p-3 text-left hover:border-accent/40">
                     <span className={issue.severity === 'warn' ? 'text-warning' : 'text-info'}><ShieldAlert size={12} className="mr-1 inline" />{issue.title}</span>
                     <p className="mt-1 text-[10px] text-text-3">{issue.detail}</p>
                     <p className="mt-1 font-mono text-[9px] text-text-4">{issue.sourceIds.join(', ')} · {issue.eventIds.length} evidence event(s)</p>

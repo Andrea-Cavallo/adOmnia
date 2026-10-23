@@ -6,6 +6,7 @@
 import * as pdfjs from 'pdfjs-dist'
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 // Vite resolves this URL to a hashed asset and serves the worker file.
+// oxlint-disable-next-line import/default -- Vite `?url` import: the default export is synthesized by the bundler
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 pdfjs.GlobalWorkerOptions.workerSrc = PdfWorker
@@ -52,9 +53,9 @@ export async function loadPdfDocument(bytes: Uint8Array): Promise<LoadedPdf> {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     if (/password/i.test(message)) {
-      throw new Error('This PDF is password-protected and cannot be opened (unsupported in v1).')
+      throw new Error('This PDF is password-protected and cannot be opened (unsupported in v1).', { cause: error })
     }
-    throw new Error(`Could not open PDF: ${message}`)
+    throw new Error(`Could not open PDF: ${message}`, { cause: error })
   }
 }
 
@@ -163,6 +164,7 @@ export async function searchPdfText(doc: PDFDocumentProxy, query: string): Promi
   if (!needle) return []
   const matches: PdfTextMatch[] = []
   for (let page = 1; page <= doc.numPages; page += 1) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- pages are read one at a time to keep pdf.js memory bounded
     const text = await extractPageText(doc, page)
     const idx = text.toLowerCase().indexOf(needle)
     if (idx >= 0) {

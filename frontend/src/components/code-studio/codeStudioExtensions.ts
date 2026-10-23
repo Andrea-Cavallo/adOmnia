@@ -33,7 +33,7 @@ export async function runIDEContribution(item: IDEContribution, documentId?: str
   if (!analyzer && document && current.activeDocumentBySession[sessionId] !== document.document.id) return
   if (!useIDEExtensionsStore.getState().items.some(c => c.pluginId === item.pluginId && c.id === item.id && c.kind === item.kind)) return
   const parsed = extensionResult(result.data)
-  if (document) useIDEExtensionsStore.setState(state => ({reports:{...state.reports,[sessionId]:{...state.reports[sessionId],[`${item.pluginId}:${item.kind}:${item.id}:${document.document.id}`]:{uri:editorModelUri(document.document),path:document.document.path,relativePath:document.document.relativePath,documentId:document.document.id,diagnostics:parsed.diagnostics.map(d => ({range:{startLine:d.line,startColumn:d.column,endLine:d.endLine,endColumn:d.endColumn},severity:d.severity,message:d.message,source:`${item.pluginName}: ${item.title}`}))}}}}))
+  if (document) useIDEExtensionsStore.setState(ext => ({reports:{...ext.reports,[sessionId]:{...ext.reports[sessionId],[`${item.pluginId}:${item.kind}:${item.id}:${document.document.id}`]:{uri:editorModelUri(document.document),path:document.document.path,relativePath:document.document.relativePath,documentId:document.document.id,diagnostics:parsed.diagnostics.map(d => ({range:{startLine:d.line,startColumn:d.column,endLine:d.endLine,endColumn:d.endColumn},severity:d.severity,message:d.message,source:`${item.pluginName}: ${item.title}`}))}}}}))
   if (document && model && model.uri.toString() === editorModelUri(document.document)) {
    monaco.editor.setModelMarkers(model,`plugin:${item.pluginId}:${item.id}`,parsed.diagnostics.map(d => ({startLineNumber:d.line,startColumn:d.column,endLineNumber:d.endLine,endColumn:d.endColumn,message:d.message,severity:[0,monaco.MarkerSeverity.Error,monaco.MarkerSeverity.Warning,monaco.MarkerSeverity.Info,monaco.MarkerSeverity.Hint][d.severity],source:item.title})))
   } else if (document) {
@@ -96,7 +96,7 @@ export function startCodeStudioExtensions(): void {
   if (event.type !== 'document.saved') return
   const document = event.payload as {id?:string; sessionId?:string}
   if (useCodeStudioStore.getState().activeSessionId !== event.sessionId) return
-  for (const c of useIDEExtensionsStore.getState().items.filter(c => c.kind === 'analyzer')) void runIDEContribution(c,document.id,true)
+  for (const contribution of useIDEExtensionsStore.getState().items.filter(c => c.kind === 'analyzer')) void runIDEContribution(contribution,document.id,true)
  })
  useCodeStudioStore.subscribe((state,previous) => {
   if (state.documents === previous.documents) return

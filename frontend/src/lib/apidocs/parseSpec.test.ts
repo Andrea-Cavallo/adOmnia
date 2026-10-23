@@ -58,7 +58,7 @@ describe('buildApiDocModel (OpenAPI 3)', () => {
     expect(model.tags).toHaveLength(1)
     expect(model.tags[0].name).toBe('pets')
     expect(model.tags[0].description).toBe('Pet ops')
-    expect(model.tags[0].operations.map((o) => o.method).sort()).toEqual(['GET', 'POST'])
+    expect(model.tags[0].operations.map((o) => o.method).sort((a, b) => a.localeCompare(b))).toEqual(['GET', 'POST'])
     expect(model.operationCount).toBe(2)
   })
 

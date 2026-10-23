@@ -14,9 +14,14 @@ export function CodeStudioDependencyWhy({ sessionId, module, version, packages }
   const runtime = useCodeStudioRuntimeProfile((state) => state.packages[sessionId] ?? null)
   const binary = useCodeStudioInsights((state) => state.binaries[sessionId] ?? null)
   const vulns = useCodeStudioInsights((state) => state.vulns[sessionId] ?? null)
+  const whyKey = `${sessionId}|${module}`
+  const [prevWhyKey, setPrevWhyKey] = useState(whyKey)
+  if (prevWhyKey !== whyKey) {
+    setPrevWhyKey(whyKey)
+    setWhy(null)
+  }
   useEffect(() => {
     let cancelled = false
-    setWhy(null)
     GoIDE.DependencyWhy(sessionId, module).then((result) => { if (!cancelled) setWhy(result) }, (problem) => { if (!cancelled) setError(problem instanceof Error ? problem.message : String(problem)) })
     return () => { cancelled = true }
   }, [sessionId, module])

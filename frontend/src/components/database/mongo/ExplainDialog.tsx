@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { AlertTriangle, CheckCircle2, Gauge, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { highlightedJson } from '../dbShared'
@@ -93,7 +94,7 @@ function StageNode({ stage }: { stage: PlanStage }) {
       </div>
       {stage.children.length > 0 && (
         <div className="ml-4 border-l border-border-2 pl-4 pt-2">
-          {stage.children.map((child, i) => <StageNode key={i} stage={child} />)}
+          {withContentKeys(stage.children, (child) => `${child.stage}:${child.indexName ?? ''}`).map(({ key, item: child }) => <StageNode key={key} stage={child} />)}
         </div>
       )}
     </div>

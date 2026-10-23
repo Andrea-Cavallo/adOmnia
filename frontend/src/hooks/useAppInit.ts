@@ -130,11 +130,10 @@ export function useAppInit(): AppInitResult {
     useAppStore.getState().setAppWindowChrome(activeWindowChrome !== null && activeWindowChrome !== 'system')
   }, [activeWindowChrome])
 
-  useEffect(() => {
-    if (activeWindowChrome === null && settingsLoaded) {
-      setActiveWindowChrome(appearance.windowChrome ?? 'system')
-    }
-  }, [activeWindowChrome, appearance.windowChrome, settingsLoaded])
+  // Until the backend reports the chrome, the saved setting is used once (and then kept for the session).
+  if (activeWindowChrome === null && settingsLoaded) {
+    setActiveWindowChrome(appearance.windowChrome ?? 'system')
+  }
 
   useEffect(() => {
     if (settingsLoaded) markStartup('startup:settings-loaded')

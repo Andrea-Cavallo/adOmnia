@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, FileCode2, FileText, Loader2, Network, RefreshCw, Wand2 } from 'lucide-react'
 import { createGoIDEFiles, loadGoIDEDocumentation, type GoIDEDocumentation, type GoIDEErrorFinding, type GoIDESession } from '@/lib/code-studio-api'
+import { withContentKeys } from '@/lib/contentKeys'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { renderMarkdown } from '@/lib/markdownDoc'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -38,7 +39,12 @@ export function CodeStudioDocsPanel({ session }: { session: GoIDESession }) {
   const project = session.project.name || 'Project'
   const authorized = session.project.authorization === 'tooling-permitted'
   const [docs, setDocs] = useState<GoIDEDocumentation | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadedSession, setLoadedSession] = useState(sessionId)
+  if (loadedSession !== sessionId) {
+    setLoadedSession(sessionId)
+    setLoading(true)
+  }
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
   const [tab, setTab] = useState<DocsTab>('packages')
   const [selected, setSelected] = useState(0)
@@ -55,7 +61,14 @@ export function CodeStudioDocsPanel({ session }: { session: GoIDESession }) {
       setLoading(false)
     }
   }
-  useEffect(() => { void refresh() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let live = true
+    loadGoIDEDocumentation(sessionId)
+      .then((loaded) => { if (live) { setDocs(loaded); setMessage(null) } })
+      .catch((problem: unknown) => { if (live) setMessage({ tone: 'error', text: errorText(problem) }) })
+      .finally(() => { if (live) setLoading(false) })
+    return () => { live = false }
+  }, [sessionId])
 
   const run = async (label: string, action: () => Promise<string>) => {
     setBusy(label)
@@ -154,13 +167,13 @@ function MissingDocs({ problems }: { problems: GoIDEErrorFinding[] }) {
   }
   return (
     <div className="min-h-0 flex-1 overflow-auto py-1">
-      <p className="px-2 pb-1 text-text-4">Hints only: exported symbols without a doc comment, or whose comment does not start with their name. <em>Add doc comment</em> inserts <code>// Name </code> above the declaration for you to complete.</p>
+      <p className="px-2 pb-1 text-text-4">Hints only: exported symbols without a doc comment, or whose comment does not start with their name. <em>Add doc comment</em> inserts <code>{'// Name '}</code> above the declaration for you to complete.</p>
       {error && <p className="px-2 text-warning">{error}</p>}
       {[...byPackage.entries()].map(([dir, items]) => (
         <section key={dir}>
           <h4 className="px-2 py-1 font-mono text-[10px] text-text-4">{dir} ({items.length})</h4>
-          {items.map((problem, index) => (
-            <div key={index} className="flex items-center gap-2 py-0.5 pl-4 pr-2 hover:bg-surface-2">
+          {withContentKeys(items, (problem) => `${problem.location.relativePath}:${problem.location.line}:${problem.location.column}:${problem.function}`).map(({ key, item: problem }) => (
+            <div key={key} className="flex items-center gap-2 py-0.5 pl-4 pr-2 hover:bg-surface-2">
               <button type="button" onClick={() => void useCodeStudioStore.getState().openLocation(problem.location.relativePath, problem.location.line, problem.location.column)} className="shrink-0 font-mono text-[10px] text-text-3 hover:text-accent hover:underline">{problem.location.relativePath.split('/').pop()}:{problem.location.line}</button>
               <span className="min-w-0 flex-1 truncate"><span className="font-mono text-text-1">{problem.function}</span> <span className="text-text-3">· {problem.message}</span></span>
               {problem.fix && (applied.has(problem) ? <span className="shrink-0 text-[10px] text-success">Added</span> : <button type="button" onClick={() => void applyErrorFinding(problem).then((failure) => { setError(failure); if (!failure) setApplied((current) => new Set(current).add(problem)) })} className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-accent hover:bg-accent/10"><Wand2 size={10} aria-hidden="true" /> Add doc comment</button>)}

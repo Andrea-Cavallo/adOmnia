@@ -21,6 +21,6 @@ describe('traceTreeRows', () => {
       { spanId: 'b', parentSpanId: 'a' },
     ])
     expect(rows).toHaveLength(3)
-    expect(rows.map(({ span }) => span.spanId).sort()).toEqual(['a', 'b', 'orphan'])
+    expect(rows.map(({ span }) => span.spanId).sort((a, b) => a.localeCompare(b))).toEqual(['a', 'b', 'orphan'])
   })
 })

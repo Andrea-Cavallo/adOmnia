@@ -7,6 +7,7 @@ import {
   type ConsoleCategory, type ConsoleTemplate, type TemplateRisk,
 } from './consoleTemplates'
 import { filterSavedQueries, type SavedQuery } from './savedQueries'
+import { withContentKeys } from '@/lib/contentKeys'
 
 type View = ConsoleCategory | 'saved'
 
@@ -241,9 +242,9 @@ export function QueryConsole(props: QueryConsoleProps) {
               <h4 className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-text-4"><History size={11} /> Recent</h4>
               {recentShown.length === 0 ? (
                 <p className="px-1 text-[11px] text-text-4">Nothing here yet.</p>
-              ) : recentShown.slice(0, 20).map((q, i) => (
+              ) : withContentKeys(recentShown.slice(0, 20), (query) => query).map(({ key, item: q }) => (
                 <button
-                  key={`recent-${i}`}
+                  key={`recent-${key}`}
                   onClick={() => onPickQuery(q)}
                   title={q}
                   className="mb-1 block w-full truncate rounded-md border border-border-1 bg-surface-2 px-2 py-1.5 text-left font-mono text-[10.5px] text-text-2 hover:border-accent/40 hover:text-text-1"

@@ -43,10 +43,15 @@ export function CodeStudioPathDialog({ sessionId, request, onClose }: { sessionI
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const [seenRequest, setSeenRequest] = useState(request)
+  if (seenRequest !== request) {
+    setSeenRequest(request)
+    if (request) setName(initialName(request))
+  }
+
   useEffect(() => {
     if (!request) return
     const value = initialName(request)
-    setName(value)
     // Nel rename è selezionato il nome senza estensione.
     requestAnimationFrame(() => {
       const input = inputRef.current

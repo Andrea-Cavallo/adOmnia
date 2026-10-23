@@ -186,7 +186,7 @@ function buildJsonDiff(left: string, right: string): JsonDiffModel {
   try {
     const leftFlat = flattenJson(JSON.parse(left))
     const rightFlat = flattenJson(JSON.parse(right))
-    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort()
+    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort((a, b) => a.localeCompare(b))
     const rows = paths.reduce<JsonDiffRow[]>((acc, path) => {
       const hasLeft = Object.prototype.hasOwnProperty.call(leftFlat, path)
       const hasRight = Object.prototype.hasOwnProperty.call(rightFlat, path)
@@ -242,7 +242,7 @@ function buildXmlDiff(left: string, right: string): JsonDiffModel {
   try {
     const leftFlat = flattenXml(left)
     const rightFlat = flattenXml(right)
-    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort()
+    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort((a, b) => a.localeCompare(b))
     const rows = paths.reduce<JsonDiffRow[]>((acc, path) => {
       const hasLeft = Object.prototype.hasOwnProperty.call(leftFlat, path)
       const hasRight = Object.prototype.hasOwnProperty.call(rightFlat, path)

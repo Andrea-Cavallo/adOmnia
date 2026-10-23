@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Terminal, Cpu, Zap, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePluginsStore } from '@/stores/plugins'
@@ -22,29 +22,32 @@ export function PluginDevTools({ embedded = false }: { embedded?: boolean }) {
   const [execResult, setExecResult] = useState<string | null>(null)
   const [execError, setExecError] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
-    const [fns, evts, pluginList] = await Promise.all([
-      getHostFunctions(),
-      getAvailableEvents(),
-      getPlugins(),
-    ])
-    setHostFunctions(fns)
-    setEvents(evts)
-    setPlugins(pluginList)
-
-    const statuses: Record<string, SandboxStatus> = {}
-    for (const p of pluginList) {
-      const status = await getSandboxStatus(p.manifest.id)
-      if (status) {
-        statuses[p.manifest.id] = status
-      }
-    }
-    setSandboxStatuses(statuses)
-  }, [setPlugins])
-
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    let cancelled = false
+    const loadData = async () => {
+      const [fns, evts, pluginList] = await Promise.all([
+        getHostFunctions(),
+        getAvailableEvents(),
+        getPlugins(),
+      ])
+      if (cancelled) return
+      setHostFunctions(fns)
+      setEvents(evts)
+      setPlugins(pluginList)
+
+      const entries = await Promise.all(
+        pluginList.map(async (p) => [p.manifest.id, await getSandboxStatus(p.manifest.id)] as const),
+      )
+      if (cancelled) return
+      const statuses: Record<string, SandboxStatus> = {}
+      for (const [id, status] of entries) {
+        if (status) statuses[id] = status
+      }
+      setSandboxStatuses(statuses)
+    }
+    void loadData()
+    return () => { cancelled = true }
+  }, [setPlugins])
 
   const handleExecute = async () => {
     setExecResult(null)

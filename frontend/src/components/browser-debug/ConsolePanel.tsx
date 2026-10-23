@@ -71,6 +71,7 @@ export function ConsolePanel() {
 
   // Auto-scroll on new logs
   useEffect(() => {
+    if (logs.length === 0) return
     scrollToBottom()
   }, [logs, scrollToBottom])
 

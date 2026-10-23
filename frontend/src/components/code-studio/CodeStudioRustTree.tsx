@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { GitFork, Loader2, Search } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { getRustDependencyTree } from '@/lib/code-studio-api'
+import { withContentKeys } from '@/lib/contentKeys'
 import type { CargoTreeNode } from '../../../bindings/adomnia/internal/languages/rust/models'
 
 interface TreeRequest {
@@ -81,8 +82,8 @@ export function CodeStudioRustTree() {
         {!nodes && !error && <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> Reading the lockfile, no cargo run…</p>}
         {error && <p className="whitespace-pre-wrap px-3 py-3 text-[11px] text-danger">{error}</p>}
         <div className="gs-list min-h-0 flex-1 overflow-auto font-mono text-[11.5px]">
-          {visible.map((node, position) => (
-            <div key={`${position}:${node.name}:${node.version}`} className="gs-list-row" style={{ paddingLeft: 12 + node.depth * 14 }}>
+          {withContentKeys(visible, (n) => `${n.depth}:${n.name}:${n.version}`).map(({ key, item: node }) => (
+            <div key={key} className="gs-list-row" style={{ paddingLeft: 12 + node.depth * 14 }}>
               <span className={`min-w-0 flex-1 truncate ${node.status === 'resolved' ? 'text-text-1' : 'text-text-3'}`}>
                 {node.name}:<span className="text-accent">{node.version}</span>
               </span>

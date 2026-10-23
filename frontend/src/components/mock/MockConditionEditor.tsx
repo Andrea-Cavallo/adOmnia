@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import type { MockCondition } from '@/lib/types'
 
@@ -42,8 +43,19 @@ function fieldPlaceholder(source: MockCondition['source']): string {
 }
 
 export function MockConditionEditor({ conditions, onChange }: MockConditionEditorProps) {
-  const add = () => onChange([...conditions, { ...BLANK_CONDITION }])
-  const remove = (index: number) => onChange(conditions.filter((_, i) => i !== index))
+  // Conditions carry no id in the persisted shape: row identities live beside them so typing never remounts a row.
+  const nextRowId = useRef(0)
+  const [rowIds, setRowIds] = useState<string[]>(() => conditions.map((_, i) => `row-${i}`))
+  const rowKeyOf = (index: number) => rowIds[index] ?? `ext-${index}`
+  const add = () => {
+    nextRowId.current += 1
+    setRowIds([...conditions.map((_, i) => rowKeyOf(i)), `new-${nextRowId.current}`])
+    onChange([...conditions, { ...BLANK_CONDITION }])
+  }
+  const remove = (index: number) => {
+    setRowIds(conditions.map((_, i) => rowKeyOf(i)).filter((_, i) => i !== index))
+    onChange(conditions.filter((_, i) => i !== index))
+  }
   const update = (index: number, patch: Partial<MockCondition>) =>
     onChange(conditions.map((condition, i) => (i === index ? { ...condition, ...patch } : condition)))
 
@@ -56,7 +68,7 @@ export function MockConditionEditor({ conditions, onChange }: MockConditionEdito
       )}
 
       {conditions.map((condition, index) => (
-        <div key={index} className="grid grid-cols-[minmax(96px,0.8fr)_minmax(96px,1fr)_minmax(104px,0.8fr)_minmax(96px,1fr)_24px] gap-1.5 items-center">
+        <div key={rowKeyOf(index)} className="grid grid-cols-[minmax(96px,0.8fr)_minmax(96px,1fr)_minmax(104px,0.8fr)_minmax(96px,1fr)_24px] gap-1.5 items-center">
           <select
             value={condition.source}
             onChange={(event) => update(index, { source: event.target.value as MockCondition['source'] })}

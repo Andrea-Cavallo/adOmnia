@@ -27,14 +27,14 @@ describe('architecture helpers', () => {
   it('builds the import graph and focuses on a package and its neighbours', () => {
     expect(packageGraph(report, 'imports', null).links).toHaveLength(2)
     const focused = packageGraph(report, 'imports', 'example.com/shop/service')
-    expect(focused.nodes.map((node) => node.id).sort()).toEqual(['example.com/shop/cmd', 'example.com/shop/service', 'example.com/shop/store'])
+    expect(focused.nodes.map((node) => node.id).sort((a, b) => a.localeCompare(b))).toEqual(['example.com/shop/cmd', 'example.com/shop/service', 'example.com/shop/store'])
     expect(packageGraph(report, 'imports', null, 2).hidden).toBe(2)
   })
 
   it('finds functions and their callers and callees', () => {
     expect(searchFunctions(report, 'look').map((fn) => fn.id)).toEqual(['Lookup'])
     const graph = callNeighbourhood(report, 'Lookup')
-    expect(graph.nodes.map((node) => node.id).sort()).toEqual(['Get', 'Log', 'Lookup', 'main'])
+    expect(graph.nodes.map((node) => node.id).sort((a, b) => a.localeCompare(b))).toEqual(['Get', 'Log', 'Lookup', 'main'])
     expect(graph.links).toHaveLength(3)
     expect(graph.nodes.find((node) => node.id === 'Get')?.data.subtitle).toContain('interface')
   })
@@ -126,7 +126,7 @@ describe('packageView', () => {
 
   it('focuses on a package up to the chosen depth instead of cutting at a fixed size', () => {
     const focus = `${base}/pkg/util`
-    expect(view({ focus, depth: 1 }).nodes.map((node) => node.id).sort()).toEqual([`${base}/internal/api`, focus].sort())
+    expect(view({ focus, depth: 1 }).nodes.map((node) => node.id).sort((a, b) => a.localeCompare(b))).toEqual([`${base}/internal/api`, focus].sort((a, b) => a.localeCompare(b)))
     expect(view({ focus, depth: 2 }).shown).toBe(5)
     expect(view({ focus: `${base}/cmd`, depth: 1 }).shown).toBe(3)
   })
@@ -134,7 +134,7 @@ describe('packageView', () => {
   it('reports cycles and can show only them', () => {
     expect(cycleMembers(view({ reduce: false }).links)).toEqual(new Set([`${base}/internal/store`, `${base}/internal/cache`]))
     const cycles = view({ cyclesOnly: true })
-    expect(cycles.nodes.map((node) => node.id).sort()).toEqual([`${base}/internal/cache`, `${base}/internal/store`])
+    expect(cycles.nodes.map((node) => node.id).sort((a, b) => a.localeCompare(b))).toEqual([`${base}/internal/cache`, `${base}/internal/store`])
     expect(cycles.cycles).toBe(2)
   })
 

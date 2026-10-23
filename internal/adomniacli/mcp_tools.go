@@ -55,6 +55,25 @@ func mcpTools() []mcpTool {
 		{"mock_hits", "Mock hits", "Return the requests the mock server received (use it to verify what the code under development sent).", object(map[string]any{}), readOnly},
 		{"mock_clear_hits", "Clear mock hits", "Forget the recorded mock hits.", object(map[string]any{}), local},
 		{"mock_stop", "Stop the mock server", "Stop the mock server.", object(map[string]any{}), local},
+		{"stress_run", "Run a stress plan", "Execute a .stress.json flow plan exported from adOmnia and return p50/p95/p99, RPS, APDEX and release gate pass/fail.", object(map[string]any{
+			"plan": str("Absolute or relative path to the .stress.json plan file."),
+		}, "plan"), network},
+		{"collection_benchmark", "Benchmark a collection", "Run the collection N times (1–20) and return latency percentiles p50/p95/p99, min/max/avg and per-request fail rate. Use for regression checks after deployments.", object(map[string]any{
+			"collection": collection,
+			"runs":       map[string]any{"type": "integer", "description": "Number of runs (1–20, default 5)."},
+			"env":        str("Environment name loaded from environments/<name>.json."),
+			"vars":       map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}, "description": "Variable overrides."},
+		}), network},
+		{"app_startup_time", "Measure CLI startup time", "Spawn a fresh adomnia mcp subprocess, send initialize and measure milliseconds until the first response (cold-start latency of the binary).", object(map[string]any{}), readOnly},
+		{"performance_report", "Full performance report (Markdown)", "Run startup benchmark, collection benchmark and/or stress test then generate a complete Markdown report. Saves to outputDir if provided. Includes an IDE Code Studio checklist for manual entries. Use this as the main sprint/release performance gate.", object(map[string]any{
+			"title":      str("Report title (default: 'adOmnia Performance')."),
+			"collection": collection,
+			"runs":       map[string]any{"type": "integer", "description": "Collection benchmark runs (1–20, default 5)."},
+			"plan":       str("Path to .stress.json for load test (optional)."),
+			"env":        str("Environment name (optional)."),
+			"vars":       map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}, "description": "Variable overrides."},
+			"outputDir":  str("Directory to save the .md report (optional; content always returned even if omitted)."),
+		}), network},
 	}
 }
 
@@ -75,6 +94,10 @@ func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error)
 		ID         string            `json:"id"`
 		Vars       map[string]string `json:"vars"`
 		Config     jsonv1.RawMessage `json:"config"`
+		Plan       string            `json:"plan"`
+		Runs       int               `json:"runs"`
+		Title      string            `json:"title"`
+		OutputDir  string            `json:"outputDir"`
 	}
 	if len(raw) > 0 && string(raw) != "null" {
 		if err := json.Unmarshal(raw, &args); err != nil {
@@ -111,6 +134,22 @@ func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error)
 		return s.mock(http.MethodPost, "/mock/hits/clear", nil)
 	case "mock_stop":
 		return s.mock(http.MethodPost, "/mock/stop", nil)
+	case "stress_run":
+		return s.stressRun(args.Plan)
+	case "collection_benchmark":
+		return s.collectionBenchmark(args.Collection, args.Runs, args.Env, args.Vars)
+	case "app_startup_time":
+		return s.appStartupTime()
+	case "performance_report":
+		return s.performanceReport(perfReportParams{
+			Title:      args.Title,
+			Collection: args.Collection,
+			Runs:       args.Runs,
+			Plan:       args.Plan,
+			Env:        args.Env,
+			Vars:       args.Vars,
+			OutputDir:  args.OutputDir,
+		})
 	}
 	return "", fmt.Errorf("unknown tool %q", name)
 }

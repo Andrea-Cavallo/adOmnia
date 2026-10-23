@@ -1,3 +1,4 @@
+import { withContentKeys } from '@/lib/contentKeys'
 import { useState } from 'react'
 import { Sparkles, X, RefreshCw, Download, AlertCircle } from 'lucide-react'
 import * as AIEngine from '@/wailsjs/go/main/AIEngine'
@@ -160,8 +161,8 @@ export function AiMockDialog({ onClose, onImport }: Props) {
             <div className="flex flex-col gap-2">
               <p className="text-xs font-semibold text-text-3 uppercase tracking-wider">{generated.length} endpoint{generated.length !== 1 ? 's' : ''} generated</p>
               <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
-                {generated.map((ep, i) => (
-                  <div key={i} className="flex items-center gap-3 px-3 py-2 bg-surface-2 border border-border-1 rounded text-xs">
+                {withContentKeys(generated, (item) => `${item.method} ${item.path}`).map(({ key, item: ep }) => (
+                  <div key={key} className="flex items-center gap-3 px-3 py-2 bg-surface-2 border border-border-1 rounded text-xs">
                     <span className={`font-mono font-semibold w-14 flex-shrink-0 ${
                       ep.method === 'GET' ? 'text-method-get' :
                       ep.method === 'QUERY' ? 'text-info' :

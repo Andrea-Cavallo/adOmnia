@@ -186,6 +186,7 @@ export const useLivePreviewStore = create<LivePreviewState>((set, get) => {
         await get().stop(sessionId)
         const deadline = Date.now() + 8000
         while (Date.now() < deadline && isRunning(currentPreview(current(sessionId).previews, current(sessionId).activeId))) {
+          // oxlint-disable-next-line eslint/no-await-in-loop -- polling: wait between checks until the preview stops
           await new Promise((resolve) => setTimeout(resolve, 100))
         }
       }

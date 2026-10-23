@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { AlertCircle, Copy, RefreshCw, ScrollText } from 'lucide-react'
 import { getLanguageServerLog } from '@/lib/code-studio-lsp-api'
@@ -16,11 +16,11 @@ export function CodeStudioLanguageServerLog({ open, sessionId, onClose }: CodeSt
   const status = useCodeStudioLspStore((state) => (sessionId ? state.status[sessionId] : undefined))
   const [lines, setLines] = useState<string[]>([])
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     if (!sessionId) return
     void getLanguageServerLog(sessionId).then(setLines).catch((error: unknown) => setLines([String(error)]))
-  }
-  useEffect(() => { if (open) refresh() }, [open, sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId])
+  useEffect(() => { if (open) refresh() }, [open, refresh])
 
   const meta = status && [status.state, status.version, status.pid ? `PID ${status.pid}` : '', status.restarts ? `${status.restarts} restart${status.restarts === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')
   return (

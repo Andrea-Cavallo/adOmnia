@@ -128,11 +128,11 @@ const FIELD_NAME = /^[A-Za-z_@$][\w.@$-]*$/
  * `anchored` distinguishes whole-value matching (fields) from "contains".
  */
 function buildMatcher(value: string, anchored: boolean): ((text: string) => boolean) | null {
-  const literal = REGEX_LITERAL.exec(value)
-  if (literal) {
+  const regexLiteral = REGEX_LITERAL.exec(value)
+  if (regexLiteral) {
     try {
-      const flags = literal[2].includes('i') ? literal[2] : `${literal[2]}i`
-      const regex = new RegExp(literal[1], flags.replace('g', ''))
+      const flags = regexLiteral[2].includes('i') ? regexLiteral[2] : `${regexLiteral[2]}i`
+      const regex = new RegExp(regexLiteral[1], flags.replace('g', ''))
       return (text) => regex.test(text)
     } catch {
       /* invalid regex — fall through and treat it as literal text */

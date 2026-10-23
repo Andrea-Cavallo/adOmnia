@@ -14,32 +14,30 @@ interface CodeStudioToolPathsDialogProps {
 }
 
 /** Binari personalizzati per gopls, linter e Delve della sessione; vuoto ripristina la ricerca automatica. */
-export function CodeStudioToolPathsDialog({ open, sessionId, onClose }: CodeStudioToolPathsDialogProps) {
+export function CodeStudioToolPathsDialog(props: CodeStudioToolPathsDialogProps) {
+  // The form is mounted only while open, so its fields start from the stored values every time.
+  return props.open ? <ToolPathsForm {...props} /> : null
+}
+
+function ToolPathsForm({ open, sessionId, onClose }: CodeStudioToolPathsDialogProps) {
   const gopls = useCodeStudioLspStore((state) => state.gopls[sessionId] ?? null)
   const linter = useCodeStudioLspStore((state) => state.linter[sessionId] ?? null)
-  const [goplsBinary, setGoplsBinary] = useState('')
-  const [linterBinary, setLinterBinary] = useState('')
   const delve = useCodeStudioDebugStore((state) => state.delve[sessionId] ?? null)
-  const [delveBinary, setDelveBinary] = useState('')
+  const [goplsBinary, setGoplsBinary] = useState(() => (gopls?.source === 'custom' ? gopls.binary ?? '' : ''))
+  const [linterBinary, setLinterBinary] = useState(() => (linter?.source === 'custom' ? linter.binary ?? '' : ''))
+  const [delveBinary, setDelveBinary] = useState(() => (delve?.source === 'custom' ? delve.binary ?? '' : ''))
   const [makeBinary, setMakeBinary] = useState('')
   const [makeInfo, setMakeInfo] = useState<Awaited<ReturnType<typeof detectGoIDEMake>> | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!open) return
-    setGoplsBinary(gopls?.source === 'custom' ? gopls.binary ?? '' : '')
-    setLinterBinary(linter?.source === 'custom' ? linter.binary ?? '' : '')
-    setDelveBinary(delve?.source === 'custom' ? delve.binary ?? '' : '')
     void useCodeStudioDebugStore.getState().detectDelve(sessionId)
     void detectGoIDEMake(sessionId).then((info) => {
       setMakeInfo(info)
       setMakeBinary(info.source === 'custom' ? info.binary ?? '' : '')
     }).catch(() => setMakeInfo(null))
-    setError(null)
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!open) return null
+  }, [sessionId])
 
   const apply = async () => {
     setBusy(true)

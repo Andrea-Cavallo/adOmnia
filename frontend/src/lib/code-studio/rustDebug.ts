@@ -27,7 +27,8 @@ export function rustDebugTargetOf(config: RustDebugConfiguration): RustDebugTarg
   const options = optionsOf(config)
   const bin = config.kind === 'bin' ? text(options.bin) : ''
   const example = config.kind === 'example' ? text(options.example) : ''
-  if (!bin && !example) return null
+  const source = config.kind === 'bin' ? text(options.source) : ''
+  if (!bin && !example && !source) return null
   const pkg = text(options.package)
   const features = Array.isArray(options.features) ? options.features.map(text).filter(Boolean) : []
   const environment = Object.fromEntries((config.environment ?? []).filter((entry) => entry.key && !entry.secret).map((entry) => [entry.key, entry.value ?? '']))
@@ -38,6 +39,7 @@ export function rustDebugTargetOf(config: RustDebugConfiguration): RustDebugTarg
     ...(pkg ? { package: pkg } : {}),
     ...(bin ? { bin } : {}),
     ...(example ? { example } : {}),
+    ...(source ? { source } : {}),
     ...(features.length ? { features } : {}),
     ...(options.allFeatures === true ? { allFeatures: true } : {}),
     ...(options.noDefaultFeatures === true ? { noDefaultFeatures: true } : {}),

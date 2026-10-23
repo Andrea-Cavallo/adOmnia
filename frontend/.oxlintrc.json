@@ -31,7 +31,8 @@
     "react/memo-dependencies": "warn",
     "react/exhaustive-effect-dependencies": "warn",
     "react-hooks/exhaustive-deps": "warn",
-    "react/refs": "warn"
+    "react/refs": "warn",
+    "react/react-in-jsx-scope": "off"
   },
   "overrides": [
     {

@@ -17,6 +17,10 @@ type libtestParser struct {
 	current string         // crate del target in esecuzione: in un workspace cambia a ogni `Running`
 	unit    string         // contesto corrente: "" (unittests), "tests/foo.rs" o "doctest"
 	inOut   string         // nome del test di cui stiamo leggendo lo stdout/stderr ("" = fuori)
+	// Coverage opzionale (RS-5.6): il report LCOV che cargo-llvm-cov scrive a fine run.
+	coveragePath  string
+	coverage      *idetesting.CoverageReport
+	coverageRead  bool
 }
 
 var (
@@ -92,7 +96,9 @@ func (p *libtestParser) parseOutput(text string) (idetesting.Event, bool) {
 		if fixed := p.paths.resolve(file); fixed != "" {
 			file = fixed
 		}
-		event.Failure = &idetesting.TestLocation{File: file, Line: atoiOrZero(m[3])}
+		// Il frontend apre il fallimento per `relativePath` (relativo alla radice del progetto):
+		// senza questo campo il click sulla riga del panic non navigava (RS-5.5).
+		event.Failure = &idetesting.TestLocation{File: file, RelativePath: p.paths.rootRelative(file), Line: atoiOrZero(m[3])}
 	}
 	return event, true
 }

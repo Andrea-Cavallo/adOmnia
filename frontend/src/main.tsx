@@ -56,7 +56,7 @@ const nativeInfo = console.info.bind(console) as (...args: unknown[]) => void
 const nativeDebug = console.debug.bind(console) as (...args: unknown[]) => void
 
 // Expose raw native console for debugging the interceptor itself
-;(window as any).__nativeConsole = { log: nativeLog, warn: nativeWarn, error: nativeError, info: nativeInfo, debug: nativeDebug }
+;(window as unknown as { __nativeConsole?: unknown }).__nativeConsole = { log: nativeLog, warn: nativeWarn, error: nativeError, info: nativeInfo, debug: nativeDebug }
 
 function installDevLogInterceptor() {
   const formatArgs = (args: unknown[]): string =>

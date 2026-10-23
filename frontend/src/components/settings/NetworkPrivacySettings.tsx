@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import { Activity, CircleSlash, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
 import * as AppBindings from '../../../bindings/adomnia/app'
 import type { Event as NetworkEvent, Settings as NetworkSettings } from '../../../bindings/adomnia/internal/netpolicy/models'
@@ -103,8 +104,8 @@ export function NetworkPrivacySettings() {
           <div className="px-2 py-4 text-[11px] text-text-4">No connections opened by adOmnia in this session.</div>
         ) : (
           <ul className="max-h-72 overflow-auto px-2 py-2 font-mono text-[11px]">
-            {activity.map((event, index) => (
-              <li key={`${event.time}-${index}`} className="grid grid-cols-[64px_120px_minmax(0,1fr)_auto] items-center gap-2 border-b border-border-1 py-1 last:border-0">
+            {withContentKeys(activity, (e) => `${e.time}-${e.category}-${e.host}-${e.path ?? ''}`).map(({ key, item: event }) => (
+              <li key={key} className="grid grid-cols-[64px_120px_minmax(0,1fr)_auto] items-center gap-2 border-b border-border-1 py-1 last:border-0">
                 <span className="text-text-4">{new Date(event.time).toLocaleTimeString()}</span>
                 <span className="truncate text-text-3">{CATEGORY_LABELS[event.category] ?? event.category}</span>
                 <span className="truncate text-text-2" title={event.detail || undefined}>{event.method ? `${event.method} ` : ''}{event.host}{event.path ?? ''}</span>

@@ -12,7 +12,7 @@ describe('analyzeSchema', () => {
     expect(byPath.name.probability).toBe(1)
     expect(byPath.address.probability).toBe(0.5)
     expect(byPath['address.city'].depth).toBe(1)
-    expect(byPath.age.types.map((t) => t.kind).sort()).toEqual(['Int32', 'String'])
+    expect(byPath.age.types.map((t) => t.kind).sort((a, b) => a.localeCompare(b))).toEqual(['Int32', 'String'])
     expect(byPath.tags.samples).toEqual(['a', 'b'])
     expect(byPath['items[].sku'].count).toBe(1)
     expect(fields.map((f) => f.path).indexOf('address.city')).toBe(fields.map((f) => f.path).indexOf('address') + 1)

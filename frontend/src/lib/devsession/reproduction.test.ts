@@ -45,7 +45,7 @@ describe('reproduction', () => {
       dbSchema: 'postgres database "orders" (Database Studio connection "local"):\n- orders(id uuid, status text)',
     })
     expect(result.dir).toBe('repro/20261009-100500-post-orders')
-    const names = result.files.map((file) => file.relativePath.slice(result.dir.length + 1)).sort()
+    const names = result.files.map((file) => file.relativePath.slice(result.dir.length + 1)).sort((a, b) => a.localeCompare(b))
     expect(names).toEqual(['.env.example', 'README.md', 'config.md', 'db/tables.md', 'docker-compose.yml', 'flags.md', 'kafka/01-orders-created.kafka.json', 'logs.txt', 'queries.sql', 'repro_test.go', 'request.http', 'stack.txt', 'trace.json'])
     const file = (name: string) => result.files.find((item) => item.relativePath.endsWith(name))!.content
     expect(file('request.http')).toContain('Authorization: {{AUTHORIZATION}}')

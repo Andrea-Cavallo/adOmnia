@@ -58,18 +58,21 @@ export function useDbSchema({ driver, connectionId, connected, schemaItems, sche
   const [indexes, setIndexes] = useState<Record<string, string[]>>({})
   const inflight = useRef(new Set<string>())
   const runMongoRef = useRef(runMongo)
-  runMongoRef.current = runMongo
+  useEffect(() => { runMongoRef.current = runMongo })
 
-  // Bumped on every reset: a sample that was already in flight for the previous connection or schema must not land in the new one.
-  const generation = useRef(0)
-
-  // A refresh (new item list) or another connection drops what was sampled.
-  useEffect(() => {
-    generation.current += 1
+  // A refresh (new item list) or another connection drops what was sampled. The scope token changes on every reset:
+  // a sample that was already in flight for the previous connection or schema must not land in the new one.
+  const [scope, setScope] = useState({ connectionId, schemaItems })
+  if (scope.connectionId !== connectionId || scope.schemaItems !== schemaItems) {
+    setScope({ connectionId, schemaItems })
     setSamples({})
     setIndexes({})
+  }
+  const scopeRef = useRef(scope)
+  useEffect(() => {
+    scopeRef.current = scope
     inflight.current = new Set()
-  }, [connectionId, schemaItems])
+  }, [scope])
 
   const isMongo = driver === 'mongodb'
   const isRedis = driver === 'redis'
@@ -97,12 +100,12 @@ export function useDbSchema({ driver, connectionId, connected, schemaItems, sche
 
   const ensureSample = useCallback((collection: string) => {
     if (!isMongo || !connected || !collection || samples[collection] || inflight.current.has(collection)) return
-    const startedAt = generation.current
+    const startedAt = scopeRef.current
     const pending = inflight.current
     pending.add(collection)
     runMongoRef.current({ operation: 'find', collection, limit: SAMPLE_SIZE, canonical: true })
       .then((result) => {
-        if (generation.current !== startedAt) return
+        if (scopeRef.current !== startedAt) return
         const fields = analyzeSchema((result.documents ?? []) as BsonDoc[]).map((f) => f.path).slice(0, MAX_SAMPLED_FIELDS)
         setSamples((current) => ({ ...current, [collection]: fields }))
       })
@@ -111,7 +114,7 @@ export function useDbSchema({ driver, connectionId, connected, schemaItems, sche
     // Indexes feed the "unindexed field" warning only (DB-3.1.5); best-effort like the sample.
     runMongoRef.current({ operation: 'runCommand', command: { listIndexes: collection } })
       .then((result) => {
-        if (generation.current !== startedAt) return
+        if (scopeRef.current !== startedAt) return
         setIndexes((current) => ({ ...current, [collection]: mongoIndexFields(result) }))
       })
       .catch(() => undefined)

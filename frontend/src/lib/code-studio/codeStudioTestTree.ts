@@ -1,4 +1,4 @@
-import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest, GoIDERustDebugRequest } from '@/lib/code-studio-debug-api'
 import type { GoIDETestResult, GoIDETestRun, GoIDETestRunRequest } from '@/lib/code-studio-tests-api'
 
 export interface CodeStudioTestNode {
@@ -227,6 +227,17 @@ export function pythonDebugRequestForNode(run: GoIDETestRun, result: GoIDETestRe
 }
 
 /**
+ * Debug CodeLLDB di un singolo test Rust (RS-5.5): il nome dell'albero arriva al backend così com'è
+ * (`tests/foo.rs/it_works` dice anche quale target di test compilare con `cargo test --no-run`).
+ * I doctest non hanno binario compilato: restano null (limite dichiarato).
+ */
+export function rustDebugRequestForNode(run: GoIDETestRun, result: GoIDETestResult): GoIDERustDebugRequest | null {
+  if (!isRustTestRun(run) || !result.name) return null
+  if (result.name.includes(' (line ')) return null
+  return { sessionId: run.request.sessionId, test: result.name, workingDirectory: run.request.workingDirectory }
+}
+
+/**
  * Rerun failed: solo i package con fallimenti e solo i test di primo livello falliti.
  * Un package che non compila si riesegue per intero; null se non c'è nulla da rieseguire.
  */
@@ -250,7 +261,7 @@ export function rerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | nul
   }
   if (packages.size === 0) return null
   const run_ = wholePackage || tests.size === 0 ? '' : `^(${[...tests].map(escapeRegex).join('|')})$`
-  return { ...run.request, packages: [...packages].sort(), run: run_, bench: '', coverage: false }
+  return { ...run.request, packages: [...packages].sort((a, b) => a.localeCompare(b)), run: run_, bench: '', coverage: false }
 }
 
 /**
@@ -289,7 +300,7 @@ function javaRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest | null {
   }
   if (wholeUnit) return { ...run.request, packages: [], run: '', coverage: false }
   if (files.size === 0) return null
-  return { ...run.request, packages: [...files].sort(), run: files.size === 1 && methods.size > 0 && !anonymous ? [...methods].sort().join(',') : '', coverage: false }
+  return { ...run.request, packages: [...files].sort((a, b) => a.localeCompare(b)), run: files.size === 1 && methods.size > 0 && !anonymous ? [...methods].sort((a, b) => a.localeCompare(b)).join(',') : '', coverage: false }
 }
 
 /**
@@ -304,7 +315,7 @@ export function pythonRerunFailedRequest(run: GoIDETestRun): GoIDETestRunRequest
     else if (!run.results.some((other) => other.package === result.package && other.name && isFailed(other))) nodes.add(result.package)
   }
   if (nodes.size === 0) return null
-  return { ...run.request, packages: [...nodes].sort(), run: '', coverage: false }
+  return { ...run.request, packages: [...nodes].sort((a, b) => a.localeCompare(b)), run: '', coverage: false }
 }
 
 export function formatDuration(milliseconds: number): string {
@@ -378,7 +389,7 @@ export function raceRepeatRequestForNode(run: GoIDETestRun, result: GoIDETestRes
 }
 
 function shellQuote(value: string): string {
-  return /^[\w./=-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\''`)}'`
+  return /^[\w./=-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`
 }
 
 /**

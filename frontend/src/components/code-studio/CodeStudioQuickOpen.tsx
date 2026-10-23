@@ -14,33 +14,35 @@ export function quickOpenIndex(current: number, key: string, count: number): num
   return Math.min(current, count - 1)
 }
 
+function scrollActiveIntoView(element: HTMLElement | null) {
+  element?.scrollIntoView({ block: 'nearest' })
+}
+
 export function CodeStudioQuickOpen() {
   const quickOpen = useCodeStudioStore((state) => state.quickOpen)
   const setQuickOpen = useCodeStudioStore((state) => state.setQuickOpen)
   const searchQuickOpen = useCodeStudioStore((state) => state.searchQuickOpen)
   const openDocument = useCodeStudioStore((state) => state.openDocument)
   const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
 
   useEffect(() => {
-    if (!quickOpen.open) return
-    inputRef.current?.focus()
-    void searchQuickOpen(quickOpen.query)
-  }, [quickOpen.open]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (quickOpen.open) inputRef.current?.focus()
+  }, [quickOpen.open])
 
+  // Search right away when the palette opens or the query is cleared, debounce while typing.
   useEffect(() => {
     if (!quickOpen.open) return
-    const timer = window.setTimeout(() => void searchQuickOpen(quickOpen.query), 120)
+    const timer = window.setTimeout(() => void searchQuickOpen(quickOpen.query), quickOpen.query ? 120 : 0)
     return () => window.clearTimeout(timer)
   }, [quickOpen.open, quickOpen.query, searchQuickOpen])
 
   // New results start from the best match.
-  useEffect(() => setActive(0), [quickOpen.results])
-
-  useEffect(() => {
-    listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [active])
+  const [prevResults, setPrevResults] = useState(quickOpen.results)
+  if (prevResults !== quickOpen.results) {
+    setPrevResults(quickOpen.results)
+    setActive(0)
+  }
 
   if (!quickOpen.open) return null
 
@@ -88,13 +90,14 @@ export function CodeStudioQuickOpen() {
       }
       meta={quickOpen.loading ? <Loader2 size={14} className="animate-spin" /> : quickOpen.query ? `${quickOpen.results.length} file${quickOpen.results.length === 1 ? '' : 's'}` : undefined}
     >
-      <div ref={listRef} id="code-studio-quick-open-results" role="listbox" aria-label="Files">
+      <div id="code-studio-quick-open-results" role="listbox" aria-label="Files">
         {quickOpen.results.map((result, index) => (
           <button
             key={result.relativePath}
             id={`code-studio-quick-open-${index}`}
             type="button"
             role="option"
+            ref={index === active ? scrollActiveIntoView : undefined}
             aria-selected={index === active}
             tabIndex={-1}
             onMouseEnter={() => setActive(index)}

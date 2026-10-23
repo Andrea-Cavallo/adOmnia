@@ -8,6 +8,7 @@ let sequence = 0
  */
 export function useMermaidBlocks(container: RefObject<HTMLElement | null>, html: string): void {
   useEffect(() => {
+    if (!html) return
     const root = container.current
     const blocks = root ? [...root.querySelectorAll<HTMLElement>('[data-mermaid]')] : []
     if (!blocks.length) return
@@ -19,6 +20,7 @@ export function useMermaidBlocks(container: RefObject<HTMLElement | null>, html:
         if (cancelled) return
         const source = block.dataset.mermaid ?? ''
         try {
+          // oxlint-disable-next-line eslint/no-await-in-loop -- mermaid.render shares global state and ids; diagrams must render one at a time
           const { svg } = await mermaid.render(`md-mermaid-${++sequence}`, source)
           if (cancelled || !block.isConnected) return
           block.innerHTML = svg

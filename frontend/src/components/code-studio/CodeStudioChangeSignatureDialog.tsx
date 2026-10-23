@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Loader2, PenLine, RotateCcw, Trash2, X } from 'lucide-react'
 import type { monaco } from '@/lib/monacoSetup'
 import { requestChangeSignature } from '@/lib/code-studio-lsp-api'
@@ -27,18 +27,20 @@ const iconButton = 'grid h-6 w-6 place-items-center rounded text-text-3 hover:bg
  */
 export function CodeStudioChangeSignatureDialog() {
   const request = useCodeStudioLspStore((state) => state.changeSignatureRequest)
-  const [order, setOrder] = useState<number[]>([])
+  const [order, setOrder] = useState<number[]>(() => request ? request.signature.params.map((_, index) => index) : [])
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const close = () => useCodeStudioLspStore.setState({ changeSignatureRequest: null })
   useModalFocusTrap(!!request, close, dialogRef)
 
-  useEffect(() => {
+  const [seenRequest, setSeenRequest] = useState(request)
+  if (seenRequest !== request) {
+    setSeenRequest(request)
     setOrder(request ? request.signature.params.map((_, index) => index) : [])
     setWorking(false)
     setError(null)
-  }, [request])
+  }
 
   if (!request) return null
   const { signature } = request

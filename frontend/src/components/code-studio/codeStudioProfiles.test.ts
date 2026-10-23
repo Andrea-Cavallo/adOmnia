@@ -69,12 +69,12 @@ describe('codeStudioProfiles', () => {
 describe('diffProfiles across kinds', () => {
   it('matches the sample type by name and refuses profiles of a different kind', async () => {
     const { diffProfiles: diff } = await import('./codeStudioProfiles')
-    const node = (name: string, value: number[]) => ({ function: { name, short: name, package: 'p', file: '', relative: '', line: 0, runtime: false }, flat: value, cum: value })
-    const report = (types: string[], nodes: ReturnType<typeof node>[]) => ({ sampleTypes: types.map((name) => ({ name, unit: 'count' })), topFlat: nodes, topCum: nodes, totals: [], edges: [], lines: [], flame: null }) as unknown as Parameters<typeof diff>[0]
-    const base = report(['samples', 'cpu'], [node('f', [1, 10])])
-    const reordered = report(['cpu', 'samples'], [node('f', [30, 2])])
+    const kindNode = (name: string, value: number[]) => ({ function: { name, short: name, package: 'p', file: '', relative: '', line: 0, runtime: false }, flat: value, cum: value })
+    const kindReport = (types: string[], nodes: ReturnType<typeof kindNode>[]) => ({ sampleTypes: types.map((name) => ({ name, unit: 'count' })), topFlat: nodes, topCum: nodes, totals: [], edges: [], lines: [], flame: null }) as unknown as Parameters<typeof diff>[0]
+    const base = kindReport(['samples', 'cpu'], [kindNode('f', [1, 10])])
+    const reordered = kindReport(['cpu', 'samples'], [kindNode('f', [30, 2])])
     expect(diff(base, reordered, 1)[0]).toMatchObject({ base: 10, target: 30, delta: 20 })
-    const heap = report(['alloc_space', 'inuse_space'], [node('f', [5, 6])])
+    const heap = kindReport(['alloc_space', 'inuse_space'], [kindNode('f', [5, 6])])
     expect(diff(base, heap, 1)).toEqual([])
   })
 })

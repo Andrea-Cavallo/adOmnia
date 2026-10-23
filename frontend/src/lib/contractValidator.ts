@@ -427,7 +427,7 @@ export function validateContract(
 
     const isJSON =
       normalizedCt.includes('json') ||
-      /^\s*[\[{]/.test(response.body.trim())
+      /^\s*[[{]/.test(response.body.trim())
 
     if (isJSON) {
       try {

@@ -100,3 +100,17 @@ the job otherwise:
   code is not a finding.
 - `*.sh` is forced to LF in `.gitattributes`: a CRLF script breaks on Linux (shellcheck SC1017).
 - SonarCloud free tier requires a public repository or an OSS organization.
+
+## Work queue (Sonar baseline: 152 bugs, 44 vulnerabilities)
+
+| Item | Status |
+| --- | --- |
+| S2819 `postMessage` without origin check (`CodeStudioPreviewFrame`, `live.js`, `DevLogOverlay` listeners) | done: listeners verify `event.source` and `event.origin` |
+| S2871 `.sort()` without comparator (~45 in `frontend/src`) | done: `localeCompare`; AWS4 signed headers keep a code-point comparator (byte order is part of the signature) |
+| 18 functions over the complexity threshold (`runMongoQuery` at 85) | open |
+| 14 `errcheck` findings | open |
+| 12 Hadolint warnings on Dockerfiles | open |
+| React Compiler migration (oxlint `warn` rules) | open |
+| ~10 info warnings in `release.yml` | open |
+| Semgrep/Trivy triage (`// nosemgrep`), then make them blocking | open |
+| Trivy runs in CI only (the Windows mount is unstable locally) | by design |

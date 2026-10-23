@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import {
   TRACE_STATE_LEGEND, formatTraceDuration, traceSpanLeft, traceSpanPercent, traceSpanThickness, traceSpanTone, traceTicks, waitCategory,
   type TraceRange, type TraceSpan,
@@ -30,6 +31,33 @@ const WAIT_LABEL: Record<ReturnType<typeof waitCategory>, string> = {
   network: 'Network', sync: 'Synchronization', gc: 'GC', sleep: 'Sleep / timer', other: 'Other',
 }
 
+const rangeContent = (range: TraceRange) => `${range.start}-${range.end}-${range.kind}`
+const spanContent = (span: TraceSpan) => `${span.start}-${span.end}-${span.state}`
+
+function gcTooltip(range: TraceRange): ReactNode {
+  return (
+    <>
+      <div className="mb-1 font-medium text-text-1">{range.name || range.kind}</div>
+      <VizTooltipRow label="Starts at" value={formatTraceDuration(range.start)} />
+      <VizTooltipRow label="Duration" value={formatTraceDuration(range.end - range.start)} color="var(--gs-viz-gc)" />
+    </>
+  )
+}
+
+function spanTooltip(span: TraceSpan): ReactNode {
+  const frame = span.stack?.[0]
+  return (
+    <>
+      <div className="mb-1 font-medium capitalize text-text-1">{span.state}{span.state === 'waiting' ? ` · ${WAIT_LABEL[waitCategory(span.reason)]}` : ''}</div>
+      {span.reason && <VizTooltipRow label="Reason" value={span.reason} />}
+      <VizTooltipRow label="Duration" value={formatTraceDuration(span.end - span.start)} color={traceSpanTone(span)} />
+      <VizTooltipRow label="From" value={formatTraceDuration(span.start)} />
+      {frame && <div className="mt-1 truncate font-mono text-[10.5px] text-text-4">{frame.function}{frame.line ? `:${frame.line}` : ''}</div>}
+      {frame && <div className="text-[10.5px] text-text-4">Click to open the source</div>}
+    </>
+  )
+}
+
 /** Righe etichetta + traccia con asse del tempo condiviso e fasce GC/stop-the-world dietro gli span. */
 export function CodeStudioTraceTimeline({ rows, durationNanos, gc, labelHeader, empty, onSelect }: CodeStudioTraceTimelineProps) {
   const { tooltip, show, hide } = useVizTooltip()
@@ -44,8 +72,8 @@ export function CodeStudioTraceTimeline({ rows, durationNanos, gc, labelHeader, 
       {ticks.map((tick) => (
         <span key={tick} aria-hidden="true" className="absolute inset-y-0 w-px" style={{ left: `${(tick / durationNanos) * 100}%`, background: 'var(--gs-viz-grid)' }} />
       ))}
-      {gc.map((range, index) => (
-        <span key={`gc-${index}`} aria-hidden="true" className="absolute inset-y-0" style={{ ...position(range.start, range.end), background: 'color-mix(in srgb, var(--gs-viz-gc) 9%, transparent)' }} />
+      {withContentKeys(gc, rangeContent).map(({ key, item: range }) => (
+        <span key={`gc-${key}`} aria-hidden="true" className="absolute inset-y-0" style={{ ...position(range.start, range.end), background: 'color-mix(in srgb, var(--gs-viz-gc) 9%, transparent)' }} />
       ))}
     </>
   )
@@ -71,18 +99,12 @@ export function CodeStudioTraceTimeline({ rows, durationNanos, gc, labelHeader, 
           <div className="grid grid-cols-[17rem_minmax(0,1fr)_4.5rem] items-center gap-3 border-b border-border-1/70 pb-1.5">
             <span className="text-[11px] text-text-3">GC / STW</span>
             <div className="relative h-2.5 overflow-hidden rounded-full" style={{ background: 'var(--gs-viz-track)' }}>
-              {gc.map((range, index) => (
+              {withContentKeys(gc, rangeContent).map(({ key, item: range }) => (
                 <span
-                  key={`lane-${index}`}
+                  key={`lane-${key}`}
                   className="absolute inset-y-0 rounded-full"
                   style={{ ...position(range.start, range.end), background: 'var(--gs-viz-gc)' }}
-                  onMouseMove={(event) => show(event, (
-                    <>
-                      <div className="mb-1 font-medium text-text-1">{range.name || range.kind}</div>
-                      <VizTooltipRow label="Starts at" value={formatTraceDuration(range.start)} />
-                      <VizTooltipRow label="Duration" value={formatTraceDuration(range.end - range.start)} color="var(--gs-viz-gc)" />
-                    </>
-                  ))}
+                  onMouseMove={(event) => show(event, gcTooltip(range))}
                 />
               ))}
             </div>
@@ -97,25 +119,15 @@ export function CodeStudioTraceTimeline({ rows, durationNanos, gc, labelHeader, 
               <span className="min-w-0 truncate" title={row.title}>{row.label}</span>
               <div className="relative overflow-hidden rounded-[5px]" style={{ height: TRACK_HEIGHT_PX, background: 'var(--gs-viz-track)' }}>
                 {background}
-                {row.spans.map((span, index) => {
+                {withContentKeys(row.spans, spanContent).map(({ key: spanKey, item: span }) => {
                   const thickness = traceSpanThickness(span)
-                  const frame = span.stack?.[0]
                   return (
                     <button
-                      key={`${span.start}-${index}`}
+                      key={spanKey}
                       type="button"
                       aria-label={`${span.state} ${formatTraceDuration(span.end - span.start)}`}
                       onClick={() => onSelect(span)}
-                      onMouseMove={(event) => show(event, (
-                        <>
-                          <div className="mb-1 font-medium capitalize text-text-1">{span.state}{span.state === 'waiting' ? ` · ${WAIT_LABEL[waitCategory(span.reason)]}` : ''}</div>
-                          {span.reason && <VizTooltipRow label="Reason" value={span.reason} />}
-                          <VizTooltipRow label="Duration" value={formatTraceDuration(span.end - span.start)} color={traceSpanTone(span)} />
-                          <VizTooltipRow label="From" value={formatTraceDuration(span.start)} />
-                          {frame && <div className="mt-1 truncate font-mono text-[10.5px] text-text-4">{frame.function}{frame.line ? `:${frame.line}` : ''}</div>}
-                          {frame && <div className="text-[10.5px] text-text-4">Click to open the source</div>}
-                        </>
-                      ))}
+                      onMouseMove={(event) => show(event, spanTooltip(span))}
                       className="absolute rounded-[3px] hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
                       style={{
                         ...position(span.start, span.end),

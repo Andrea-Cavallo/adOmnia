@@ -39,6 +39,7 @@ export async function previewReplaceInFiles(files: string[], query: string, repl
   const changes: GoIDEFileChange[] = []
   let occurrences = 0
   for (const relativePath of files) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- sequential on purpose: documents load one at a time and the change list keeps the file order
     const document = await useCodeStudioStore.getState().ensureDocumentLoaded(relativePath)
     if (!document || document.document.readOnly) continue
     const original = document.buffer.replace(/\r\n/g, '\n')

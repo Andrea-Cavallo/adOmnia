@@ -1,4 +1,4 @@
-import { createContext, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useEffect, useRef, useState } from 'react'
 import type { Collection, RequestItem, TreeNode } from '@/lib/types'
 import { useCollectionsStore } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
@@ -22,17 +22,17 @@ export function useTreeInteraction(collections: Collection[], treeRef: React.Ref
   const velocity = useRef(0)
   const frame = useRef(0)
   const [notice, setNotice] = useState<{ message: string; undo?: () => boolean } | null>(null)
-  const stopHover = () => { if (hover.current) clearTimeout(hover.current.timer); hover.current = null }
-  const finish = () => {
+  const stopHover = useCallback(() => { if (hover.current) clearTimeout(hover.current.timer); hover.current = null }, [])
+  const finish = useCallback(() => {
     stopHover(); cancelAnimationFrame(frame.current); frame.current = 0; velocity.current = 0
     ghost.current?.remove(); ghost.current = null; sources.current = []; setDragging(new Set())
-  }
+  }, [stopHover])
   useEffect(() => {
     const stop = () => finish()
     document.addEventListener('dragend', stop)
     document.addEventListener('drop', stop)
     return () => { document.removeEventListener('dragend', stop); document.removeEventListener('drop', stop); finish() }
-  }, [])
+  }, [finish])
   const select = (event: Pick<React.MouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey'>, id: string) => {
     if (event.shiftKey && anchor.current) {
       const visible = [...(treeRef.current?.querySelectorAll<HTMLElement>('[data-collection-request]') ?? [])].map(el => el.dataset.nodeId!)

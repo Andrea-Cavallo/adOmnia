@@ -14,6 +14,6 @@ function medianMs(clone) {
 console.log(JSON.stringify({
   runtime: process.version,
   bodyBytes: value.body.length,
-  jsonMedianMs: medianMs(value => JSON.parse(JSON.stringify(value))),
-  structuredCloneMedianMs: medianMs(value => structuredClone(value)),
+  jsonMedianMs: medianMs(input => JSON.parse(JSON.stringify(input))),
+  structuredCloneMedianMs: medianMs(input => structuredClone(input)),
 }, null, 2))

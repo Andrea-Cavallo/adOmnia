@@ -31,7 +31,9 @@ interface PreviewFrameProps {
 export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFrameProps>(function CodeStudioPreviewFrame({ src, title, bridged, autoReload, width, height, onMessage }, ref) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [generation, setGeneration] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [loadedKey, setLoadedKey] = useState('')
+  const frameKey = `${src}#${generation}`
+  const loading = loadedKey !== frameKey
   const origin = originOf(src)
 
   const send = useCallback((message: Record<string, unknown>) => {
@@ -41,15 +43,14 @@ export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFram
   useImperativeHandle(ref, () => ({
     reload: () => {
       if (bridged) send({ type: 'reload' })
-      else { setLoading(true); setGeneration((value) => value + 1) }
+      else setGeneration((value) => value + 1)
     },
     back: () => send({ type: 'back' }),
     forward: () => send({ type: 'forward' }),
     navigate: (url) => send({ type: 'navigate', url }),
   }), [bridged, send])
 
-  useEffect(() => { setLoading(true) }, [src])
-  useEffect(() => { send({ type: 'auto-reload', enabled: autoReload }) }, [autoReload, send, generation])
+  useEffect(() => { send({ type: 'auto-reload', enabled: autoReload }) }, [autoReload, send])
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -73,14 +74,15 @@ export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFram
       >
         {/* bg-white below is intentional: the previewed page assumes a white canvas, whatever the IDE theme. */}
         <iframe
-          key={`${src}#${generation}`}
+          key={frameKey}
           ref={frame}
           title={title}
           src={src}
-          onLoad={() => setLoading(false)}
+          onLoad={() => { setLoadedKey(frameKey); send({ type: 'auto-reload', enabled: autoReload }) }}
           className="h-full w-full border-0 bg-white"
           referrerPolicy="no-referrer"
           allow="clipboard-read; clipboard-write; fullscreen"
+          // oxlint-disable-next-line react/iframe-missing-sandbox -- the previewed dev server needs its own origin (storage, cookies, fetch); it is a different origin from the IDE, never same-origin with it.
           sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-pointer-lock"
         />
       </div>

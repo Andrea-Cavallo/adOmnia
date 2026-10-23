@@ -36,7 +36,15 @@ export function AiQueryAssistant({ driver, provider, currentQuery, schema, onIns
   const [suggestion, setSuggestion] = useState('')
 
   const interpretation = useMemo(() => (suggestion ? interpret(driver, suggestion) : null), [driver, suggestion])
-  const diff = useMemo(() => (suggestion ? lineDiff(currentQuery, suggestion) : []), [currentQuery, suggestion])
+  const diff = useMemo(() => {
+    const seen = new Map<string, number>()
+    return (suggestion ? lineDiff(currentQuery, suggestion) : []).map((line) => {
+      const base = `${line.kind}:${line.text}`
+      const occurrence = seen.get(base) ?? 0
+      seen.set(base, occurrence + 1)
+      return { ...line, key: `${base}#${occurrence}` }
+    })
+  }, [currentQuery, suggestion])
 
   const ask = async () => {
     setBusy(true)
@@ -89,8 +97,8 @@ export function AiQueryAssistant({ driver, provider, currentQuery, schema, onIns
             ))}
           </div>
           <pre className="max-h-44 overflow-auto px-2.5 py-2 font-mono text-[11.5px] leading-[18px]">
-            {diff.map((line, i) => (
-              <div key={i} className={cn('whitespace-pre', DIFF_STYLE[line.kind])}>
+            {diff.map((line) => (
+              <div key={line.key} className={cn('whitespace-pre', DIFF_STYLE[line.kind])}>
                 <span aria-hidden className="mr-2 select-none text-text-4">{DIFF_MARK[line.kind]}</span>{line.text || ' '}
               </div>
             ))}

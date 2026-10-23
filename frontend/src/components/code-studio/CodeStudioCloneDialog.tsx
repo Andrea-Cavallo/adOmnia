@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AlertCircle, FolderOpen, GitBranch } from 'lucide-react'
 import * as GoIDEBindings from '../../../bindings/adomnia/goide'
 import { chooseGoIDEProjectFolder } from '@/lib/code-studio-api'
@@ -18,7 +18,8 @@ export function CodeStudioCloneDialog({ open, onClose }: CodeStudioCloneDialogPr
   const [parent, setParent] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => { if (open) setError(null) }, [open])
+  const [wasOpen, setWasOpen] = useState(open)
+  if (wasOpen !== open) { setWasOpen(open); if (open) setError(null) }
   if (!open) return null
 
   const name = url.trim().replace(/\/+$/, '').replace(/\.git$/, '').split(/[/:]/).pop() ?? ''

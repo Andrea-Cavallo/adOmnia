@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, CircleDashed, Download, Loader2, RefreshCw } from 'lucide-react'
 import { confirm } from '@/lib/confirmDialog'
 import { subscribeGoIDEEvents } from '@/lib/code-studio-api'
@@ -28,12 +28,22 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
   const runs = useRef(new Map<string, string>())
   const serverInstalls = useIdeLanguageServersStore((state) => state.installing[sessionId])
 
-  const detect = useCallback(async () => {
+  const detect = async () => {
     setLoading(true)
-    try { setStatus(await detectInstallerStatus(sessionId)) } finally { setLoading(false) }
-  }, [sessionId])
+    try {
+      const next = await detectInstallerStatus(sessionId)
+      setStatus(next)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  useEffect(() => { if (open) void detect() }, [open, detect])
+  useEffect(() => {
+    if (!open) return undefined
+    let cancelled = false
+    void detectInstallerStatus(sessionId).then((next) => { if (!cancelled) setStatus(next) })
+    return () => { cancelled = true }
+  }, [open, sessionId])
 
   useEffect(() => {
     if (!open) return undefined
@@ -46,9 +56,9 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
         finishInstall(sessionId, toolId, execution?.exitCode === 0 || execution?.status === 'exited')
         setRunning((current) => new Set([...current].filter((id) => id !== toolId)))
       }
-      void detect()
+      void detectInstallerStatus(sessionId).then(setStatus)
     })
-  }, [open, sessionId, detect])
+  }, [open, sessionId])
 
   const missing = useMemo(() => INSTALLER_TOOLS.filter((tool) => status[tool.id] && !status[tool.id].available && status[tool.id].installable), [status])
   const isBusy = (tool: InstallerTool) => running.has(tool.id) || (tool.source.kind === 'server' && !!serverInstalls?.[tool.source.language])
@@ -73,6 +83,7 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
       setRunning((current) => new Set(current).add(tool.id))
       const clear = () => { setRunning((current) => new Set([...current].filter((id) => id !== tool.id))); void detect() }
       try {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- installs run one at a time so the Run console output stays ordered
         const runId = await startInstall(sessionId, tool, clear)
         if (runId) runs.current.set(runId, tool.id)
         else if (tool.source.kind === 'server') clear()

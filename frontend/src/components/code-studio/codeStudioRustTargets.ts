@@ -10,6 +10,8 @@ export interface CodeStudioRustRunTarget {
   bin?: string
   /** `examples/<n>.rs` → example `n`. */
   example?: string
+  /** File `.rs` fuori da un crate Cargo: nome del file, lanciato dal backend con un crate fantasma. */
+  source?: string
 }
 
 const FN_MAIN = /^\s*(?:#\[[^\]]*\]\s*)*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+main\s*\(/
@@ -19,7 +21,7 @@ export function isRustTarget(target: { kind: string }): target is CodeStudioRust
 }
 
 /** Posizione del file nel crate: dove sta il Cargo.toml e che target Cargo è. Null fuori da src/ ed examples/. */
-function crateLayout(relativePath: string): { crateDirectory: string; bin?: string; example?: string; name: string } | null {
+function crateLayout(relativePath: string): { crateDirectory: string; bin?: string; example?: string; source?: string; name: string } | null {
   const parts = relativePath.split('/')
   for (let index = parts.length - 1; index >= 0; index--) {
     const crateDirectory = parts.slice(0, index).join('/')
@@ -59,22 +61,37 @@ export function findRustTargets(relativePath: string, text: string): Array<CodeS
 
 function findRustMainTargets(relativePath: string, text: string): CodeStudioRustRunTarget[] {
   if (!relativePath.toLowerCase().endsWith('.rs')) return []
-  const layout = crateLayout(relativePath)
-  if (!layout) return []
   const index = text.split(/\r?\n/).findIndex((line) => FN_MAIN.test(line))
   if (index < 0) return []
-  const { name, crateDirectory, bin, example } = layout
-  return [{ line: index + 1, kind: 'rust-main', name, crateDirectory, ...(bin ? { bin } : {}), ...(example ? { example } : {}) }]
+  const layout = crateLayout(relativePath) ?? looseLayout(relativePath)
+  if (!layout) return []
+  const { name, crateDirectory, bin, example, source } = layout
+  return [{ line: index + 1, kind: 'rust-main', name, crateDirectory, ...(bin ? { bin } : {}), ...(example ? { example } : {}), ...(source ? { source } : {}) }]
+}
+
+/**
+ * Un `.rs` con `fn main` che non è un target Cargo (esercizi, prove: `fibonacci/fibonacci.rs`) si lancia
+ * da solo. Restano fuori i file dentro un crate (`src/`, `tests/`, `benches/`) e `build.rs`, dove
+ * `main` non è il programma dell'utente.
+ */
+function looseLayout(relativePath: string): { crateDirectory: string; bin?: string; example?: string; source: string; name: string } | null {
+  const parts = relativePath.split('/')
+  const file = parts[parts.length - 1]
+  if (file === 'build.rs' || parts.slice(0, -1).some((part) => ['src', 'examples', 'tests', 'benches', 'target'].includes(part))) return null
+  return { crateDirectory: parts.slice(0, -1).join('/'), source: file, name: file.replace(/\.rs$/, '') }
 }
 
 /** ▶ su una funzione di test Rust (`#[test]`, `#[tokio::test]`…): si lancia per nome esatto con `cargo test`. */
 export interface CodeStudioRustTestTarget {
   line: number
   kind: 'rust-test'
-  /** Nome della funzione. */
+  /** Nome della funzione, o del modulo per i target `mod <nome>` (RS-5.5). */
   name: string
-  /** Percorso completo come lo stampa libtest (`handlers::tests::creates_user`), per `--exact`. */
+  /** Percorso completo come lo stampa libtest (`handlers::tests::creates_user`), per `--exact`. I
+   * moduli finiscono con `::`: il filtro è per prefisso, non esatto. */
   testPath: string
+  /** Vero per il ▶ su `mod <nome>` con test dentro: esegue/debugga tutto il modulo (RS-5.5). */
+  module?: boolean
   /** Cartella del crate relativa alla radice del progetto: working directory del `cargo test`. */
   crateDirectory: string
   relativePath: string
@@ -113,19 +130,26 @@ export function findRustTestTargets(relativePath: string, text: string): CodeStu
   const layout = testFileLayout(relativePath)
   if (!layout) return []
   const targets: CodeStudioRustTestTarget[] = []
-  const modules: Array<{ name: string; inner: number }> = []
+  const declared: Array<{ name: string; inner: number; line: number; path: string[]; tests: number }> = []
+  const modules: Array<{ name: string; inner: number; line: number; path: string[]; tests: number }> = []
   let depth = 0
   let pendingTest = false
   text.split(/\r?\n/).forEach((raw, index) => {
     const line = withoutLiterals(raw)
     const open = MOD_OPEN.exec(line)
-    if (open) modules.push({ name: open[1], inner: depth + 1 })
+    if (open) {
+      const entry = { name: open[1], inner: depth + 1, line: index + 1, path: [...modules.map((item) => item.name), open[1]], tests: 0 }
+      modules.push(entry)
+      declared.push(entry)
+    }
     if (TEST_ATTRIBUTE.test(line)) pendingTest = true
     else if (pendingTest && !OTHER_ATTRIBUTE.test(line)) {
       const fn = FN_NAME.exec(line)
       if (fn) {
         const testPath = [...layout.modulePath, ...modules.map((entry) => entry.name), fn[1]].join('::')
         targets.push({ line: index + 1, kind: 'rust-test', name: fn[1], testPath, crateDirectory: layout.crateDirectory, relativePath })
+        // Un test appartiene a tutta la catena di moduli che lo contiene: ognuno riceve il ▶ (RS-5.5).
+        for (const entry of modules) entry.tests += 1
       }
       if (fn || line.trim() !== '') pendingTest = false
     }
@@ -137,5 +161,17 @@ export function findRustTestTargets(relativePath: string, text: string): CodeStu
       }
     }
   })
-  return targets
+  // ▶ su `mod <nome>` (tipicamente `mod tests`): esegue/debugga tutto il modulo per prefisso.
+  const moduleTargets: CodeStudioRustTestTarget[] = declared
+    .filter((entry) => entry.tests > 0)
+    .map((entry) => ({
+      line: entry.line,
+      kind: 'rust-test' as const,
+      name: entry.name,
+      testPath: [...layout.modulePath, ...entry.path].join('::') + '::',
+      module: true,
+      crateDirectory: layout.crateDirectory,
+      relativePath,
+    }))
+  return [...targets, ...moduleTargets].sort((left, right) => left.line - right.line)
 }

@@ -35,6 +35,11 @@ function describe(file: ClaudeCodeFileStatus): string {
  * providers pick up. Shows file paths and variable names only — never values.
  */
 export function ClaudeCodeSettingsNotice({ provider }: { provider: string }) {
+  // Keyed by provider so the status is re-read whenever the provider changes.
+  return <ClaudeCodeSettingsList key={provider} />
+}
+
+function ClaudeCodeSettingsList() {
   const [files, setFiles] = useState<ClaudeCodeFileStatus[]>([])
 
   useEffect(() => {
@@ -49,7 +54,7 @@ export function ClaudeCodeSettingsNotice({ provider }: { provider: string }) {
       })
       .catch(() => { if (!cancelled) setFiles([]) })
     return () => { cancelled = true }
-  }, [provider])
+  }, [])
 
   if (files.length === 0) return null
   return (

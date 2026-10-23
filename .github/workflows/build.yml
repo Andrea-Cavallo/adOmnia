@@ -204,7 +204,7 @@ jobs:
       - name: Install packaging tools
         run: |
           brew list create-dmg >/dev/null 2>&1 || brew install create-dmg
-          go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
+          go install github.com/wailsapp/wails/v3/cmd/wails3@"${WAILS_VERSION}"
 
       - name: Build universal app and DMG
         run: |
@@ -259,7 +259,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum * > SHA256SUMS.txt
+          sha256sum -- * > SHA256SUMS.txt
           ls -lh
 
       - uses: actions/upload-artifact@v7

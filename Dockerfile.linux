@@ -4,7 +4,7 @@
 # other shared library dependencies. Users need nothing installed.
 #
 
-FROM golang:1.27.2-bookworm AS builder
+FROM golang:1.27.3-bookworm AS builder
 
 ARG VERSION=dev
 ARG GIT_COMMIT=unknown
@@ -16,12 +16,19 @@ ENV PATH="/go/bin:${PATH}"
 # Run AppImage tools without FUSE (required inside Docker)
 ENV APPIMAGE_EXTRACT_AND_RUN=1
 
+# Debian package versions rotate with every security update; the base image tag already pins the release.
+# hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl file gcc g++ git imagemagick \
     libayatana-appindicator3-dev libgtk-3-dev libwebkit2gtk-4.1-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
+# Fail a piped RUN when any stage of the pipe fails.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Debian package versions rotate with every security update; the NodeSource major (20.x) is the pin.
+# hadolint ignore=DL3008
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
@@ -39,7 +46,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY frontend/package*.json ./frontend/
-RUN cd frontend && npm ci
+WORKDIR /src/frontend
+RUN npm ci
+WORKDIR /src
 
 COPY . .
 
@@ -69,7 +78,7 @@ RUN set -e && \
     fi && \
     linuxdeploy --appdir /appdir --output appimage && \
     mkdir -p /out && \
-    mv *.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
+    mv ./*.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
 
 FROM scratch AS artifact
 COPY --from=builder /out /

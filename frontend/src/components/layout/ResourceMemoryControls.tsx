@@ -7,7 +7,8 @@ import { useCodeStudioStore } from '@/stores/codeStudio'
 export function ResourceMemoryControls({ sample }: { sample: Snapshot }) {
   const tr=useUiTranslation()
   const [backend,setBackend]=useState(String(sample.runtime?.memoryLimit > 1e15 ? 0 : Math.round((sample.runtime?.memoryLimit ?? 0)/1048576)))
-  const [gopls,setGopls]=useState(String(useCodeStudioLspStore.getState().settings.memoryLimitMiB ?? 0))
+  const storedGoplsLimit=useCodeStudioLspStore(s=>s.settings.memoryLimitMiB ?? 0)
+  const [gopls,setGopls]=useState(String(storedGoplsLimit))
   const [busy,setBusy]=useState(false), [message,setMessage]=useState(''), [error,setError]=useState('')
   const sessionId=useCodeStudioStore(s=>s.activeSessionId)
   const servers=sample.processes.filter(p=>p.role==='language-server' && p.name==='gopls' && p.sessionId)

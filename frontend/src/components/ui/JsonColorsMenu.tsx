@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import { Palette } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settings'
 import { JSON_COLOR_KEYS, type JsonColorKey } from '@/lib/jsonColors'
@@ -18,13 +18,6 @@ export function JsonColorsMenu() {
   const appearance = useSettingsStore(state => state.settings.appearance)
   const mode = document.documentElement.classList.contains('light') ? 'light' : 'dark'
   const palette = appearance.jsonColors?.[mode] ?? {}
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      const css = getComputedStyle(document.documentElement)
-      setDefaults(Object.fromEntries(JSON_COLOR_KEYS.map(key => [key, css.getPropertyValue(`--color-json-${key}`).trim()])))
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [appearance.jsonColors, mode])
   const update = (key?: JsonColorKey, value?: string) => {
     const current = useSettingsStore.getState().settings.appearance.jsonColors ?? {}
     const next = { ...current[mode] }

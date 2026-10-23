@@ -406,26 +406,32 @@ const SQL_KEYWORDS = new Set([
 ])
 
 export function highlightedSql(query: string): ReactNode[] {
-  return query.split(/(\s+|--.*?$|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:\\"|[^"])*"|\b\d+(?:\.\d+)?\b|[(),;=*<>+-])/gm).map((token, index) => {
+  let offset = 0
+  return query.split(/(\s+|--.*?$|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:\\"|[^"])*"|\b\d+(?:\.\d+)?\b|[(),;=*<>+-])/gm).map((token) => {
+    const at = offset
+    offset += token.length
     if (!token) return null
     const upper = token.toUpperCase()
-    if (/^--|^\/\*/.test(token)) return <span key={index} style={{ color: '#4B5563' }}>{token}</span>
-    if (/^'.*'$|^".*"$/.test(token)) return <span key={index} style={{ color: '#7EE787' }}>{token}</span>
-    if (/^\d/.test(token)) return <span key={index} style={{ color: '#FFCB6B' }}>{token}</span>
-    if (SQL_KEYWORDS.has(upper)) return <span key={index} style={{ color: '#C792EA', fontWeight: 600 }}>{token}</span>
-    if (/^[(),;=*<>+-]$/.test(token)) return <span key={index} style={{ color: '#5B6270' }}>{token}</span>
-    return <span key={index} style={{ color: '#C8D3E6' }}>{token}</span>
+    if (/^--|^\/\*/.test(token)) return <span key={at} style={{ color: '#4B5563' }}>{token}</span>
+    if (/^'.*'$|^".*"$/.test(token)) return <span key={at} style={{ color: '#7EE787' }}>{token}</span>
+    if (/^\d/.test(token)) return <span key={at} style={{ color: '#FFCB6B' }}>{token}</span>
+    if (SQL_KEYWORDS.has(upper)) return <span key={at} style={{ color: '#C792EA', fontWeight: 600 }}>{token}</span>
+    if (/^[(),;=*<>+-]$/.test(token)) return <span key={at} style={{ color: '#5B6270' }}>{token}</span>
+    return <span key={at} style={{ color: '#C8D3E6' }}>{token}</span>
   })
 }
 
 export function highlightedJson(query: string): ReactNode {
-  return query.split(/("(?:\\"|[^"])*"\s*:|"(?:\\"|[^"])*"|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?)/g).map((token, index) => {
+  let offset = 0
+  return query.split(/("(?:\\"|[^"])*"\s*:|"(?:\\"|[^"])*"|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?)/g).map((token) => {
+    const at = offset
+    offset += token.length
     if (!token) return null
-    if (/^".*"\s*:$/.test(token)) return <span key={index} style={{ color: '#82AAFF' }}>{token}</span>
-    if (/^"/.test(token)) return <span key={index} style={{ color: '#7EE787' }}>{token}</span>
-    if (/^(true|false|null)$/.test(token)) return <span key={index} style={{ color: '#C792EA', fontWeight: 600 }}>{token}</span>
-    if (/^-?\d/.test(token)) return <span key={index} style={{ color: '#FFCB6B' }}>{token}</span>
-    return <span key={index} style={{ color: '#C8D3E6' }}>{token}</span>
+    if (/^".*"\s*:$/.test(token)) return <span key={at} style={{ color: '#82AAFF' }}>{token}</span>
+    if (/^"/.test(token)) return <span key={at} style={{ color: '#7EE787' }}>{token}</span>
+    if (/^(true|false|null)$/.test(token)) return <span key={at} style={{ color: '#C792EA', fontWeight: 600 }}>{token}</span>
+    if (/^-?\d/.test(token)) return <span key={at} style={{ color: '#FFCB6B' }}>{token}</span>
+    return <span key={at} style={{ color: '#C8D3E6' }}>{token}</span>
   })
 }
 

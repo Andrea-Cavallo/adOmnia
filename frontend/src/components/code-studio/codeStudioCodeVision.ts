@@ -31,7 +31,7 @@ function report(message: string): void {
 
 /** Chiave stabile delle sessioni che soddisfano il predicato: cambia solo quando cambia la prontezza, non ad ogni progresso. */
 function readySessions<T>(status: Record<string, T>, isReady: (value: T) => boolean): string {
-  return Object.keys(status).filter((sessionId) => isReady(status[sessionId])).sort().join('|')
+  return Object.keys(status).filter((sessionId) => isReady(status[sessionId])).sort((a, b) => a.localeCompare(b)).join('|')
 }
 
 function usagesLabel(count: number): string {

@@ -193,7 +193,7 @@ export async function prepareRequestForCodegen(
     resolvedVars = await resolveVaultReferences(vars)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    throw new Error(`Unable to resolve Vault references: ${msg}`)
+    throw new Error(`Unable to resolve Vault references: ${msg}`, { cause: e })
   }
 
   const codegenSettings = useSettingsStore.getState().settings.requests
@@ -492,7 +492,7 @@ async function sendViaBrowserFetch(
     const ms = Math.round(performance.now() - start)
     const msg = e instanceof Error ? e.message : String(e)
     if (!fullUrl || fullUrl.trim() === '' || fullUrl === '?') return errResp('NO_URL', 'No URL specified', ms)
-    try { new URL(fullUrl) } catch { return errResp('INVALID_URL', `Invalid URL: ${fullUrl}`, ms) }
+    try { void new URL(fullUrl) } catch { return errResp('INVALID_URL', `Invalid URL: ${fullUrl}`, ms) }
     if (msg === 'Failed to fetch' || msg.toLowerCase().includes('networkerror') || msg.toLowerCase().includes('network error')) {
       return errResp('CONN_ERR', `Cannot connect to ${fullUrl}`, ms)
     }
@@ -649,7 +649,7 @@ async function applyAWS4Signature(
   const payloadHash = await sha256hex(bodyStr)
   headers['x-amz-content-sha256'] = payloadHash
 
-  const signedHeaderNames = Object.keys(headers).map(k => k.toLowerCase()).sort()
+  const signedHeaderNames = Object.keys(headers).map(k => k.toLowerCase()).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
   const canonicalHeaders = signedHeaderNames
     .map(k => `${k}:${(headers[Object.keys(headers).find(h => h.toLowerCase() === k) ?? k] ?? '').trim()}`)
     .join('\n') + '\n'

@@ -5987,6 +5987,18 @@ export class RustDebugRequest {
     "package"?: string;
     "bin"?: string;
     "example"?: string;
+    "source"?: string;
+
+    /**
+     * Test è il singolo test da debuggare (RS-5.5): con Test valorizzato si compila l'eseguibile
+     * del test (`cargo test --no-run`) e non un bin/example.
+     */
+    "test"?: string;
+
+    /**
+     * TestFile è il sorgente del test relativo al crate: sceglie il target di test senza indovinare.
+     */
+    "testFile"?: string;
     "features"?: string[];
     "allFeatures"?: boolean;
     "noDefaultFeatures"?: boolean;
@@ -6010,18 +6022,18 @@ export class RustDebugRequest {
      * Creates a new RustDebugRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): RustDebugRequest {
-        const $$createField4_0 = $$createType4;
-        const $$createField11_0 = $$createType4;
-        const $$createField12_0 = $$createType88;
+        const $$createField7_0 = $$createType4;
+        const $$createField14_0 = $$createType4;
+        const $$createField15_0 = $$createType88;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("features" in $$parsedSource) {
-            $$parsedSource["features"] = $$createField4_0($$parsedSource["features"]);
+            $$parsedSource["features"] = $$createField7_0($$parsedSource["features"]);
         }
         if ("programArguments" in $$parsedSource) {
-            $$parsedSource["programArguments"] = $$createField11_0($$parsedSource["programArguments"]);
+            $$parsedSource["programArguments"] = $$createField14_0($$parsedSource["programArguments"]);
         }
         if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField12_0($$parsedSource["environment"]);
+            $$parsedSource["environment"] = $$createField15_0($$parsedSource["environment"]);
         }
         return new RustDebugRequest($$parsedSource as Partial<RustDebugRequest>);
     }

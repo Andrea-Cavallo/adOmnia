@@ -1,3 +1,4 @@
+import { withContentKeys } from '@/lib/contentKeys'
 import type { FlowStressConfig } from '@/lib/flowStress'
 import { baselineStep, type StressBaseline } from '@/lib/flowStressExport'
 import { chartPoints, distributionChartModel, latencyChartModel, timelineChartModel, trendChartModel, workloadChartModel } from '@/lib/flowStressCharts'
@@ -11,6 +12,7 @@ interface FlowStressChartsProps {
   history?: StressHistoryEntry[]
 }
 
+const pointKey = (point: { x: number; y: number; label: string }) => `${point.x}:${point.y}:${point.label}`
 const axisText = { fill: 'var(--color-text-4)', fontSize: 9, fontFamily: 'ui-monospace, monospace' }
 const trimLabel = (label: string) => label.length > 24 ? `${label.slice(0, 22)}…` : label
 
@@ -55,8 +57,8 @@ function TimelineChart({ stats }: { stats: StressStats }) {
           {area && <polygon points={area} fill="url(#stress-throughput-area)" />}
           <polyline points={chartPoints(model.requestPoints)} fill="none" stroke="var(--color-accent)" strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           <polyline points={chartPoints(model.errorRatePoints)} fill="none" stroke="var(--color-error)" strokeWidth="1.75" strokeDasharray="5 4" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          {model.requestPoints.map((point, index) => <circle key={`r-${index}`} cx={point.x} cy={point.y} r="7" fill="transparent"><title>{point.label}</title></circle>)}
-          {model.errorRatePoints.map((point, index) => <circle key={`e-${index}`} cx={point.x} cy={point.y} r={point.value ? 2.5 : 0} fill="var(--color-error)"><title>{point.label}</title></circle>)}
+          {withContentKeys(model.requestPoints, pointKey).map(({ key, item: point }) => <circle key={`r-${key}`} cx={point.x} cy={point.y} r="7" fill="transparent"><title>{point.label}</title></circle>)}
+          {withContentKeys(model.errorRatePoints, pointKey).map(({ key, item: point }) => <circle key={`e-${key}`} cx={point.x} cy={point.y} r={point.value ? 2.5 : 0} fill="var(--color-error)"><title>{point.label}</title></circle>)}
           {model.requestTicks.map((tick) => <text key={`left-${tick.y}`} x={model.plot.left - 7} y={tick.y + 3} textAnchor="end" style={axisText}>{tick.label}</text>)}
           {model.errorTicks.map((tick) => <text key={`right-${tick.y}`} x={model.plot.left + model.plot.width + 7} y={tick.y + 3} textAnchor="start" style={axisText}>{tick.label}</text>)}
           {model.xTicks.map((tick) => <text key={`${tick.x}-${tick.label}`} x={tick.x} y={model.height - 8} textAnchor="middle" style={axisText}>{tick.label}</text>)}
@@ -122,7 +124,7 @@ function WorkloadChart({ stats }: { stats: StressStats }) {
       <div className="mt-2 overflow-x-auto"><svg viewBox={`0 0 ${model.width} ${model.height}`} className="h-auto w-full min-w-[600px]" role="img" aria-label="Active virtual users over time">
         {model.ticks.map((tick) => <g key={tick.y}><line x1={model.plot.left} x2={model.plot.left + model.plot.width} y1={tick.y} y2={tick.y} stroke="var(--color-border-1)" /><text x={model.plot.left - 7} y={tick.y + 3} textAnchor="end" style={axisText}>{tick.label}</text></g>)}
         <polyline points={chartPoints(model.points)} fill="none" stroke="var(--color-info)" strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-        {model.points.map((point, index) => <circle key={index} cx={point.x} cy={point.y} r="7" fill="transparent"><title>{point.label}</title></circle>)}
+        {withContentKeys(model.points, pointKey).map(({ key, item: point }) => <circle key={key} cx={point.x} cy={point.y} r="7" fill="transparent"><title>{point.label}</title></circle>)}
         {model.xTicks.map((tick) => <text key={`${tick.x}-${tick.label}`} x={tick.x} y={model.height - 8} textAnchor="middle" style={axisText}>{tick.label}</text>)}
       </svg></div>
     </article>
@@ -139,7 +141,7 @@ function DistributionChart({ stats }: { stats: StressStats }) {
       </div>
       <div className="mt-2 overflow-x-auto"><svg viewBox={`0 0 ${model.width} ${model.height}`} className="h-auto w-full min-w-[600px]" role="img" aria-label="Latency distribution histogram">
         {model.ticks.map((tick) => <g key={tick.y}><line x1={model.plot.left} x2={model.plot.left + model.plot.width} y1={tick.y} y2={tick.y} stroke="var(--color-border-1)" /><text x={model.plot.left - 7} y={tick.y + 3} textAnchor="end" style={axisText}>{tick.label}</text></g>)}
-        {model.bars.map((bar, index) => <g key={index}><rect x={bar.x} y={bar.y} width={bar.width} height={Math.max(1, bar.height)} rx="2" fill={index === model.bars.length - 1 && stats.distribution[index]?.overflow ? 'var(--color-warning)' : 'var(--color-accent)'}><title>{bar.label}</title></rect><text x={bar.x + bar.width / 2} y={model.height - 24 + (index % 2) * 10} textAnchor="middle" style={{ ...axisText, fontSize: 8 }}>{stats.distribution[index]?.overflow ? `>${stats.distribution[index].fromMs}` : stats.distribution[index]?.toMs}</text></g>)}
+        {withContentKeys(model.bars, (bar) => `${bar.x}:${bar.label}`).map(({ key, item: bar }, index) => <g key={key}><rect x={bar.x} y={bar.y} width={bar.width} height={Math.max(1, bar.height)} rx="2" fill={index === model.bars.length - 1 && stats.distribution[index]?.overflow ? 'var(--color-warning)' : 'var(--color-accent)'}><title>{bar.label}</title></rect><text x={bar.x + bar.width / 2} y={model.height - 24 + (index % 2) * 10} textAnchor="middle" style={{ ...axisText, fontSize: 8 }}>{stats.distribution[index]?.overflow ? `>${stats.distribution[index].fromMs}` : stats.distribution[index]?.toMs}</text></g>)}
       </svg></div>
     </article>
   )
@@ -153,7 +155,7 @@ function TrendChart({ history }: { history: StressHistoryEntry[] }) {
       <div className="mt-2 overflow-x-auto"><svg viewBox={`0 0 ${model.width} ${model.height}`} className="h-auto w-full min-w-[600px]" role="img" aria-label="p95 latency and throughput trend across saved runs">
         {[0, 0.5, 1].map((fraction) => <g key={fraction}><line x1={model.plot.left} x2={model.plot.left + model.plot.width} y1={model.plot.top + model.plot.height * (1 - fraction)} y2={model.plot.top + model.plot.height * (1 - fraction)} stroke="var(--color-border-1)" /><text x={model.plot.left - 7} y={model.plot.top + model.plot.height * (1 - fraction) + 3} textAnchor="end" style={axisText}>{Math.round(model.p95Max * fraction)}ms</text><text x={model.plot.left + model.plot.width + 7} y={model.plot.top + model.plot.height * (1 - fraction) + 3} style={axisText}>{Math.round(model.rpsMax * fraction)}</text></g>)}
         <polyline points={chartPoints(model.p95Points)} fill="none" stroke="var(--color-warning)" strokeWidth="2" /><polyline points={chartPoints(model.rpsPoints)} fill="none" stroke="var(--color-success)" strokeWidth="2" />
-        {[...model.p95Points, ...model.rpsPoints].map((point, index) => <circle key={index} cx={point.x} cy={point.y} r="6" fill="transparent"><title>{point.label}</title></circle>)}
+        {withContentKeys([...model.p95Points, ...model.rpsPoints], pointKey).map(({ key, item: point }) => <circle key={key} cx={point.x} cy={point.y} r="6" fill="transparent"><title>{point.label}</title></circle>)}
       </svg></div>
     </article>
   )

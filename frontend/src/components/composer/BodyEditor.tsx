@@ -656,10 +656,9 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl, variantCon
     [search, searchableBodyText],
   )
 
-  useEffect(() => {
-    if (search.activeIndex < bodyMatches.length || bodyMatches.length === 0) return
+  if (search.activeIndex >= bodyMatches.length && bodyMatches.length > 0) {
     setSearch((current) => ({ ...current, activeIndex: 0 }))
-  }, [bodyMatches.length, search.activeIndex])
+  }
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

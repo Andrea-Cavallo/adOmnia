@@ -1,7 +1,9 @@
 # Multi-stage build for adOmnia
-FROM golang:1.27.2-alpine AS builder
+FROM golang:1.27.3-alpine3.24 AS builder
 
 # Install build dependencies
+# Alpine package versions are dropped from the mirrors as new builds land; the base image tag pins the release.
+# hadolint ignore=DL3018
 RUN apk add --no-cache \
     gcc \
     g++ \
@@ -9,7 +11,7 @@ RUN apk add --no-cache \
     nodejs \
     npm \
     gtk+3.0-dev \
-    webkit2gtk-dev
+    webkit2gtk-4.1-dev
 
 WORKDIR /build
 
@@ -18,12 +20,16 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY frontend/package*.json ./frontend/
-RUN cd frontend && npm ci
+WORKDIR /build/frontend
+RUN npm ci
+WORKDIR /build
 
 # Copy source code
 COPY . .
 
-RUN cd frontend && npm run build
+WORKDIR /build/frontend
+RUN npm run build
+WORKDIR /build
 
 # Build binary
 ARG VERSION=dev
@@ -35,11 +41,13 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
     -o adomnia .
 
 # Final stage - minimal runtime
-FROM alpine:latest
+FROM alpine:3.24
 
+# Alpine package versions are dropped from the mirrors as new builds land; the base image tag pins the release.
+# hadolint ignore=DL3018
 RUN apk add --no-cache \
     gtk+3.0 \
-    webkit2gtk \
+    webkit2gtk-4.1 \
     ca-certificates
 
 WORKDIR /app
@@ -53,11 +61,11 @@ EXPOSE 7878
 # Run as non-root user
 RUN adduser -D -u 1000 adomnia && \
     chown -R adomnia:adomnia /app
-USER adomnia
+USER 1000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:7878/health || exit 1
+    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7878/health"]
 
 ENTRYPOINT ["./adomnia"]
 CMD ["-addr", ":7878", "-no-browser"]

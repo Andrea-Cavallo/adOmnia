@@ -23,8 +23,10 @@ function itemsFor(target: CodeStudioRunTarget): ContextMenuItem[] {
     return items
   }
   if (isRustTestTarget(target)) {
-    // Il debug dei test Rust non c'è ancora (cargo test --no-run → CodeLLDB): solo Run.
-    return [{ id: 'run', label: `Run '${target.name}'`, icon: Play, iconClassName: 'text-success' }]
+    return [
+      { id: 'run', label: `Run '${target.name}'`, icon: Play, iconClassName: 'text-success' },
+      { id: 'debug', label: `Debug '${target.name}'`, icon: Bug, iconClassName: 'text-info', shortcut: 'Shift+F9' },
+    ]
   }
   if (isPythonTarget(target) || isRustTarget(target)) {
     return [

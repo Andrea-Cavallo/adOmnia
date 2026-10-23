@@ -28,6 +28,7 @@ async function findGoSession(service: string | null): Promise<string | null> {
   const sessions = useCodeStudioStore.getState().sessions
   if (service) {
     for (const session of sessions) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- sequential lookup with early exit on first match
       if ((await serviceNameFor(session.id).catch(() => '')) === service) return session.id
     }
     return null
@@ -45,6 +46,7 @@ export async function startGoCommand(goSessionId: string, command: NonNullable<G
   const deadline = Date.now() + 15_000
   useAppStore.getState().keepPanel('codestudio')
   while (Date.now() < deadline) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- polling: each attempt depends on the previous one
     const outcome = await new Promise<string | null | undefined>((resolve) => {
       const detail: GoDebugStartDetail = { goSessionId, command, handled: false, done: (error) => resolve(error ?? null) }
       document.dispatchEvent(new CustomEvent('adomnia:go-debug-start', { detail }))
@@ -52,6 +54,7 @@ export async function startGoCommand(goSessionId: string, command: NonNullable<G
     })
     if (outcome === null) return
     if (typeof outcome === 'string') throw new DebugRequestError(outcome)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- polling delay between attempts
     await new Promise((resolve) => setTimeout(resolve, 150)) // Code Studio is still mounting
   }
   throw new DebugRequestError('Code Studio did not start: open the project there and press Debug.')

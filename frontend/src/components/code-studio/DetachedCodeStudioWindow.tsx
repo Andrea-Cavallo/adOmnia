@@ -19,7 +19,7 @@ import { CodeStudioPanel } from './CodeStudioPanel'
 export function DetachedCodeStudioWindow() {
   const pdfOpen = useAppStore(s => s.activeRail === 'pdfeditor')
   const [pdfMounted, setPdfMounted] = useState(false)
-  useEffect(() => { if (pdfOpen) setPdfMounted(true) }, [pdfOpen])
+  if (pdfOpen && !pdfMounted) setPdfMounted(true)
   useAppInit()
   useAppearance()
   const { windowId } = codeStudioWindowContext()

@@ -15,7 +15,13 @@ type RustDebugRequest struct {
 	Package           string            `json:"package,omitempty"`
 	Bin               string            `json:"bin,omitempty"`
 	Example           string            `json:"example,omitempty"`
-	Features          []string          `json:"features,omitempty"`
+	Source            string            `json:"source,omitempty"`
+	// Test è il singolo test da debuggare (RS-5.5): con Test valorizzato si compila l'eseguibile
+	// del test (`cargo test --no-run`) e non un bin/example.
+	Test              string            `json:"test,omitempty"`
+	// TestFile è il sorgente del test relativo al crate: sceglie il target di test senza indovinare.
+	TestFile          string            `json:"testFile,omitempty"`
+	Features         []string          `json:"features,omitempty"`
 	AllFeatures       bool              `json:"allFeatures,omitzero"`
 	NoDefaultFeatures bool              `json:"noDefaultFeatures,omitzero"`
 	Profile           string            `json:"profile,omitempty"`
@@ -44,9 +50,15 @@ func (s *Service) StartRustDebug(request RustDebugRequest) (DebugSessionInfo, er
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}
-	adapter, _ := rust.LocateCodeLLDB(s.toolsRoot)
+	// L'installazione gestita si usa solo se verificata (RS-9.4): se il manifest non torna,
+	// l'errore dice di reinstallare invece di eseguire una cartella modificata.
+	adapter, _, adapterWarning := rust.LocateCodeLLDB(s.toolsRoot)
+	if adapter == "" && adapterWarning != nil {
+		return DebugSessionInfo{}, adapterWarning
+	}
 	options, err := jsonutil.Marshal(rust.DebugOptions{
-		Toolchain: request.Toolchain, Package: request.Package, Bin: request.Bin, Example: request.Example,
+		Toolchain: request.Toolchain, Package: request.Package, Bin: request.Bin, Example: request.Example, Source: request.Source,
+		Test: request.Test, TestFile: request.TestFile,
 		ProgramArguments: request.ProgramArguments, Features: request.Features,
 		AllFeatures: request.AllFeatures, NoDefaultFeatures: request.NoDefaultFeatures,
 		Profile: request.Profile, Target: request.Target, Adapter: adapter,

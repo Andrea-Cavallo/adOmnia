@@ -128,10 +128,6 @@ const shortcutsList = [
 export function SettingsPanel({ initialSection = 'general' }: { initialSection?: SettingsSectionId }) {
   const [section, setSection] = useState<SettingsSectionId>(initialSection)
   const [certificateDraft, setCertificateDraft] = useState('')
-  useEntityHandoff('settings', (_ref, intent, payload) => {
-    if (intent !== 'mtls') return false
-    setSearch(''); setSection('requests'); setCertificateDraft(String(payload.certificate ?? '')); return true
-  })
   const settings = useSettingsStore((s) => s.settings)
   const updateGeneral = useSettingsStore((s) => s.updateGeneral)
   const updateAppearance = useSettingsStore((s) => s.updateAppearance)
@@ -177,6 +173,10 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
 
   // Search filter in sidebar
   const [search, setSearch] = useState('')
+  useEntityHandoff('settings', (_ref, intent, payload) => {
+    if (intent !== 'mtls') return false
+    setSearch(''); setSection('requests'); setCertificateDraft(String(payload.certificate ?? '')); return true
+  })
 
   // Developer mode state
   const [isDev, setIsDev] = useState(false)
@@ -248,35 +248,38 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     return `${sec.label} ${sec.terms}`.toLowerCase().includes(normalizedSearch)
   })
 
-  useEffect(() => {
+  // Follow the requested initial section when it changes (adjusted during render, not in an effect).
+  const [seenInitialSection, setSeenInitialSection] = useState(initialSection)
+  if (seenInitialSection !== initialSection) {
+    setSeenInitialSection(initialSection)
     setSection(initialSection === 'plugins' ? 'general' : initialSection)
-  }, [initialSection])
+  }
 
+  const sectionIdsKey = allSectionDefs.map((item) => item.id).join(',')
   useEffect(() => {
+    const knownIds = sectionIdsKey.split(',')
     const openRequestedSection = (event: Event) => {
       const requested = (event as CustomEvent<SettingsSectionId>).detail
-      if (allSectionDefs.some((item) => item.id === requested)) {
+      if (knownIds.includes(requested)) {
         sessionStorage.removeItem('adomnia.settings.requested-section')
         setSearch('')
         setSection(requested)
       }
     }
     const pendingSection = sessionStorage.getItem('adomnia.settings.requested-section') as SettingsSectionId | null
-    if (pendingSection && allSectionDefs.some((item) => item.id === pendingSection)) {
+    if (pendingSection && knownIds.includes(pendingSection)) {
       sessionStorage.removeItem('adomnia.settings.requested-section')
-      setSearch('')
-      setSection(pendingSection)
+      // Deferred so the hand-off does not set state synchronously inside the effect.
+      queueMicrotask(() => { setSearch(''); setSection(pendingSection) })
     }
     document.addEventListener('adomnia:open-settings-section', openRequestedSection)
     return () => document.removeEventListener('adomnia:open-settings-section', openRequestedSection)
-  }, [allSectionDefs])
+  }, [sectionIdsKey])
 
-  useEffect(() => {
-    if (!normalizedSearch || sectionDefs.length === 0) return
-    if (!sectionDefs.some((item) => item.id === section)) {
-      setSection(sectionDefs[0].id)
-    }
-  }, [normalizedSearch, section, sectionDefs])
+  // While searching, keep the selected section inside the filtered list (adjusted during render).
+  if (normalizedSearch && sectionDefs.length > 0 && !sectionDefs.some((item) => item.id === section)) {
+    setSection(sectionDefs[0].id)
+  }
 
   const handleExportSettings = useCallback(() => {
     const blob = new Blob([JSON.stringify({ ...redactSensitiveData(settings), codeStudio: exportCodeStudioSettings() }, null, 2)], {

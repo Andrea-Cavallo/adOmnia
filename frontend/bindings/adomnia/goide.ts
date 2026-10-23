@@ -2353,6 +2353,14 @@ export function SetPythonInterpreter(sessionID: string, unit: string, path: stri
 }
 
 /**
+ * SetRustLowResources è l'opzione "Low resources" di rust-analyzer (RS-9.5): proc-macro e build
+ * script spengono senza riavviare il server.
+ */
+export function SetRustLowResources(sessionID: string, enabled: boolean): $CancellablePromise<void> {
+    return $Call.ByID(2951935643, sessionID, enabled);
+}
+
+/**
  * SetRustToolchain sceglie il cargo del progetto ("" = automatico); alimenta Run/Test/Debug e rust-analyzer.
  */
 export function SetRustToolchain(sessionID: string, path: string): $CancellablePromise<void> {

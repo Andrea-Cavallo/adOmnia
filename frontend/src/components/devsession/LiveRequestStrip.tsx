@@ -24,7 +24,7 @@ export function linkUrlToService(url: string, service: string): string {
 export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { tabId: string; request: RequestItem; vars: Record<string, string>; onChange: (request: RequestItem) => void }) {
   const tr = useUiTranslation()
   useLiveCore()
-  const state = useDevSessionStore.getState()
+  const state = useDevSessionStore((current) => current)
   const allVars = liveVars(vars)
   const resolved = substVars(request.url, allVars)
   const service = linkedService(request.url)
@@ -96,18 +96,18 @@ export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { t
 
 /** Contract drift: the route runs in the code but the service's OpenAPI does not document it. */
 function useContractDrift(route: ReturnType<typeof useRouteForRequest>): string | null {
-  const [missingFrom, setMissingFrom] = useState<string | null>(null)
+  const [drift, setDrift] = useState<{ route: typeof route; file: string } | null>(null)
   useEffect(() => {
-    setMissingFrom(null)
     if (!route) return
     let cancelled = false
     void import('@/stores/devcontext').then(async ({ useDevContextStore }) => {
       const snapshot = useDevContextStore.getState().snapshots[route.goSessionId]
       const contract = snapshot ? await projectContract(snapshot) : null
       if (cancelled || !contract || contract.operations.size === 0) return
-      if (!documented(contract.operations, route.route.attrs.method ?? 'ANY', route.route.attrs.path ?? '')) setMissingFrom(contract.file)
+      if (!documented(contract.operations, route.route.attrs.method ?? 'ANY', route.route.attrs.path ?? '')) setDrift({ route, file: contract.file })
     })
     return () => { cancelled = true }
   }, [route])
-  return missingFrom
+  // Derived: a result only counts for the route it was computed for.
+  return drift && drift.route === route ? drift.file : null
 }

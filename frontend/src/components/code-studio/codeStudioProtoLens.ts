@@ -71,6 +71,7 @@ async function livePort(liveId: string): Promise<number | undefined> {
   for (let i = 0; i < 40; i++) {
     const port = useDevSessionStore.getState().sessions[liveId]?.port
     if (port) return port
+    // oxlint-disable-next-line eslint/no-await-in-loop -- polling delay between attempts
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
   return undefined
@@ -112,6 +113,7 @@ async function protoDefinition(model: monaco.editor.ITextModel, position: monaco
   if (!document || !session) return []
   for (const imported of protoImports(model.getValue())) {
     for (const candidate of importCandidates(document.document.relativePath, imported)) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- candidates are tried in order and the first hit wins
       const text = await readDevContextFile(session.id, candidate).catch(() => null)
       if (text === null) continue
       const found = findProtoType(protoDeclarations(text), token)
@@ -142,12 +144,16 @@ async function generateGo(documentId: string): Promise<void> {
   const dirs = ancestorDirs(relativePath)
   try {
     for (const dir of dirs) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- nearest ancestor directory wins, so lookups stop at the first match
       if (!(await hasFile(sessionId, dir, 'buf.gen.yaml'))) continue
+      // oxlint-disable-next-line eslint/no-await-in-loop -- runs at most once: the loop returns or breaks right after
       const buf = await detectGoIDEGoTool(sessionId, 'buf')
       if (!buf.available) break // fall back to protoc
+      // oxlint-disable-next-line eslint/no-await-in-loop -- runs at most once: the loop returns right after
       return showRun(sessionId, (await runGoIDEGoTool(sessionId, 'buf', ['generate'], dir)).id)
     }
     let moduleDir: string | null = null
+    // oxlint-disable-next-line eslint/no-await-in-loop -- nearest go.mod wins, lookups stop at the first match
     for (const dir of dirs) if (moduleDir === null && await hasFile(sessionId, dir, 'go.mod')) moduleDir = dir
     if (moduleDir === null) return notify('No go.mod above this .proto: open the Go module that owns it.')
     const protoc = await detectGoIDEGoTool(sessionId, 'protoc')
@@ -158,6 +164,7 @@ async function generateGo(documentId: string): Promise<void> {
     if (missing.length) {
       const approved = await confirm({ title: `Install ${missing.map((plugin) => plugin.binary).join(' and ')}?`, message: `${missing.map((plugin) => `go install ${plugin.module}`).join('\n')}\n\nThey go into adOmnia's tools folder, built with the project's Go SDK. Run Generate Go code again when the install finishes.`, confirmLabel: 'Install' })
       if (!approved) return
+      // oxlint-disable-next-line eslint/no-await-in-loop -- installs run one at a time so each shows in the Run console in order
       for (const plugin of missing) showRun(sessionId, (await installGoIDEGoModule(sessionId, plugin.module)).id)
       return
     }

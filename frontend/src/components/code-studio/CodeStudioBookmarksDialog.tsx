@@ -25,15 +25,19 @@ export function CodeStudioBookmarksDialog({ open, sessionId, mode = 'bookmarks',
   const history = useCodeStudioNavigationStore((state) => historyFor(state, sessionId))
   const recent = mode === 'recent'
   const bookmarks = recent ? recentLocations(history) : savedBookmarks
-  const [selected, setSelected] = useState(0)
+  const [selectedRaw, setSelected] = useState(0)
+  const selected = Math.min(selectedRaw, Math.max(bookmarks.length - 1, 0))
   const listRef = useRef<HTMLDivElement>(null)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) setSelected(0)
+  }
   useEffect(() => {
     if (!open) return
-    setSelected(0)
     const timer = window.setTimeout(() => listRef.current?.focus(), 30)
     return () => window.clearTimeout(timer)
   }, [open])
-  useEffect(() => { setSelected((value) => Math.min(value, Math.max(bookmarks.length - 1, 0))) }, [bookmarks.length])
   if (!open) return null
 
   const openBookmark = (bookmark: GoIDEBookmark | undefined) => {

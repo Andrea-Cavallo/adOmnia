@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import {
   Activity,
@@ -200,18 +201,25 @@ function Metric({ icon: Icon, label, value, tone = 'default' }: { icon: LucideIc
 }
 
 function HeadersEditor({ rows, onChange }: { rows: KVRow[]; onChange: (rows: KVRow[]) => void }) {
+  // Rows have no identity of their own and are edited in place, so each gets a stable slot id (not its position, not its content).
+  const [slots, setSlots] = useState(() => ({ ids: rows.map((_, slot) => slot), next: rows.length }))
+  let current = slots
+  if (slots.ids.length !== rows.length) {
+    current = { ids: rows.map((_, slot) => slots.next + slot), next: slots.next + rows.length }
+    setSlots(current)
+  }
   return (
     <div className="space-y-1.5">
       {rows.map((row, index) => (
-        <div key={index} className="grid grid-cols-[150px_1fr_26px] gap-1.5">
+        <div key={current.ids[index]} className="grid grid-cols-[150px_1fr_26px] gap-1.5">
           <input value={row.key} onChange={(event) => onChange(rows.map((r, i) => i === index ? { ...r, key: event.target.value } : r))} className={cn(inputClass, 'h-7 font-mono')} placeholder="header" />
           <input value={row.value} onChange={(event) => onChange(rows.map((r, i) => i === index ? { ...r, value: event.target.value } : r))} className={cn(inputClass, 'h-7 font-mono')} placeholder="value" />
-          <button type="button" onClick={() => onChange(rows.filter((_, i) => i !== index))} title="Remove header" className="grid place-items-center text-text-4 hover:text-error">
+          <button type="button" onClick={() => { setSlots({ ids: current.ids.filter((_, i) => i !== index), next: current.next }); onChange(rows.filter((_, i) => i !== index)) }} title="Remove header" className="grid place-items-center text-text-4 hover:text-error">
             <Trash2 size={13} />
           </button>
         </div>
       ))}
-      <button type="button" onClick={() => onChange([...rows, { key: '', value: '' }])} className="inline-flex items-center gap-1 text-[11px] text-accent hover:text-accent/80">
+      <button type="button" onClick={() => { setSlots({ ids: [...current.ids, current.next], next: current.next + 1 }); onChange([...rows, { key: '', value: '' }]) }} className="inline-flex items-center gap-1 text-[11px] text-accent hover:text-accent/80">
         <Plus size={12} /> Add header
       </button>
     </div>
@@ -1058,19 +1066,22 @@ interface MessageListProps {
 function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageListProps) {
   const [replayState, setReplayState] = useState<{ busy: boolean; text: string }>({ busy: false, text: '' })
   const [showGo, setShowGo] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  useEffect(() => { setReplayState({ busy: false, text: '' }); setShowGo(false) }, [selectedIndex])
+  const [pickedIndex, setPickedIndex] = useState<number | null>(null)
+  // A selection past the end of the list (messages cleared or trimmed) means nothing is selected.
+  const selectedIndex = pickedIndex !== null && pickedIndex < messages.length ? pickedIndex : null
   const selected = selectedIndex === null ? null : messages[selectedIndex]
-
-  useEffect(() => {
-    if (selectedIndex !== null && selectedIndex >= messages.length) setSelectedIndex(null)
-  }, [messages.length, selectedIndex])
+  const setSelectedIndex = (index: number | null) => {
+    setPickedIndex(index)
+    setReplayState({ busy: false, text: '' })
+    setShowGo(false)
+  }
 
   const payloadPreview = (value?: string) => (value ?? '').replace(/\s+/g, ' ').slice(0, 110) || '(empty payload)'
+  const selectedValue = selected?.value
   const goStruct = useMemo(() => {
-    if (!selected?.value) return null
-    try { return jsonToGo(selected.value, goName(topic || 'Message')) } catch { return null }
-  }, [selected?.value, topic])
+    if (!selectedValue) return null
+    try { return jsonToGo(selectedValue, goName(topic || 'Message')) } catch { return null }
+  }, [selectedValue, topic])
   // Debug consumer: breakpoint where the Go consumer has the message, project under Delve, then replay.
   const debugConsumer = async (message: KafkaMessage) => {
     setReplayState({ busy: true, text: 'Looking for the Go consumer of this topic…' })
@@ -1113,8 +1124,8 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
             <thead className="sticky top-0 bg-surface-2 text-[10px] uppercase tracking-wider text-text-4">
               <tr><th className="w-40 px-3 py-2 font-medium">Timestamp</th><th className="w-36 px-3 py-2 font-medium">Key</th><th className="px-3 py-2 font-medium">Payload preview</th><th className="w-20 px-3 py-2 font-medium">Part.</th><th className="w-24 px-3 py-2 font-medium">Offset</th></tr>
             </thead>
-            <tbody>{messages.map((message, index) => (
-              <tr key={`${message.partition}-${message.offset}-${index}`} role="button" tabIndex={0} aria-label={`Open message at partition ${message.partition ?? 'unknown'}, offset ${message.offset ?? 'unknown'}`} onClick={() => setSelectedIndex(index)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedIndex(index) } }} className={cn('cursor-pointer border-t border-border-1/50 transition-colors hover:bg-surface-2/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent', selectedIndex === index && 'bg-accent/10')}>
+            <tbody>{withContentKeys(messages, (message) => `${message.partition}-${message.offset}-${message.timestamp}-${message.key}`).map(({ key, item: message }, index) => (
+              <tr key={key} role="button" tabIndex={0} aria-label={`Open message at partition ${message.partition ?? 'unknown'}, offset ${message.offset ?? 'unknown'}`} onClick={() => setSelectedIndex(index)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedIndex(index) } }} className={cn('cursor-pointer border-t border-border-1/50 transition-colors hover:bg-surface-2/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent', selectedIndex === index && 'bg-accent/10')}>
                 <td className="truncate px-3 py-2 font-mono text-[10px] text-text-4">{message.timestamp || '-'}</td>
                 <td className="truncate px-3 py-2 font-mono text-text-2">{message.key || '(no key)'}</td>
                 <td className="truncate px-3 py-2 font-mono text-text-2">{payloadPreview(message.value)}</td>

@@ -39,7 +39,7 @@ export function DebugBar() {
   const distributed = useDistributedDebugStore()
   const activeRail = useAppStore((s) => s.activeRail)
   useLiveCore()
-  const state = useDevSessionStore.getState()
+  const state = useDevSessionStore((s) => s)
   const session = primarySession(state, distributed.sessionIds.find(id => state.sessions[id]?.state === 'paused') ?? state.focusedSessionId)
   const live = liveSessions(state)
   const hidden = !session || activeRail === 'codestudio'
@@ -106,7 +106,7 @@ export function DebugBar() {
         <BarButton label="Service logs" onClick={() => openServiceLogs(session)}><ScrollText size={12} /></BarButton>
         {debug && <BarButton label="Open in Code Studio" onClick={() => void openFrameInCodeStudio(session)}><Bug size={12} /></BarButton>}
       </span>
-      {state.error && <ErrorFlash message={state.error} onDone={state.clearError} />}
+      {state.error && <ErrorFlash key={state.error} message={state.error} onDone={state.clearError} />}
     </div>
   )
 }
@@ -151,6 +151,6 @@ function ErrorFlash({ message, onDone }: { message: string; onDone: () => void }
   useEffect(() => {
     const timer = window.setTimeout(() => { setVisible(false); onDone() }, 5000)
     return () => window.clearTimeout(timer)
-  }, [message, onDone])
+  }, [onDone])
   return visible ? <span role="alert" className="max-w-72 truncate text-error" title={message}>{message}</span> : null
 }

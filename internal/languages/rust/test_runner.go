@@ -41,18 +41,47 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	}
 	// Senza --no-fail-fast cargo si ferma al primo crate con un test fallito e gli altri non compaiono.
 	arguments := []string{"test", "--no-fail-fast"}
+	// libtestArguments sono gli argomenti del binario di test (dopo `--`): servono solo a
+	// cargo-llvm-cov, che accetta i test binary args esclusivamente dopo `--`.
+	libtestArguments := []string{}
 	if names := strings.Split(options.Run, "\n"); len(names) == 1 && names[0] != "" {
 		filter, exact := libtestFilter(names[0])
 		arguments = append(arguments, filter)
 		if exact {
 			arguments = append(arguments, "--", "--exact")
 		}
+		libtestArguments = append(libtestArguments, filter)
+		if exact {
+			libtestArguments = append(libtestArguments, "--exact")
+		}
 	} else if len(names) > 1 {
 		// "Rerun failed": più nomi esatti, che libtest vuole dopo `--`.
 		arguments = append(arguments, "--", "--exact")
+		libtestArguments = append(libtestArguments, "--exact")
 		for _, name := range names {
 			filter, _ := libtestFilter(name)
 			arguments = append(arguments, filter)
+			libtestArguments = append(libtestArguments, filter)
+		}
+	}
+	// Coverage opzionale (RS-5.6): cargo-llvm-cov (scelta RS-0.3) con report LCOV in una cartella
+	// temporanea fuori dal progetto. Lo strumento è opzionale: senza lo dice con i comandi di
+	// installazione, mai installato in automatico. La baseline dei test non dipende dalla coverage:
+	// senza "Run with coverage" il comando resta `cargo test`.
+	coveragePath := ""
+	if options.Coverage {
+		if !coverageAvailable() {
+			return run.CommandSpec{}, nil, fmt.Errorf("%s", coverageMissing)
+		}
+		path, err := prepareCoverageReport()
+		if err != nil {
+			return run.CommandSpec{}, nil, err
+		}
+		coveragePath = path
+		arguments = []string{"llvm-cov", "--lcov", "--output-path", coveragePath, "--no-fail-fast"}
+		if len(libtestArguments) > 0 {
+			arguments = append(arguments, "--")
+			arguments = append(arguments, libtestArguments...)
 		}
 	}
 	if err := run.CheckBatchSafe(toolchain.Cargo, arguments); err != nil {
@@ -73,6 +102,7 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	}
 	parser := newLibtestParser(pkg)
 	parser.paths = workspacePaths{directory: request.WorkingDirectory, root: request.Root}
+	parser.coveragePath = coveragePath
 	return spec, parser, nil
 }
 

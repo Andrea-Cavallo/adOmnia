@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
+import { Editor, type BeforeMount, type OnMount } from '@monaco-editor/react'
 import { configureMonacoYaml } from 'monaco-yaml'
 import { openapi } from '@apidevtools/openapi-schemas'
 import { applyAdomniaMonacoTheme, configureMonacoLoader, monaco, useAdomniaEditorTheme } from '@/lib/monacoSetup'

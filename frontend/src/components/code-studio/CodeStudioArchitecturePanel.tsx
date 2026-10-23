@@ -126,7 +126,7 @@ function mainTargets(report: GoIDEArchitecture | null): string[] {
     const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.'
     return dir === '.' ? '.' : `./${dir}`
   })
-  return [...new Set(folders.length ? folders : ['.'])].sort()
+  return [...new Set(folders.length ? folders : ['.'])].sort((a, b) => a.localeCompare(b))
 }
 
 function Toggle({ label, on, onChange, title }: { label: string; on: boolean; onChange: (value: boolean) => void; title: string }) {

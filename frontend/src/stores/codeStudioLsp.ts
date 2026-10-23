@@ -311,12 +311,12 @@ export const useCodeStudioLspStore = create<GoIDELspState>((set, get) => ({
         for (const event of events) {
           if (!event.sessionId) continue
           const report = event.payload as GoIDEDiagnosticsReport
-          const sessionId = event.sessionId
-          if (sameDiagnostics(diagnostics[sessionId]?.[report.uri], report)) continue
-          if (!changed.has(sessionId)) diagnostics[sessionId] = { ...(diagnostics[sessionId] ?? {}) }
-          changed.add(sessionId)
-          if (report.diagnostics.length === 0) delete diagnostics[sessionId][report.uri]
-          else diagnostics[sessionId][report.uri] = report
+          const eventSession = event.sessionId
+          if (sameDiagnostics(diagnostics[eventSession]?.[report.uri], report)) continue
+          if (!changed.has(eventSession)) diagnostics[eventSession] = { ...(diagnostics[eventSession] ?? {}) }
+          changed.add(eventSession)
+          if (report.diagnostics.length === 0) delete diagnostics[eventSession][report.uri]
+          else diagnostics[eventSession][report.uri] = report
         }
         return changed.size ? { diagnostics } : state
       })

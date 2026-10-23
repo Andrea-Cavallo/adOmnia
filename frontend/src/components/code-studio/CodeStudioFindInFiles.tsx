@@ -69,17 +69,25 @@ export function CodeStudioFindInFiles({ sessionId }: CodeStudioFindInFilesProps)
   const replaceRef = useRef<HTMLInputElement>(null)
   const running = useRef<CancellablePromise<GoIDESearchResult> | null>(null)
   const groups = useMemo(() => groupMatches(result?.matches ?? []), [result])
-  const [showAll, setShowAll] = useState(false)
-  useEffect(() => { setShowAll(false) }, [result])
+  const [expandedResult, setExpandedResult] = useState<typeof result>(null)
+  const showAll = expandedResult !== null && expandedResult === result
   const visibleGroups = useMemo(() => (showAll ? groups : limitMatches(groups, MAX_RENDERED_MATCHES)), [groups, showAll])
   const hiddenMatches = (result?.matches.length ?? 0) - visibleGroups.reduce((total, [, matches]) => total + matches.length, 0)
 
+  // A new find request fills the form during render; focusing is the only effect left.
+  const [handledRequest, setHandledRequest] = useState<typeof findRequest>(null)
+  if (findRequest !== handledRequest) {
+    setHandledRequest(findRequest)
+    if (findRequest) {
+      if (findRequest.query) setQuery(findRequest.query)
+      if (findRequest.include !== undefined) setInclude(findRequest.include)
+      if (findRequest.focus === 'replace') setReplaceOpen(true)
+    }
+  }
+
   useEffect(() => {
     if (!findRequest) return
-    if (findRequest.query) setQuery(findRequest.query)
-    if (findRequest.include !== undefined) setInclude(findRequest.include)
     if (findRequest.focus === 'replace') {
-      setReplaceOpen(true)
       window.setTimeout(() => replaceRef.current?.focus(), 0)
     } else {
       window.setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select() }, 0)
@@ -164,7 +172,7 @@ export function CodeStudioFindInFiles({ sessionId }: CodeStudioFindInFilesProps)
           </div>
         ))}
         {hiddenMatches > 0 && (
-          <button type="button" onClick={() => setShowAll(true)} className="mx-2 my-1 rounded px-2 py-1 text-[10px] text-accent hover:bg-accent/10">
+          <button type="button" onClick={() => setExpandedResult(result)} className="mx-2 my-1 rounded px-2 py-1 text-[10px] text-accent hover:bg-accent/10">
             Show all {result?.matches.length} matches ({hiddenMatches} more)
           </button>
         )}

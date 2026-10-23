@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { withContentKeys } from '@/lib/contentKeys'
+import { useMemo, useState } from 'react'
 import { Check, Copy, Filter, Send, Share2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
@@ -104,13 +105,8 @@ export function EventDetail({ event, sessionEvents, onClose, onFilterBy, onShowR
     useAppStore.getState().setActiveRail('collections')
   }
 
-  useEffect(() => {
-    setTab((current) => {
-      if (current === 'stack' && !event.stack) return 'overview'
-      if (current === 'payloads' && !hasPayloads) return 'overview'
-      return current
-    })
-  }, [event.id, event.stack, hasPayloads])
+  // A tab that no longer applies to this event falls back to the overview (adjusted during render).
+  if ((tab === 'stack' && !event.stack) || (tab === 'payloads' && !hasPayloads)) setTab('overview')
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
@@ -431,8 +427,8 @@ function ContractReport({ result, onFilterBy }: { result: PayloadContractResult;
         {result.violations.length} contract violation(s) · {label}
         {result.required.length ? ` · required: ${result.required.join(', ')}` : ''}
       </p>
-      {result.violations.map((violation, index) => (
-        <div key={`${violation.path}-${index}`} className="flex items-start gap-2 px-3 py-[2px] font-mono text-[10px]">
+      {withContentKeys(result.violations, (item) => item.path).map(({ key, item: violation }) => (
+        <div key={key} className="flex items-start gap-2 px-3 py-[2px] font-mono text-[10px]">
           <button
             onClick={() => onFilterBy('message', violation.path.replace(/^\$\./, ''))}
             title="Filter events mentioning this field"

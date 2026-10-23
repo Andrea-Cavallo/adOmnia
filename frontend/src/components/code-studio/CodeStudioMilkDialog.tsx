@@ -147,25 +147,22 @@ function McpServersSection() {
 export function CodeStudioMilkDialog() {
   const open = useMilkStore((state) => state.dialogOpen)
   const settings = useMilkStore((state) => state.settings)
+  useEffect(() => {
+    if (open) void useMilkStore.getState().ensure()
+  }, [open])
+  // The form is mounted per opening, so the draft starts from the stored settings without a sync effect.
+  return open && settings ? <MilkDialogForm settings={settings} /> : null
+}
+
+function MilkDialogForm({ settings }: { settings: MilkSettings }) {
+  const open = true
   const status = useMilkStore((state) => state.status)
   const busy = useMilkStore((state) => state.busy)
   const error = useMilkStore((state) => state.error)
-  const [draft, setDraft] = useState<MilkSettings | null>(null)
+  const [draft, setDraft] = useState<MilkSettings>(() => ({ ...settings }))
   const [log, setLog] = useState<string[] | null>(null)
   const close = () => useMilkStore.getState().setDialogOpen(false)
 
-  useEffect(() => {
-    if (open) {
-      setLog(null)
-      void useMilkStore.getState().ensure()
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (open && settings) setDraft({ ...settings })
-  }, [open, settings])
-
-  if (!open || !draft) return null
   const installing = status?.state === 'installing'
   const missing = status?.state === 'not-installed' || status?.state === 'outdated'
 
@@ -201,7 +198,7 @@ export function CodeStudioMilkDialog() {
             {status?.state === 'not-installed' ? 'Install milk' : 'Update milk'}
           </CodeStudioButton>
           <button type="button" onClick={() => void Browser.OpenURL(MILK_REPO_URL)} className={BUTTON}><ExternalLink size={12} /> github.com/scoutme/milk</button>
-          <button type="button" disabled={busy || !settings?.enabled} onClick={() => void useMilkStore.getState().restart()} className={BUTTON}>Restart</button>
+          <button type="button" disabled={busy || !settings.enabled} onClick={() => void useMilkStore.getState().restart()} className={BUTTON}>Restart</button>
           <button type="button" onClick={() => void getMilkLog().then(setLog)} className={BUTTON}>Show logs</button>
         </div>
         <p className="text-[11.5px] text-text-4">

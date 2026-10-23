@@ -112,6 +112,7 @@ export function useCodeStudioVcsGutter(editorRef: MutableRefObject<monaco.editor
   useEffect(() => {
     const editor = editorRef.current
     if (editor) collectionRef.current ??= editor.createDecorationsCollection()
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- mountCount signals that the editor held in a ref was (re)mounted; the ref itself is not reactive
   }, [editorRef, mountCount])
 
   useEffect(() => {
@@ -133,6 +134,7 @@ export function useCodeStudioVcsGutter(editorRef: MutableRefObject<monaco.editor
       collectionRef.current?.set(vcsDecorations(hunks))
     }, DIFF_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- mountCount signals that the editor held in a ref was (re)mounted; the ref itself is not reactive
   }, [available, document.buffer, editorRef, external, head, id, mountCount])
 
   useEffect(() => {
@@ -144,5 +146,6 @@ export function useCodeStudioVcsGutter(editorRef: MutableRefObject<monaco.editor
     }
     const byLine = new Map(blame.map((line) => [line.line, line]))
     editor.updateOptions({ lineNumbers: (line: number) => `${blameLabel(byLine.get(line))}  ${line}`, lineNumbersMinChars: BLAME_LINE_NUMBER_CHARS })
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- mountCount signals that the editor held in a ref was (re)mounted; the ref itself is not reactive
   }, [blame, editorRef, id, mountCount])
 }

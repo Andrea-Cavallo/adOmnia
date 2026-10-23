@@ -107,10 +107,19 @@ function ConfigurationSection({ config }: { config: ClaudeCodeConfig }) {
 export function CodeStudioClaudeDialog() {
   const open = useClaudeCodeStore((state) => state.dialogOpen)
   const settings = useClaudeCodeStore((state) => state.settings)
+  useEffect(() => {
+    if (open) void useClaudeCodeStore.getState().ensure()
+  }, [open])
+  // The form is mounted per opening, so the draft starts from the stored settings without a sync effect.
+  return open && settings ? <ClaudeDialogForm settings={settings} /> : null
+}
+
+function ClaudeDialogForm({ settings }: { settings: MilkSettings }) {
+  const open = true
   const status = useClaudeCodeStore((state) => state.status)
   const busy = useClaudeCodeStore((state) => state.busy)
   const error = useClaudeCodeStore((state) => state.error)
-  const [draft, setDraft] = useState<MilkSettings | null>(null)
+  const [draft, setDraft] = useState<MilkSettings>(() => ({ ...settings }))
   const [log, setLog] = useState<string[] | null>(null)
   const [config, setConfig] = useState<ClaudeCodeConfig | null>(null)
   const [diagnosis, setDiagnosis] = useState<ClaudeCodeDiagnosis | null>(null)
@@ -119,19 +128,10 @@ export function CodeStudioClaudeDialog() {
   const close = () => useClaudeCodeStore.getState().setDialogOpen(false)
 
   useEffect(() => {
-    if (open) {
-      setLog(null)
-      setDiagnosis(null)
-      void useClaudeCodeStore.getState().ensure()
-      inspectClaudeCode(root).then(setConfig, () => setConfig(null))
-    }
-  }, [open, root, settings?.ignoreApiKey])
-
-  useEffect(() => {
-    if (open && settings) setDraft({ ...settings })
-  }, [open, settings])
-
-  if (!open || !draft) return null
+    let active = true
+    void inspectClaudeCode(root).then((next) => { if (active) setConfig(next) }, () => { if (active) setConfig(null) })
+    return () => { active = false }
+  }, [root])
 
   const save = async () => {
     if (await useClaudeCodeStore.getState().saveSettings(draft)) close()
@@ -184,7 +184,7 @@ export function CodeStudioClaudeDialog() {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => void Browser.OpenURL(ADAPTER_URL)} className={BUTTON}><ExternalLink size={12} /> claude-agent-acp</button>
           <CodeStudioButton small variant={status?.state === 'not-installed' ? 'primary' : 'secondary'} icon={Download} loading={actionBusy} disabled={busy || actionBusy} onClick={() => void installAdapter()}>Install adapter</CodeStudioButton>
-          <button type="button" disabled={busy || !settings?.enabled} onClick={() => void useClaudeCodeStore.getState().restart()} className={BUTTON}>Restart</button>
+          <button type="button" disabled={busy || !settings.enabled} onClick={() => void useClaudeCodeStore.getState().restart()} className={BUTTON}>Restart</button>
           <button type="button" disabled={actionBusy} onClick={() => void diagnose()} className={BUTTON}>Test connection</button>
           <button type="button" onClick={() => void getClaudeCodeLog().then(setLog)} className={BUTTON}>Show logs</button>
         </div>

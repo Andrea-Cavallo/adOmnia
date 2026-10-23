@@ -80,18 +80,19 @@ interface CodeStudioSettingsDialogProps {
 export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }: CodeStudioSettingsDialogProps) {
   const preferences = useCodeStudioLspStore((state) => state.preferences)
   const settings = useCodeStudioLspStore((state) => state.settings)
+  const updatePreferences = useCodeStudioLspStore((state) => state.updatePreferences)
+  const updateSettings = useCodeStudioLspStore((state) => state.updateSettings)
   const [section, setSection] = useState<Section>('Editor')
   const [query, setQuery] = useState('')
   const needle = query.trim().toLowerCase()
   const visible = useMemo(() => SETTINGS.filter((item) => (needle ? `${item.label} ${item.hint} ${item.section}`.toLowerCase().includes(needle) : item.section === section)), [needle, section])
   if (!open) return null
 
-  const lsp = useCodeStudioLspStore.getState()
   const control = (item: Setting) => {
     if (item.kind === 'fontSize') {
       return (
         <input type="number" min={EDITOR_FONT_SIZE.min} max={EDITOR_FONT_SIZE.max} value={preferences.fontSize}
-          onChange={(event) => lsp.updatePreferences({ fontSize: Math.min(EDITOR_FONT_SIZE.max, Math.max(EDITOR_FONT_SIZE.min, Number(event.target.value) || EDITOR_FONT_SIZE.default)) })}
+          onChange={(event) => updatePreferences({ fontSize: Math.min(EDITOR_FONT_SIZE.max, Math.max(EDITOR_FONT_SIZE.min, Number(event.target.value) || EDITOR_FONT_SIZE.default)) })}
           aria-label={item.label} className="gs-input w-20 text-right tabular-nums" />
       )
     }
@@ -102,7 +103,7 @@ export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }
             const value = event.target.value as 'normal' | 'low' | 'auto'
             if (value === 'low') void useCodeStudioLowResources.getState().activate()
             else void useCodeStudioLowResources.getState().deactivate(value)
-          } else lsp.updatePreferences({ [item.pref]: item.pref === 'autoSaveDelayMs' ? Number(event.target.value) : event.target.value } as Partial<GoIDEEditorPreferences>)
+          } else updatePreferences({ [item.pref]: item.pref === 'autoSaveDelayMs' ? Number(event.target.value) : event.target.value } as Partial<GoIDEEditorPreferences>)
         }} aria-label={item.label} className="gs-input w-auto min-w-[150px]">
           {item.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
@@ -114,7 +115,7 @@ export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }
     const checked = item.pref ? !!preferences[item.pref] : !!settings[item.server!]
     return (
       <input type="checkbox" role="switch" checked={checked} aria-label={item.label} className="gs-switch"
-        onChange={(event) => (item.pref ? lsp.updatePreferences({ [item.pref]: event.target.checked } as Partial<GoIDEEditorPreferences>) : void lsp.updateSettings(sessionId, { [item.server!]: event.target.checked } as Partial<GoIDELanguageServerSettings>))} />
+        onChange={(event) => (item.pref ? updatePreferences({ [item.pref]: event.target.checked } as Partial<GoIDEEditorPreferences>) : void updateSettings(sessionId, { [item.server!]: event.target.checked } as Partial<GoIDELanguageServerSettings>))} />
     )
   }
 
@@ -167,11 +168,11 @@ export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }
                 const valid = filters.every(s => s === '-' || /^[+-].+/.test(s))
                 event.target.setCustomValidity(valid ? '' : 'Use - to exclude everything, or + / - followed by a directory pattern.')
                 if (!valid) event.target.reportValidity()
-                if (valid && JSON.stringify(filters) !== JSON.stringify(settings.directoryFilters ?? [])) void lsp.updateSettings(sessionId, { directoryFilters: filters })
+                if (valid && JSON.stringify(filters) !== JSON.stringify(settings.directoryFilters ?? [])) void updateSettings(sessionId, { directoryFilters: filters })
               }} />
               <span className="gs-hint">Prefix with + to include or - to exclude; the last matching rule wins. For selected modules, use - on the first line, then +path/to/module for each module and -**/node_modules last. Excluded packages may disappear from diagnostics, search and refactoring; leave empty for default scope.</span>
             </label>
-            <label className="flex items-center gap-2 text-[12px] text-text-2"><input type="checkbox" checked={settings.expandWorkspaceToModule !== false} onChange={(event) => void lsp.updateSettings(sessionId, { expandWorkspaceToModule: event.target.checked })} />Analyze the whole module</label>
+            <label className="flex items-center gap-2 text-[12px] text-text-2"><input type="checkbox" checked={settings.expandWorkspaceToModule !== false} onChange={(event) => void updateSettings(sessionId, { expandWorkspaceToModule: event.target.checked })} />Analyze the whole module</label>
             <p className="gs-hint">Keep enabled unless intentionally working in a nested folder. Verify cross-package search and refactoring after narrowing the scope.</p>
           </div>}
           {!needle && section === 'Language server' && <p className="gs-hint mt-3">Language server settings apply to every project and restart gopls for the active one.</p>}

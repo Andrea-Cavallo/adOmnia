@@ -92,8 +92,8 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
           [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
-          echo "tag=$TAG"          >> $GITHUB_OUTPUT
-          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+          echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-go@v7
         with:
@@ -159,8 +159,8 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
           [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
-          echo "tag=$TAG"          >> $GITHUB_OUTPUT
-          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+          echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-go@v7
         with:
@@ -209,8 +209,8 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
           [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
-          echo "tag=$TAG"          >> $GITHUB_OUTPUT
-          echo "version=${TAG#v}"  >> $GITHUB_OUTPUT
+          echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
       - uses: actions/download-artifact@v8
         with:
@@ -243,7 +243,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum * > SHA256SUMS.txt
+          sha256sum -- * > SHA256SUMS.txt
           echo "--- Release artifacts ---"
           ls -lh
 

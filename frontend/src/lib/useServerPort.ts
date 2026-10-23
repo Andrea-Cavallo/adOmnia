@@ -6,13 +6,11 @@ let cachedToken: string | null = null
 let tokenFlight: Promise<string> | null = null
 
 export function useServerPort(): number | null {
-  const [port, setPort] = useState<number | null>(cachedPort)
+  const [fetchedPort, setPort] = useState<number | null>(null)
+  const port = cachedPort ?? fetchedPort
 
   useEffect(() => {
-    if (cachedPort !== null) {
-      setPort(cachedPort)
-      return
-    }
+    if (cachedPort !== null) return
     try {
       GetServerPort().then((p) => {
         cachedPort = p

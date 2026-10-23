@@ -59,7 +59,7 @@ func TestUnitServerSpecBuildsStdioServer(t *testing.T) {
 }
 
 func TestRustAnalyzerSettings(t *testing.T) {
-	settings := rustAnalyzerSettings("/cache/adomnia/rust-analyzer-target/abc")
+	settings := rustAnalyzerSettings("/cache/adomnia/rust-analyzer-target/abc", false)
 	ra, ok := settings.(map[string]any)["rust-analyzer"].(map[string]any)
 	if !ok {
 		t.Fatalf("settings = %#v", settings)
@@ -73,14 +73,71 @@ func TestRustAnalyzerSettings(t *testing.T) {
 	if cargo["targetDir"] != "/cache/adomnia/rust-analyzer-target/abc" {
 		t.Fatalf("cargo.targetDir = %#v", cargo["targetDir"])
 	}
+	// Analisi pesante attiva di default (proc-macro e build script, RS-9.5).
+	proc, _ := ra["procMacro"].(map[string]any)
+	if proc["enable"] != true {
+		t.Fatalf("procMacro = %#v", ra["procMacro"])
+	}
+	buildScripts, _ := cargo["buildScripts"].(map[string]any)
+	if buildScripts["enable"] != true {
+		t.Fatalf("buildScripts = %#v", cargo["buildScripts"])
+	}
+}
+
+func TestRustAnalyzerSettingsLowResourcesDisablesHeavyAnalysis(t *testing.T) {
+	// RS-9.5: opzione "Low resources" — proc-macro e build script spengono, il resto resta.
+	settings := rustAnalyzerSettings("", true)
+	ra, _ := settings.(map[string]any)["rust-analyzer"].(map[string]any)
+	proc, _ := ra["procMacro"].(map[string]any)
+	if proc["enable"] != false {
+		t.Fatalf("procMacro = %#v", ra["procMacro"])
+	}
+	cargo, _ := ra["cargo"].(map[string]any)
+	buildScripts, _ := cargo["buildScripts"].(map[string]any)
+	if buildScripts["enable"] != false {
+		t.Fatalf("buildScripts = %#v", cargo["buildScripts"])
+	}
+	if check, _ := ra["check"].(map[string]any); check["command"] != "check" {
+		t.Fatalf("check must stay on: %#v", ra["check"])
+	}
 }
 
 func TestRustAnalyzerSettingsWithoutTargetDir(t *testing.T) {
-	settings := rustAnalyzerSettings("")
+	settings := rustAnalyzerSettings("", false)
 	ra, _ := settings.(map[string]any)["rust-analyzer"].(map[string]any)
 	cargo, _ := ra["cargo"].(map[string]any)
 	if _, present := cargo["targetDir"]; present {
 		t.Fatalf("targetDir must be omitted when empty: %#v", cargo)
+	}
+}
+
+func TestProjectLowResourcesPersistsAlongsideTheToolchain(t *testing.T) {
+	root := t.TempDir()
+	if ProjectLowResources(root) {
+		t.Fatal("low resources must be off by default")
+	}
+	if err := SetProjectToolchain(root, "", filepath.Join(root, "cargo")); err != nil {
+		// Il cargo deve essere un eseguibile reale: usiamo la persistenza della sola opzione.
+		t.Log(err)
+	}
+	if err := SetProjectLowResources(root, true); err != nil {
+		t.Fatal(err)
+	}
+	if !ProjectLowResources(root) {
+		t.Fatal("the low resources option must be read back")
+	}
+	// Azzerare la toolchain non deve cancellare il file con l'opzione ancora attiva.
+	if err := SetProjectToolchain(root, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if !ProjectLowResources(root) {
+		t.Fatal("the low resources option must survive a toolchain reset")
+	}
+	if err := SetProjectLowResources(root, false); err != nil {
+		t.Fatal(err)
+	}
+	if ProjectLowResources(root) {
+		t.Fatal("the option must turn off again")
 	}
 }
 

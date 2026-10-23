@@ -239,6 +239,7 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
     const values: Record<string, GoIDEWatchValue> = {}
     for (const expression of get().watches[view.info.sessionId] ?? []) {
       try {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- watches are evaluated one by one: the debug adapter serialises requests on a paused frame
         const result = await evaluateGoIDEDebug(debugId, expression, frameId, 'watch')
         values[expression] = { value: result.result, type: result.type, reference: result.variablesReference }
       } catch (error) {
@@ -253,6 +254,7 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
     const scopes = await getGoIDEDebugScopes(debugId, frame.id)
     const children: Record<number, GoIDEDebugVariable[]> = {}
     for (const scope of scopes.filter((item) => !item.expensive && item.variablesReference > 0)) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- scopes are expanded sequentially against the single paused debug adapter
       children[scope.variablesReference] = await getGoIDEDebugVariables(debugId, scope.variablesReference)
     }
     if (!isCurrentPause(debugId, token)) return

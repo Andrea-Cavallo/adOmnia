@@ -31,6 +31,8 @@ export function ConnectionProfiles<T extends object>({ protocol, config, onLoad 
   const [vaultPassphrase, setVaultPassphrase] = useState('')
   const autosaveRef = useRef<number | null>(null)
   const restoringRef = useRef(false)
+  const onLoadRef = useRef(onLoad)
+  useEffect(() => { onLoadRef.current = onLoad }, [onLoad])
   const credentialState = brokerConnectionCredentialState(config)
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export function ConnectionProfiles<T extends object>({ protocol, config, onLoad 
       if (!alive) return
       if (lastUsed) {
         restoringRef.current = true
-        onLoad(lastUsed)
+        onLoadRef.current(lastUsed)
       }
       setProfiles(savedProfiles)
       setReady(true)

@@ -28,6 +28,8 @@ const (
 	// al secondo invece di uno per lettura di pipe. Senza, migliaia di eventi `run.output` saturano il
 	// webview e l'intera UI (albero progetto, stop) smette di rispondere.
 	outputFlushInterval = 50 * time.Millisecond
+	// maxOutputBytesPerFlush limita un evento `run.output` (≈1,3 MB/s per flusso): oltre, si scarta.
+	maxOutputBytesPerFlush = 64 * 1024
 	// processWaitDelay limita quanto Wait attende la chiusura di stdout/stderr
 	// dopo l'uscita del processo: un nipote rimasto vivo che eredita le pipe non
 	// deve lasciare l'esecuzione appesa in "running" per sempre.
@@ -76,6 +78,7 @@ type managedProcess struct {
 	stopping  atomic.Bool
 	exited    atomic.Bool
 	truncated atomic.Bool
+	flooded   atomic.Bool
 	done      chan struct{}
 	tap       func(string, []byte)
 	quiet     bool
@@ -387,6 +390,7 @@ type outputWriter struct {
 	consoleCarry []byte
 	mu           sync.Mutex
 	pending      []byte
+	dropped      bool
 	timer        *time.Timer
 }
 
@@ -490,7 +494,19 @@ func (w *outputWriter) enqueue(data []byte) {
 		return
 	}
 	w.mu.Lock()
+	// Un `loop { println!() }` produce centinaia di MB/s: anche coalescito, un solo evento da
+	// megabyte satura il webview e il tasto Stop smette di rispondere. Come il cycle buffer delle
+	// console JetBrains, oltre il tetto per finestra si tiene la CODA (l'output più recente) e si
+	// scarta il vecchio, con un avviso una tantum: il processo resta fermabile.
 	w.pending = append(w.pending, data...)
+	if excess := len(w.pending) - maxOutputBytesPerFlush; excess > 0 {
+		tail := w.pending[excess:]
+		for len(tail) > 0 && !utf8.RuneStart(tail[0]) {
+			tail = tail[1:]
+		}
+		w.pending = append(w.pending[:0], tail...)
+		w.dropped = true
+	}
 	if w.timer == nil {
 		w.timer = time.AfterFunc(outputFlushInterval, w.flushPending)
 	}
@@ -503,7 +519,12 @@ func (w *outputWriter) flushPending() {
 	data := w.pending
 	w.pending = nil
 	w.timer = nil
+	dropped := w.dropped
+	w.dropped = false
 	w.mu.Unlock()
+	if dropped && w.process.flooded.CompareAndSwap(false, true) {
+		data = append(data, "\n[adOmnia] Output troppo veloce: si mostra solo il più recente, il resto viene scartato.\n"...)
+	}
 	w.publish(data)
 }
 

@@ -101,7 +101,7 @@ export function CodeStudioSearchEverywhere({ open, sessionId, availability, onCo
   const [symbols, setSymbols] = useState<GoIDEWorkspaceSymbol[]>([])
   const [graphNodes, setGraphNodes] = useState<GraphNode[]>([])
   const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState(0)
+  const [selectedRaw, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const lspReady = useCodeStudioLspStore((state) => state.status[sessionId]?.state === 'ready')
   const featureFlags = useSettingsStore((state) => state.settings.features)
@@ -110,12 +110,19 @@ export function CodeStudioSearchEverywhere({ open, sessionId, availability, onCo
   const runConfigs = useCodeStudioStore((state) => state.runConfigsBySession[sessionId])
   const [recent, setRecent] = useState<string[]>([])
 
+  // Opening resets the form during render (not in an effect); focusing the input is the only effect.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setQuery('')
+      setSelected(0)
+      setRecent(readRecentCommands())
+    }
+  }
+
   useEffect(() => {
-    if (!open) return
-    setQuery('')
-    setSelected(0)
-    setRecent(readRecentCommands())
-    inputRef.current?.focus()
+    if (open) inputRef.current?.focus()
   }, [open])
 
   useEffect(() => {
@@ -203,14 +210,14 @@ export function CodeStudioSearchEverywhere({ open, sessionId, availability, onCo
     ]
   }, [availability, featureFlags, files, graphNodes, onClose, onCommand, openDocument, query, recent, runConfigs, session, symbols,extensions])
 
-  useEffect(() => { setSelected((value) => Math.min(value, Math.max(0, rows.length - 1))) }, [rows.length])
+  const selected = Math.min(selectedRaw, Math.max(0, rows.length - 1))
 
   if (!open) return null
 
   const activate = (row: ResultRow | undefined) => { if (row && !row.disabled) row.run() }
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'ArrowDown') { event.preventDefault(); setSelected((value) => Math.min(rows.length - 1, value + 1)) }
-    if (event.key === 'ArrowUp') { event.preventDefault(); setSelected((value) => Math.max(0, value - 1)) }
+    if (event.key === 'ArrowDown') { event.preventDefault(); setSelected(Math.min(rows.length - 1, selected + 1)) }
+    if (event.key === 'ArrowUp') { event.preventDefault(); setSelected(Math.max(0, selected - 1)) }
     if (event.key === 'Enter') { event.preventDefault(); activate(rows[selected]) }
   }
 

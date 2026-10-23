@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 
 	"adomnia/internal/ide/dap"
@@ -18,6 +20,15 @@ type DebugOptions struct {
 	Package          string   `json:"package,omitempty"`
 	Bin              string   `json:"bin,omitempty"`
 	Example          string   `json:"example,omitempty"`
+	// Test è il nome del test da debuggare (RS-5.5): percorso libtest o nome dell'albero, come
+	// TestOptions.Run. Con Test valorizzato il target è l'eseguibile del test, non un bin/example.
+	Test string `json:"test,omitempty"`
+	// TestFile è il sorgente del test relativo al crate (`tests/foo.rs`, `src/lib.rs`, `src/bin/x.rs`):
+	// serve a scegliere il target di test senza indovinare. Opzionale.
+	TestFile         string   `json:"testFile,omitempty"`
+	// Source è un file .rs fuori da un crate: come la Run, passa dal crate fantasma (loose.go).
+	Source           string   `json:"source,omitempty"`
+	manifest         string
 	ProgramArguments []string `json:"programArguments,omitempty"`
 	// Come la Run: lo stesso build per debug e per esecuzione (features, profilo, target).
 	Features          []string `json:"features,omitempty"`
@@ -43,11 +54,22 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 	if err := validateDebugOptions(options); err != nil {
 		return dap.AdapterSpec{}, err
 	}
-	if options.Bin == "" && options.Example == "" {
-		options.Bin = DefaultBinary(request.WorkingDirectory)
+	if options.Source != "" {
+		var err error
+		options.manifest, options.Bin, err = looseCrate(request.Root, request.WorkingDirectory, options.Source)
+		if err != nil {
+			return dap.AdapterSpec{}, err
+		}
+		options.Package, options.Example = "", ""
 	}
-	if options.Bin == "" && options.Example == "" {
-		return dap.AdapterSpec{}, fmt.Errorf("choose a binary or example to debug")
+	// Debug del test (RS-5.5): l'eseguibile è quello del test, non un bin/example.
+	if options.Test == "" {
+		if options.Bin == "" && options.Example == "" {
+			options.Bin = DefaultBinary(request.WorkingDirectory)
+		}
+		if options.Bin == "" && options.Example == "" {
+			return dap.AdapterSpec{}, fmt.Errorf("choose a binary or example to debug")
+		}
 	}
 	toolchain, err := ResolveToolchain(request.Root, request.WorkingDirectory, options.Toolchain)
 	if err != nil {
@@ -55,29 +77,45 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 	}
 	codeLLDB := options.Adapter
 	if codeLLDB == "" {
-		codeLLDB, _ = LocateCodeLLDB("")
+		codeLLDB, _, _ = LocateCodeLLDB("")
 	}
 	if codeLLDB == "" || !hasFile(codeLLDB) {
 		return dap.AdapterSpec{}, fmt.Errorf("CodeLLDB is not installed: install it (see the Rust debugger notice) to debug Rust programs")
 	}
-	artifact, err := buildArtifactPath(toolchain.Cargo, request.WorkingDirectory, options)
+	programArguments := options.ProgramArguments
+	artifact := ""
+	if options.Test != "" {
+		var libtestArguments []string
+		artifact, libtestArguments, err = testDebugArtifact(toolchain.Cargo, request.WorkingDirectory, options)
+		programArguments = libtestArguments
+	} else {
+		artifact, err = buildArtifactPath(toolchain.Cargo, request.WorkingDirectory, options)
+	}
 	if err != nil {
 		return dap.AdapterSpec{}, err
 	}
+	// CodeLLDB non annuncia la porta in alcun modo (provato con v1.12.3: nessun output): si riserva
+	// una porta libera di loopback, gli si passa con `--port` e il manager si collega a indirizzo
+	// noto (come per debugpy). Era il `ReadyPattern` mai verificato di RS-6.1.
+	port, err := freeLoopbackPort()
+	if err != nil {
+		return dap.AdapterSpec{}, err
+	}
+	address := "127.0.0.1:" + strconv.Itoa(port)
 	return dap.AdapterSpec{
 		AdapterID:        ID,
 		Executable:       codeLLDB,
-		Arguments:        []string{"--port", "0"},
+		Arguments:        []string{"--port", strconv.Itoa(port)},
 		WorkingDirectory: request.WorkingDirectory,
 		Environment:      append([]string(nil), request.Environment...),
 		Transport:        dap.TCPListen,
-		ReadyPattern:     `(?i)listening on port (\d+)`,
+		Address:          address,
 		Title:            debugTitle(options),
 		PanicFunction:    "rust_panic",
 		Launch: func(string) (string, map[string]any) {
 			return "launch", map[string]any{
 				"type": "lldb", "request": "launch", "program": artifact,
-				"args": append([]string(nil), options.ProgramArguments...),
+				"args": append([]string(nil), programArguments...),
 				"cwd":  request.WorkingDirectory,
 			}
 		},
@@ -89,6 +127,8 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 
 func debugTitle(options DebugOptions) string {
 	switch {
+	case options.Test != "":
+		return "Debug test " + options.Test
 	case options.Bin != "":
 		return "Debug " + options.Bin
 	case options.Example != "":
@@ -105,10 +145,27 @@ var runCargoBuild = func(cargo, workingDirectory string, arguments []string) ([]
 	return command.Output()
 }
 
+// freeLoopbackPort riserva una porta libera di loopback e la rilascia: l'indirizzo è noto prima di
+// avviare il debug adapter, che non annuncia la porta (come per debugpy).
+func freeLoopbackPort() (int, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, fmt.Errorf("could not reserve a loopback port for the debug adapter: %w", err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err := listener.Close(); err != nil {
+		return 0, fmt.Errorf("could not reserve a loopback port for the debug adapter: %w", err)
+	}
+	return port, nil
+}
+
 // buildArtifactPath compila il target e ne estrae il percorso reale dal messaggio
 // `compiler-artifact` (mai indovinare target/debug/<nome>, RS-6.2).
 func buildArtifactPath(cargo, workingDirectory string, options DebugOptions) (string, error) {
 	arguments := []string{"build", "--message-format=json"}
+	if options.manifest != "" {
+		arguments = append(arguments, "--manifest-path", options.manifest)
+	}
 	if options.Package != "" {
 		arguments = append(arguments, "--package", options.Package)
 	}
@@ -152,12 +209,16 @@ func parseArtifactPath(output []byte) (string, error) {
 }
 
 // validateDebugOptions applica le stesse regole della Run: nomi di crate, feature, profilo e
-// target non possono iniziare con `-` né contenere altro che i caratteri ammessi da cargo.
+// target non possono iniziare con `-` né contenere altro che i caratteri ammessi da cargo. Un nome
+// di test non può essere un'opzione di libtest (stessa regola di TestCommand).
 func validateDebugOptions(options DebugOptions) error {
 	for _, name := range []string{options.Package, options.Bin, options.Example} {
 		if name != "" && !crateName.MatchString(name) {
 			return fmt.Errorf("enter a valid package, binary or example name")
 		}
+	}
+	if options.Test != "" && (strings.HasPrefix(options.Test, "-") || strings.ContainsAny(options.Test, "\x00\r\n")) {
+		return fmt.Errorf("invalid test name %q", options.Test)
 	}
 	for _, feature := range options.Features {
 		if !featureName.MatchString(feature) {

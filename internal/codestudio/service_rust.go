@@ -62,6 +62,21 @@ func (s *Service) SetRustToolchain(sessionID, path string) error {
 	return s.lsp.RefreshConfiguration(SessionID(sessionID), rust.ID)
 }
 
+// SetRustLowResources è l'opzione "Low resources" del server Rust (RS-9.5): disattiva proc-macro e
+// build script di rust-analyzer (la parte più pesante) senza toccare l'editor né la Run; il cambio
+// arriva al server con workspace/didChangeConfiguration, senza riavvio. La scelta persiste in
+// `.adomnia/rust.local.json` come la toolchain.
+func (s *Service) SetRustLowResources(sessionID string, enabled bool) error {
+	root, err := s.SessionRoot(sessionID)
+	if err != nil {
+		return err
+	}
+	if err := rust.SetProjectLowResources(root, enabled); err != nil {
+		return err
+	}
+	return s.lsp.RefreshConfiguration(SessionID(sessionID), rust.ID)
+}
+
 // RustDependencyTree è l'albero delle dipendenze dal Cargo.lock (formato TOML stabile, offline,
 // nessuna esecuzione): i duplicati di versione sono in evidenza (RS-8.2). `cargo tree` resta
 // l'azione esplicita per la risoluzione esatta.

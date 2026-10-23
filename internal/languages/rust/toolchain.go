@@ -227,6 +227,9 @@ const ProjectRustSettingsFile = ".adomnia/rust.local.json"
 type projectRustSettings struct {
 	Cargo string            `json:"cargo"`
 	Units map[string]string `json:"units,omitempty"`
+	// LowResources disattiva l'analisi pesante di rust-analyzer (proc-macro e build script,
+	// RS-9.5): l'opzione "Low resources" del server più pesante dopo JDT LS.
+	LowResources bool `json:"lowResources,omitempty"`
 }
 
 // ProjectToolchain è il cargo scelto per l'unità (o il progetto), "" se non c'è scelta.
@@ -239,6 +242,13 @@ func ProjectToolchain(root, unit string) string {
 		}
 	}
 	return settings.Cargo
+}
+
+// ProjectLowResources dice se l'analisi pesante di rust-analyzer è disattivata per il progetto
+// (RS-9.5). Il valore si rilegge a ogni richiesta di configurazione: cambiare l'opzione e inviare
+// `workspace/didChangeConfiguration` basta, senza riavviare il server.
+func ProjectLowResources(root string) bool {
+	return readProjectRustSettings(root).LowResources
 }
 
 // projectRustSettingsMu serializza il read-modify-write di `.adomnia/rust.local.json`: due chiamate
@@ -276,7 +286,39 @@ func SetProjectToolchain(root, unit, cargo string) error {
 	} else {
 		settings.Cargo = cargo
 	}
-	if settings.Cargo == "" && len(settings.Units) == 0 {
+	if settings.Cargo == "" && len(settings.Units) == 0 && !settings.LowResources {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+	data, err := jsonutil.Marshal(settings, jsontext.WithIndent("  "))
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(data, '\n'), 0o644)
+}
+
+// SetProjectLowResources attiva/disattiva l'analisi pesante di rust-analyzer per il progetto
+// (RS-9.5, opzione "Low resources"): proc-macro e build script spengono, il resto dell'editor e la
+// Run restano attivi. Persiste in `.adomnia/rust.local.json` come la toolchain (additivo, RS-9.3).
+func SetProjectLowResources(root string, enabled bool) error {
+	projectRustSettingsMu.Lock()
+	defer projectRustSettingsMu.Unlock()
+	path := filepath.Join(root, filepath.FromSlash(ProjectRustSettingsFile))
+	// Un file corrotto non viene sovrascritto: si dice all'utente invece di perdere i dati.
+	if data, err := os.ReadFile(path); err == nil {
+		var check projectRustSettings
+		if err := json.Unmarshal(data, &check); err != nil {
+			return fmt.Errorf("%s is not valid JSON: fix or delete it, then retry", ProjectRustSettingsFile)
+		}
+	}
+	settings := readProjectRustSettings(root)
+	settings.LowResources = enabled
+	if settings.Cargo == "" && len(settings.Units) == 0 && !settings.LowResources {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			return err
 		}

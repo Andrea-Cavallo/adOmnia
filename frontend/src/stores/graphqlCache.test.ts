@@ -11,7 +11,7 @@ describe('pruneGraphqlCache', () => {
       a: entry('2026-10-01T00:00:00.000Z', { type: 'object' }),
       b: entry('2026-10-02T00:00:00.000Z', { type: 'object' }),
     }
-    expect(Object.keys(pruneGraphqlCache(cache, 40, 1024)).sort()).toEqual(['a', 'b'])
+    expect(Object.keys(pruneGraphqlCache(cache, 40, 1024)).sort((a, b) => a.localeCompare(b))).toEqual(['a', 'b'])
   })
 
   it('drops the oldest entries by count', () => {

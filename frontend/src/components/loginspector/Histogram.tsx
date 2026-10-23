@@ -18,12 +18,12 @@ export function Histogram({ buckets, onSelectRange, className }: HistogramProps)
   return (
     <div className={cn('flex shrink-0 flex-col gap-0.5 border-b border-border-1 bg-surface-1 px-3 py-1.5', className)}>
       <div className="flex h-8 items-end gap-[1px]">
-        {buckets.map((bucket, index) => {
+        {buckets.map((bucket) => {
           const height = Math.round((bucket.total / peak) * 100)
           const errorHeight = bucket.total > 0 ? Math.round((bucket.errors / bucket.total) * height) : 0
           return (
             <button
-              key={index}
+              key={bucket.start}
               onClick={() => onSelectRange(Math.floor(bucket.start), Math.ceil(bucket.end))}
               title={`${new Date(bucket.start).toLocaleTimeString()} — ${bucket.total} events, ${bucket.errors} errors`}
               className="group relative flex min-w-[2px] flex-1 flex-col justify-end"

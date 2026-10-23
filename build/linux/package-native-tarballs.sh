@@ -70,6 +70,7 @@ package_tarball() {
         printf '\n'
         printf '%s\n' 'Run ./install.sh as your normal user, WITHOUT sudo.'
         printf '%s\n' 'Installs the application to ~/.local/bin/adomnia and launcher/icons under'
+        # shellcheck disable=SC2016  # literal README text: the variable must not expand here
         printf '%s\n' '${XDG_DATA_HOME:-~/.local/share}. This supports consent-based in-app updates.'
         printf '%s\n' 'Run ./uninstall.sh without sudo to remove application files, not user data.'
         printf '%s\n' 'An existing /opt/adomnia installation is left untouched.'

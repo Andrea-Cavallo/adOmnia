@@ -191,6 +191,7 @@ function GraphCanvas({
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 40, y: 40 })
   const dragging = useRef(false)
+  const [grabbing, setGrabbing] = useState(false)
   const dragOrigin = useRef({ x: 0, y: 0 })
   const [selected, setSelected] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditingRow | null>(null)
@@ -228,13 +229,14 @@ function GraphCanvas({
   const onMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-gnode]')) return
     dragging.current = true
+    setGrabbing(true)
     dragOrigin.current = { x: e.clientX - pan.x, y: e.clientY - pan.y }
   }
   const onMouseMove = (e: React.MouseEvent) => {
     if (!dragging.current) return
     setPan({ x: e.clientX - dragOrigin.current.x, y: e.clientY - dragOrigin.current.y })
   }
-  const stopDrag = () => { dragging.current = false }
+  const stopDrag = () => { dragging.current = false; setGrabbing(false) }
 
   // Edge paths: bezier from right-center of source header → left-center of target header
   const edgePaths = useMemo(() => edges.map(e => {
@@ -302,7 +304,7 @@ function GraphCanvas({
           background: 'var(--color-surface-0)',
           backgroundImage: 'radial-gradient(circle, var(--color-border-2) 1.2px, transparent 1.2px)',
           backgroundSize: '24px 24px',
-          cursor: dragging.current ? 'grabbing' : 'grab',
+          cursor: grabbing ? 'grabbing' : 'grab',
           overflow: 'hidden',
           position: 'relative',
         }}
@@ -396,7 +398,7 @@ function GraphCanvas({
                 const relationColor = row.hasChild ? depthColor(node.depth + 1) : VAL_COLOR[row.type] ?? 'var(--color-text-3)'
                 return (
                   <div
-                    key={i}
+                    key={row.key}
                     role={onValueChange ? 'button' : undefined}
                     tabIndex={onValueChange ? 0 : undefined}
                     aria-label={onValueChange ? `Edit ${row.key}` : undefined}
@@ -492,8 +494,8 @@ function GraphCanvas({
             {selectedNode.id}
           </div>
           <div>
-            {selectedNode.rows.map((r, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, padding: '3px 12px' }}>
+            {selectedNode.rows.map((r) => (
+              <div key={r.key} style={{ display: 'flex', gap: 8, padding: '3px 12px' }}>
                 <span style={{ color: 'var(--color-text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
                 <span style={{ color: 'var(--color-text-3)', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>{r.value}</span>
               </div>

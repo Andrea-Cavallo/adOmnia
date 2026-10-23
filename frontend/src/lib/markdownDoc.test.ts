@@ -160,8 +160,8 @@ describe('agent-readable graph export', () => {
 
     const indexMemory = graph.memory.documents.find((doc) => doc.id === 'index.md')
     expect(indexMemory?.contentType).toBe('text/markdown')
-    expect(indexMemory?.memoryEntries.some((entry) => entry.type === 'document' && entry.current)).toBe(true)
-    expect(indexMemory?.memoryEntries.some((entry) => entry.type === 'unresolved-link' && !entry.current)).toBe(true)
+    expect(indexMemory?.memoryEntries.some((item) => item.type === 'document' && item.current)).toBe(true)
+    expect(indexMemory?.memoryEntries.some((item) => item.type === 'unresolved-link' && !item.current)).toBe(true)
   })
 
   it('classifies memory relations so agents can reason over graph edges', () => {
@@ -241,8 +241,8 @@ describe('renderMarkdown mermaid blocks', () => {
 
 describe('inline code escaping', () => {
   it('escapes inline code once', async () => {
-    const { renderMarkdown } = await import('./markdownDoc')
-    const html = renderMarkdown('Use `c := &cache{}` and <b>')
+    const { renderMarkdown: render } = await import('./markdownDoc')
+    const html = render('Use `c := &cache{}` and <b>')
     expect(html).toContain('>c := &amp;cache{}</code>')
     expect(html).not.toContain('&amp;amp;')
     expect(html).toContain('&lt;b&gt;')

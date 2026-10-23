@@ -10,18 +10,21 @@ import { resyncCodeStudioDocument } from './codeStudioLspSync'
 export function CodeStudioExtensionsDialog({ open,sessionId,onClose }: {open:boolean;sessionId:string;onClose:()=>void}) {
  const items = useIDEExtensionsStore(state => state.items), load = useIDEExtensionsStore(state => state.load), error = useIDEExtensionsStore(state => state.error)
  const [status,setStatus] = useState(''), [busy,setBusy] = useState(false)
- const session = useCodeStudioStore(state => state.sessions.find(session => session.id === sessionId))
- useEffect(() => { if (open) { setStatus(''); void load() } },[open,load])
+ const session = useCodeStudioStore(state => state.sessions.find(candidate => candidate.id === sessionId))
+ const [wasOpen,setWasOpen] = useState(open)
+ if (wasOpen !== open) { setWasOpen(open); if (open) setStatus('') }
+ useEffect(() => { if (open) void load() },[open,load])
  const server = async (id:string,stop=false) => {
   setBusy(true)
   try {
    if (stop) { await StopExtensionLanguageServer(sessionId,id); setStatus(`${id}: stopped`) }
    else {
     const result = await StartExtensionLanguageServer(sessionId,id)
-    for (const doc of useCodeStudioStore.getState().documents.filter(doc => doc.document.sessionId === sessionId && extensionLanguageForPath(doc.document.relativePath)?.id === id)) await resyncCodeStudioDocument(doc.document.id)
+    const matching = useCodeStudioStore.getState().documents.filter(entry => entry.document.sessionId === sessionId && extensionLanguageForPath(entry.document.relativePath)?.id === id)
+    await Promise.all(matching.map(entry => resyncCodeStudioDocument(entry.document.id)))
     setStatus(`${id}: ${result.state}${result.error ? ' — '+result.error : ''}`)
    }
-  } catch (error) { setStatus(String(error)) } finally { setBusy(false) }
+  } catch (problem) { setStatus(String(problem)) } finally { setBusy(false) }
  }
  return <CodeStudioModal open={open} onClose={onClose} icon={Puzzle} title="IDE extensions" subtitle="Enabled plugin contributions. Actions use the existing sandbox; source changes require review." footer={<CodeStudioButton onClick={() => void load()}>Refresh</CodeStudioButton>}>
   {error && <CodeStudioAlert>{error}</CodeStudioAlert>}

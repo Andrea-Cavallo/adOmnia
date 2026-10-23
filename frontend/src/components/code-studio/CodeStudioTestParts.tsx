@@ -1,3 +1,4 @@
+import { withContentKeys } from '@/lib/contentKeys'
 import { useEffect, useMemo, useState } from 'react'
 import { Bug, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Copy, Gauge, Loader2, MinusCircle, Play, Repeat, Shuffle, ShieldCheck, XCircle } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
@@ -202,8 +203,8 @@ export function RepetitionSummary({ run, result, output }: { run: GoIDETestRun; 
   const flaky = isFlaky(result)
   const causes = useMemo(() => (flaky && output ? flakyCauses(output, !!run.request.shuffle) : []), [flaky, output, run.request.shuffle])
   const rates = failureRateByCPU(run, result)
+  const start = useCodeStudioTestsStore((state) => state.start)
   if (!stats && !reproduce) return null
-  const start = useCodeStudioTestsStore.getState().start
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border-1 bg-surface-2/50 px-3 py-1.5 text-[12px] text-text-3">
       {stats && (
@@ -254,17 +255,19 @@ export interface BenchmarkContext {
 }
 
 export function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun; result: GoIDETestResult; runs: GoIDETestRun[]; benchmark: BenchmarkContext }) {
-  const [output, setOutput] = useState<string | null>(null)
+  const outputKey = `${run.runId}|${result.id}|${result.status}`
+  const [fetchedOutput, setFetchedOutput] = useState<{ key: string; text: string } | null>(null)
+  const output = fetchedOutput?.key === outputKey ? fetchedOutput.text : null
   const [aiBusy, setAIBusy] = useState(false)
-  const [aiError, setAIError] = useState<string | null>(null)
+  const [aiErrorState, setAIErrorState] = useState<{ key: string; message: string } | null>(null)
+  const aiError = aiErrorState?.key === outputKey ? aiErrorState.message : null
+  const setAIError = (message: string | null) => setAIErrorState(message === null ? null : { key: outputKey, message })
   const openLocation = useCodeStudioStore((state) => state.openLocation)
   useEffect(() => {
     let cancelled = false
-    setOutput(null)
-    setAIError(null)
-    void getGoIDETestOutput(run.runId, result.id).then((text) => { if (!cancelled) setOutput(text) }).catch(() => { if (!cancelled) setOutput('') })
+    void getGoIDETestOutput(run.runId, result.id).then((text) => { if (!cancelled) setFetchedOutput({ key: outputKey, text }) }).catch(() => { if (!cancelled) setFetchedOutput({ key: outputKey, text: '' }) })
     return () => { cancelled = true }
-  }, [run.runId, result.id, result.status])
+  }, [run.runId, result.id, outputKey])
   const baseDirectory = result.buildFailed ? run.request.workingDirectory : packageDirectory(run, result.package)
   const analyzeFailure = async () => {
     setAIBusy(true)
@@ -300,7 +303,7 @@ export function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[12px] leading-4 text-text-2">
         {benchmarkMeasurementFor(result)
           ? <CodeStudioBenchmarkDetail run={run} result={result} runs={runs} {...benchmark} />
-          : output === null ? <Loader2 size={12} className="animate-spin text-text-4" /> : output ? output.split('\n').map((line, index) => <OutputLine key={index} line={line} baseDirectory={baseDirectory} />) : <span className="text-text-4">No output.</span>}
+          : output === null ? <Loader2 size={12} className="animate-spin text-text-4" /> : output ? withContentKeys(output.split('\n'), (line) => line).map(({ key: lineKey, item: line }) => <OutputLine key={lineKey} line={line} baseDirectory={baseDirectory} />) : <span className="text-text-4">No output.</span>}
         {result.truncated && <div className="mt-1 text-text-4">Output truncated at 64 KB.</div>}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { settleResourceStops } from '@/lib/code-studio/resourceStops'
 import { applySuspended, readPausedServices, writePausedServices, type PausableService } from '@/lib/code-studio/pausedServices'
+import { setRustLowResources } from '@/lib/code-studio-api'
 import { create } from 'zustand'
 import { useCodeStudioStore } from './codeStudio'
 import { useCodeStudioLspStore } from './codeStudioLsp'
@@ -47,6 +48,18 @@ export const useCodeStudioLowResources = create<LowResourcesState>((set, get) =>
     useCodeStudioStore.setState({ error })
     return true
   }
+  /**
+   * RS-9.5: l'opzione "Low resources" di rust-analyzer — proc-macro e build script (la parte più
+   * pesante del server) spengono e riaccendono senza riavviarlo, per ogni sessione Rust del
+   * progetto. Il resto dell'editor, la Run e il debug restano attivi.
+   */
+  const rustAnalyses = (enabled: boolean) => {
+    const sessions = useCodeStudioStore.getState().sessions.filter(session => (session.project.units ?? []).some(unit => unit.language === 'rust'))
+    return settleResourceStops(sessions.map(session => ({
+      label: `${session.project.name}: rust-analyzer`,
+      stop: async () => { await setRustLowResources(session.id, enabled) },
+    })))
+  }
   const restartAnalyses = async (legacy = false) => {
     const lsp = useCodeStudioLspStore.getState()
     const failures = await settleResourceStops(useCodeStudioStore.getState().sessions.map(session => ({
@@ -63,6 +76,7 @@ export const useCodeStudioLowResources = create<LowResourcesState>((set, get) =>
       for (const [sessionId, servers] of Object.entries(useIdeLanguageServersStore.getState().servers)) {
         for (const language of Object.keys(servers)) {
           useIdeLanguageServersStore.setState(state => ({ servers: { ...state.servers, [sessionId]: { ...state.servers[sessionId], [language]: { ...state.servers[sessionId][language], userStopped: false } } } }))
+          // oxlint-disable-next-line eslint/no-await-in-loop -- language servers restart one at a time to avoid a CPU spike while leaving low-resource mode
           await useIdeLanguageServersStore.getState().ensureStarted(sessionId, language)
         }
       }
@@ -115,7 +129,9 @@ export const useCodeStudioLowResources = create<LowResourcesState>((set, get) =>
           if (store.getState().settings?.enabled && !await store.getState().setEnabled(false)) throw new Error(store.getState().error ?? 'Could not suspend assistant')
         } })))
         const analyses = pauseAnalyses && (restore.staticcheck || restore.vulncheck) ? await restartAnalyses() : []
-        if (!report([...stops, ...analyses])) studioToast(`Low resources enabled. ${paused.length ? 'Paused: ' + paused.join(', ') + '.' : 'Nothing is paused.'} Everything else, Run and Debug remain available.`)
+        // RS-9.5: con "Low resources" anche rust-analyzer perde proc-macro e build script.
+        const rust = pauseAnalyses ? await rustAnalyses(true) : []
+        if (!report([...stops, ...analyses, ...rust])) studioToast(`Low resources enabled. ${paused.length ? 'Paused: ' + paused.join(', ') + '.' : 'Nothing is paused.'} Everything else, Run and Debug remain available.`)
       } catch (error) { report([String(error)]) } finally { set({ busy: false }) }
     },
     deactivate: async (mode) => {
@@ -135,7 +151,9 @@ export const useCodeStudioLowResources = create<LowResourcesState>((set, get) =>
           if (store.getState().settings?.enabled !== enabled && !await store.getState().setEnabled(enabled)) throw new Error(store.getState().error ?? 'Could not restore assistant')
         } })))
         const analyses = legacy || analysisChanged ? await restartAnalyses(legacy) : []
-        if (report([...agents, ...analyses])) return // Keep the snapshot for Retry.
+        // RS-9.5: ripristino dell'analisi pesante di rust-analyzer (proc-macro e build script).
+        const rust = await rustAnalyses(false)
+        if (report([...agents, ...analyses, ...rust])) return // Keep the snapshot for Retry.
         localStorage.removeItem(SNAPSHOT_KEY)
         set({ restore: null })
         studioToast('Normal resources restored. Previously enabled assistants and analyses are available again.')

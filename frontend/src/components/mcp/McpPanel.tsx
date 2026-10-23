@@ -262,7 +262,7 @@ function McpControlRoom() {
   const resource = capabilities.resources.find((item) => item.uri === selectedResourceUri) ?? capabilities.resources[0] ?? null
   const properties = useMemo(() => readProperties(tool), [tool])
   const required = useMemo(() => readRequired(tool), [tool])
-  const categories = useMemo(() => ['All Categories', ...Array.from(new Set(capabilities.tools.map(categoryForTool))).sort()], [capabilities.tools])
+  const categories = useMemo(() => ['All Categories', ...Array.from(new Set(capabilities.tools.map(categoryForTool))).sort((a, b) => a.localeCompare(b))], [capabilities.tools])
   const filteredTools = useMemo(() => {
     const q = toolSearch.trim().toLowerCase()
     return capabilities.tools.filter((item) => {

@@ -47,22 +47,24 @@ export function CodeStudioSonarPanel({ session }: CodeStudioSonarPanelProps) {
   const running = useRef<Cancellable | null>(null)
   const requests = useRef(new RequestEpoch())
 
-  const load = useCallback(async () => {
-    try {
-      const [loadedConfig, info] = await Promise.all([getGoIDESonarConfig(sessionId), detectGoIDESonarScanner(sessionId)])
+  const load = useCallback(() => Promise.all([getGoIDESonarConfig(sessionId), detectGoIDESonarScanner(sessionId)])
+    .then(([loadedConfig, info]) => {
       setConfig(loadedConfig)
       setDraft(loadedConfig)
       setScanner(info)
       setScannerPath(info.source === 'custom' ? info.binary ?? '' : '')
       setError(null)
-    } catch (problem) {
+    })
+    .catch((problem: unknown) => {
       setError(errorMessage(problem))
-    }
-  }, [sessionId])
+    }), [sessionId])
 
-  useEffect(() => { void load() }, [load])
-
-  useEffect(() => () => { requests.current.invalidate(); cancelInFlight(running) }, [sessionId])
+  // `load` changes with the session: the cleanup stops the stale scan and discards late results.
+  useEffect(() => {
+    const epoch = requests.current
+    void load()
+    return () => { epoch.invalidate(); cancelInFlight(running) }
+  }, [load])
 
   useEffect(() => {
     if (!busy) return undefined
@@ -246,7 +248,7 @@ export function CodeStudioSonarPanel({ session }: CodeStudioSonarPanelProps) {
             </label>
             <select value={severity} onChange={(event) => setSeverity(event.target.value)} aria-label="Severity" className="h-7 rounded-lg border-0 bg-[var(--gs-raised)] px-2 text-[11.5px] text-text-2 outline-none focus:ring-1 focus:ring-accent">
               <option value="">All severities</option>
-              {Object.entries(result?.bySeverity ?? {}).sort().map(([key, count]) => <option key={key} value={key}>{key} ({count})</option>)}
+              {Object.entries(result?.bySeverity ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([key, count]) => <option key={key} value={key}>{key} ({count})</option>)}
             </select>
             <label className="flex items-center gap-1.5 text-text-3"><input type="checkbox" checked={securityOnly} onChange={(event) => setSecurityOnly(event.target.checked)} className="h-[14px] w-[14px] accent-[var(--color-accent)]" />Security only</label>
             <div className="ml-auto flex items-center gap-1">

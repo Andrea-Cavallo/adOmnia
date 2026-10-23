@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Check, Loader2, Terminal } from 'lucide-react'
 import { CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import {
@@ -38,9 +38,9 @@ export function CodeStudioRustToolchain() {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
 
-  const load = async (id: string) => {
+  const load = useCallback(async (id: string) => {
     setReport(await getRustToolchains(id))
-  }
+  }, [])
 
   useEffect(() => {
     openRequest = (id) => {
@@ -52,7 +52,7 @@ export function CodeStudioRustToolchain() {
       load(id).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
     }
     return () => { openRequest = null }
-  }, [])
+  }, [load])
 
   const choose = async (path: string) => {
     if (!sessionId) return

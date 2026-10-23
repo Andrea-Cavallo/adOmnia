@@ -13,8 +13,9 @@ const HISTORY = 20
 export function PodExec({ target }: { target: KubePodTarget }) {
   const port = useServerPort()
   const [command, setCommand] = useState('')
-  const [runs, setRuns] = useState<{ command: string; output: string; error: string; truncated: boolean }[]>([])
+  const [runs, setRuns] = useState<{ id: number; command: string; output: string; error: string; truncated: boolean }[]>([])
   const [busy, setBusy] = useState(false)
+  const nextRunId = useRef(0)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -22,7 +23,8 @@ export function PodExec({ target }: { target: KubePodTarget }) {
     if (!cmd || busy) return
     setBusy(true)
     const result = await execInPod(port, target, cmd)
-    setRuns((current) => [{ command: cmd, ...result }, ...current].slice(0, HISTORY))
+    const id = nextRunId.current++
+    setRuns((current) => [{ id, command: cmd, ...result }, ...current].slice(0, HISTORY))
     setCommand('')
     setBusy(false)
   }
@@ -38,8 +40,8 @@ export function PodExec({ target }: { target: KubePodTarget }) {
       </form>
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] leading-relaxed">
         {runs.length === 0 && <p className="italic text-text-4">Runs one command through <code>sh -c</code> — no TTY, 60 s limit.</p>}
-        {runs.map((run, index) => (
-          <div key={runs.length - index} className="mb-3">
+        {runs.map((run) => (
+          <div key={run.id} className="mb-3">
             <div className="text-accent-light">$ {run.command}</div>
             {run.truncated && <div className="text-text-4">… output truncated to the last 1 MB</div>}
             {run.output && <pre className="whitespace-pre-wrap break-all text-text-2">{run.output}</pre>}

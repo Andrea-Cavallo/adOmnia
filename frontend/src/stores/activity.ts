@@ -14,7 +14,7 @@ export const useActivityStore = create<ActivityStore>((set, get) => ({
   phase: 'Active', scopes: [], retained: {},
   setPhase: phase => { if (phase !== get().phase) set({ phase }) },
   setScopes: scopes => {
-    const next = [...new Set(scopes)].sort()
+    const next = [...new Set(scopes)].sort((a, b) => a.localeCompare(b))
     if (next.join('\0') !== get().scopes.join('\0')) set({ scopes: next })
   },
   retain: scope => {

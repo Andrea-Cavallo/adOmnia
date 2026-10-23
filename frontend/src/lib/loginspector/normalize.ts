@@ -274,8 +274,8 @@ export function buildLookup(flat: Record<string, unknown>): PayloadLookup {
   return { get: (alias) => index.get(canonicalKey(alias)) }
 }
 
-function pick(lookup: PayloadLookup, aliases: string[]): { value: string; key: string } {
-  for (const alias of aliases) {
+function pick(lookup: PayloadLookup, names: string[]): { value: string; key: string } {
+  for (const alias of names) {
     const hit = lookup.get(alias)
     if (!hit) continue
     const { value, key } = hit

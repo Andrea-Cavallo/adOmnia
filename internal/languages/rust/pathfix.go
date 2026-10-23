@@ -50,6 +50,29 @@ func (w workspacePaths) resolve(path string) string {
 	}
 }
 
+// rootRelative porta un percorso (relativo alla working directory o assoluto) alla forma relativa
+// alla radice del progetto, in slash: è quella che il frontend usa per aprire la posizione di un
+// fallimento (`TestLocation.RelativePath`, come il runner JS/Python).
+func (w workspacePaths) rootRelative(path string) string {
+	candidate := path
+	if !filepath.IsAbs(candidate) && !strings.HasPrefix(candidate, "/") {
+		candidate = filepath.Join(w.directory, filepath.FromSlash(path))
+	}
+	absolute, err := filepath.Abs(candidate)
+	if err != nil {
+		return filepath.ToSlash(path)
+	}
+	root, err := filepath.Abs(w.root)
+	if err != nil {
+		return filepath.ToSlash(path)
+	}
+	relative, err := filepath.Rel(root, absolute)
+	if err != nil {
+		return filepath.ToSlash(path)
+	}
+	return filepath.ToSlash(relative)
+}
+
 // rewrite sostituisce in una riga (o in un blocco `rendered`) i percorsi risolti altrove.
 func (w workspacePaths) rewrite(text string) (string, bool) {
 	changed := false

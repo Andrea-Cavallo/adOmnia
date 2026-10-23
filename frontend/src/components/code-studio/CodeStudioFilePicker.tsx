@@ -5,27 +5,36 @@ import { CodeStudioPalette } from './CodeStudioModal'
 import { quickOpenIndex } from './CodeStudioQuickOpen'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
 
+function scrollActiveIntoView(element: HTMLElement | null) {
+  element?.scrollIntoView({ block: 'nearest' })
+}
+
 /** Scelta di un file da un elenco già noto: i sorgenti di una dipendenza, aperti dall'editor. */
 export function CodeStudioFilePicker() {
   const pick = useCodeStudioFilePickStore()
   const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const results = useMemo(() => filterFilePickItems(pick.items, query), [pick.items, query])
 
+  // Reset state when the picker opens (adjusted during render, not in an effect).
+  const [wasOpen, setWasOpen] = useState(pick.open)
+  if (wasOpen !== pick.open) {
+    setWasOpen(pick.open)
+    if (pick.open) {
+      setQuery('')
+      setActive(0)
+    }
+  }
+
   useEffect(() => {
-    if (!pick.open) return
-    setQuery('')
-    setActive(0)
-    inputRef.current?.focus()
+    if (pick.open) inputRef.current?.focus()
   }, [pick.open])
 
-  useEffect(() => setActive(0), [query])
-
-  useEffect(() => {
-    listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [active])
+  const updateQuery = (value: string) => {
+    setQuery(value)
+    setActive(0)
+  }
 
   if (!pick.open) return null
 
@@ -61,7 +70,7 @@ export function CodeStudioFilePicker() {
         <input
           ref={inputRef}
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => updateQuery(event.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Go to file"
           role="combobox"
@@ -73,13 +82,14 @@ export function CodeStudioFilePicker() {
       }
       meta={`${results.length} file${results.length === 1 ? '' : 's'}`}
     >
-      <div ref={listRef} id="code-studio-file-pick-results" role="listbox" aria-label="Files">
+      <div id="code-studio-file-pick-results" role="listbox" aria-label="Files">
         {results.map((item, index) => (
           <button
             key={item.id}
             id={`code-studio-file-pick-${index}`}
             type="button"
             role="option"
+            ref={index === active ? scrollActiveIntoView : undefined}
             aria-selected={index === active}
             tabIndex={-1}
             onMouseEnter={() => setActive(index)}

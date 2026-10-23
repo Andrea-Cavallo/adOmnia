@@ -356,6 +356,7 @@ export function VarHighlightInput({
         <div
           className="flex h-full min-w-max items-center"
           style={{ transform: `translateX(${-scrollLeft}px)` }}
+          // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml -- overlay segments go through escapeHtml
           dangerouslySetInnerHTML={{
             __html: overlayHtml ||
               `<span style="color:var(--color-text-4)">${placeholder ?? ''}</span>`,

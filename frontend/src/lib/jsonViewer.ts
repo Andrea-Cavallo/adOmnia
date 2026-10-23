@@ -227,7 +227,7 @@ export function diffJsonViewerContent(left: string, right: string): JsonDiffResu
   try {
     const leftFlat = flattenAst(parseLosslessJson(left))
     const rightFlat = flattenAst(parseLosslessJson(right))
-    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort()
+    const paths = [...new Set([...Object.keys(leftFlat), ...Object.keys(rightFlat)])].sort((a, b) => a.localeCompare(b))
     const rows = paths.reduce<JsonDiffRow[]>((acc, path) => {
       const hasLeft = Object.prototype.hasOwnProperty.call(leftFlat, path)
       const hasRight = Object.prototype.hasOwnProperty.call(rightFlat, path)

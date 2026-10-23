@@ -35,22 +35,29 @@ export function CodeStudioGitHistoryDialog({ document, open, lines = false, onCl
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [range, setRange] = useState<{ start: number; end: number } | null>(null)
   const sessionId = document?.document.sessionId ?? ''
   const relativePath = document?.document.relativePath ?? ''
 
-  useEffect(() => {
-    if (!open || !document) return
+  // Il range di righe e' catturato all'apertura (lo stato dell'editor cambia dopo).
+  const [lineRange, setLineRange] = useState<{ start: number; end: number } | null>(null)
+  const requestKey = open && document ? `${sessionId}|${relativePath}|${lines}` : ''
+  const [prevRequestKey, setPrevRequestKey] = useState('')
+  if (prevRequestKey !== requestKey) {
+    setPrevRequestKey(requestKey)
     setError(null)
     setContent(null)
     setCommits([])
-    const lineRange = lines ? selectedLines() : null
-    setRange(lineRange)
-    const history = lineRange ? getGoIDELineHistory(sessionId, relativePath, lineRange.start, lineRange.end) : getGoIDEFileHistory(sessionId, relativePath)
+    setLineRange(requestKey && lines ? selectedLines() : null)
+  }
+  const range = lineRange
+
+  useEffect(() => {
+    if (!requestKey) return
+    const history = range ? getGoIDELineHistory(sessionId, relativePath, range.start, range.end) : getGoIDEFileHistory(sessionId, relativePath)
     history
       .then((items) => { setCommits(items); setSelected(items[0]?.fullHash ?? null) })
       .catch((reason: unknown) => setError(errorMessage(reason)))
-  }, [document, lines, open, relativePath, sessionId])
+  }, [requestKey, range, relativePath, sessionId])
 
   useEffect(() => {
     if (!open || !selected) return

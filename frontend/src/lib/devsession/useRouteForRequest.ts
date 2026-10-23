@@ -10,10 +10,7 @@ import { findRoute, type RouteMatch } from './routeMatch'
 export function useRouteForRequest(method: string, resolvedUrl: string, preferGoSessionId?: string): RouteMatch | null {
   const [match, setMatch] = useState<RouteMatch | null>(null)
   useEffect(() => {
-    if (!resolvedUrl) {
-      setMatch(null)
-      return
-    }
+    if (!resolvedUrl) return
     let cancelled = false
     let unsubscribe = () => {}
     void Promise.all([import('@/stores/devcontext'), import('@/stores/codeStudio')]).then(([{ useDevContextStore }, { useCodeStudioStore }]) => {
@@ -30,5 +27,5 @@ export function useRouteForRequest(method: string, resolvedUrl: string, preferGo
       unsubscribe()
     }
   }, [method, resolvedUrl, preferGoSessionId])
-  return match
+  return resolvedUrl ? match : null
 }

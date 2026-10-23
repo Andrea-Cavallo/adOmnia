@@ -25,6 +25,10 @@ type Options struct {
 	NoDefaultFeatures bool     `json:"noDefaultFeatures,omitzero"`
 	Profile           string   `json:"profile,omitempty"`
 	Target            string   `json:"target,omitempty"`
+	// Source è un file .rs fuori da un crate (kind bin): si lancia con un crate fantasma (loose.go).
+	Source string `json:"source,omitempty"`
+	// manifest è il Cargo.toml del crate fantasma, risolto alla partenza (mai da JSON).
+	manifest string
 }
 
 var (
@@ -73,6 +77,11 @@ func optionsFor(kind string, data jsonv1.RawMessage) (Options, error) {
 		if options.Bin != "" && !crateName.MatchString(options.Bin) {
 			return options, fmt.Errorf("enter a valid binary name")
 		}
+		if options.Source != "" {
+			if err := validSource(options.Source); err != nil {
+				return options, err
+			}
+		}
 	case "example":
 		// Senza nome cargo eseguirebbe il *bin* del package, non un example.
 		if options.Example == "" {
@@ -108,6 +117,13 @@ func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 	if err != nil {
 		return run.CommandSpec{}, err
 	}
+	if options.Source != "" {
+		options.manifest, options.Bin, err = looseCrate(request.Root, request.WorkingDirectory, options.Source)
+		if err != nil {
+			return run.CommandSpec{}, err
+		}
+		options.Package = ""
+	}
 	args := cargoArguments(request.Kind, options)
 	if request.Kind == "bin" || request.Kind == "example" || request.Kind == "bench" {
 		args = append(args, "--")
@@ -137,6 +153,9 @@ func cargoArguments(kind string, options Options) []string {
 		"build": "build", "check": "check", "clippy": "clippy",
 	}[kind]
 	args := []string{sub, "--message-format=json-diagnostic-rendered-ansi"}
+	if options.manifest != "" {
+		args = append(args, "--manifest-path", options.manifest)
+	}
 	if options.Package != "" {
 		args = append(args, "--package", options.Package)
 	}

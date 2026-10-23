@@ -20,6 +20,7 @@ describe('flowRunner', () => {
         edges: [{ id: 'ab', source: 'a', target: 'b', branch: 'next' }],
       }
       const called: string[] = []
+      // oxlint-disable-next-line eslint/no-await-in-loop -- the two scenarios (HTTP failure, rejection) run in order
       const result = await runApiFlow(graph, { initialVars: {}, execute: async (req, vars) => {
         called.push(req.name)
         if (reject) throw new Error('Transport unavailable')

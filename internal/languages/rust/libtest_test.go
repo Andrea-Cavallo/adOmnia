@@ -52,7 +52,7 @@ test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
 	if fail.Status != "fail" {
 		t.Fatalf("fails = %+v", fail)
 	}
-	if fail.Failure == nil || fail.Failure.File != "src/lib.rs" || fail.Failure.Line != 5 {
+	if fail.Failure == nil || fail.Failure.File != "src/lib.rs" || fail.Failure.RelativePath != "src/lib.rs" || fail.Failure.Line != 5 {
 		t.Fatalf("panic location = %+v", fail.Failure)
 	}
 	if !strings.Contains(fail.Output, "assertion failed") {

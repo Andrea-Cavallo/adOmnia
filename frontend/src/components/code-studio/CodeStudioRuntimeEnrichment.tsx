@@ -1,5 +1,5 @@
 import { goModules } from '@/lib/code-studio/goProject'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, Loader2, RefreshCw, X } from 'lucide-react'
 import { getRuntimeEnrichment, type RuntimeEnrichment } from '@/lib/devsession-api'
 import type { GoIDESession } from '@/lib/code-studio-api'
@@ -35,13 +35,28 @@ export function CodeStudioRuntimeEnrichment({ open, session, onClose }: CodeStud
     }
   }
 
+  const defaultDirectory = useMemo(() => goModules(session.project)[0]?.path ?? '', [session.project])
+  const resetKey = open ? session.id : null
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey)
+    if (open) {
+      setModuleDirectory(defaultDirectory)
+      setReport(null)
+      setError(null)
+      setLoading(!!defaultDirectory)
+    }
+  }
+
   useEffect(() => {
-    if (!open) return
-    const directory = goModules(session.project)[0]?.path ?? ''
-    setModuleDirectory(directory)
-    setReport(null)
-    if (directory) void load(directory)
-  }, [open, session.id])
+    if (!open || !defaultDirectory) return
+    let cancelled = false
+    getRuntimeEnrichment(session.id, defaultDirectory)
+      .then((result) => { if (!cancelled) setReport(result) })
+      .catch((reason: unknown) => { if (!cancelled) setError(String(reason)) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [open, session.id, defaultDirectory])
 
   if (!open) return null
 

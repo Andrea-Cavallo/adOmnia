@@ -54,7 +54,8 @@ func (l *Language) UnitServerSpec(projectRoot, unitRoot, toolsRoot string) (lsp.
 	targetDir := rustAnalyzerTargetDir(projectRoot)
 	return lsp.ServerSpec{
 		Language: ID, Name: info.Name, Binary: info.Binary,
-		Configuration:    func() any { return rustAnalyzerSettings(targetDir) },
+		// Rivalutata a ogni richiesta: l'opzione "Low resources" cambia senza riavviare il server.
+		Configuration:    func() any { return rustAnalyzerSettings(targetDir, ProjectLowResources(projectRoot)) },
 		WatchesFile:      watchesRustFile,
 		TraceEnvironment: []string{"RUSTUP_HOME", "CARGO_HOME", "RUSTUP_TOOLCHAIN"},
 	}, nil
@@ -62,10 +63,12 @@ func (l *Language) UnitServerSpec(projectRoot, unitRoot, toolsRoot string) (lsp.
 
 // rustAnalyzerSettings è la configurazione servita a workspace/configuration (RS-4.3): i default
 // sensati per un editor. `targetDir` separato dall'utente è RS-9.2: rust-analyzer e la Run non
-// condividono più `target/`, quindi nessun `Blocking waiting for file lock`.
-func rustAnalyzerSettings(targetDir string) any {
+// condividono più `target/`, quindi nessun `Blocking waiting for file lock`. Con `lowResources`
+// proc-macro e build script restano spenti (RS-9.5): sono la parte più pesante di rust-analyzer
+// (build.rs e proc-macro eseguono codice del progetto) e spegnerli non tocca l'editor né la Run.
+func rustAnalyzerSettings(targetDir string, lowResources bool) any {
 	cargo := map[string]any{
-		"buildScripts": map[string]any{"enable": true},
+		"buildScripts": map[string]any{"enable": !lowResources},
 	}
 	if targetDir != "" {
 		cargo["targetDir"] = targetDir
@@ -77,7 +80,7 @@ func rustAnalyzerSettings(targetDir string) any {
 				"command": "check",
 			},
 			"procMacro": map[string]any{
-				"enable": true,
+				"enable": !lowResources,
 			},
 		},
 	}

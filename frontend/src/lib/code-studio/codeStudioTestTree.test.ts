@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/code-studio-tests-api'
-import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, isPythonTestRun, namePatternFor, pythonNodeId, pythonRerunFailedRequest, rollupOf } from './codeStudioTestTree'
+import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, isPythonTestRun, namePatternFor, pythonNodeId, pythonRerunFailedRequest, rollupOf, rustDebugRequestForNode } from './codeStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -237,5 +237,16 @@ describe('Rust test runs', () => {
     expect(rerunFailedRequest(rustRun(results))).toMatchObject({ packages: [], run: 'tests::a\ntests::b' })
     expect(rerunFailedRequest(rustRun([node('api', '', 'fail', { buildFailed: true })]))?.run).toBe('')
     expect(rerunFailedRequest(rustRun([node('api', 'tests/c', 'pass')]))).toBeNull()
+  })
+
+  it('debugs a single test keeping the tree name, so the backend picks the right test binary (RS-5.5)', () => {
+    const unit = node('api', 'tests/it_works', 'fail')
+    expect(rustDebugRequestForNode(rustRun([unit]), unit)).toMatchObject({ test: 'tests/it_works', workingDirectory: 'crates/api' })
+    // Il nome dell'albero del test di integrazione porta il file: serve a scegliere `cargo test --no-run --test`.
+    const integration = node('api', 'tests/api.rs/health_check', 'fail')
+    expect(rustDebugRequestForNode(rustRun([integration]), integration)).toMatchObject({ test: 'tests/api.rs/health_check' })
+    // I doctest non hanno binario compilato: niente richiesta di debug (limite dichiarato).
+    const doctest = node('api', 'src/lib.rs - add (line 3)', 'fail')
+    expect(rustDebugRequestForNode(rustRun([doctest]), doctest)).toBeNull()
   })
 })

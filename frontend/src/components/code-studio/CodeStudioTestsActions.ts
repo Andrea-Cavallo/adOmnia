@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { GoIDETestRunRequest } from '@/lib/code-studio-tests-api'
-import { debugRequestForNode, isFailed, javaDebugRequestForNode, pythonDebugRequestForNode, rerunFailedRequest } from '@/lib/code-studio/codeStudioTestTree'
+import { debugRequestForNode, isFailed, javaDebugRequestForNode, pythonDebugRequestForNode, rerunFailedRequest, rustDebugRequestForNode } from '@/lib/code-studio/codeStudioTestTree'
 import type { TestSuite } from '@/lib/code-studio/testSuites'
 import type { TestTarget } from '@/lib/code-studio/testTargets'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -54,10 +54,16 @@ export function useTestActions(session: GoIDESession): TestActions {
           if (java) void useCodeStudioDebugStore.getState().startJava(java)
           return
         }
+        if (suite.run && failed && suite.language === 'rust') {
+          // Debug del test Rust (RS-5.5): CodeLLDB sull'eseguibile di test di quel singolo test.
+          const rust = rustDebugRequestForNode(suite.run, failed)
+          if (rust) void useCodeStudioDebugStore.getState().startRust(rust)
+          return
+        }
         const request = suite.run && failed ? debugRequestForNode(suite.run, failed) : null
         if (request) void useCodeStudioDebugStore.getState().start(request)
       },
-      canDebug: (suite) => (suite.language === 'go' || suite.language === 'java' || suite.language === 'python') && firstFailed(suite) !== null,
+      canDebug: (suite) => (suite.language === 'go' || suite.language === 'java' || suite.language === 'python' || suite.language === 'rust') && firstFailed(suite) !== null,
       stop: () => {
         store().clearQueue(sessionId)
         const running = (store().runs[sessionId] ?? []).find((run) => run.status === 'running')

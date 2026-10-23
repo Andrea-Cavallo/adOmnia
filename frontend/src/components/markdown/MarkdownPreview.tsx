@@ -34,6 +34,7 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
           onInternalLink(href)
         }
       }}
+      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml -- html is produced by lib/markdownHtml (local renderer; the user own document)
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

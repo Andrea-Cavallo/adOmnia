@@ -104,7 +104,7 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
   const [checkFirst, setCheckFirst] = useState(loadPrecommitPreference)
   const [blocked, setBlocked] = useState<CodeStudioPrecommitSummary | null>(null)
   const [focused, setFocused] = useState<string | null>(null)
-  const [localReplaces, setLocalReplaces] = useState<(GoModReplace & { file: string })[]>([])
+  const [fetchedReplaces, setLocalReplaces] = useState<(GoModReplace & { file: string })[]>([])
   const [aiBusy, setAiBusy] = useState(false)
   const [commitFormat, setCommitFormat] = useState<CommitFormatPreference>(loadCommitFormat)
   const aiAvailable = useSettingsStore((state) => isAICompanionAvailable(state.settings.ai))
@@ -112,29 +112,42 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
   const [formHeight, setFormHeight] = useState(300)
   const changes = status?.changes ?? []
 
+  // Opening (or switching session) resets the transient form state during render, not in an effect.
+  const openKey = open ? sessionId : null
+  const [seenOpenKey, setSeenOpenKey] = useState<string | null>(null)
+  if (seenOpenKey !== openKey) {
+    setSeenOpenKey(openKey)
+    if (openKey !== null) {
+      setError(null)
+      setBlocked(null)
+      setBusy(false)
+      setSymbols([])
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-    setError(null)
-    setBlocked(null)
-    setBusy(false)
     void useCodeStudioVCSStore.getState().refreshStatus(sessionId)
     let cancelled = false
-    setSymbols([])
     // Facoltativo: se il calcolo fallisce il commit resta disponibile, senza riepilogo.
     getGoIDEChangedSymbols(sessionId).then((items) => { if (!cancelled) setSymbols(items) }).catch(logBackgroundError('changed symbols'))
     const timer = window.setTimeout(() => messageRef.current?.focus(), 30)
     return () => { cancelled = true; window.clearTimeout(timer) }
   }, [open, sessionId])
-  useEffect(() => {
-    if (!open) return
-    setSelected(new Set(changes.filter((change) => !change.untracked && !change.conflicted).map((change) => change.relativePath)))
-    setFocused((current) => (current && changes.some((change) => change.relativePath === current) ? current : changes.find((change) => !change.untracked)?.relativePath ?? changes[0]?.relativePath ?? null))
-    // Si ricalcola solo quando cambia l'elenco dei file, non a ogni spunta.
-  }, [open, changes.map((change) => change.relativePath).join('\n')]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The selection restarts only when the list of changed files changes, not on every tick.
+  const changesKey = open ? changes.map((change) => change.relativePath).join('\n') : null
+  const [seenChangesKey, setSeenChangesKey] = useState<string | null>(null)
+  if (seenChangesKey !== changesKey) {
+    setSeenChangesKey(changesKey)
+    if (changesKey !== null) {
+      setSelected(new Set(changes.filter((change) => !change.untracked && !change.conflicted).map((change) => change.relativePath)))
+      setFocused((current) => (current && changes.some((change) => change.relativePath === current) ? current : changes.find((change) => !change.untracked)?.relativePath ?? changes[0]?.relativePath ?? null))
+    }
+  }
 
-  const selectedGoMods = [...selected].filter(isGoModPath).sort().join('\n')
+  const selectedGoMods = [...selected].filter(isGoModPath).sort((a, b) => a.localeCompare(b)).join('\n')
   useEffect(() => {
-    if (!open || !selectedGoMods) { setLocalReplaces([]); return }
+    if (!open || !selectedGoMods) return
     let cancelled = false
     void Promise.all(selectedGoMods.split('\n').map(async (file) => {
       try {
@@ -146,6 +159,8 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
     })).then((found) => { if (!cancelled) setLocalReplaces(found.flat()) })
     return () => { cancelled = true }
   }, [open, sessionId, selectedGoMods])
+
+  const localReplaces = open && selectedGoMods ? fetchedReplaces : []
 
   if (!open) return null
 

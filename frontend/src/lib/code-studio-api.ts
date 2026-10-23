@@ -861,6 +861,11 @@ export async function setRustToolchain(sessionId: string, path: string): Promise
   return GoIDEBindings.SetRustToolchain(sessionId, path)
 }
 
+/** Opzione "Low resources" per rust-analyzer (RS-9.5): spenge proc-macro e build script senza riavviare il server. */
+export async function setRustLowResources(sessionId: string, enabled: boolean): Promise<void> {
+  return GoIDEBindings.SetRustLowResources(sessionId, enabled)
+}
+
 /** Installa un componente rustup (es. rust-src, clippy): solo su conferma, con il comando esatto. */
 export async function installRustComponent(sessionId: string, component: string, confirmed: boolean): Promise<Execution> {
   return GoIDEBindings.InstallRustComponent(sessionId, component, confirmed)

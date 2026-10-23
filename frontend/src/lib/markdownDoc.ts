@@ -714,9 +714,9 @@ export function buildAgentGraph(
       modifiedAt: file.modifiedAt,
       headings: extractHeadings(content),
       tags,
-      backlinks: Array.from(new Set(backlinks)).sort(),
-      outgoing: Array.from(new Set(outgoing)).sort(),
-      unresolvedOutgoing: Array.from(new Set(unresolvedOutgoing)).sort(),
+      backlinks: Array.from(new Set(backlinks)).sort((a, b) => a.localeCompare(b)),
+      outgoing: Array.from(new Set(outgoing)).sort((a, b) => a.localeCompare(b)),
+      unresolvedOutgoing: Array.from(new Set(unresolvedOutgoing)).sort((a, b) => a.localeCompare(b)),
     }
   })
   return {
@@ -728,7 +728,7 @@ export function buildAgentGraph(
       notes: files.length,
       edges: edges.length,
       unresolved: unresolved.size,
-      tags: Array.from(allTags).sort(),
+      tags: Array.from(allTags).sort((a, b) => a.localeCompare(b)),
     },
     workspace: {
       root,
@@ -746,7 +746,7 @@ export function buildAgentGraph(
       version: 1,
       entrypoint: files[0]?.relPath,
       readOrder: files.map((file) => file.relPath),
-      unresolved: Array.from(unresolved).sort(),
+      unresolved: Array.from(unresolved).sort((a, b) => a.localeCompare(b)),
       documents: memoryDocuments,
       relations: memoryRelations,
     },

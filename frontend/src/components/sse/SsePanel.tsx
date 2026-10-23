@@ -367,7 +367,7 @@ export function SsePanel() {
     setSessionId(null)
   }
 
-  const knownTypes = useMemo(() => Array.from(new Set(events.map((e) => e.type).filter(Boolean))).sort(), [events])
+  const knownTypes = useMemo(() => Array.from(new Set(events.map((e) => e.type).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [events])
   const visibleEvents = useMemo(() => {
     const q = search.trim().toLowerCase()
     return events.filter((ev) => {

@@ -90,12 +90,12 @@ describe('project settings file', () => {
 
   it('keeps the schema and the parser on the same keys', () => {
     const root = PROJECT_SETTINGS_JSON_SCHEMA.properties as Record<string, { properties?: Record<string, unknown> }>
-    expect(Object.keys(root).sort()).toEqual(['editor', 'format', 'keymap', 'version'])
-    expect(Object.keys(root.editor.properties ?? {}).sort()).toEqual(
+    expect(Object.keys(root).sort((a, b) => a.localeCompare(b))).toEqual(['editor', 'format', 'keymap', 'version'])
+    expect(Object.keys(root.editor.properties ?? {}).sort((a, b) => a.localeCompare(b))).toEqual(
       ['editorMode', 'fontLigatures', 'fontSize', 'lineNumbers', 'softTabs', 'stickyScroll', 'tabSize', 'wordWrap'],
     )
     const binding = (root.keymap.properties as Record<string, unknown>).bindings as { additionalProperties: { oneOf: Array<{ properties?: Record<string, unknown> }> } }
-    expect(Object.keys(binding.additionalProperties.oneOf[1].properties ?? {}).sort()).toEqual(['alt', 'key', 'mod', 'shift', 'when'])
+    expect(Object.keys(binding.additionalProperties.oneOf[1].properties ?? {}).sort((a, b) => a.localeCompare(b))).toEqual(['alt', 'key', 'mod', 'shift', 'when'])
     const parsed = parseProjectSettings(valid)
     expect(parsed.errors).toEqual([])
   })

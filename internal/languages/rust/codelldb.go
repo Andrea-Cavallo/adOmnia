@@ -10,11 +10,17 @@ import (
 
 	"adomnia/internal/ide/lsp"
 	"adomnia/internal/ide/sdk"
+	"adomnia/internal/ide/toolmanifest"
+	"adomnia/internal/jsonutil"
 )
 
 // CodeLLDB è il debug adapter DAP di Rust (LLDB incluso). Release e checksum sono pinnati (RS-0.2/
 // RS-9.4): l'installazione scarica solo l'artefatto verificato nella cartella strumenti di adOmnia.
+// Il comando di installazione scrive il report (`toolmanifest.ReportFile`) e la verifica lega la
+// cartella al manifest generico (internal/ide/toolmanifest, lo stesso di basedpyright): un'installazione
+// senza report o modificata dopo l'installazione non viene usata.
 const (
+	codeLLDBName        = "codelldb"
 	codeLLDBVersion     = "v1.12.3"
 	codeLLDBInstallTask = "install-rust-debugger"
 )
@@ -34,27 +40,82 @@ func codeLLDBDirectory(toolsRoot string) string {
 }
 
 func managedCodeLLDB(toolsRoot string) string {
-	return filepath.Join(codeLLDBDirectory(toolsRoot), "extract", "extension", "adapter", sdk.ExecutableName("codelldb"))
+	return filepath.Join(codeLLDBDirectory(toolsRoot), "extract", "extension", "adapter", sdk.ExecutableName(codeLLDBName))
 }
 
-// LocateCodeLLDB cerca l'adapter: installazione gestita da adOmnia, PATH, estensione CodeLLDB di
-// VS Code già presente. Restituisce percorso e origine, "" se manca.
-func LocateCodeLLDB(toolsRoot string) (binary, source string) {
+// codeLLDBAssetURL è l'URL della release pinnata per l'asset dato: lo usano il piano di
+// installazione e la verifica, così il report non può dichiarare una fonte diversa.
+func codeLLDBAssetURL(assetName string) string {
+	return "https://github.com/vadimcn/codelldb/releases/download/" + codeLLDBVersion + "/" + assetName
+}
+
+// codeLLDBReport è il report di installazione nel formato generico (toolmanifest.Report): lo
+// scrive il comando di installazione dopo aver verificato lo SHA-256 dell'artefatto scaricato.
+func codeLLDBReport(asset codeLLDBAsset) ([]byte, error) {
+	return jsonutil.Marshal(toolmanifest.Report{
+		Tool:    codeLLDBName,
+		Version: codeLLDBVersion,
+		Artifacts: []toolmanifest.Artifact{{
+			Name: asset.name, Version: codeLLDBVersion,
+			URL: codeLLDBAssetURL(asset.name), SHA256: strings.ToLower(asset.sha256),
+		}},
+	})
+}
+
+// verifyManagedCodeLLDB controlla che l'adapter gestito sia quello installato e verificato:
+// report leggibile, artefatto uguale alla release pinnata per questa piattaforma, manifest generico
+// uguale al report (internal/ide/toolmanifest). Un'installazione senza report non è verificabile:
+// si reinstalla dal notice dell'editor, mai in silenzio.
+func verifyManagedCodeLLDB(toolsRoot string) error {
+	directory := codeLLDBDirectory(toolsRoot)
+	report, err := os.ReadFile(filepath.Join(directory, toolmanifest.ReportFile))
+	if err != nil {
+		return fmt.Errorf("the installed CodeLLDB has no verification report (%s): reinstall it from the editor notice", toolmanifest.ReportFile)
+	}
+	parsed, err := toolmanifest.ParseReport(report)
+	if err != nil {
+		return fmt.Errorf("the installed CodeLLDB is not verified: %w. Reinstall it from the editor notice", err)
+	}
+	asset, pinned := codeLLDBAssets[runtime.GOOS+"/"+runtime.GOARCH]
+	if !pinned {
+		return fmt.Errorf("no CodeLLDB build is pinned for %s/%s: install CodeLLDB manually and put it on the PATH", runtime.GOOS, runtime.GOARCH)
+	}
+	expected := toolmanifest.Artifact{
+		Name: asset.name, Version: codeLLDBVersion,
+		URL: codeLLDBAssetURL(asset.name), SHA256: strings.ToLower(asset.sha256),
+	}
+	if parsed.Tool != codeLLDBName || parsed.Version != codeLLDBVersion || len(parsed.Artifacts) != 1 || parsed.Artifacts[0] != expected {
+		return fmt.Errorf("the installed CodeLLDB does not match the pinned %s release: reinstall it from the editor notice", codeLLDBVersion)
+	}
+	if !hasFile(managedCodeLLDB(toolsRoot)) {
+		return fmt.Errorf("the installed CodeLLDB has no adapter binary: reinstall it from the editor notice")
+	}
+	return toolmanifest.Ensure(filepath.Join(directory, toolmanifest.ManifestFile), codeLLDBName, codeLLDBVersion, parsed.Artifacts, report)
+}
+
+// LocateCodeLLDB cerca l'adapter: installazione gestita da adOmnia (solo se verificata dal
+// manifest, RS-9.4), PATH, estensione CodeLLDB di VS Code già presente. Restituisce percorso e
+// origine, "" se manca; warning (se presente) spiega perché l'installazione gestita non si usa.
+func LocateCodeLLDB(toolsRoot string) (binary, source string, warning error) {
 	if toolsRoot != "" {
 		if path := managedCodeLLDB(toolsRoot); hasFile(path) {
-			return path, "adOmnia tools"
+			if err := verifyManagedCodeLLDB(toolsRoot); err != nil {
+				warning = err
+			} else {
+				return path, "adOmnia tools", nil
+			}
 		}
 	}
-	if path, err := lookPath(sdk.ExecutableName("codelldb")); err == nil && hasFile(path) {
-		return path, "PATH"
+	if path, err := lookPath(sdk.ExecutableName(codeLLDBName)); err == nil && hasFile(path) {
+		return path, "PATH", warning
 	}
 	if home, err := os.UserHomeDir(); err == nil {
-		matches, _ := filepath.Glob(filepath.Join(home, ".vscode", "extensions", "vadimcn.vscode-lldb-*", "adapter", sdk.ExecutableName("codelldb")))
+		matches, _ := filepath.Glob(filepath.Join(home, ".vscode", "extensions", "vadimcn.vscode-lldb-*", "adapter", sdk.ExecutableName(codeLLDBName)))
 		if path := newestCodeLLDB(matches); path != "" {
-			return path, "VS Code extension"
+			return path, "VS Code extension", warning
 		}
 	}
-	return "", ""
+	return "", "", warning
 }
 
 // newestCodeLLDB sceglie l'estensione con la versione più alta: 1.10 vince su 1.9, mentre
@@ -114,8 +175,12 @@ func CodeLLDBInstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 		return lsp.InstallPlan{}, fmt.Errorf("no CodeLLDB build is pinned for %s/%s: install CodeLLDB manually and put it on the PATH", runtime.GOOS, runtime.GOARCH)
 	}
 	directory := codeLLDBDirectory(toolsRoot)
-	url := "https://github.com/vadimcn/codelldb/releases/download/" + codeLLDBVersion + "/" + asset.name
-	executable, arguments := codeLLDBInstallCommand(directory, url, asset.sha256)
+	url := codeLLDBAssetURL(asset.name)
+	report, err := codeLLDBReport(asset)
+	if err != nil {
+		return lsp.InstallPlan{}, err
+	}
+	executable, arguments := codeLLDBInstallCommand(directory, url, asset.sha256, string(report))
 	return lsp.InstallPlan{
 		Task:       codeLLDBInstallTask,
 		Title:      "Install the Rust debugger?",
@@ -130,13 +195,16 @@ func CodeLLDBInstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 	}, nil
 }
 
-func codeLLDBInstallCommand(directory, url, sha256 string) (string, []string) {
+func codeLLDBInstallCommand(directory, url, sha256, report string) (string, []string) {
+	// Dopo il checksum riuscito il comando scrive il report di installazione (RS-9.4): è la
+	// provenienza che la verifica confronta con il manifest generico.
 	if runtime.GOOS == "windows" {
 		quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", "''") + "'" }
 		script := "$ErrorActionPreference='Stop'; $d=" + quote(directory) + "; $f=Join-Path $d 'codelldb.zip'; " +
 			"Invoke-WebRequest -UseBasicParsing " + quote(url) + " -OutFile $f; " +
 			"if ((Get-FileHash $f -Algorithm SHA256).Hash.ToLower() -ne '" + sha256 + "') { Remove-Item $f; throw 'SHA-256 mismatch: the download was discarded' }; " +
-			"Expand-Archive -Force $f (Join-Path $d 'extract'); Remove-Item $f"
+			"Expand-Archive -Force $f (Join-Path $d 'extract'); Remove-Item $f; " +
+			"Set-Content -LiteralPath (Join-Path $d " + quote(toolmanifest.ReportFile) + ") -Value " + quote(report)
 		return "powershell.exe", []string{"-NoProfile", "-NonInteractive", "-Command", script}
 	}
 	quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'" }
@@ -146,6 +214,7 @@ func codeLLDBInstallCommand(directory, url, sha256 string) (string, []string) {
 	}
 	script := "set -e; d=" + quote(directory) + "; mkdir -p \"$d\"; curl -fsSL " + quote(url) + " -o \"$d/codelldb.zip\"; " +
 		"echo '" + sha256 + "  '\"$d/codelldb.zip\" | " + check + "; " +
-		"unzip -oq \"$d/codelldb.zip\" -d \"$d/extract\"; rm -f \"$d/codelldb.zip\"; chmod +x \"$d/extract/extension/adapter/codelldb\""
+		"unzip -oq \"$d/codelldb.zip\" -d \"$d/extract\"; rm -f \"$d/codelldb.zip\"; chmod +x \"$d/extract/extension/adapter/codelldb\"; " +
+		"printf '%s' " + quote(report) + " >\"$d/" + toolmanifest.ReportFile + "\""
 	return "sh", []string{"-c", script}
 }

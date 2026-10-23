@@ -29,13 +29,20 @@ export function CreateProjectDialog({ open, onClose }: CreateProjectDialogProps)
   const [submitting, setSubmitting] = useState(false)
   const createProject = useCodeStudioStore((state) => state.createProject)
 
+  const [wasOpen, setWasOpen] = useState(open)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) {
+      setParentPath('')
+      setName('')
+      setModulePath('')
+      setTemplateId('empty')
+      setTemplatesError('')
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-    setParentPath('')
-    setName('')
-    setModulePath('')
-    setTemplateId('empty')
-    setTemplatesError('')
     listGoIDEProjectTemplates().then(setTemplates).catch((error: unknown) => setTemplatesError(String(error)))
   }, [open])
 

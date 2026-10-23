@@ -6,6 +6,7 @@ import { changedLines, selectHunks, selectableHunks } from './codeStudioChangePr
 import { applyCodeStudioWorkspaceChange } from './codeStudioWorkspaceEdits'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
+import { withContentKeys } from '@/lib/contentKeys'
 
 const GO_IDENTIFIER = /^[\p{L}_][\p{L}\p{Nd}_]*$/u
 
@@ -16,18 +17,21 @@ function errorText(error: unknown): string {
 /** Rename semantico: valida il simbolo con gopls, poi applica subito (un file) o mostra l'anteprima (più file). */
 export function CodeStudioRenameDialog() {
   const request = useCodeStudioLspStore((state) => state.renameRequest)
+  // The form is mounted per request, so its fields start clean without a reset effect.
+  return request ? <RenameForm request={request} /> : null
+}
+
+type RenameRequest = NonNullable<ReturnType<typeof useCodeStudioLspStore.getState>['renameRequest']>
+
+function RenameForm({ request }: { request: RenameRequest }) {
   const [name, setName] = useState('')
   const [original, setOriginal] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const close = () => useCodeStudioLspStore.setState({ renameRequest: null })
 
   useEffect(() => {
-    if (!request) return
-    setError(null)
-    setName('')
-    setBusy(true)
     const prepare = requestPrepareRename(request.sessionId, request.documentId, request.line, request.column)
     prepare.then((target) => {
       setOriginal(target.placeholder)
@@ -37,7 +41,6 @@ export function CodeStudioRenameDialog() {
     return () => { void prepare.cancel() }
   }, [request])
 
-  if (!request) return null
   const valid = GO_IDENTIFIER.test(name) && name !== original
 
   const submit = async () => {
@@ -81,6 +84,13 @@ export function CodeStudioRenameDialog() {
 /** Anteprima di una modifica su più file: nulla viene applicato finché l'utente non conferma. */
 export function CodeStudioChangePreviewDialog() {
   const change = useCodeStudioLspStore((state) => state.pendingChange)
+  // Keyed by the change content so a different preview starts with a clean selection.
+  return change ? <ChangePreviewForm key={`${change.label}|${change.files.map((item) => item.uri).join('|')}`} change={change} /> : null
+}
+
+type PendingChange = NonNullable<ReturnType<typeof useCodeStudioLspStore.getState>['pendingChange']>
+
+function ChangePreviewForm({ change }: { change: PendingChange }) {
   const [selected, setSelected] = useState(0)
   const [applying, setApplying] = useState(false)
   // Si tiene traccia di ciò che l'utente scarta: di default si applica tutto.
@@ -93,15 +103,10 @@ export function CodeStudioChangePreviewDialog() {
     onCancel?.()
   }
   useEffect(() => {
-    setSelected(0)
-    setSkippedFiles(new Set())
-    setSkippedHunks({})
-    if (!change) return
     // Dopo il focus trap: Invio conferma subito l'anteprima.
     const timer = window.setTimeout(() => applyRef.current?.focus(), 30)
     return () => window.clearTimeout(timer)
-  }, [change])
-  if (!change) return null
+  }, [])
   const file = change.files[selected]
   const totalEdits = change.files.reduce((total, item) => total + item.edits.length, 0)
   const chosenFiles = change.files.flatMap((item) => {
@@ -161,11 +166,11 @@ export function CodeStudioChangePreviewDialog() {
           ))}
         </div>
         <div className="gs-mono min-w-0 flex-1 overflow-auto bg-surface-0 p-3 text-[11.5px] leading-5">
-          {file && changedLines(file).map(({ line, text, hunkStart, kind, hunk }, index, rows) => {
+          {file && withContentKeys(changedLines(file), (row) => `${row.kind}-${row.line}`).map(({ key, item: { line, text, hunkStart, kind, hunk } }, index, rows) => {
             const hunkSkipped = skippedFiles.has(file.uri) || (skippedHunks[file.uri]?.has(hunk) ?? false)
-            const firstOfHunk = index === 0 || rows[index - 1].hunk !== hunk
+            const firstOfHunk = index === 0 || rows[index - 1].item.hunk !== hunk
             return (
-            <div key={`${kind}-${line}-${index}`} className={hunkSkipped ? 'opacity-40' : ''}>
+            <div key={key} className={hunkSkipped ? 'opacity-40' : ''}>
             {firstOfHunk && selectableHunks(file) > 1 && (
               <label className={`flex items-center gap-2 px-1.5 pb-0.5 text-[10.5px] text-text-3 ${hunkStart || index > 0 ? 'mt-2' : ''}`}>
                 <input type="checkbox" checked={!hunkSkipped} disabled={skippedFiles.has(file.uri)} onChange={() => toggleHunk(file.uri, hunk)} className="accent-[var(--color-accent)]" />

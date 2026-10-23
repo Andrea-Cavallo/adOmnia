@@ -7,6 +7,7 @@ import { useTabsStore } from '@/stores/tabs'
 import type { LiveSession, RequestRun } from '@/lib/devsession-api'
 import { liveLogs, liveMessages, liveQueries } from '@/lib/devsession-api'
 import { cn } from '@/lib/utils'
+import { withContentKeys } from '@/lib/contentKeys'
 import { useDevSessionStore, type DebugRequestProgress } from '@/stores/devSession'
 import { runForTab } from '@/stores/devSessionModel'
 import { openFrameInCodeStudio } from '@/lib/devsession/navigation'
@@ -38,7 +39,13 @@ export function LiveResponseFrame({ tabId, loading, children }: { tabId: string;
   const session = useDevSessionStore((state) => (run ? state.sessions[run.state === 'paused' ? ((run.sessionIds ?? [run.sessionId]).find(id => state.sessions[id]?.state === 'paused') ?? run.hits[run.hits.length - 1]?.sessionId ?? run.sessionId) : run.sessionId] ?? null : null))
   const progress = useDevSessionStore((state) => state.progress[tabId])
   const [tab, setTab] = useState<LiveTab>('response')
-  useEffect(() => { setTab('response') }, [run?.id])
+  // A different request starts on the response view (adjusted during render, not in an effect).
+  const runId = run?.id
+  const [tabRunId, setTabRunId] = useState(runId)
+  if (tabRunId !== runId) {
+    setTabRunId(runId)
+    setTab('response')
+  }
   useEffect(() => {
     const onLogs = () => setTab('logs')
     document.addEventListener('adomnia:live-response-logs', onLogs)
@@ -63,7 +70,7 @@ export function LiveResponseFrame({ tabId, loading, children }: { tabId: string;
         ))}
         {inFlight && <span className="ml-auto flex items-center gap-1 text-text-4"><Loader2 size={11} className="animate-spin" />in flight</span>}
         {!inFlight && run.completedAt && run.protocol !== 'grpc' && <span className="ml-auto flex shrink-0 items-center gap-1">{session && !session.endedAt && <>
-          <LiveActionButton label="Profile this request" icon={<Flame size={11} />} action={(progress) => profileRequest(run, session, progress)}
+          <LiveActionButton label="Profile this request" icon={<Flame size={11} />} action={(report) => profileRequest(run, session, report)}
             hint="Profile this request: a CPU profile from /debug/pprof while the same request is sent again for a few seconds (the service needs net/http/pprof)" />
           {session.kind === 'run' && <LiveActionButton label="Re-run with race detector" icon={<Zap size={11} />} action={() => raceRequest(run, session)}
             hint="Re-run with race detector: restart the service with -race, send this request again and report data races" />}
@@ -118,6 +125,7 @@ function LiveView({ tab, run, session }: { tab: Exclude<LiveTab, 'response'>; ru
       .then(([logs, queries, messages]) => { if (!cancelled) setFetched({ logs: logs ?? [], queries: queries ?? [], messages: messages ?? [] }) })
       .catch(() => undefined)
     return () => { cancelled = true }
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- log/query/message counts only signal that the backend buffer has grown, so refetch
   }, [run.id, run.sessionId, run.logs, run.queries, run.messages])
   const logs = useMemo(() => mergeBy(fetched?.logs ?? [], storeLogs, (entry) => String(entry.seq)), [fetched, storeLogs])
   const queries = useMemo(() => mergeBy(fetched?.queries ?? [], storeQueries.filter((q) => q.requestRunId === run.id), (q) => q.id), [fetched, storeQueries, run.id])
@@ -157,8 +165,8 @@ function HitList({ run, session }: { run: RequestRun; session: LiveSession | nul
   }
   return (
     <ul className="min-h-0 flex-1 divide-y divide-border-1 overflow-auto">
-      {run.hits.map((hit, index) => (
-        <li key={index} className="flex items-center gap-3 px-3 py-2 text-[12px]">
+      {withContentKeys(run.hits, (hit) => `${hit.sessionId ?? ''}:${hit.file ?? ''}:${hit.line}:${hit.threadId ?? ''}`).map(({ key: hitKey, item: hit }) => (
+        <li key={hitKey} className="flex items-center gap-3 px-3 py-2 text-[12px]">
           <span className="h-2 w-2 shrink-0 rounded-full bg-warning" aria-hidden="true" />
           <span className="min-w-0 flex-1">
             <span className="block truncate font-mono text-text-1">{basename(hit.relativePath || hit.file || '')}:{hit.line} <span className="text-text-3">{hit.function}() · goroutine {hit.threadId ?? "?"} · {sessions[hit.sessionId ?? run.sessionId]?.service}</span></span>
@@ -191,7 +199,9 @@ function replay(tabId: string) {
 
 /** PAUSED AT BREAKPOINT: the request is stopped inside the service. */
 function PausedCard({ run, session }: { run: RequestRun; session: LiveSession }) {
-  const { step, stop, openSplit } = useDevSessionStore.getState()
+  const step = useDevSessionStore((state) => state.step)
+  const stop = useDevSessionStore((state) => state.stop)
+  const openSplit = useDevSessionStore((state) => state.openSplit)
   const hit = run.hits[run.hits.length - 1]
   const where = session.pause ?? hit
   return (

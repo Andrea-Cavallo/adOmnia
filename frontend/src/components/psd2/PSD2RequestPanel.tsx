@@ -41,7 +41,9 @@ function CertificateCard({ label, path, passwordRef, onPath, onPassword }: { lab
   </div>
 }
 
-export function PSD2RequestPanel({ config = initialConfig, headers, onConfigChange, onHeadersChange, issues = [] }: Props) {
+const NO_ISSUES: PSD2ValidationIssue[] = []
+
+export function PSD2RequestPanel({ config = initialConfig, headers, onConfigChange, onHeadersChange, issues = NO_ISSUES }: Props) {
   const [requirements, setRequirements] = useState<{ required: string[]; conditional: string[] } | null>(null)
   const [error, setError] = useState('')
   const patch = (next: Partial<PSD2RequestConfig>) => onConfigChange({ ...config, ...next })
