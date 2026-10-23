@@ -239,6 +239,11 @@ jobs:
   bundle:
     name: Bundle artifacts
     needs: [windows, linux, macos]
+    # This is the only job that needs contents: write (it signs and publishes the release),
+    # so it must never run on a pull_request: a write token on a PR branch, including a
+    # same-repo one, is exactly the escalation the least-privilege rule prevents. The
+    # per-platform artifacts stay available on PRs from the three build jobs above.
+    if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write
