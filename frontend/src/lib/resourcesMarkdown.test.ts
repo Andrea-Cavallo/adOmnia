@@ -17,7 +17,7 @@ describe('resourcesToMarkdown', () => {
     expect(md).toContain('- **RAM:** 400.0 MiB')
     expect(md).toContain('(memory pressure)')
     expect(md.indexOf('gopls')).toBeLessThan(md.indexOf('adomnia |'))
-    expect(md).toContain('C:\\a\\|b')
+    expect(md).toContain('C:\\\\a\\|b')
     expect(md).not.toContain('Last ')
   })
 

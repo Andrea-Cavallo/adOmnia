@@ -106,6 +106,25 @@ describe('stack traces', () => {
     expect(panic!.thread).toBe('goroutine 42') // filterable in the Thread / goroutine facet
     expect(events[events.length - 1].message).toContain('restarting ledger-worker')
   })
+
+  it('keeps Go frames in the panic and survives a pathological line inside it', () => {
+    const text = [
+      'panic: boom',
+      '',
+      'goroutine 1 [running]:',
+      'main.run(0x1)',
+      '\t/app/main.go:10 +0x1d',
+      'net/http.(*conn).serve(0xc000)',
+      `${'!.'.repeat(50_000)}x`,
+    ].join('\n')
+    const started = performance.now()
+    const { events } = parseLogText(text)
+    expect(performance.now() - started).toBeLessThan(500)
+    const panic = events.find((e) => e.message.startsWith('panic:'))
+    expect(panic?.stack).toContain('main.run(0x1)')
+    expect(panic?.stack).toContain('net/http.(*conn).serve(0xc000)')
+    expect(panic?.stack).not.toContain('!.!.!.')
+  })
 })
 
 describe('OpenShift mixed logs', () => {
@@ -334,7 +353,7 @@ describe('limits and large inputs', () => {
     expect(events).toHaveLength(100_000)
     expect(summary.invalid).toBe(0)
     expect(events[99_999].message).toBe('event 99999')
-  })
+  }, 30_000) // a coverage run on a shared CI runner is several times slower than a local run
 
   it('can be cancelled mid-import and returns the partial batch', async () => {
     const text = Array.from({ length: 20_000 }, (_, i) => `{"msg":"m${i}"}`).join('\n')

@@ -2,7 +2,7 @@ import type { Snapshot } from '../../bindings/adomnia/internal/resources/models'
 import { resourceStats } from './resourceReport'
 
 const mib = (bytes: number) => `${(bytes / 1048576).toFixed(1)} MiB`
-const cell = (value: string) => value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
+const cell = (value: string) => value.replace(/[\\|]/g, '\\$&').replace(/\r?\n/g, ' ')
 
 /** Application resources come Markdown da studiare: totali, budget, un processo per riga e l'andamento dei campioni recenti. */
 export function resourcesToMarkdown(sample: Snapshot, history: Snapshot[] = []): string {

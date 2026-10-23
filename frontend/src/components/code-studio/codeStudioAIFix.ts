@@ -19,6 +19,10 @@ export const MAX_AI_FIX_FILE_CHARS = 60_000
 /** File del package importato inviati come contesto, oltre al file con l'errore. */
 export const MAX_AI_FIX_RELATED_FILES = 3
 
+// A Go file starts (after whitespace and comments) with its package clause. One alternation of single whitespace
+// characters, line comments (that keep their newline) and block comments: nothing is matched two ways, so there is
+// no backtracking blow-up on long runs of comments or spaces.
+const GO_PACKAGE_CLAUSE = /^(?:\s|\/\/[^\n]*\n|\/\*(?:[^*]|\*(?!\/))*\*\/)*package\s+\w+/
 const FILE_OPEN = /^=== FILE: (.+?) ===\s*$/
 const FILE_CLOSE = /^=== END FILE ===\s*$/
 
@@ -85,7 +89,7 @@ export function parseAIFixResponse(response: string, allowedPaths: readonly stri
       if (/^```/.test(lines[0] ?? '')) lines.shift()
       if (/^```\s*$/.test(lines[lines.length - 1] ?? '')) lines.pop()
       const content = `${lines.join('\n').replace(/\n+$/, '')}\n`
-      if (allowed.has(current.relativePath) && /^\s*(\/\/.*\n|\/\*[\s\S]*?\*\/\s*)*\s*package\s+\w+/m.test(content)) {
+      if (allowed.has(current.relativePath) && GO_PACKAGE_CLAUSE.test(content)) {
         files.push({ relativePath: current.relativePath, content })
       }
       current = null

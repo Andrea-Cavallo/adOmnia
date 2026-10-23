@@ -167,6 +167,25 @@ describe('structured filters', () => {
     const result = filterEvents(many, withFilters({ query: 'level:error service:svc-0' }))
     expect(result.length).toBeGreaterThan(0)
     expect(performance.now() - started).toBeLessThan(2000)
+  }, 30_000) // building 100k events dominates, and a coverage run on a shared CI runner is several times slower
+})
+
+describe('expression tokenizer', () => {
+  it('reads quoted values with spaces and escaped quotes exactly as before', () => {
+    expect(filterEvents(events(), withFilters({ query: 'message = "Settlement rejected"' }))).toHaveLength(1)
+    expect(filterEvents(events(), withFilters({ query: "message = 'Settlement rejected' AND level = error" }))).toHaveLength(1)
+    const escaped = compileQuery('message = "he said \\"hi\\"" OR level = warn')
+    expect(escaped.error).toBe('')
+  })
+
+  it('does not backtrack exponentially on runs of escapes inside an unterminated quote', () => {
+    for (const quote of ['"', "'"]) {
+      for (const escape of ['\\!', '\\&']) {
+        const started = performance.now()
+        expect(() => compileQuery(`message = ${quote}${escape.repeat(50_000)}`)).not.toThrow()
+        expect(performance.now() - started).toBeLessThan(500)
+      }
+    }
   })
 })
 

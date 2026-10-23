@@ -224,7 +224,7 @@ export function compileQuery(input: string): CompiledQuery {
 
 function expressionTokens(input: string): string[] {
   const tokens: string[] = []
-  const pattern = /\s*(>=|<=|!=|=|>|<|\(|\)|"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|[^\s()<>!=]+)/gy
+  const pattern = /\s*(>=|<=|!=|=|>|<|\(|\)|"(?:[^"\\]|\\[\s\S])*\\?"|'(?:[^'\\]|\\[\s\S])*\\?'|[^\s()<>!=]+)/gy
   let offset = 0
   while (offset < input.length) {
     pattern.lastIndex = offset

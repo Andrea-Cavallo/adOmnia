@@ -234,7 +234,7 @@ export function exportToSwagger2(collections: Collection[]): string {
 
   const secDefs: Record<string, unknown> = {}
   const tags: Array<{ name: string; description: string }> = []
-  const paths: Record<string, Record<string, unknown>> = {}
+  const operationsByPath = new Map<string, Map<string, unknown>>()
 
   function walk(nodes: TreeNode[], tag?: string) {
     for (const n of nodes) {
@@ -250,8 +250,9 @@ export function exportToSwagger2(collections: Collection[]): string {
         if (!['get', 'query', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(method)) continue
 
         const path = toPath(req.url || '/', baseUrl)
-        if (!paths[path]) paths[path] = {}
-        paths[path][method] = buildOperation(req, tag, secDefs)
+        const operations = operationsByPath.get(path) ?? new Map<string, unknown>()
+        operations.set(method, buildOperation(req, tag, secDefs))
+        operationsByPath.set(path, operations)
       }
     }
   }
@@ -274,7 +275,7 @@ export function exportToSwagger2(collections: Collection[]): string {
     },
     ...(host ? { host, basePath: basePath || '/', schemes: [scheme] } : {}),
     ...(tags.length > 0 ? { tags } : {}),
-    paths,
+    paths: Object.fromEntries([...operationsByPath].map(([path, operations]) => [path, Object.fromEntries(operations)])),
     ...(Object.keys(secDefs).length > 0 ? { securityDefinitions: secDefs } : {}),
   }
 

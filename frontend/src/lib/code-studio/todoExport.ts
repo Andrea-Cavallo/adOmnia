@@ -14,7 +14,7 @@ export interface TodoExportUnit {
 
 const OTHER = '(outside any module)'
 const normalize = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
-const escapeCell = (text: string) => text.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
+const escapeCell = (text: string) => text.replace(/[\\|]/g, '\\$&').replace(/\r?\n/g, ' ')
 
 // Cartelle che contengono servizi: il servizio è la sottocartella (services/auth), non la cartella stessa.
 const SERVICE_CONTAINERS = new Set(['services', 'service', 'microservices', 'apps', 'cmd', 'packages', 'svc'])

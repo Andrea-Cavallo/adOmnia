@@ -32,7 +32,7 @@ describe('raw HTML in Markdown', () => {
   })
 
   it('drops scripts, event handlers and javascript: URLs but keeps their text readable', () => {
-    const html = renderSafeHtml('<p onclick="x()"><script>alert(1)</script><a href="javascript:alert(1)">go</a><iframe src="//evil"></iframe></p>', { url: (value) => (value.startsWith('javascript:') ? '#' : value) })
+    const html = renderSafeHtml('<p onclick="x()"><script>alert(1)</script><a href="javascript:alert(1)">go</a><iframe src="//evil"></iframe></p>', { url: (value) => (/^\s*(?:javascript|data|vbscript):/i.test(value) ? '#' : value) })
     expect(html).not.toMatch(/<script|<iframe|onclick/i)
     expect(html).toContain('href="#"')
     expect(html).toContain('alert(1)')

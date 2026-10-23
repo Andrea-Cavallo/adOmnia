@@ -71,7 +71,7 @@ export function frameLocation(frame: Pick<GoIDEVulnFrame, 'relative' | 'file' | 
 }
 
 function cell(text: string): string {
-  return text.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim() || '—'
+  return text.replace(/[\\|]/g, '\\$&').replace(/\r?\n/g, ' ').trim() || '—'
 }
 
 /** Report Markdown per un assistente AI: cosa è vulnerabile, quanto è raggiungibile e come si corregge. */

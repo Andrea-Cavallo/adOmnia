@@ -57,15 +57,15 @@ function encodeEntities(s: string): string {
     .replace(/'/g, '&apos;')
 }
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g,  '&')
-    .replace(/&lt;/g,   '<')
-    .replace(/&gt;/g,   '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g,       (_, n: string) => String.fromCharCode(parseInt(n,  10)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, n: string) => String.fromCharCode(parseInt(n, 16)))
+const NAMED_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
+
+/** One pass: "&amp;lt;" is the text "&lt;", not "<" (decoding "&amp;" first and then "&lt;" would double-unescape). */
+export function decodeEntities(s: string): string {
+  return s.replace(/&(?:(amp|lt|gt|quot|apos)|#(\d+)|#x([0-9a-fA-F]+));/g, (match, named?: string, dec?: string, hex?: string) => {
+    if (named) return NAMED_ENTITIES[named]
+    const codePoint = dec ? parseInt(dec, 10) : parseInt(hex ?? '', 16)
+    return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match
+  })
 }
 
 function evalXPath(xmlStr: string, xpath: string): { nodes: string[]; type: string } {

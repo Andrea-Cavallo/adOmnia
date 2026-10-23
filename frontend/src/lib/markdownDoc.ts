@@ -222,12 +222,17 @@ function renderCallout(kind: string | undefined, body: string[], inline: (text: 
 }
 
 /** Slug di un titolo per i link interni: minuscolo, senza punteggiatura, spazi in trattini. */
+function stripTags(text: string): string {
+  let current = text
+  for (let previous = ''; previous !== current; ) {
+    previous = current
+    current = current.replace(/<[^>]*>/g, '') // repeat: removing "<b>" from "<<b>b>" leaves a new tag
+  }
+  return current
+}
+
 function headingSlug(text: string): string {
-  const slug = text
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/<[^>]*>/g, '')
+  const slug = stripTags(text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, ''))
     .replace(/[^\p{L}\p{N}\s_-]/gu, '')
     .trim()
     .replace(/\s+/g, '-')

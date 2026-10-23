@@ -68,7 +68,7 @@ export function inlineSuppressionComment(rule: string, reason: string): string {
 }
 
 function cell(text: string): string {
-  return text.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim() || '—'
+  return text.replace(/[\\|]/g, '\\$&').replace(/\r?\n/g, ' ').trim() || '—'
 }
 
 /** Report Markdown per un assistente AI: solo finding attivi, con regola, motivo, posizione e correzione suggerita. */

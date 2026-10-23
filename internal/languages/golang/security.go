@@ -481,7 +481,7 @@ func intLiteral(expression ast.Expr) (int, bool) {
 	if !ok || literal.Kind != token.INT {
 		return 0, false
 	}
-	value, err := strconv.ParseInt(literal.Value, 0, 64)
+	value, err := strconv.ParseInt(literal.Value, 0, 32)
 	return int(value), err == nil
 }
 

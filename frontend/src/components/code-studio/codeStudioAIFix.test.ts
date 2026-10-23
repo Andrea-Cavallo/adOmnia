@@ -67,6 +67,21 @@ describe('AI fix response', () => {
   it('returns nothing for an unstructured answer', () => {
     expect(parseAIFixResponse('I cannot help with that.', ['a.go'])).toEqual([])
   })
+
+  it('accepts a Go file that starts with blank lines, build tags and comments', () => {
+    const content = ['', '//go:build linux', '', '/* Package doc */', '// Package p does things.', 'package p', 'var A = 1'].join('\n')
+    const response = ['=== FILE: p/p.go ===', content, '=== END FILE ==='].join('\n')
+    expect(parseAIFixResponse(response, ['p/p.go'])).toHaveLength(1)
+  })
+
+  it('rejects non-Go content quickly even after thousands of comments and spaces', () => {
+    const started = performance.now()
+    for (const body of ['/* c */ '.repeat(30_000) + 'nope', ' '.repeat(100_000) + 'nope', '/*'.repeat(20_000), '// c\n'.repeat(20_000) + 'nope']) {
+      const response = ['=== FILE: p/p.go ===', body, '=== END FILE ==='].join('\n')
+      expect(parseAIFixResponse(response, ['p/p.go'])).toEqual([])
+    }
+    expect(performance.now() - started).toBeLessThan(1000)
+  })
 })
 
 describe('minimal edits from a proposed file', () => {

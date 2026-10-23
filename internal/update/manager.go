@@ -468,6 +468,7 @@ func extractPackage(name, root string) error {
 		return err
 	}
 	defer z.Close()
+	cleanRoot := filepath.Clean(root)
 	var total uint64
 	if len(z.File) > 20000 {
 		return errors.New("update archive has too many entries")
@@ -481,9 +482,12 @@ func extractPackage(name, root string) error {
 		if strings.HasPrefix(f.Name, "/") || strings.Contains(f.Name, "\\") || strings.Contains(f.Name, ":") || filepath.IsAbs(rel) || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 			return errors.New("unsafe update archive path")
 		}
-		target := filepath.Join(root, rel)
-		resolved, _ := filepath.Rel(root, target)
-		if resolved == ".." || strings.HasPrefix(resolved, ".."+string(os.PathSeparator)) {
+		target := filepath.Join(cleanRoot, rel)
+		if target == cleanRoot {
+			continue // the package root entry itself: nothing to extract
+		}
+		// Zip Slip: the joined path must stay strictly under the staging root.
+		if !strings.HasPrefix(target, cleanRoot+string(os.PathSeparator)) {
 			return errors.New("unsafe update archive path")
 		}
 		if f.Mode()&os.ModeSymlink != 0 || (!f.Mode().IsRegular() && !f.FileInfo().IsDir()) {
