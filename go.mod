@@ -8,8 +8,8 @@ require (
 	github.com/IBM/sarama v1.61.1
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/config v1.33.9
-	github.com/aws/aws-sdk-go-v2/service/bedrock v1.73.4
-	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.4
+	github.com/aws/aws-sdk-go-v2/service/bedrock v1.73.5
+	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.5
 	github.com/aymanbagabas/go-pty v0.2.3
 	// Pinned: pdf v0.2.0 unexports Reader.Resolve, which pdfsign v0.9.0 still
 	// calls. Unpin only together with pdfsign >= v1.0.0 (currently rc only).
@@ -29,7 +29,7 @@ require (
 	github.com/miekg/dns v1.1.73
 	github.com/nats-io/nats.go v1.54.0
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
-	github.com/rabbitmq/amqp091-go v1.15.0
+	github.com/rabbitmq/amqp091-go v1.16.0
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/romshark/jscan v1.2.0
 	github.com/shirou/gopsutil/v4 v4.26.9
@@ -37,7 +37,7 @@ require (
 	github.com/tidwall/gjson v1.20.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/wI2L/jsondiff v0.7.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.32
+	github.com/wailsapp/wails/v3 v3.0.0-beta.34
 	github.com/xdg-go/scram v1.2.0
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	github.com/zalando/go-keyring v0.2.8
