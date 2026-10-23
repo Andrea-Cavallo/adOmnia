@@ -28,7 +28,7 @@ jobs:
 
       # Blocca le PR che introducono dipendenze con vulnerabilità note (richiede GitHub Advanced
       # Security solo per le private repo: per i repository pubblici è gratuito).
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
           deny-licenses: GPL-3.0, AGPL-3.0
