@@ -234,8 +234,7 @@ const TOKEN_KINDS = [TOKEN_OPERATOR, TOKEN_DOUBLE_QUOTED, TOKEN_SINGLE_QUOTED, T
 /** The token starting at `from` (after the whitespace before it) and the offset right after it, or null. */
 function nextExpressionToken(input: string, from: number): { token: string; end: number } | null {
   TOKEN_SPACE.lastIndex = from
-  TOKEN_SPACE.test(input)
-  const start = TOKEN_SPACE.lastIndex
+  const start = TOKEN_SPACE.test(input) ? TOKEN_SPACE.lastIndex : from
   for (const kind of TOKEN_KINDS) {
     kind.lastIndex = start
     const match = kind.exec(input)
