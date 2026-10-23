@@ -11,7 +11,7 @@ Everything runs locally first — the CI workflows only repeat the same commands
 | [gosec](https://github.com/securego/gosec) | Go security rules (crypto, file permissions, subprocess) | CI `quality.yml` (`-severity=HIGH`) |
 | [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) | Reachable vulnerabilities in dependencies **and the Go standard library** | CI `quality.yml` |
 | [oxlint](https://oxc.rs/docs/guide/usage/linter) | Frontend lint (TS native): correctness, React Hooks, React Compiler rules | `frontend/.oxlintrc.json`, CI `quality.yml` |
-| [SonarQube](https://www.sonarqube.org/) / [SonarCloud](https://sonarcloud.io) | Issues, smells, duplications, coverage across Go and TS | `sonar-project.properties`, CI `quality.yml` |
+| [SonarQube](https://www.sonarqube.org/) / [SonarCloud](https://sonarcloud.io) | Issues, smells, duplications, coverage across Go and TS | `sonar-project.properties`, CI `sonar.yml` |
 | [CodeQL](https://codeql.github.com/) | Semantic security analysis (Go, TS), results in the Security tab | CI `codeql.yml` |
 | [gitleaks](https://github.com/gitleaks/gitleaks) | Secrets in the working tree and in git history | CI `quality.yml` |
 | [Trivy](https://trivy.dev/) | Vulnerable dependencies, leaked secrets, misconfigurations | CI `quality.yml` (report-only) |
@@ -83,13 +83,14 @@ for a desktop app. Publishing the number to Codecov or Coveralls is a separate s
 
 ## SonarCloud (CI)
 
-The `sonar` job in `quality.yml` scans with SonarCloud when the repository is configured, and skips
-the job otherwise:
+The `sonar` job in `sonar.yml` (its own workflow, so `quality.yml` stays green without a Sonar token) scans
+with SonarCloud when the repository is configured, and skips the job otherwise:
 
 1. Create the project on [sonarcloud.io](https://sonarcloud.io) (GitHub App or manual import).
-2. Add the secret `SONAR_TOKEN` (SonarCloud → My Account → Security → Generate Token).
-3. Add the repository variables `SONAR_PROJECT_KEY` (e.g. `Andrea-Cavallo_adomnia`) and
-   `SONAR_ORGANIZATION` (your SonarCloud organization key).
+2. Add the **secret** `SONAR_TOKEN` (SonarCloud → My Account → Security → Generate Token). The job stops with a
+   clear message if it is missing.
+3. Add the repository **variables** (not secrets: the workflow reads `vars.*`) `SONAR_PROJECT_KEY`
+   (`Andrea-Cavallo_adOmnia`) and `SONAR_ORGANIZATION` (`andrea-cavallo`).
 
 `sonar-project.properties` is shared with the local runs; the workflow passes `sonar.projectKey`,
 `sonar.organization` and `sonar.host.url` on the command line.

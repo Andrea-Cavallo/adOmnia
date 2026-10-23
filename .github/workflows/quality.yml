@@ -1,6 +1,7 @@
 name: Quality
 
-# Qualità del codice Go/TS di adOmnia: golangci-lint, govulncheck e SonarCloud.
+# Qualità del codice Go/TS di adOmnia: golangci-lint, govulncheck, SAST e scansioni dei segreti.
+# SonarCloud ha il suo workflow (sonar.yml): così questo resta verde senza dipendere dal token Sonar.
 # I comandi locali equivalgenti stanno in docs/QUALITY.md.
 
 on:
@@ -144,46 +145,3 @@ jobs:
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@latest
           "$(go env GOPATH)/bin/gosec" -tags=gtk3 -severity=HIGH -confidence=HIGH -exclude-dir=frontend -exclude-dir=workspaces -exclude-dir=.artifacts -exclude-dir=testdata ./...
-
-  sonar:
-    name: SonarCloud
-    # Serve il secret SONAR_TOKEN e i repository variables SONAR_PROJECT_KEY e
-    # SONAR_ORGANIZATION (docs/QUALITY.md). Senza configurazione il job salta
-    # invece di fallire, così la CI resta verde per chi non usa SonarCloud.
-    if: ${{ vars.SONAR_PROJECT_KEY != '' }}
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22.13.0'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - uses: ./.github/actions/go-wails-prereqs
-        with:
-          embed-placeholder: 'false'
-
-      # Coverage Go: stessi tag e dipendenze di build.yml (senza gtk3 Wails sceglie GTK4, che qui non c'è).
-      # Il root package embedda frontend/dist e non entra.
-      - name: Coverage (Go)
-        run: go test -count=1 -timeout=15m -tags gtk3 ./internal/... ./cmd/... -coverprofile=coverage.out -covermode=atomic
-
-      - name: Coverage (frontend)
-        working-directory: frontend
-        run: npm ci && npx vitest run --coverage --coverage.reporter=lcov
-
-      - name: SonarCloud scan
-        uses: SonarSource/sonarqube-scan-action@v5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} -Dsonar.host.url=https://sonarcloud.io

@@ -65,7 +65,7 @@ jobs:
       # Stessa esecuzione dei test, nessun secondo giro: il numero finisce nel riepilogo del job.
       - name: Go coverage report
         if: ${{ !cancelled() }}
-        run: scripts/coverage-summary.sh coverage.out >> "$GITHUB_STEP_SUMMARY"
+        run: bash scripts/coverage-summary.sh coverage.out >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage profile
         if: ${{ !cancelled() }}
