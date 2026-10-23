@@ -1065,7 +1065,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
         {/* Content */}
         <div
           ref={bodyRef}
-          role="region"
+          role="tabpanel"
           tabIndex={0}
           aria-label={tr('Response Body')}
           onContextMenu={onBodyContextMenu}

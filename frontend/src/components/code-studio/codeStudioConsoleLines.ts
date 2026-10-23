@@ -22,7 +22,7 @@ export interface ConsoleParsedLine {
 // e resta nel `raw` per renderAnsi; tutto il resto viene tolto, altrimenti compare come testo.
 // Stessi codici ANSI (ESC = \x1b, BEL = \x07) scritti come escape: il pattern resta identico senza caratteri
 // di controllo nel sorgente.
-const escapePattern = new RegExp('\\x1b\\][^\\x07\\x1b]*(?:\\x07|\\x1b\\\\)?|\\x1b\\[[0-?]*[ -/]*[@-~]', 'g')
+const escapePattern = new RegExp('\\x1b\\][^\\x07\\x1b]*(?:\\x07|\\x1b\\\\)?|\\x1b\\[[0-?]*[ -/]*[@-~]', 'g') // NOSONAR -- S6324 segnala ESC/BEL anche scritti come escape \x: sono i caratteri ANSI che il pattern deve rimuovere, non dei refusi; riscriverlo cambierebbe cosa viene pulito.
 const sgrPattern = new RegExp('^\\x1b\\[[0-9;]*m$')
 
 function cleanDisplay(raw: string): string {

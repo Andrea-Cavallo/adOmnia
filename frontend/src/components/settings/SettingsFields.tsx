@@ -28,6 +28,7 @@ export function Toggle({
       <input
         id={id}
         type="checkbox"
+        aria-label={label}
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         className="h-4 w-4 justify-self-end rounded accent-accent max-md:justify-self-start"
@@ -98,6 +99,7 @@ export function NumberInput({
       <input
         id={id}
         type="number"
+        aria-label={label}
         min={min}
         max={max}
         value={value}
@@ -133,6 +135,7 @@ export function TextInput({
       <input
         id={id}
         type="text"
+        aria-label={label}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
@@ -167,6 +170,7 @@ export function PasswordInput({
         <input
           id={id}
           type={show ? 'text' : 'password'}
+          aria-label={label}
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
@@ -209,6 +213,7 @@ export function TextAreaInput({
       </div>
       <textarea
         id={id}
+        aria-label={label}
         value={value}
         placeholder={placeholder}
         rows={rows}

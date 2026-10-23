@@ -311,7 +311,7 @@ function FlowCanvas({
     <div className="relative min-h-0 flex-1 overflow-hidden bg-surface-0">
       <div
         ref={scrollRef}
-        tabIndex={0}
+        tabIndex={0} // NOSONAR -- role="application" is deliberate: the F/0/+/- canvas shortcuts need key passthrough and S6845 accepts no such role; dropping tabIndex would break those documented shortcuts and keyboard scrolling
         role="application"
         aria-label="Flow canvas. Drag to pan, Ctrl scroll to zoom, F to fit, Shift drag to snap."
         onKeyDown={event => {

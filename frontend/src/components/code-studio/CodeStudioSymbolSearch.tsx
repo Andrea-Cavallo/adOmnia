@@ -46,7 +46,7 @@ export function CodeStudioSymbolSearch({ open, sessionId, onClose }: CodeStudioS
         .catch((reason: unknown) => { if (!String(reason).includes('cancel')) setError(String(reason)) })
         .finally(() => setLoading(false))
     }, SEARCH_DEBOUNCE_MS)
-    return () => { window.clearTimeout(timer); request?.cancel() }
+    return () => { window.clearTimeout(timer); void request?.cancel() }
   }, [open, query, sessionId])
 
   useEffect(() => {

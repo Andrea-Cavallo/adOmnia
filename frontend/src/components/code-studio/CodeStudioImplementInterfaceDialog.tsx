@@ -56,7 +56,7 @@ export function CodeStudioImplementInterfaceDialog() {
         .catch(() => setResults([]))
         .finally(() => setLoading(false))
     }, SEARCH_DEBOUNCE_MS)
-    return () => { window.clearTimeout(timer); pending?.cancel() }
+    return () => { window.clearTimeout(timer); void pending?.cancel() }
   }, [query, request])
 
   if (!request) return null

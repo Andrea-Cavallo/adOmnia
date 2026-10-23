@@ -130,9 +130,9 @@ export function CheckoutCommitDialog({ sourceLabel, busy, onClose, onSubmit }: {
     <DialogShell title="Checkout commit" icon={<GitBranch size={15} className="text-accent" />} onClose={onClose}
       footer={<><CancelBtn onClick={onClose} /><PrimaryBtn onClick={() => onSubmit({ branch: mode === 'branch' ? branch.trim() : '' })} disabled={!valid || busy} busy={busy}>Checkout</PrimaryBtn></>}>
       <div className="rounded border border-border-1 bg-surface-0 px-2 py-1.5 font-mono text-[11px] text-text-3">{sourceLabel}</div>
-      <label className="flex cursor-pointer items-start gap-2 text-xs text-text-2"><input type="radio" checked={mode === 'branch'} onChange={() => setMode('branch')} className="mt-0.5 accent-accent" /><span><span className="font-medium text-text-1">Checkout and create branch</span><br /><span className="text-text-4">Safest — your work stays on a named branch.</span></span></label>
+      <label className="flex cursor-pointer items-start gap-2 text-xs text-text-2"><input type="radio" aria-label="Checkout and create branch" checked={mode === 'branch'} onChange={() => setMode('branch')} className="mt-0.5 accent-accent" /><span><span className="font-medium text-text-1">Checkout and create branch</span><br /><span className="text-text-4">Safest — your work stays on a named branch.</span></span></label>
       {mode === 'branch' && <input ref={branchRef} value={branch} onChange={(e) => setBranch(e.target.value)} className={INPUT} placeholder="branch name" />}
-      <label className="flex cursor-pointer items-start gap-2 text-xs text-text-2"><input type="radio" checked={mode === 'detached'} onChange={() => setMode('detached')} className="mt-0.5 accent-accent" /><span><span className="font-medium text-text-1">Checkout (detached HEAD)</span><br /><span className="text-text-4">Inspect this commit without a branch.</span></span></label>
+      <label className="flex cursor-pointer items-start gap-2 text-xs text-text-2"><input type="radio" aria-label="Checkout (detached HEAD)" checked={mode === 'detached'} onChange={() => setMode('detached')} className="mt-0.5 accent-accent" /><span><span className="font-medium text-text-1">Checkout (detached HEAD)</span><br /><span className="text-text-4">Inspect this commit without a branch.</span></span></label>
       {mode === 'detached' && (
         <div className="flex items-start gap-2 rounded border border-warning/40 bg-warning/10 p-2 text-[11px] text-warning"><AlertTriangle size={13} className="mt-0.5 shrink-0" /> In detached HEAD, new commits can become unreachable unless you create a branch.</div>
       )}
@@ -166,7 +166,7 @@ export function ResetDialog({ commitLabel, published, protectedBranch, initialMo
       <div className="space-y-1.5">
         {(['soft', 'mixed', 'hard'] as const).map((m) => (
           <label key={m} className={cn('flex cursor-pointer items-start gap-2 rounded border p-2 text-xs', mode === m ? (m === 'hard' ? 'border-error/50 bg-error/5' : 'border-accent/50 bg-accent/5') : 'border-border-1')}>
-            <input type="radio" checked={mode === m} onChange={() => setMode(m)} className="mt-0.5 accent-accent" />
+            <input type="radio" aria-label={m} checked={mode === m} onChange={() => setMode(m)} className="mt-0.5 accent-accent" />
             <span><span className={cn('font-medium capitalize', m === 'hard' ? 'text-error' : 'text-text-1')}>{m}</span><br /><span className="text-text-4">{RESET_DESC[m]}</span></span>
           </label>
         ))}

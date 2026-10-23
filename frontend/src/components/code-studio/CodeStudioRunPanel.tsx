@@ -304,7 +304,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
         </details>}
         {/* Clicking the transcript focuses the stdin field, the way a terminal does; the field is already
             reachable with Tab, so this div is a pointer convenience and not a control. */}
-        <div data-a11y-click-exempt onClick={(event) => {
+        <div data-a11y-click-exempt role="presentation" onClick={(event) => {
           if ((event.target as HTMLElement).closest('button, a') || window.getSelection()?.toString()) return
           inputRef.current?.focus({ preventScroll: true })
         }} className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 text-[12.5px] leading-[21px]" style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontVariantLigatures: 'none' }}>
