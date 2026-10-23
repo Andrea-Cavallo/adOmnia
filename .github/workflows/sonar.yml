@@ -2,7 +2,8 @@ name: SonarCloud
 
 # Analisi SonarCloud (qualità, sicurezza, coverage). Serve il secret SONAR_TOKEN e le repository
 # variables SONAR_PROJECT_KEY e SONAR_ORGANIZATION (docs/QUALITY.md). Senza SONAR_PROJECT_KEY il job
-# salta. Le valutazioni dei badge del README vengono da qui, per branch.
+# salta; senza SONAR_TOKEN salta con un warning (non fallisce: il secret lo aggiunge l'utente).
+# Le valutazioni dei badge del README vengono da qui, per branch.
 
 on:
   push:
@@ -22,43 +23,54 @@ jobs:
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
-      # Messaggio chiaro invece di un errore di autenticazione a fine analisi (e dopo 15 minuti di test).
-      - name: Require SONAR_TOKEN
+      # Skip con warning invece di un errore di autenticazione a fine analisi (e dopo 15 minuti di
+      # test): senza secret configurato il job è verde e dice cosa manca.
+      - name: Check SONAR_TOKEN
+        id: guard
         run: |
           if [ -z "$SONAR_TOKEN" ]; then
-            echo "::error title=SONAR_TOKEN missing::Add the SONAR_TOKEN repository secret (SonarCloud > My Account > Security). SONAR_PROJECT_KEY and SONAR_ORGANIZATION are repository variables, not secrets."
-            exit 1
+            echo "::warning title=SONAR_TOKEN missing::SonarCloud analysis skipped — add the SONAR_TOKEN repository secret (SonarCloud > My Account > Security > Generate Token). SONAR_PROJECT_KEY and SONAR_ORGANIZATION are repository variables, not secrets."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@v6
+        if: steps.guard.outputs.configured == 'true'
         with:
           fetch-depth: 0
 
       - uses: actions/setup-go@v7
+        if: steps.guard.outputs.configured == 'true'
         with:
           go-version-file: go.mod
           cache: true
 
       - uses: actions/setup-node@v7
+        if: steps.guard.outputs.configured == 'true'
         with:
           node-version: '22.13.0'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - uses: ./.github/actions/go-wails-prereqs
+        if: steps.guard.outputs.configured == 'true'
         with:
           embed-placeholder: 'false'
 
       # Coverage Go: stessi tag e dipendenze di build.yml (senza gtk3 Wails sceglie GTK4, che qui non c'è).
       # Il root package embedda frontend/dist e non entra.
       - name: Coverage (Go)
+        if: steps.guard.outputs.configured == 'true'
         run: go test -count=1 -timeout=15m -tags gtk3 ./internal/... ./cmd/... -coverprofile=coverage.out -covermode=atomic
 
       - name: Coverage (frontend)
+        if: steps.guard.outputs.configured == 'true'
         working-directory: frontend
         run: npm ci && npx vitest run --coverage --coverage.reporter=lcov
 
       - name: SonarCloud scan
+        if: steps.guard.outputs.configured == 'true'
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
