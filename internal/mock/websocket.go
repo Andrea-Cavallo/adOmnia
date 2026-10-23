@@ -154,9 +154,9 @@ func wsMockWSHandler(w http.ResponseWriter, r *http.Request) {
 			if rule.DelayMs > 0 {
 				time.Sleep(time.Duration(rule.DelayMs) * time.Millisecond)
 			}
-			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second)) // a failure surfaces in WriteMessage below
 			writeErr := conn.WriteMessage(websocket.TextMessage, []byte(response))
-			conn.SetWriteDeadline(time.Time{})
+			_ = conn.SetWriteDeadline(time.Time{}) // resetting the deadline on a dead connection is moot
 
 			wsMock.Lock()
 			wsMock.hits = wsMockAppendHit(wsMock.hits, WsMockHit{

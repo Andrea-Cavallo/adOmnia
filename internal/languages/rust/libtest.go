@@ -18,9 +18,9 @@ type libtestParser struct {
 	unit    string         // contesto corrente: "" (unittests), "tests/foo.rs" o "doctest"
 	inOut   string         // nome del test di cui stiamo leggendo lo stdout/stderr ("" = fuori)
 	// Coverage opzionale (RS-5.6): il report LCOV che cargo-llvm-cov scrive a fine run.
-	coveragePath  string
-	coverage      *idetesting.CoverageReport
-	coverageRead  bool
+	coveragePath string
+	coverage     *idetesting.CoverageReport
+	coverageRead bool
 }
 
 var (

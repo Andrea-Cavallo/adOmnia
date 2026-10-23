@@ -2,10 +2,10 @@ package main
 
 import (
 	"adomnia/internal/git"
+	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
-	"adomnia/internal/jsonutil"
 )
 
 type GitSync struct {

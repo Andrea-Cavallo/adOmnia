@@ -27,11 +27,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Fail a piped RUN when any stage of the pipe fails.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Debian package versions rotate with every security update; the NodeSource major (20.x) is the pin.
-# hadolint ignore=DL3008
 # NOSONAR -- this runs the NodeSource setup script the same way the vendor documents; it is the
 # build stage only (no runtime container), versions are pinned by the major channel and the
 # resulting artifacts are checksummed in SHA256SUMS.txt at release time.
+# Debian package versions rotate with every security update; the NodeSource major (20.x) is the pin.
+# hadolint ignore=DL3008
 RUN curl --proto '=https' --tlsv1.2 -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*

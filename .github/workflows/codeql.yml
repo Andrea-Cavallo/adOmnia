@@ -24,15 +24,34 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Go non supporta build-mode "none": serve una build vera. Come in build.yml servono le
+          # librerie GTK3 e il tag gtk3; il package radice (embed di frontend/dist) resta fuori.
           - language: go
+            build-mode: manual
           - language: javascript-typescript
+            build-mode: none
     steps:
       - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v7
+        if: ${{ matrix.language == 'go' }}
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: ./.github/actions/go-wails-prereqs
+        if: ${{ matrix.language == 'go' }}
+        with:
+          embed-placeholder: 'false'
 
       - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: none
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Build Go
+        if: ${{ matrix.language == 'go' }}
+        run: go build -tags gtk3 ./internal/... ./cmd/...
 
       - uses: github/codeql-action/analyze@v3
         with:

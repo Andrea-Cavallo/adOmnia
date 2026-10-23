@@ -189,7 +189,7 @@ func dataDir() string {
 		dir = filepath.Join(home, ".config")
 	}
 	p := filepath.Join(dir, "adomnia")
-	_ = os.MkdirAll(p, 0755)
+	_ = os.MkdirAll(p, 0755) // #nosec G703 -- APPDATA (or ~/.config) is the user's own profile folder, only the fixed app name is appended
 	return p
 }
 

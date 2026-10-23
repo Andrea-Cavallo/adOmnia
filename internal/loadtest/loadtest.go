@@ -138,6 +138,27 @@ func loadTestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "url required", http.StatusBadRequest)
 		return
 	}
+	normalizeLoadTestRequest(&req)
+
+	run := newLoadRun(req)
+	run.execute()
+	result := run.result()
+
+	devlog.Info("loadTestHandler", "load test completato", map[string]any{
+		"totalRequests": result.TotalRequests,
+		"successful":    result.Successful,
+		"failed":        result.Failed,
+		"avgMs":         result.AvgMs,
+		"p99Ms":         result.P99Ms,
+		"throughput":    result.Throughput,
+		"errorRate":     result.ErrorRate,
+	})
+	w.Header().Set("Content-Type", "application/json")
+	jsonutil.MarshalWrite(w, result)
+}
+
+// normalizeLoadTestRequest clamps the user's numbers to the supported ranges and fills the defaults.
+func normalizeLoadTestRequest(req *loadTestRequest) {
 	if req.Concurrency < 1 {
 		req.Concurrency = 1
 	}
@@ -167,23 +188,42 @@ func loadTestHandler(w http.ResponseWriter, r *http.Request) {
 	if req.WarmupReqs >= req.TotalReqs {
 		req.WarmupReqs = 0
 	}
+}
 
-	timeout := time.Duration(req.TimeoutMs) * time.Millisecond
-	client := &http.Client{Timeout: timeout}
+// loadRun is one load test in flight: the normalized request plus everything the workers record
+// under mu (latency histogram, timeline, status counters).
+type loadRun struct {
+	req    loadTestRequest
+	client *http.Client
+	start  time.Time
 
-	// HDR Histogram: tracks latency from 1ms to 60s with 3 significant digits
+	mu            sync.Mutex
+	hist          *hdr.Histogram
+	timeline      []timelinePoint
+	statusCodes   map[int]int
+	successful    int
+	failed        int
+	warmupSkipped int
+	totalTimeMs   float64
+}
 
-	// Microseconds, so sub-millisecond answers are measured instead of dropped.
-	hist := hdr.New(1, 60_000_000, 3)
+func newLoadRun(req loadTestRequest) *loadRun {
+	return &loadRun{
+		req:    req,
+		client: &http.Client{Timeout: time.Duration(req.TimeoutMs) * time.Millisecond},
+		// HDR Histogram: microseconds from 1us to 60s with 3 significant digits, so
+		// sub-millisecond answers are measured instead of dropped.
+		hist:        hdr.New(1, 60_000_000, 3),
+		timeline:    make([]timelinePoint, 0, req.TotalReqs),
+		statusCodes: make(map[int]int),
+	}
+}
 
-	var mu sync.Mutex
-	timeline := make([]timelinePoint, 0, req.TotalReqs)
-	statusCodes := make(map[int]int)
-	successful := 0
-	failed := 0
-	warmupSkipped := 0
-
-	start := time.Now()
+// execute fires every request (paced by ramp-up, stagger and QPS target, bounded by the
+// concurrency semaphore and, in duration mode, by the deadline) and waits for them to finish.
+func (l *loadRun) execute() {
+	req := l.req
+	l.start = time.Now()
 	sem := make(chan struct{}, req.Concurrency)
 
 	// QPS rate limiter
@@ -237,80 +277,7 @@ requests:
 		go func(idx int) {
 			defer wg.Done()
 			defer func() { <-sem }()
-
-			var bodyReader io.Reader
-			if req.Body != "" {
-				bodyReader = strings.NewReader(req.Body)
-			}
-
-			httpReq, err := http.NewRequest(strings.ToUpper(req.Method), req.URL, bodyReader)
-			if err != nil {
-				mu.Lock()
-				failed++
-
-				timeline = append(timeline, timelinePoint{
-					StartMs: float64(time.Since(start).Microseconds()) / 1000.0,
-					TimeMs:  float64(time.Since(start).Milliseconds()),
-					Error:   err.Error(),
-					Ok:      false,
-				})
-				mu.Unlock()
-				return
-			}
-
-			for k, v := range req.Headers {
-				httpReq.Header.Set(k, v)
-			}
-
-			reqStart := time.Now()
-			startMs := float64(reqStart.Sub(start).Microseconds()) / 1000.0
-			resp, err := client.Do(httpReq)
-			latencyMs := float64(time.Since(reqStart).Microseconds()) / 1000.0
-			elapsed := float64(time.Since(start).Microseconds()) / 1000.0
-
-			mu.Lock()
-			// Warmup: skip recording latency
-			if idx < req.WarmupReqs {
-				warmupSkipped++
-				if err == nil {
-					io.Copy(io.Discard, resp.Body)
-					resp.Body.Close()
-				}
-				mu.Unlock()
-				return
-			}
-
-			hist.RecordValue(max(int64(latencyMs*1000), 1))
-
-			if err != nil {
-				failed++
-				timeline = append(timeline, timelinePoint{
-					StartMs:   startMs,
-					Error:     err.Error(),
-					TimeMs:    elapsed,
-					LatencyMs: latencyMs,
-					Ok:        false,
-				})
-			} else {
-				io.Copy(io.Discard, resp.Body)
-				resp.Body.Close()
-				status := resp.StatusCode
-				statusCodes[status]++
-				if status >= 200 && status < 400 {
-					successful++
-				} else {
-					failed++
-				}
-
-				timeline = append(timeline, timelinePoint{
-					StartMs:   startMs,
-					TimeMs:    elapsed,
-					LatencyMs: latencyMs,
-					Status:    status,
-					Ok:        status >= 200 && status < 400,
-				})
-			}
-			mu.Unlock()
+			l.fire(idx)
 		}(i)
 	}
 
@@ -320,46 +287,132 @@ requests:
 	if req.CooldownMs > 0 {
 		time.Sleep(time.Duration(req.CooldownMs) * time.Millisecond)
 	}
+	l.totalTimeMs = float64(time.Since(l.start).Microseconds()) / 1000.0
+}
 
-	totalTime := float64(time.Since(start).Microseconds()) / 1000.0
-	measured := successful + failed
+// fire sends request number idx and records its outcome; warmup requests are sent but not measured.
+func (l *loadRun) fire(idx int) {
+	req := l.req
+	var bodyReader io.Reader
+	if req.Body != "" {
+		bodyReader = strings.NewReader(req.Body)
+	}
 
-	// Throughput timeline: requests per second bucket
+	httpReq, err := http.NewRequest(strings.ToUpper(req.Method), req.URL, bodyReader)
+	if err != nil {
+		l.mu.Lock()
+		l.failed++
+
+		l.timeline = append(l.timeline, timelinePoint{
+			StartMs: float64(time.Since(l.start).Microseconds()) / 1000.0,
+			TimeMs:  float64(time.Since(l.start).Milliseconds()),
+			Error:   err.Error(),
+			Ok:      false,
+		})
+		l.mu.Unlock()
+		return
+	}
+
+	for k, v := range req.Headers {
+		httpReq.Header.Set(k, v)
+	}
+
+	reqStart := time.Now()
+	startMs := float64(reqStart.Sub(l.start).Microseconds()) / 1000.0
+	resp, err := l.client.Do(httpReq)
+	latencyMs := float64(time.Since(reqStart).Microseconds()) / 1000.0
+	elapsed := float64(time.Since(l.start).Microseconds()) / 1000.0
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	// Warmup: skip recording latency
+	if idx < req.WarmupReqs {
+		l.warmupSkipped++
+		if err == nil {
+			_, _ = io.Copy(io.Discard, resp.Body) // drain only, to reuse the connection
+			resp.Body.Close()
+		}
+		return
+	}
+
+	_ = l.hist.RecordValue(max(int64(latencyMs*1000), 1)) // out-of-range samples are dropped, the run goes on
+
+	if err != nil {
+		l.failed++
+		l.timeline = append(l.timeline, timelinePoint{
+			StartMs:   startMs,
+			Error:     err.Error(),
+			TimeMs:    elapsed,
+			LatencyMs: latencyMs,
+			Ok:        false,
+		})
+		return
+	}
+	_, _ = io.Copy(io.Discard, resp.Body) // drain only, to reuse the connection
+	resp.Body.Close()
+	status := resp.StatusCode
+	l.statusCodes[status]++
+	ok := status >= 200 && status < 400
+	if ok {
+		l.successful++
+	} else {
+		l.failed++
+	}
+
+	l.timeline = append(l.timeline, timelinePoint{
+		StartMs:   startMs,
+		TimeMs:    elapsed,
+		LatencyMs: latencyMs,
+		Status:    status,
+		Ok:        ok,
+	})
+}
+
+// throughputTimeline buckets the measured requests per second of the run.
+func (l *loadRun) throughputTimeline() []throughputBucket {
 	throughputMap := make(map[int]struct {
 		count   int
 		totalMs float64
 	})
-	for _, t := range timeline {
+	for _, t := range l.timeline {
 		sec := int(t.TimeMs / 1000)
 		b := throughputMap[sec]
 		b.count++
 		b.totalMs += t.LatencyMs
 		throughputMap[sec] = b
 	}
-	throughputTimeline := make([]throughputBucket, 0)
-	for sec := 0; sec <= int(totalTime/1000); sec++ {
+	buckets := make([]throughputBucket, 0)
+	for sec := 0; sec <= int(l.totalTimeMs/1000); sec++ {
 		if b, ok := throughputMap[sec]; ok {
-			throughputTimeline = append(throughputTimeline, throughputBucket{
+			buckets = append(buckets, throughputBucket{
 				Second: sec,
 				Reqs:   b.count,
 				AvgMs:  math.Round(b.totalMs/float64(b.count)*100) / 100,
 			})
 		}
 	}
+	return buckets
+}
+
+// result turns what the workers recorded into the report sent to the UI.
+func (l *loadRun) result() loadTestResult {
+	totalTime := l.totalTimeMs
+	measured := l.successful + l.failed
 
 	result := loadTestResult{
-		TotalRequests:      req.TotalReqs,
-		Successful:         successful,
-		Failed:             failed,
+		TotalRequests:      l.req.TotalReqs,
+		Successful:         l.successful,
+		Failed:             l.failed,
 		TotalTimeMs:        math.Round(totalTime*100) / 100,
-		StatusCodes:        statusCodes,
-		Timeline:           timeline,
-		WarmupSkipped:      warmupSkipped,
-		CooldownMs:         req.CooldownMs,
-		ThroughputTimeline: throughputTimeline,
+		StatusCodes:        l.statusCodes,
+		Timeline:           l.timeline,
+		WarmupSkipped:      l.warmupSkipped,
+		CooldownMs:         l.req.CooldownMs,
+		ThroughputTimeline: l.throughputTimeline(),
 	}
 
 	if measured > 0 {
+		hist := l.hist
 		ms := func(us int64) float64 { return math.Round(float64(us)/10) / 100 }
 		result.AvgMs = math.Round(hist.Mean()/10) / 100
 		result.MinMs = ms(hist.Min())
@@ -370,26 +423,12 @@ requests:
 		result.P95Ms = ms(hist.ValueAtQuantile(95))
 		result.P99Ms = ms(hist.ValueAtQuantile(99))
 		result.P999Ms = ms(hist.ValueAtQuantile(99.9))
+		result.ErrorRate = math.Round(float64(l.failed)/float64(measured)*10000) / 100
 	}
-
 	if totalTime > 0 {
 		result.Throughput = math.Round(float64(measured)/(totalTime/1000)*100) / 100
 	}
-	if measured > 0 {
-		result.ErrorRate = math.Round(float64(failed)/float64(measured)*10000) / 100
-	}
-
-	devlog.Info("loadTestHandler", "load test completato", map[string]any{
-		"totalRequests": result.TotalRequests,
-		"successful":    result.Successful,
-		"failed":        result.Failed,
-		"avgMs":         result.AvgMs,
-		"p99Ms":         result.P99Ms,
-		"throughput":    result.Throughput,
-		"errorRate":     result.ErrorRate,
-	})
-	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, result)
+	return result
 }
 
 // loadTestReportHandler generates an exportable report in JSON, HTML, or Markdown.
@@ -786,7 +825,7 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 			elapsed := float64(time.Since(start).Microseconds()) / 1000.0
 
 			mu.Lock()
-			hist.RecordValue(int64(latencyMs))
+			_ = hist.RecordValue(int64(latencyMs)) // out-of-range samples are dropped, the run goes on
 			if ok {
 				successful++
 				statusCodes[0]++

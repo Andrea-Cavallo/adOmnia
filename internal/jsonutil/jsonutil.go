@@ -166,7 +166,7 @@ func jsonHumanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.MarshalWrite(w, resp)
+	_ = json.MarshalWrite(w, resp) // the status line is already sent: a write error means the client went away
 }
 
 func gjsonType(r gjson.Result) string {
@@ -231,7 +231,7 @@ func jsonStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.MarshalWrite(w, map[string]interface{}{
+	_ = json.MarshalWrite(w, map[string]interface{}{ // client gone mid-write: nothing to report
 		"valid":      valid,
 		"structures": structures,
 		"count":      len(structures),
@@ -261,7 +261,7 @@ func mimeDetectHandler(w http.ResponseWriter, r *http.Request) {
 	mtype := mimetype.Detect(body)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.MarshalWrite(w, map[string]interface{}{
+	_ = json.MarshalWrite(w, map[string]interface{}{ // client gone mid-write: nothing to report
 		"mime":      mtype.String(),
 		"extension": mtype.Extension(),
 		"isJSON":    strings.Contains(mtype.String(), "json"),

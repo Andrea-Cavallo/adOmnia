@@ -258,7 +258,7 @@ func proxyStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	if interceptProxy != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		interceptProxy.Shutdown(ctx)
+		_ = interceptProxy.Shutdown(ctx) // best effort within the 3s budget: the server is replaced right after
 		cancel()
 		interceptProxy = nil
 	}
@@ -280,7 +280,7 @@ func proxyStartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	interceptProxyPort = cfg.Port
 
-	go interceptProxy.Serve(ln)
+	go func() { _ = interceptProxy.Serve(ln) }() // Serve returns http.ErrServerClosed on every normal stop
 	devlog.Info("proxyStartHandler", "proxy intercettore avviato", map[string]any{"port": cfg.Port, "https": cfg.EnableHTTPS})
 
 	w.Header().Set("Content-Type", "application/json")

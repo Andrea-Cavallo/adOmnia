@@ -268,7 +268,7 @@ func (m *ConnectionManager) maintain(now time.Time) {
 				h.status.State = "disconnected"
 			} else if h.status.State == "error" && !now.Before(h.retry) {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				h.open(ctx)
+				_ = h.open(ctx) // the failure is recorded in h.status and retried on the next tick
 				cancel()
 			} else if h.status.State == "connected" && now.Sub(h.checked) >= 30*time.Second {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -277,7 +277,7 @@ func (m *ConnectionManager) maintain(now time.Time) {
 				cancel()
 				if err != nil {
 					h.close()
-					h.fail(err)
+					_ = h.fail(err) // records the error in h.status; the returned error is the same one
 				} else {
 					h.status.LatencyMS = time.Since(start).Milliseconds()
 					h.checked = now

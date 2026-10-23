@@ -161,7 +161,28 @@ func contains(list []string, value string) bool {
 // domini che si toccano, query e messaggi fuori dai layer ammessi, cicli di import.
 func (x *Index) CheckDrift(rules ArchitectureRules, found bool) DriftReport {
 	report := DriftReport{RulesFound: found, Violations: []Violation{}, Layers: map[string]int{}}
-	relative := map[string]string{} // id package → percorso relativo
+	relative := x.countPackages(rules, &report) // id package → percorso relativo
+	add := func(v Violation) { report.Violations = append(report.Violations, v) }
+	for id, path := range relative {
+		x.checkPackageImports(rules, relative, id, path, add)
+	}
+	x.checkCodeEdges(rules, add)
+	if rules.NoCycles == nil || *rules.NoCycles {
+		x.checkCycles(add)
+	}
+	sort.SliceStable(report.Violations, func(i, j int) bool {
+		if report.Violations[i].Rule != report.Violations[j].Rule {
+			return report.Violations[i].Rule < report.Violations[j].Rule
+		}
+		return report.Violations[i].Message < report.Violations[j].Message
+	})
+	return report
+}
+
+// countPackages riempie i contatori del report (package, layer, non assegnati) e restituisce
+// il percorso relativo di ogni package.
+func (x *Index) countPackages(rules ArchitectureRules, report *DriftReport) map[string]string {
+	relative := map[string]string{}
 	for _, node := range x.graph.Nodes {
 		if node.Kind != KindPackage {
 			continue
@@ -176,60 +197,74 @@ func (x *Index) CheckDrift(rules ArchitectureRules, found bool) DriftReport {
 		}
 	}
 	sort.Strings(report.Unassigned)
-	add := func(v Violation) { report.Violations = append(report.Violations, v) }
-	for id, path := range relative {
-		pkg := x.byID[id]
-		fromLayer := rules.layerOf(path)
-		fromDomain := groupOf(rules.Domains, path)
-		for _, edge := range x.out[id] {
-			if edge.Kind != EdgeImports {
-				continue
+	return relative
+}
+
+// checkPackageImports applica le regole sugli import in uscita da un package.
+func (x *Index) checkPackageImports(rules ArchitectureRules, relative map[string]string, id, path string, add func(Violation)) {
+	pkg := x.byID[id]
+	fromLayer := rules.layerOf(path)
+	fromDomain := groupOf(rules.Domains, path)
+	for _, edge := range x.out[id] {
+		if edge.Kind != EdgeImports {
+			continue
+		}
+		target := x.byID[edge.To]
+		importPath := target.Label
+		if edge.Detail != "" {
+			importPath = edge.Detail // import di un modulo esterno: il package esatto
+		}
+		checkForbiddenImports(rules, relative, pkg, target, path, fromLayer, importPath, add)
+		if target.Kind != KindPackage {
+			continue
+		}
+		checkInternalImport(rules, pkg, target, relative[target.ID], fromLayer, fromDomain, add)
+	}
+}
+
+// checkForbiddenImports segnala gli import che una regola "forbidden" vieta a questo package.
+func checkForbiddenImports(rules ArchitectureRules, relative map[string]string, pkg, target Node, path, fromLayer, importPath string, add func(Violation)) {
+	for _, forbidden := range rules.Forbidden {
+		from := strings.TrimSpace(forbidden.From)
+		applies := matchPattern(from, path)
+		if layer, ok := strings.CutPrefix(from, "layer:"); ok {
+			applies = layer == fromLayer
+		}
+		hit := matchPattern(forbidden.Import, importPath)
+		if target.Kind == KindPackage {
+			hit = hit || matchPattern(forbidden.Import, relative[target.ID])
+		}
+		if applies && hit {
+			message := fmt.Sprintf("%s imports %s", pkg.Label, importPath)
+			if forbidden.Reason != "" {
+				message += ": " + forbidden.Reason
 			}
-			target := x.byID[edge.To]
-			importPath := target.Label
-			if edge.Detail != "" {
-				importPath = edge.Detail // import di un modulo esterno: il package esatto
-			}
-			for _, forbidden := range rules.Forbidden {
-				from := strings.TrimSpace(forbidden.From)
-				applies := matchPattern(from, path)
-				if layer, ok := strings.CutPrefix(from, "layer:"); ok {
-					applies = layer == fromLayer
-				}
-				hit := matchPattern(forbidden.Import, importPath)
-				if target.Kind == KindPackage {
-					hit = hit || matchPattern(forbidden.Import, relative[target.ID])
-				}
-				if applies && hit {
-					message := fmt.Sprintf("%s imports %s", pkg.Label, importPath)
-					if forbidden.Reason != "" {
-						message += ": " + forbidden.Reason
-					}
-					add(Violation{Rule: "forbidden-import", Message: message, From: pkg.Label, To: importPath, File: pkg.File, Line: pkg.Line})
-				}
-			}
-			if target.Kind != KindPackage {
-				continue
-			}
-			toPath := relative[target.ID]
-			toLayer := rules.layerOf(toPath)
-			if allowed, constrained := rules.Allow[fromLayer]; constrained && fromLayer != "" && toLayer != "" && toLayer != fromLayer && !contains(allowed, toLayer) {
-				add(Violation{Rule: "layer", Message: fmt.Sprintf("layer %s must not depend on layer %s (%s imports %s)", fromLayer, toLayer, pkg.Label, target.Label), From: pkg.Label, To: target.Label, File: pkg.File, Line: pkg.Line})
-			}
-			toDomain := groupOf(rules.Domains, toPath)
-			shared := false
-			for _, pattern := range rules.Shared {
-				shared = shared || matchPattern(pattern, toPath)
-			}
-			if fromService, toService := groupOf(rules.Services, pkg.Label), groupOf(rules.Services, target.Label); fromService != "" && toService != "" && fromService != toService {
-				add(Violation{Rule: "service", Message: fmt.Sprintf("service %s imports code of service %s (%s imports %s): call its API instead", fromService, toService, pkg.Label, target.Label), From: pkg.Label, To: target.Label, File: pkg.File, Line: pkg.Line})
-			}
-			if fromDomain != "" && toDomain != "" && fromDomain != toDomain && !shared {
-				add(Violation{Rule: "domain", Message: fmt.Sprintf("domain %s reaches into domain %s (%s imports %s)", fromDomain, toDomain, pkg.Label, target.Label), From: pkg.Label, To: target.Label, File: pkg.File, Line: pkg.Line})
-			}
+			add(Violation{Rule: "forbidden-import", Message: message, From: pkg.Label, To: importPath, File: pkg.File, Line: pkg.Line})
 		}
 	}
-	// Query e messaggi: dalla funzione al suo package.
+}
+
+// checkInternalImport applica le regole fra package del progetto: layer, servizi e domini.
+func checkInternalImport(rules ArchitectureRules, pkg, target Node, toPath, fromLayer, fromDomain string, add func(Violation)) {
+	toLayer := rules.layerOf(toPath)
+	if allowed, constrained := rules.Allow[fromLayer]; constrained && fromLayer != "" && toLayer != "" && toLayer != fromLayer && !contains(allowed, toLayer) {
+		add(Violation{Rule: "layer", Message: fmt.Sprintf("layer %s must not depend on layer %s (%s imports %s)", fromLayer, toLayer, pkg.Label, target.Label), From: pkg.Label, To: target.Label, File: pkg.File, Line: pkg.Line})
+	}
+	toDomain := groupOf(rules.Domains, toPath)
+	shared := false
+	for _, pattern := range rules.Shared {
+		shared = shared || matchPattern(pattern, toPath)
+	}
+	if fromService, toService := groupOf(rules.Services, pkg.Label), groupOf(rules.Services, target.Label); fromService != "" && toService != "" && fromService != toService {
+		add(Violation{Rule: "service", Message: fmt.Sprintf("service %s imports code of service %s (%s imports %s): call its API instead", fromService, toService, pkg.Label, target.Label), From: pkg.Label, To: target.Label, File: pkg.File, Line: pkg.Line})
+	}
+	if fromDomain != "" && toDomain != "" && fromDomain != toDomain && !shared {
+		add(Violation{Rule: "domain", Message: fmt.Sprintf("domain %s reaches into domain %s (%s imports %s)", fromDomain, toDomain, pkg.Label, target.Label), From: pkg.Label, To: target.Label, File: pkg.File, Line: pkg.Line})
+	}
+}
+
+// checkCodeEdges: query e messaggi, dalla funzione al suo package.
+func (x *Index) checkCodeEdges(rules ArchitectureRules, add func(Violation)) {
 	for _, node := range x.graph.Nodes {
 		if !isCode(node.Kind) || node.Package == "" {
 			continue
@@ -244,24 +279,19 @@ func (x *Index) CheckDrift(rules ArchitectureRules, found bool) DriftReport {
 			}
 		}
 	}
-	if rules.NoCycles == nil || *rules.NoCycles {
-		for _, cycle := range x.importCycles() {
-			first := x.byID[cycle[0]]
-			labels := make([]string, 0, len(cycle)+1)
-			for _, id := range cycle {
-				labels = append(labels, x.byID[id].Label)
-			}
-			labels = append(labels, first.Label)
-			add(Violation{Rule: "cycle", Message: "import cycle: " + strings.Join(labels, " → "), From: first.Label, File: first.File, Line: first.Line})
+}
+
+// checkCycles segnala i cicli di import fra package.
+func (x *Index) checkCycles(add func(Violation)) {
+	for _, cycle := range x.importCycles() {
+		first := x.byID[cycle[0]]
+		labels := make([]string, 0, len(cycle)+1)
+		for _, id := range cycle {
+			labels = append(labels, x.byID[id].Label)
 		}
+		labels = append(labels, first.Label)
+		add(Violation{Rule: "cycle", Message: "import cycle: " + strings.Join(labels, " → "), From: first.Label, File: first.File, Line: first.Line})
 	}
-	sort.SliceStable(report.Violations, func(i, j int) bool {
-		if report.Violations[i].Rule != report.Violations[j].Rule {
-			return report.Violations[i].Rule < report.Violations[j].Rule
-		}
-		return report.Violations[i].Message < report.Violations[j].Message
-	})
-	return report
 }
 
 // importCycles: componenti fortemente connesse (Tarjan) con più di un package.

@@ -48,7 +48,7 @@ func gitBashPath() string {
 		}
 	}
 	for _, candidate := range candidates {
-		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() { // #nosec G703 -- stat only, on fixed Git install locations built from system environment variables
 			return candidate
 		}
 	}

@@ -37,8 +37,10 @@ linters:
     rules:
       # Le chiusure/rimozioni del cleanup restano volutamente non controllate: non sono bug
       # (le chiamate il cui errore conta, come json.Unmarshal, restano segnalate).
+      # MarshalWrite è la scrittura JSON su ResponseWriter di json v2 (jsonutil.MarshalWrite): prende il posto di
+      # Encoder.Encode, già escluso qui; a risposta partita l'errore è solo il client che se n'è andato.
       - linters: [errcheck]
-        text: 'Error return value of `[^`]*\.(Close|Disconnect|Wait|WriteMessage|Encode|CloseHandle)` is not checked'
+        text: 'Error return value of `[^`]*\.(Close|Disconnect|Wait|WriteMessage|Encode|MarshalWrite|CloseHandle)` is not checked'
       - linters: [errcheck]
         text: 'Error return value of `(os\.Remove(All)?|fmt\.Fprint(f|ln)?)` is not checked'
       # Chiamate di sistema e scritture su stream/socket: l'errore si vede dal flusso che si

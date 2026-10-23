@@ -16,18 +16,18 @@ import (
 // DebugOptions sono le opzioni di LanguageOptions del debug Rust: lo stesso target della Run
 // (bin o example) più gli argomenti del programma.
 type DebugOptions struct {
-	Toolchain        string   `json:"toolchain,omitempty"`
-	Package          string   `json:"package,omitempty"`
-	Bin              string   `json:"bin,omitempty"`
-	Example          string   `json:"example,omitempty"`
+	Toolchain string `json:"toolchain,omitempty"`
+	Package   string `json:"package,omitempty"`
+	Bin       string `json:"bin,omitempty"`
+	Example   string `json:"example,omitempty"`
 	// Test è il nome del test da debuggare (RS-5.5): percorso libtest o nome dell'albero, come
 	// TestOptions.Run. Con Test valorizzato il target è l'eseguibile del test, non un bin/example.
 	Test string `json:"test,omitempty"`
 	// TestFile è il sorgente del test relativo al crate (`tests/foo.rs`, `src/lib.rs`, `src/bin/x.rs`):
 	// serve a scegliere il target di test senza indovinare. Opzionale.
-	TestFile         string   `json:"testFile,omitempty"`
+	TestFile string `json:"testFile,omitempty"`
 	// Source è un file .rs fuori da un crate: come la Run, passa dal crate fantasma (loose.go).
-	Source           string   `json:"source,omitempty"`
+	Source           string `json:"source,omitempty"`
 	manifest         string
 	ProgramArguments []string `json:"programArguments,omitempty"`
 	// Come la Run: lo stesso build per debug e per esecuzione (features, profilo, target).

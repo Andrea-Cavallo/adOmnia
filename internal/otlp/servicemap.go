@@ -87,153 +87,192 @@ func externalHost(attrs map[string]string) string {
 // ServiceMap derives who calls whom from the stored spans: cross-service parent/child for
 // HTTP and RPC, db.* attributes for datastores, messaging.* for topics.
 func (s *Store) ServiceMap() ServiceMap {
-	type edgeData struct {
-		edge      MapEdge
-		durations []float64
+	b := &mapBuilder{
+		nodes:     map[string]MapNode{},
+		edges:     map[string]*mapEdgeData{},
+		peerPorts: map[*MapEdge]map[int]bool{},
+		retry:     map[string]bool{},
 	}
-	nodes := map[string]MapNode{}
-	edges := map[string]*edgeData{}
-	minStart, maxEnd := 0.0, 0.0
-	addNode := func(node MapNode) {
-		if existing, ok := nodes[node.ID]; ok {
-			node.PID, node.ListenPorts = existing.PID, existing.ListenPorts
-		}
-		nodes[node.ID] = node
-	}
-	peerPorts := map[*MapEdge]map[int]bool{}
-	retry := map[string]bool{}
-	addCall := func(from, to, kind string, span Span) *MapEdge {
-		key := from + "\x00" + to + "\x00" + kind
-		data := edges[key]
-		if data == nil {
-			data = &edgeData{edge: MapEdge{From: from, To: to, Kind: kind}}
-			edges[key] = data
-		}
-		data.edge.Calls++
-		if port, _ := strconv.Atoi(firstAttr(span.Attributes, "server.port", "net.peer.port")); port > 0 {
-			if peerPorts[&data.edge] == nil {
-				peerPorts[&data.edge] = map[int]bool{}
-			}
-			peerPorts[&data.edge][port] = true
-		}
-		if retry[span.SpanID] {
-			data.edge.Retries++
-		}
-		data.durations = append(data.durations, span.DurationMs)
-		if data.edge.SampleTraceID == "" {
-			data.edge.SampleTraceID = span.TraceID
-		}
-		if span.StatusCode == "ERROR" {
-			data.edge.Errors++
-			data.edge.ErrorTraceID = span.TraceID
-		}
-		if data.edge.SourceFile == "" {
-			if file := firstAttr(span.Attributes, "code.filepath", "code.file.path"); file != "" {
-				data.edge.SourceFile = file
-				data.edge.SourceLine, _ = strconv.Atoi(firstAttr(span.Attributes, "code.lineno", "code.line.number"))
-			}
-		}
-		return &data.edge
-	}
-
 	s.mu.RLock()
 	for _, spans := range s.traces {
-		children := map[string][]Span{}
-		for _, span := range spans {
-			children[span.ParentSpanID] = append(children[span.ParentSpanID], span)
-			if minStart == 0 || span.StartMs < minStart {
-				minStart = span.StartMs
-			}
-			if end := span.StartMs + span.DurationMs; end > maxEnd {
-				maxEnd = end
-			}
-		}
-		for id := range retryIDs(spans) {
-			retry[id] = true
-		}
-		for _, span := range spans {
-			service := "svc:" + span.Service
-			addNode(MapNode{ID: service, Kind: "service", Label: span.Service})
-			node := nodes[service]
-			if span.PID > 0 {
-				node.PID = span.PID
-			}
-			if span.Kind == "server" {
-				if port, _ := strconv.Atoi(firstAttr(span.Attributes, "server.port", "net.host.port")); port > 0 && !slices.Contains(node.ListenPorts, port) {
-					node.ListenPorts = append(node.ListenPorts, port)
-				}
-			}
-			nodes[service] = node
-			switch {
-			case span.Category == "db":
-				system := firstAttr(span.Attributes, "db.system.name", "db.system")
-				name := firstAttr(span.Attributes, "db.namespace", "db.name")
-				label := system
-				if name != "" {
-					label = system + " · " + name
-				}
-				id := "db:" + label
-				addNode(MapNode{ID: id, Kind: "database", Label: label, System: system})
-				addCall(service, id, "db", span)
-			case span.Category == "messaging":
-				system := span.Attributes["messaging.system"]
-				topic := firstAttr(span.Attributes, "messaging.destination.name", "messaging.destination")
-				if topic == "" {
-					topic = system
-				}
-				id := "topic:" + topic
-				addNode(MapNode{ID: id, Kind: "topic", Label: topic, System: system})
-				if span.Kind == "consumer" {
-					edge := addCall(id, service, "messaging", span)
-					if group := firstAttr(span.Attributes, "messaging.consumer.group.name", "messaging.kafka.consumer.group", "messaging.kafka.consumer_group"); group != "" && edge.Group == "" {
-						edge.Group = group
-					}
-					if host := firstAttr(span.Attributes, "server.address", "net.peer.name"); host != "" && edge.Brokers == "" {
-						if port := firstAttr(span.Attributes, "server.port", "net.peer.port"); port != "" {
-							host += ":" + port
-						}
-						edge.Brokers = host
-					}
-				} else {
-					addCall(service, id, "messaging", span)
-				}
-			case span.Kind == "client" && (span.Category == "http" || span.Category == "rpc"):
-				answered := false
-				for _, child := range children[span.SpanID] {
-					if child.Kind == "server" && child.Service != span.Service {
-						addNode(MapNode{ID: "svc:" + child.Service, Kind: "service", Label: child.Service})
-						edge := addCall(service, "svc:"+child.Service, span.Category, span)
-						if file := firstAttr(child.Attributes, "code.filepath", "code.file.path"); file != "" && edge.HandlerFile == "" {
-							edge.HandlerFile = file
-							edge.HandlerLine, _ = strconv.Atoi(firstAttr(child.Attributes, "code.lineno", "code.line.number"))
-						}
-						answered = true
-					}
-				}
-				if !answered {
-					host := externalHost(span.Attributes)
-					addNode(MapNode{ID: "ext:" + host, Kind: "external", Label: host})
-					addCall(service, "ext:"+host, span.Category, span)
-				}
-			}
-		}
+		b.addTrace(spans)
 	}
 	s.mu.RUnlock()
+	return b.result()
+}
 
-	window := maxEnd - minStart
+type mapEdgeData struct {
+	edge      MapEdge
+	durations []float64
+}
+
+// mapBuilder accumulates nodes, edges and the observed time window while the traces are walked.
+type mapBuilder struct {
+	nodes            map[string]MapNode
+	edges            map[string]*mapEdgeData
+	peerPorts        map[*MapEdge]map[int]bool
+	retry            map[string]bool
+	minStart, maxEnd float64
+}
+
+func (b *mapBuilder) addNode(node MapNode) {
+	if existing, ok := b.nodes[node.ID]; ok {
+		node.PID, node.ListenPorts = existing.PID, existing.ListenPorts
+	}
+	b.nodes[node.ID] = node
+}
+
+func (b *mapBuilder) addCall(from, to, kind string, span Span) *MapEdge {
+	key := from + "\x00" + to + "\x00" + kind
+	data := b.edges[key]
+	if data == nil {
+		data = &mapEdgeData{edge: MapEdge{From: from, To: to, Kind: kind}}
+		b.edges[key] = data
+	}
+	data.edge.Calls++
+	if port, _ := strconv.Atoi(firstAttr(span.Attributes, "server.port", "net.peer.port")); port > 0 {
+		if b.peerPorts[&data.edge] == nil {
+			b.peerPorts[&data.edge] = map[int]bool{}
+		}
+		b.peerPorts[&data.edge][port] = true
+	}
+	if b.retry[span.SpanID] {
+		data.edge.Retries++
+	}
+	data.durations = append(data.durations, span.DurationMs)
+	if data.edge.SampleTraceID == "" {
+		data.edge.SampleTraceID = span.TraceID
+	}
+	if span.StatusCode == "ERROR" {
+		data.edge.Errors++
+		data.edge.ErrorTraceID = span.TraceID
+	}
+	if data.edge.SourceFile == "" {
+		if file := firstAttr(span.Attributes, "code.filepath", "code.file.path"); file != "" {
+			data.edge.SourceFile = file
+			data.edge.SourceLine, _ = strconv.Atoi(firstAttr(span.Attributes, "code.lineno", "code.line.number"))
+		}
+	}
+	return &data.edge
+}
+
+// addTrace extends the time window with one trace and records the calls of its spans.
+func (b *mapBuilder) addTrace(spans []Span) {
+	children := map[string][]Span{}
+	for _, span := range spans {
+		children[span.ParentSpanID] = append(children[span.ParentSpanID], span)
+		if b.minStart == 0 || span.StartMs < b.minStart {
+			b.minStart = span.StartMs
+		}
+		if end := span.StartMs + span.DurationMs; end > b.maxEnd {
+			b.maxEnd = end
+		}
+	}
+	for id := range retryIDs(spans) {
+		b.retry[id] = true
+	}
+	for _, span := range spans {
+		b.addSpan(span, children)
+	}
+}
+
+// addSpan registers the span's service and, by category, the call it makes.
+func (b *mapBuilder) addSpan(span Span, children map[string][]Span) {
+	service := "svc:" + span.Service
+	b.addNode(MapNode{ID: service, Kind: "service", Label: span.Service})
+	node := b.nodes[service]
+	if span.PID > 0 {
+		node.PID = span.PID
+	}
+	if span.Kind == "server" {
+		if port, _ := strconv.Atoi(firstAttr(span.Attributes, "server.port", "net.host.port")); port > 0 && !slices.Contains(node.ListenPorts, port) {
+			node.ListenPorts = append(node.ListenPorts, port)
+		}
+	}
+	b.nodes[service] = node
+	switch {
+	case span.Category == "db":
+		b.addDatabaseCall(service, span)
+	case span.Category == "messaging":
+		b.addMessagingCall(service, span)
+	case span.Kind == "client" && (span.Category == "http" || span.Category == "rpc"):
+		b.addClientCall(service, span, children[span.SpanID])
+	}
+}
+
+func (b *mapBuilder) addDatabaseCall(service string, span Span) {
+	system := firstAttr(span.Attributes, "db.system.name", "db.system")
+	name := firstAttr(span.Attributes, "db.namespace", "db.name")
+	label := system
+	if name != "" {
+		label = system + " · " + name
+	}
+	id := "db:" + label
+	b.addNode(MapNode{ID: id, Kind: "database", Label: label, System: system})
+	b.addCall(service, id, "db", span)
+}
+
+func (b *mapBuilder) addMessagingCall(service string, span Span) {
+	system := span.Attributes["messaging.system"]
+	topic := firstAttr(span.Attributes, "messaging.destination.name", "messaging.destination")
+	if topic == "" {
+		topic = system
+	}
+	id := "topic:" + topic
+	b.addNode(MapNode{ID: id, Kind: "topic", Label: topic, System: system})
+	if span.Kind != "consumer" {
+		b.addCall(service, id, "messaging", span)
+		return
+	}
+	edge := b.addCall(id, service, "messaging", span)
+	if group := firstAttr(span.Attributes, "messaging.consumer.group.name", "messaging.kafka.consumer.group", "messaging.kafka.consumer_group"); group != "" && edge.Group == "" {
+		edge.Group = group
+	}
+	if host := firstAttr(span.Attributes, "server.address", "net.peer.name"); host != "" && edge.Brokers == "" {
+		if port := firstAttr(span.Attributes, "server.port", "net.peer.port"); port != "" {
+			host += ":" + port
+		}
+		edge.Brokers = host
+	}
+}
+
+// addClientCall links a client span to the other service that answered it, or to an external host.
+func (b *mapBuilder) addClientCall(service string, span Span, children []Span) {
+	answered := false
+	for _, child := range children {
+		if child.Kind == "server" && child.Service != span.Service {
+			b.addNode(MapNode{ID: "svc:" + child.Service, Kind: "service", Label: child.Service})
+			edge := b.addCall(service, "svc:"+child.Service, span.Category, span)
+			if file := firstAttr(child.Attributes, "code.filepath", "code.file.path"); file != "" && edge.HandlerFile == "" {
+				edge.HandlerFile = file
+				edge.HandlerLine, _ = strconv.Atoi(firstAttr(child.Attributes, "code.lineno", "code.line.number"))
+			}
+			answered = true
+		}
+	}
+	if !answered {
+		host := externalHost(span.Attributes)
+		b.addNode(MapNode{ID: "ext:" + host, Kind: "external", Label: host})
+		b.addCall(service, "ext:"+host, span.Category, span)
+	}
+}
+
+// result turns the accumulated data into the sorted, rate-annotated map.
+func (b *mapBuilder) result() ServiceMap {
+	window := b.maxEnd - b.minStart
 	minutes := window / 60000
 	if minutes < 1 {
 		minutes = 1
 	}
 	out := ServiceMap{WindowMs: window, Nodes: []MapNode{}, Edges: []MapEdge{}}
-	for _, node := range nodes {
+	for _, node := range b.nodes {
 		out.Nodes = append(out.Nodes, node)
 	}
-	for _, data := range edges {
+	for _, data := range b.edges {
 		sort.Float64s(data.durations)
 		data.edge.P50Ms, data.edge.P95Ms = percentile(data.durations, 50), percentile(data.durations, 95)
 		data.edge.RatePerMin = float64(data.edge.Calls) / minutes
-		for port := range peerPorts[&data.edge] {
+		for port := range b.peerPorts[&data.edge] {
 			data.edge.PeerPorts = append(data.edge.PeerPorts, port)
 		}
 		sort.Ints(data.edge.PeerPorts)

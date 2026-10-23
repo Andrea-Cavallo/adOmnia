@@ -22,16 +22,20 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # Compilato con la stessa toolchain del repo: il binario precompilato è costruito con un Go più
+      # vecchio e rifiuta i moduli Go 1.27 ("the Go language version used to build golangci-lint is lower").
+      - uses: ./.github/actions/go-wails-prereqs
+
       - name: Install golangci-lint
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.15.0
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 
       - name: golangci-lint
-        run: golangci-lint run --timeout 8m
+        run: golangci-lint run --build-tags gtk3 --timeout 8m
 
       - name: govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+          govulncheck -tags gtk3 ./...
 
   secrets:
     name: Secret scanning (gitleaks)
@@ -77,9 +81,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: returntocorp/semgrep@v1
-        with:
-          args: semgrep scan --config p/security-audit --config p/secure-defaults --error
+      - name: Semgrep
+        run: |
+          python3 -m pip install --user semgrep==1.182.0
+          "$HOME/.local/bin/semgrep" scan --config p/security-audit --config p/secure-defaults --error
 
   trivy:
     name: Trivy (vuln, secrets, misconfig)
@@ -88,7 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scanners: vuln,secret,misconfig
@@ -128,12 +133,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: ./.github/actions/go-wails-prereqs
+
       # Solo HIGH/HIGH: le regole opinionate (permessi 0600, sha1 per fingerprint, unsafe Win32)
       # restano un controllo locale documentato in docs/QUALITY.md.
       - name: gosec
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@latest
-          "$(go env GOPATH)/bin/gosec" -severity=HIGH -confidence=HIGH -exclude-dir=frontend -exclude-dir=workspaces -exclude-dir=.artifacts ./...
+          "$(go env GOPATH)/bin/gosec" -tags=gtk3 -severity=HIGH -confidence=HIGH -exclude-dir=frontend -exclude-dir=workspaces -exclude-dir=.artifacts -exclude-dir=testdata ./...
 
   sonar:
     name: SonarCloud
@@ -158,10 +165,14 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # Coverage Go (i package con Wails/GTK restano fuori: non compilano su ubuntu
-      # senza i tag gtk3). Il root package embedda frontend/dist e non entra.
+      - uses: ./.github/actions/go-wails-prereqs
+        with:
+          embed-placeholder: 'false'
+
+      # Coverage Go: stessi tag e dipendenze di build.yml (senza gtk3 Wails sceglie GTK4, che qui non c'è).
+      # Il root package embedda frontend/dist e non entra.
       - name: Coverage (Go)
-        run: go test ./internal/... ./cmd/... -coverprofile=coverage.out -covermode=atomic
+        run: go test -count=1 -timeout=15m -tags gtk3 ./internal/... ./cmd/... -coverprofile=coverage.out -covermode=atomic
 
       - name: Coverage (frontend)
         working-directory: frontend

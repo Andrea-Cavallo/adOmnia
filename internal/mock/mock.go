@@ -153,7 +153,7 @@ func mockStartHandler(w http.ResponseWriter, r *http.Request) {
 			mockSrvLn = nil
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		mockSrv.Shutdown(ctx)
+		_ = mockSrv.Shutdown(ctx) // best effort within the 3s budget: the listener is closed either way
 		cancel()
 		mockSrv = nil
 		mockSrvPort = 0

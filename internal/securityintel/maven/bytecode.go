@@ -507,6 +507,29 @@ func parseClassFile(data []byte) (classFileSummary, error) {
 		return summary, errors.New("not a class file")
 	}
 	reader := classReader{data: data, pos: 8}
+	pool, utf8s, err := readConstantPool(&reader)
+	if err != nil {
+		return summary, err
+	}
+	resolver := classResolver{pool: pool, utf8s: utf8s, references: summary.references}
+	summary.collectPoolReferences(&resolver)
+
+	codeAttributes, bootstrapData := readClassMembers(&reader, &resolver, summary.references)
+	if reader.err != nil {
+		return summary, reader.err
+	}
+	for _, code := range codeAttributes {
+		summary.recordInvokes(code, pool, resolver.memberOf)
+	}
+	if len(bootstrapData) > 0 {
+		summary.recordBootstrapMethods(bootstrapData, pool, resolver.memberOf)
+	}
+	return summary, nil
+}
+
+// readConstantPool legge il constant pool (JVM specification §4.4): le voci e i testi UTF-8
+// indicizzati per slot.
+func readConstantPool(reader *classReader) ([]cpEntry, []string, error) {
 	poolCount := reader.u2()
 	pool := make([]cpEntry, poolCount)
 	utf8s := make([]string, poolCount)
@@ -533,88 +556,101 @@ func parseClassFile(data []byte) (classFileSummary, error) {
 		case tagInteger, tagFloat:
 			_ = reader.u4()
 		default:
-			return summary, fmt.Errorf("unknown constant pool tag %d", entry.tag)
+			return pool, utf8s, fmt.Errorf("unknown constant pool tag %d", entry.tag)
 		}
 		pool[index] = entry
 	}
-	if reader.err != nil {
-		return summary, reader.err
-	}
+	return pool, utf8s, reader.err
+}
 
-	// Risoluzione dei nomi: i Class puntano a un nome interno, i membri a
-	// class_index + name_and_type_index. Ogni accesso è difeso: un file corrotto non
-	// deve far leggere fuori dal constant pool.
-	utf8At := func(index uint16) string {
-		if int(index) < len(utf8s) {
-			return utf8s[index]
-		}
+// classResolver risolve i nomi del constant pool: i Class puntano a un nome interno, i membri a
+// class_index + name_and_type_index. Ogni accesso è difeso: un file corrotto non deve far
+// leggere fuori dal constant pool.
+type classResolver struct {
+	pool       []cpEntry
+	utf8s      []string
+	references map[string]bool
+}
+
+func (r *classResolver) utf8At(index uint16) string {
+	if int(index) < len(r.utf8s) {
+		return r.utf8s[index]
+	}
+	return ""
+}
+
+func (r *classResolver) className(index uint16) string {
+	if int(index) >= len(r.pool) || r.pool[index].tag != tagClass {
 		return ""
 	}
-	className := func(index uint16) string {
-		if int(index) >= len(pool) || pool[index].tag != tagClass {
-			return ""
-		}
-		return normalizeClassName(utf8At(pool[index].first))
-	}
-	memberOf := func(index uint16) string {
-		if int(index) >= len(pool) {
-			return ""
-		}
-		entry := pool[index]
-		if entry.tag != tagFieldref && entry.tag != tagMethodref && entry.tag != tagInterfaceMethodref {
-			return ""
-		}
-		class := className(entry.first)
-		name := ""
-		if int(entry.second) < len(pool) && pool[entry.second].tag == tagNameAndType {
-			name = utf8At(pool[entry.second].first)
-		}
-		if class == "" || name == "" {
-			return ""
-		}
-		// Ogni membro citato implica la citazione della sua classe.
-		summary.references[class] = true
-		return class + "." + name
-	}
+	return normalizeClassName(r.utf8At(r.pool[index].first))
+}
 
+func (r *classResolver) memberOf(index uint16) string {
+	if int(index) >= len(r.pool) {
+		return ""
+	}
+	entry := r.pool[index]
+	if entry.tag != tagFieldref && entry.tag != tagMethodref && entry.tag != tagInterfaceMethodref {
+		return ""
+	}
+	class := r.className(entry.first)
+	name := ""
+	if int(entry.second) < len(r.pool) && r.pool[entry.second].tag == tagNameAndType {
+		name = r.utf8At(r.pool[entry.second].first)
+	}
+	if class == "" || name == "" {
+		return ""
+	}
+	// Ogni membro citato implica la citazione della sua classe.
+	r.references[class] = true
+	return class + "." + name
+}
+
+// collectPoolReferences registra ciò che il constant pool cita: classi, membri (anche non
+// invocati), handle e costanti stringa.
+func (s *classFileSummary) collectPoolReferences(r *classResolver) {
 	// Classi citate dal constant pool: new, checkcast, instanceof, superclasse,
 	// interfacce, tipi di campi e metodi sono tutti CONSTANT_Class.
-	for index := range pool {
-		if pool[index].tag == tagClass {
-			if name := className(uint16(index)); name != "" {
-				summary.references[name] = true
+	for index := range r.pool {
+		if r.pool[index].tag == tagClass {
+			if name := r.className(uint16(index)); name != "" {
+				s.references[name] = true
 			}
 		}
 	}
 	// Membri citati: anche non invocati restano riferimenti.
-	for index := range pool {
-		if member := memberOf(uint16(index)); member != "" {
-			summary.references[member] = true
+	for index := range r.pool {
+		if member := r.memberOf(uint16(index)); member != "" {
+			s.references[member] = true
 		}
 	}
-	for index := range pool {
-		if pool[index].tag == tagMethodHandle {
-			if member := memberOf(pool[index].first); member != "" {
-				summary.references[member] = true
+	for index := range r.pool {
+		if r.pool[index].tag == tagMethodHandle {
+			if member := r.memberOf(r.pool[index].first); member != "" {
+				s.references[member] = true
 			}
 		}
-		if pool[index].tag == tagString {
-			summary.strings = append(summary.strings, utf8At(pool[index].first))
+		if r.pool[index].tag == tagString {
+			s.strings = append(s.strings, r.utf8At(r.pool[index].first))
 		}
 	}
+}
 
-	// Dopo il constant pool: access_flags, this_class, super_class, interfacce,
-	// campi, metodi, attributi (JVM specification §4.1).
+// readClassMembers legge ciò che segue il constant pool: access_flags, this_class, super_class,
+// interfacce, campi, metodi, attributi (JVM specification §4.1). Restituisce gli attributi Code e i
+// dati di BootstrapMethods; un errore di lettura resta in reader.err.
+func readClassMembers(reader *classReader, r *classResolver, references map[string]bool) ([][]byte, []byte) {
 	reader.u2() // access_flags
-	if self := className(reader.u2()); self != "" {
-		summary.references[self] = true
+	if self := r.className(reader.u2()); self != "" {
+		references[self] = true
 	}
-	if super := className(reader.u2()); super != "" {
-		summary.references[super] = true
+	if super := r.className(reader.u2()); super != "" {
+		references[super] = true
 	}
 	for count := reader.u2(); count > 0 && reader.err == nil; count-- {
-		if name := className(reader.u2()); name != "" {
-			summary.references[name] = true
+		if name := r.className(reader.u2()); name != "" {
+			references[name] = true
 		}
 	}
 	for count := reader.u2(); count > 0 && reader.err == nil; count-- {
@@ -630,7 +666,7 @@ func parseClassFile(data []byte) (classFileSummary, error) {
 		for attributes := reader.u2(); attributes > 0 && reader.err == nil; attributes-- {
 			nameIndex := reader.u2()
 			payload := reader.bytes(int(reader.u4()))
-			switch utf8At(nameIndex) {
+			switch r.utf8At(nameIndex) {
 			case "Code":
 				codeAttributes = append(codeAttributes, payload)
 			case "BootstrapMethods":
@@ -641,21 +677,11 @@ func parseClassFile(data []byte) (classFileSummary, error) {
 	for count := reader.u2(); count > 0 && reader.err == nil; count-- {
 		nameIndex := reader.u2()
 		payload := reader.bytes(int(reader.u4()))
-		if utf8At(nameIndex) == "BootstrapMethods" {
+		if r.utf8At(nameIndex) == "BootstrapMethods" {
 			bootstrapData = payload
 		}
 	}
-	if reader.err != nil {
-		return summary, reader.err
-	}
-
-	for _, code := range codeAttributes {
-		summary.recordInvokes(code, pool, memberOf)
-	}
-	if len(bootstrapData) > 0 {
-		summary.recordBootstrapMethods(bootstrapData, pool, memberOf)
-	}
-	return summary, nil
+	return codeAttributes, bootstrapData
 }
 
 // normalizeClassName riduce un nome di classe del constant pool alla forma interna:

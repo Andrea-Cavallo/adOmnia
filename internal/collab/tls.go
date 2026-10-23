@@ -51,7 +51,7 @@ func fingerprint(der []byte) string {
 func pinnedTLS(expected string) *tls.Config {
 	return &tls.Config{
 		MinVersion:         tls.VersionTLS13,
-		InsecureSkipVerify: true, // NOSONAR -- the verification here is the SHA-256 pinning in VerifyConnection below, not the CA chain (collab sessions are pinned by the invite fingerprint); #nosec G402 for gosec
+		InsecureSkipVerify: true, // #nosec G402 -- the verification is the SHA-256 pinning in VerifyConnection below, not the CA chain (collab sessions are pinned by the invite fingerprint) NOSONAR
 		// VerifyConnection (e non VerifyPeerCertificate) gira anche sulle sessioni riprese.
 		VerifyConnection: func(cs tls.ConnectionState) error {
 			if len(cs.PeerCertificates) == 0 {

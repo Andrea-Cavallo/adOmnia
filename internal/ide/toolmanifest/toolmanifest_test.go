@@ -59,11 +59,11 @@ func TestParseReportValidatesToolVersionAndHashes(t *testing.T) {
 	}
 
 	for name, data := range map[string]string{
-		"unreadable":     `{`,
-		"no tool":        `{"version":"1.0.0","artifacts":[{"name":"a","version":"1.0.0","sha256":"` + strings.Repeat("a", 64) + `"}]}`,
-		"no version":     `{"tool":"demo","artifacts":[{"name":"a","version":"1.0.0","sha256":"` + strings.Repeat("a", 64) + `"}]}`,
-		"no artifacts":   `{"tool":"demo","version":"1.0.0"}`,
-		"no artifact sha": `{"tool":"demo","version":"1.0.0","artifacts":[{"name":"a","version":"1.0.0"}]}`,
+		"unreadable":       `{`,
+		"no tool":          `{"version":"1.0.0","artifacts":[{"name":"a","version":"1.0.0","sha256":"` + strings.Repeat("a", 64) + `"}]}`,
+		"no version":       `{"tool":"demo","artifacts":[{"name":"a","version":"1.0.0","sha256":"` + strings.Repeat("a", 64) + `"}]}`,
+		"no artifacts":     `{"tool":"demo","version":"1.0.0"}`,
+		"no artifact sha":  `{"tool":"demo","version":"1.0.0","artifacts":[{"name":"a","version":"1.0.0"}]}`,
 		"bad artifact sha": `{"tool":"demo","version":"1.0.0","artifacts":[{"name":"a","version":"1.0.0","sha256":"zz"}]}`,
 		"no artifact name": `{"tool":"demo","version":"1.0.0","artifacts":[{"version":"1.0.0","sha256":"` + strings.Repeat("a", 64) + `"}]}`,
 	} {

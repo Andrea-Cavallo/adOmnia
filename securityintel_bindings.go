@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/securityintel"
 	"adomnia/internal/securityintel/standard"
 	"adomnia/internal/securityintel/strix"
 	"adomnia/internal/storage"
-	"adomnia/internal/jsonutil"
 )
 
 // SecurityIntel espone adOmnia Security Intelligence al frontend: scansione delle

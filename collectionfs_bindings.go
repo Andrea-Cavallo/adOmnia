@@ -2,12 +2,12 @@ package main
 
 import (
 	"adomnia/internal/collectionfs"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/requestcontract"
 	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"strings"
-	"adomnia/internal/jsonutil"
 )
 
 type CollectionFS struct{}

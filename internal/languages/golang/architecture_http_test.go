@@ -101,7 +101,10 @@ func Std(mux *http.ServeMux) {
 `,
 }
 
-func TestArchitectureHTTPRoutes(t *testing.T) {
+// loadHTTPFixture scrive la fixture su disco e la carica con go/packages; salta il test se il
+// caricamento non è disponibile e lo fallisce se la fixture non compila.
+func loadHTTPFixture(t *testing.T) (string, *token.FileSet, []*packages.Package) {
+	t.Helper()
 	root := t.TempDir()
 	for name, content := range httpFixture {
 		path := filepath.Join(root, filepath.FromSlash(name))
@@ -124,13 +127,13 @@ func TestArchitectureHTTPRoutes(t *testing.T) {
 			t.Fatalf("fixture does not compile: %v", pkg.Errors)
 		}
 	}
-	read := func(path string) ([]byte, error) {
-		if !strings.HasPrefix(filepath.Clean(path), filepath.Join(root, "api")) {
-			return nil, os.ErrNotExist
-		}
-		return os.ReadFile(path)
-	}
-	report := AnalyzeArchitecture(fset, loaded, read)
+	return root, fset, loaded
+}
+
+// expectHTTPRoutes controlla le tre route della fixture (gin con gruppi e middleware, e net/http)
+// e l'unico middleware registrato come entry.
+func expectHTTPRoutes(t *testing.T, report ArchitectureReport) {
+	t.Helper()
 	routes := map[string]ArchEntry{}
 	middleware := []string{}
 	for _, entry := range report.Entries {
@@ -162,13 +165,12 @@ func TestArchitectureHTTPRoutes(t *testing.T) {
 	if strings.Join(middleware, ",") != "Logging" {
 		t.Fatalf("middleware entries: %v", middleware)
 	}
-	schemas := map[string]ArchSchema{}
-	for _, schema := range report.Schemas {
-		schemas[schema.Name] = schema
-	}
-	order := schemas["CreateOrder"]
+}
+
+// schemaFieldLabels descrive i campi di uno schema come `nome:tipo/formato->ref[items]!`.
+func schemaFieldLabels(schema ArchSchema) string {
 	got := []string{}
-	for _, field := range order.Fields {
+	for _, field := range schema.Fields {
 		label := field.Name + ":" + field.Type
 		if field.Format != "" {
 			label += "/" + field.Format
@@ -184,8 +186,26 @@ func TestArchitectureHTTPRoutes(t *testing.T) {
 		}
 		got = append(got, label)
 	}
-	if strings.Join(got, " ") != "item:string! quantity:integer tags:array[string]! ship:object->Address at:string/date-time!" {
-		t.Fatalf("CreateOrder fields: %s", strings.Join(got, " "))
+	return strings.Join(got, " ")
+}
+
+func TestArchitectureHTTPRoutes(t *testing.T) {
+	root, fset, loaded := loadHTTPFixture(t)
+	read := func(path string) ([]byte, error) {
+		if !strings.HasPrefix(filepath.Clean(path), filepath.Join(root, "api")) {
+			return nil, os.ErrNotExist
+		}
+		return os.ReadFile(path)
+	}
+	report := AnalyzeArchitecture(fset, loaded, read)
+	expectHTTPRoutes(t, report)
+
+	schemas := map[string]ArchSchema{}
+	for _, schema := range report.Schemas {
+		schemas[schema.Name] = schema
+	}
+	if got := schemaFieldLabels(schemas["CreateOrder"]); got != "item:string! quantity:integer tags:array[string]! ship:object->Address at:string/date-time!" {
+		t.Fatalf("CreateOrder fields: %s", got)
 	}
 	if _, ok := schemas["Address"]; !ok || len(schemas) != 3 {
 		t.Fatalf("schemas: %v", schemas)

@@ -1,0 +1,27 @@
+name: Go + Wails prerequisites
+description: >
+  Linux libraries and the embedded-frontend placeholder that the Go tools need to load the Wails packages
+  (lint, vulnerability scan, SAST, CodeQL). Without them Wails picks GTK4 and the root package fails to
+  type-check on `//go:embed all:frontend/dist`. Use together with the `gtk3` build tag.
+
+inputs:
+  embed-placeholder:
+    description: Create a stub frontend/dist so the root package type-checks (not needed when the real frontend is built).
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Install Linux Wails dependencies
+      shell: bash
+      run: |
+        sudo rm -f /etc/apt/sources.list.d/*google* /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure-cli*
+        sudo apt-get update -q
+        sudo apt-get install -y --no-install-recommends libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev
+
+    - name: Stub the embedded frontend
+      if: ${{ inputs.embed-placeholder == 'true' }}
+      shell: bash
+      run: |
+        mkdir -p frontend/dist
+        [ -e frontend/dist/index.html ] || printf '<!doctype html><title>adOmnia</title>\n' > frontend/dist/index.html

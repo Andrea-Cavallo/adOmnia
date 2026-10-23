@@ -19,6 +19,7 @@ import (
 	"adomnia/internal/devlog"
 	"adomnia/internal/dropfiles"
 	"adomnia/internal/httpexec"
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/nettools"
 	"adomnia/internal/panelwindow"
 	"adomnia/internal/perf"
@@ -34,7 +35,6 @@ import (
 	"adomnia/internal/windowchrome"
 	"adomnia/internal/ws"
 	"github.com/wailsapp/wails/v3/pkg/application"
-	"adomnia/internal/jsonutil"
 )
 
 type App struct {

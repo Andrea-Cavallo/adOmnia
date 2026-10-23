@@ -10,7 +10,9 @@ import (
 func TestLooseCrateBuildsAGhostManifest(t *testing.T) {
 	cache := t.TempDir()
 	looseCacheRoot = func() string { return cache }
-	t.Cleanup(func() { looseCacheRoot = func() string { return filepath.Join(os.TempDir(), "adomnia", "rust-scripts") } })
+	t.Cleanup(func() {
+		looseCacheRoot = func() string { return filepath.Join(os.TempDir(), "adomnia", "rust-scripts") }
+	})
 
 	root := t.TempDir()
 	directory := filepath.Join(root, "fibonacci")

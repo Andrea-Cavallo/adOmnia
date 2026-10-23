@@ -368,6 +368,9 @@ func (h *helperRun) confirmStartup(marker string) error {
 	return nil
 }
 
+// awaitExit blocks until the child has been reaped; callers ignore the status on purpose.
+func awaitExit(done <-chan error) error { return <-done }
+
 // awaitStartup polls for the new version's confirmation marker until it appears, is rejected,
 // the child exits or the timeout elapses; every failure rolls back to the previous version.
 func (h *helperRun) awaitStartup(cmd *exec.Cmd, marker string) error {
@@ -376,7 +379,7 @@ func (h *helperRun) awaitStartup(cmd *exec.Cmd, marker string) error {
 	for deadline := time.Now().Add(startupConfirmTimeout); time.Now().Before(deadline); {
 		if reason, readErr := os.ReadFile(marker + rejectedSuffix); readErr == nil {
 			_ = cmd.Process.Kill()
-			<-done
+			_ = awaitExit(done) // only waits for the killed child to exit; its status is irrelevant
 			_ = os.Remove(marker + rejectedSuffix)
 			return h.rollbackWith(string(reason), fmt.Errorf("Updated app rejected its startup (%s); restored previous version", reason))
 		}
@@ -398,7 +401,7 @@ func (h *helperRun) awaitStartup(cmd *exec.Cmd, marker string) error {
 	// Never restore over a live application. Kill only our newly started child,
 	// wait for file handles to close, then restore the old executable/bundle.
 	_ = cmd.Process.Kill()
-	<-done
+	_ = awaitExit(done) // only waits for the killed child to exit; its status is irrelevant
 	return h.rollbackWith("the new version did not open its window in time", errors.New("Updated app did not confirm startup; restored previous version"))
 }
 

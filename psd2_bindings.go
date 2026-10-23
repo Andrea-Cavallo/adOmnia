@@ -1,10 +1,10 @@
 package main
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/psd2"
 	"encoding/json/v2"
 	"fmt"
-	"adomnia/internal/jsonutil"
 )
 
 // SelectPSD2Certificate opens a native picker and returns a local path only.

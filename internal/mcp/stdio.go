@@ -174,6 +174,12 @@ func (t *stdioTransport) Send(ctx context.Context, req JSONRPCRequest) (JSONRPCR
 			return resp, nil
 		default:
 		}
+		// Wait (in readLoop) is what finishes copying the server stderr: without it the error can be built
+		// before the last stderr bytes arrive and lose the reason the server gave for dying.
+		select {
+		case <-t.exited:
+		case <-time.After(2 * time.Second):
+		}
 		return JSONRPCResponse{}, t.withStderr(fmt.Errorf("MCP server closed stdout"))
 	}
 }

@@ -6,6 +6,9 @@ name: Supply chain
 on:
   pull_request:
     branches: [main, develop]
+  # Scorecard pubblica il punteggio (e il badge) solo da un run sul branch predefinito.
+  push:
+    branches: [main]
   schedule:
     - cron: '45 4 * * 2'
   workflow_dispatch:

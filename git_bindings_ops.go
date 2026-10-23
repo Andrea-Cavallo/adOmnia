@@ -2,9 +2,9 @@ package main
 
 import (
 	"adomnia/internal/git"
+	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"fmt"
-	"adomnia/internal/jsonutil"
 )
 
 // This file exposes the professional commit-graph operations (context-menu

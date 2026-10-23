@@ -174,7 +174,7 @@ func SseListHandler(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, sessions)
+	_ = jsonutil.MarshalWrite(w, sessions) // client gone mid-write: nothing to report
 }
 
 // SseCloseAllHandler closes every active SSE session (POST /sse/close-all).
@@ -191,7 +191,7 @@ func SseCloseAllHandler(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]any{"closed": count})
+	_ = jsonutil.MarshalWrite(w, map[string]any{"closed": count}) // client gone mid-write: nothing to report
 }
 
 func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
@@ -260,7 +260,7 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	go sseReadPump(sess, resp)
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]string{"sessionId": sessionID})
+	_ = jsonutil.MarshalWrite(w, map[string]string{"sessionId": sessionID}) // client gone mid-write: nothing to report
 }
 
 func sseReadPump(sess *SSESession, resp *http.Response) {
@@ -394,7 +394,7 @@ func sseDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 		val.(*SSESession).close()
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 // RegisterHandlers registers Server-Sent Events client sidecar endpoints.

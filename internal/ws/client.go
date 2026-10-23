@@ -192,7 +192,7 @@ func WsListHandler(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, sessions)
+	_ = jsonutil.MarshalWrite(w, sessions)
 }
 
 // WsCloseAllHandler closes every active WebSocket session (POST /ws/close-all).
@@ -209,7 +209,7 @@ func WsCloseAllHandler(w http.ResponseWriter, r *http.Request) {
 		return true
 	})
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]any{"closed": count})
+	_ = jsonutil.MarshalWrite(w, map[string]any{"closed": count})
 }
 
 // ── Read pump ────────────────────────────────────────────────────────────────
@@ -316,7 +316,7 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 	go wsReadPump(sess)
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]string{"sessionId": sessionID})
+	_ = jsonutil.MarshalWrite(w, map[string]string{"sessionId": sessionID})
 }
 
 func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
@@ -402,7 +402,7 @@ func wsSendHandler(w http.ResponseWriter, r *http.Request) {
 		Binary:    isBinary,
 	})
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 func wsPingHandler(w http.ResponseWriter, r *http.Request) {
@@ -436,7 +436,7 @@ func wsPingHandler(w http.ResponseWriter, r *http.Request) {
 		Timestamp: time.Now().UnixMilli(),
 	})
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 func wsDisconnectHandler(w http.ResponseWriter, r *http.Request) {
@@ -455,7 +455,7 @@ func wsDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 		sess.closeConn()
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
+	_ = jsonutil.MarshalWrite(w, map[string]bool{"ok": true})
 }
 
 // RegisterHandlers registers WebSocket client sidecar endpoints.

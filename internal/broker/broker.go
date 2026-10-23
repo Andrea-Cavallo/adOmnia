@@ -728,7 +728,7 @@ func natsSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		httputil.JSONError(w, "subscribe failed: "+err.Error(), 502)
 		return
 	}
-	defer sub.Unsubscribe()
+	defer func() { _ = sub.Unsubscribe() }() // best effort: the request is ending and the connection is closed next
 
 	deadline := time.After(time.Duration(req.MaxWait) * time.Second)
 	for {

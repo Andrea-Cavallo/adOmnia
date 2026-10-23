@@ -1,10 +1,10 @@
 package main
 
 import (
+	"adomnia/internal/jsonutil"
 	"adomnia/internal/oaslint"
 	"fmt"
 	"strings"
-	"adomnia/internal/jsonutil"
 )
 
 type OASLint struct{}

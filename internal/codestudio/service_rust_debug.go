@@ -11,17 +11,17 @@ import (
 // RustDebugRequest chiede il debug di un bin o di un example Cargo, con gli stessi target e opzioni
 // di build della Run. CodeLLDB deve essere installato (azione esplicita, mai in automatico).
 type RustDebugRequest struct {
-	SessionID         SessionID         `json:"sessionId"`
-	Package           string            `json:"package,omitempty"`
-	Bin               string            `json:"bin,omitempty"`
-	Example           string            `json:"example,omitempty"`
-	Source            string            `json:"source,omitempty"`
+	SessionID SessionID `json:"sessionId"`
+	Package   string    `json:"package,omitempty"`
+	Bin       string    `json:"bin,omitempty"`
+	Example   string    `json:"example,omitempty"`
+	Source    string    `json:"source,omitempty"`
 	// Test è il singolo test da debuggare (RS-5.5): con Test valorizzato si compila l'eseguibile
 	// del test (`cargo test --no-run`) e non un bin/example.
-	Test              string            `json:"test,omitempty"`
+	Test string `json:"test,omitempty"`
 	// TestFile è il sorgente del test relativo al crate: sceglie il target di test senza indovinare.
 	TestFile          string            `json:"testFile,omitempty"`
-	Features         []string          `json:"features,omitempty"`
+	Features          []string          `json:"features,omitempty"`
 	AllFeatures       bool              `json:"allFeatures,omitzero"`
 	NoDefaultFeatures bool              `json:"noDefaultFeatures,omitzero"`
 	Profile           string            `json:"profile,omitempty"`
