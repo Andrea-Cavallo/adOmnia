@@ -243,9 +243,12 @@ function InlineEdit({
   onCancel: () => void
 }) {
   const [next, setNext] = useState(value)
+  const inputRef = useRef<HTMLInputElement>(null)
+  // L'input di rinomina compare al posto del nodo: prende il focus al mount.
+  useEffect(() => { inputRef.current?.focus() }, [])
   return (
     <input
-      autoFocus
+      ref={inputRef}
       value={next}
       onChange={(event) => setNext(event.target.value)}
       onClick={(event) => event.stopPropagation()}
@@ -341,6 +344,7 @@ function TreeNodeRow({
         data-request-active={!isFolder && activeRequestId === node.id ? 'true' : undefined}
         role="treeitem"
         tabIndex={-1}
+        onKeyDown={() => onSetFocused(node.id)}
         aria-selected={interaction.selected.has(node.id)}
         aria-current={!isFolder && activeRequestId === node.id ? 'page' : undefined}
         aria-expanded={isFolder ? isOpen : undefined}
@@ -1011,6 +1015,7 @@ export function CollectionTree({
               data-node-id={collection.id}
               role="treeitem"
               tabIndex={-1}
+              onKeyDown={() => setFocusedId(collection.id)}
               aria-selected={focusedId === collection.id}
               aria-expanded={openIds.has(collection.id)}
               onClick={(event) => {

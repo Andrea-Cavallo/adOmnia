@@ -64,7 +64,7 @@ function charIndexAtX(input: HTMLInputElement, clientX: number): number {
   const rect = input.getBoundingClientRect()
   const cs = window.getComputedStyle(input)
   ctx.font = `${cs.fontSize} ${cs.fontFamily}`
-  const paddingLeft = parseFloat(cs.paddingLeft) || 0
+  const paddingLeft = Number.parseFloat(cs.paddingLeft) || 0
   const relX = clientX - rect.left - paddingLeft + input.scrollLeft
   const text = input.value
   let accumulated = 0
@@ -81,7 +81,7 @@ function caretXAtIndex(input: HTMLInputElement, charIdx: number): number {
   const ctx = getMeasureCtx()
   const rect = input.getBoundingClientRect()
   const cs = window.getComputedStyle(input)
-  const paddingLeft = parseFloat(cs.paddingLeft) || 0
+  const paddingLeft = Number.parseFloat(cs.paddingLeft) || 0
   if (!ctx) return rect.left + paddingLeft
   ctx.font = `${cs.fontSize} ${cs.fontFamily}`
   const width = ctx.measureText(input.value.slice(0, charIdx)).width
@@ -109,7 +109,7 @@ function parseSegments(
   hasActiveEnv: boolean,
 ): Segment[] {
   const segments: Segment[] = []
-  const re = /\{\{([^}]+)\}\}/g
+  const re = /\{\{([^{}]+)\}\}/g
   let last = 0
   let m: RegExpExecArray | null
 
@@ -153,7 +153,7 @@ function resolveVarTooltip(
   hasActiveEnv: boolean,
   charIdx: number,
 ): Omit<VarTooltip, 'x' | 'y'> | null {
-  const re = /\{\{([^}]+)\}\}/g
+  const re = /\{\{([^{}]+)\}\}/g
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
     if (charIdx >= m.index && charIdx <= m.index + m[0].length) {

@@ -80,7 +80,7 @@ function normalizeStatus(status: unknown): FolderDiffStatus {
   return status === 'modified' || status === 'left-only' || status === 'right-only' || status === 'type-change' ? status : 'same'
 }
 
-function normalizePreviewState(value: unknown, error?: string, text?: string): FolderDiffPreviewState {
+function normalizePreviewState(value: unknown, error?: string): FolderDiffPreviewState {
   if (value === 'ok' || value === 'missing' || value === 'binary' || value === 'too-large' || value === 'directory' || value === 'error') return value
   const lower = (error ?? '').toLowerCase()
   if (lower.includes('cannot find') || lower.includes('not found') || lower.includes('no such file')) return 'missing'
@@ -88,7 +88,7 @@ function normalizePreviewState(value: unknown, error?: string, text?: string): F
   if (lower.includes('too large')) return 'too-large'
   if (lower.includes('directory')) return 'directory'
   if (error) return 'error'
-  return text ? 'ok' : 'ok'
+  return 'ok'
 }
 
 function previewStateLabel(state: FolderDiffPreviewState) {
@@ -171,8 +171,8 @@ function findFolderDiffNode(nodes: FolderDiffNode[], path: string): FolderDiffNo
 }
 
 function FolderDiffPreviewPane({ preview }: { preview: FolderDiffPreview }) {
-  const leftState = preview.leftState ?? normalizePreviewState(undefined, preview.leftError, preview.left)
-  const rightState = preview.rightState ?? normalizePreviewState(undefined, preview.rightError, preview.right)
+  const leftState = preview.leftState ?? normalizePreviewState(undefined, preview.leftError)
+  const rightState = preview.rightState ?? normalizePreviewState(undefined, preview.rightError)
   const leftLines = leftState === 'ok' ? preview.left.split(/\r?\n/) : []
   const rightLines = rightState === 'ok' ? preview.right.split(/\r?\n/) : []
   const total = Math.max(leftLines.length, rightLines.length)
@@ -352,10 +352,10 @@ export function FolderDiffTool() {
         path: previewData.path ?? node.path,
         left: previewData.left ?? '',
         right: previewData.right ?? '',
-        leftState: normalizePreviewState(previewData.leftState, previewData.leftError, previewData.left),
-        rightState: normalizePreviewState(previewData.rightState, previewData.rightError, previewData.right),
-        leftError: cleanPreviewError(normalizePreviewState(previewData.leftState, previewData.leftError, previewData.left), previewData.leftError),
-        rightError: cleanPreviewError(normalizePreviewState(previewData.rightState, previewData.rightError, previewData.right), previewData.rightError),
+        leftState: normalizePreviewState(previewData.leftState, previewData.leftError),
+        rightState: normalizePreviewState(previewData.rightState, previewData.rightError),
+        leftError: cleanPreviewError(normalizePreviewState(previewData.leftState, previewData.leftError), previewData.leftError),
+        rightError: cleanPreviewError(normalizePreviewState(previewData.rightState, previewData.rightError), previewData.rightError),
       })
     } catch (err) {
       setPreview({

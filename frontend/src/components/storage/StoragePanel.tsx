@@ -191,8 +191,8 @@ export function StoragePanel() {
 
   useEffect(() => {
     if (port || hasWailsStorage()) {
-      loadStatus()
-      loadEntries()
+      void loadStatus()
+      void loadEntries()
     }
   }, [port, loadStatus, loadEntries])
 
@@ -206,7 +206,7 @@ export function StoragePanel() {
     try {
       await api('/storage/put', { bucket, key: selectedKey, value: editValue })
       setMsg(`Saved ${selectedKey}`)
-      loadEntries()
+      void loadEntries()
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }
 
@@ -221,7 +221,7 @@ export function StoragePanel() {
       setMsg(`Deleted ${selectedKey}`)
       setSelectedKey('')
       setEditValue('')
-      loadEntries()
+      void loadEntries()
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }
 
@@ -232,7 +232,7 @@ export function StoragePanel() {
       setMsg(`Added ${newKey.trim()}`)
       setNewKey('')
       setNewValue('')
-      loadEntries()
+      void loadEntries()
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
   }
 
@@ -268,8 +268,8 @@ export function StoragePanel() {
       try {
         await api('/storage/import', JSON.parse(text))
         setMsg('Import completed')
-        loadEntries()
-        loadStatus()
+        void loadEntries()
+        void loadStatus()
       } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     }
     input.click()
@@ -451,7 +451,7 @@ export function StoragePanel() {
         {tab === 'search' && (
           <div className="flex flex-col gap-3">
             <div className="flex gap-2">
-              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }}
+              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void handleSearch() }}
                 placeholder="Search across all storage..." className="flex-1 h-8 px-3 bg-surface-1 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent" />
               <button onClick={handleSearch} disabled={!searchQuery} className="flex items-center gap-1 px-3 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40">
                 <Search size={11} /> Search
@@ -474,10 +474,10 @@ export function StoragePanel() {
       </div>
 
       {confirmDeleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setConfirmDeleteOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="presentation" onClick={() => setConfirmDeleteOpen(false)}>
           <div
             className="bg-surface-1 border border-border-2 rounded-lg shadow-xl p-4 max-w-xs w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
+            role="presentation" onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm text-text-1 mb-4">Delete &quot;{selectedKey}&quot;?</p>
             <div className="flex justify-end gap-2">
@@ -499,8 +499,8 @@ export function StoragePanel() {
       )}
 
       {confirmResetOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setConfirmResetOpen(false)}>
-          <div className="w-full max-w-sm rounded-lg border border-error/40 bg-surface-1 p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="presentation" onClick={() => setConfirmResetOpen(false)}>
+          <div className="w-full max-w-sm rounded-lg border border-error/40 bg-surface-1 p-4 shadow-xl" role="presentation" onClick={(e) => e.stopPropagation()}>
             <p className="flex items-center gap-2 text-sm font-semibold text-text-1"><AlertTriangle size={15} className="text-error" /> Reset all local data?</p>
             <p className="mt-2 text-xs leading-5 text-text-3">
               This wipes every local adOmnia setting, collection, environment, tab, history and cache stored in this browser, then reloads. Backend storage (bbolt) is not touched. <strong className="text-text-2">Export a workspace or snapshot first if you might need it back.</strong>
@@ -514,8 +514,8 @@ export function StoragePanel() {
       )}
 
       {restoreFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setRestoreFile(null)}>
-          <div className="w-full max-w-sm rounded-lg border border-border-2 bg-surface-1 p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="presentation" onClick={() => setRestoreFile(null)}>
+          <div className="w-full max-w-sm rounded-lg border border-border-2 bg-surface-1 p-4 shadow-xl" role="presentation" onClick={(e) => e.stopPropagation()}>
             <p className="text-sm font-semibold text-text-1">Restore full storage snapshot?</p>
             <p className="mt-2 text-xs leading-5 text-text-3"><span className="font-mono text-text-2">{restoreFile.name}</span> will replace matching local bbolt entries. Export a current snapshot first if you may need to roll back.</p>
             <div className="mt-4 flex justify-end gap-2"><button onClick={() => setRestoreFile(null)} className="rounded border border-border-2 px-3 py-1 text-xs text-text-2">Cancel</button><button onClick={() => void confirmRestore()} className="rounded border border-warning/40 bg-warning/20 px-3 py-1 text-xs font-medium text-warning">Restore snapshot</button></div>

@@ -131,7 +131,7 @@ interface MenuLevelProps {
 
 function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClose }: MenuLevelProps) {
   const studio = appearance === 'studio'
-  const hasIcons = items.some((item) => item.icon || item.iconElement)
+  const hasIcons = items.some((item) => Boolean(item.icon || item.iconElement))
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const [active, setActive] = useState<number>(-1)

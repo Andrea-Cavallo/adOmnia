@@ -7,17 +7,28 @@ import { useCollectionsStore } from '@/stores/collections'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useTabsStore } from '@/stores/tabs'
 
+/** Estremi senza trattini: un `^-+|-+$` riscansa la stringa da ogni posizione. */
+function trimDashes(value: string): string {
+  let start = 0
+  let end = value.length
+  while (start < end && value[start] === '-') start += 1
+  while (end > start && value[end - 1] === '-') end -= 1
+  return value.slice(start, end)
+}
+
+function withoutTrailingSeparators(value: string): string {
+  let end = value.length
+  while (end > 0 && (value[end - 1] === '/' || value[end - 1] === '\\')) end -= 1
+  return value.slice(0, end)
+}
+
 function safeFolderSegment(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64) || 'collection'
+  const segment = trimDashes(value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-')).slice(0, 64)
+  return segment || 'collection'
 }
 
 export function collectionFolderPath(repoPath: string, collectionId: string, collectionName: string): string {
-  const root = repoPath.replace(/[\\/]+$/, '')
+  const root = withoutTrailingSeparators(repoPath)
   const leaf = `${safeFolderSegment(collectionName)}-${safeFolderSegment(collectionId)}`
   return `${root}/adomnia-collections/${leaf}`
 }

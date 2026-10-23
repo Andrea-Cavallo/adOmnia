@@ -13,7 +13,7 @@ function resolveJsonPath(json: unknown, path: string): unknown {
       const obj = current as Record<string, unknown>
       current = obj[bracketMatch[1]]
       if (Array.isArray(current)) {
-        current = current[parseInt(bracketMatch[2])]
+        current = current[Number.parseInt(bracketMatch[2])]
       } else {
         return undefined
       }
@@ -21,8 +21,8 @@ function resolveJsonPath(json: unknown, path: string): unknown {
     }
 
     if (Array.isArray(current)) {
-      const idx = parseInt(part)
-      if (isNaN(idx)) return undefined
+      const idx = Number.parseInt(part)
+      if (Number.isNaN(idx)) return undefined
       current = current[idx]
       continue
     }
@@ -60,14 +60,14 @@ export function evaluateAssertion(
         case 'gte': return { passed: Number.isFinite(Number(expected)) && expected.trim() !== '' && response.status >= Number(expected), actual: `${actual} >= ${expected}` }
         case 'lte': return { passed: Number.isFinite(Number(expected)) && expected.trim() !== '' && response.status <= Number(expected), actual: `${actual} <= ${expected}` }
         case 'gt': {
-          const a = parseInt(actual)
-          const e = parseInt(expected)
-          return { passed: !isNaN(a) && !isNaN(e) && a > e, actual: `${actual} > ${expected}` }
+          const a = Number.parseInt(actual)
+          const e = Number.parseInt(expected)
+          return { passed: !Number.isNaN(a) && !Number.isNaN(e) && a > e, actual: `${actual} > ${expected}` }
         }
         case 'lt': {
-          const a = parseInt(actual)
-          const e = parseInt(expected)
-          return { passed: !isNaN(a) && !isNaN(e) && a < e, actual: `${actual} < ${expected}` }
+          const a = Number.parseInt(actual)
+          const e = Number.parseInt(expected)
+          return { passed: !Number.isNaN(a) && !Number.isNaN(e) && a < e, actual: `${actual} < ${expected}` }
         }
         default: return { passed: false, actual: `unsupported operator ${op}` }
       }
@@ -77,13 +77,13 @@ export function evaluateAssertion(
       actual = String(response.ms)
       const expected = assertion.expected ?? ''
       const a = response.ms
-      const e = parseInt(expected)
+      const e = Number.parseInt(expected)
 
       switch (op) {
-        case 'lt': return { passed: !isNaN(e) && a < e, actual: `${a}ms < ${e}ms` }
-        case 'lte': return { passed: !isNaN(e) && a <= e, actual: `${a}ms <= ${e}ms` }
-        case 'gt': return { passed: !isNaN(e) && a > e, actual: `${a}ms > ${e}ms` }
-        case 'eq': return { passed: !isNaN(e) && a === e, actual: `${a}ms == ${e}ms` }
+        case 'lt': return { passed: !Number.isNaN(e) && a < e, actual: `${a}ms < ${e}ms` }
+        case 'lte': return { passed: !Number.isNaN(e) && a <= e, actual: `${a}ms <= ${e}ms` }
+        case 'gt': return { passed: !Number.isNaN(e) && a > e, actual: `${a}ms > ${e}ms` }
+        case 'eq': return { passed: !Number.isNaN(e) && a === e, actual: `${a}ms == ${e}ms` }
         default: return { passed: false, actual: `unsupported operator ${op}` }
       }
     }
@@ -195,28 +195,28 @@ export function evaluateAssertion(
           return { passed: t === (assertion.type ?? 'string'), actual }
         }
         case 'gt': {
-          const n = parseFloat(String(val))
-          const e = parseFloat(expected)
+          const n = Number.parseFloat(String(val))
+          const e = Number.parseFloat(expected)
           actual = val !== undefined ? String(val) : '(missing)'
-          return { passed: !isNaN(n) && !isNaN(e) && n > e, actual }
+          return { passed: !Number.isNaN(n) && !Number.isNaN(e) && n > e, actual }
         }
         case 'lt': {
-          const n = parseFloat(String(val))
-          const e = parseFloat(expected)
+          const n = Number.parseFloat(String(val))
+          const e = Number.parseFloat(expected)
           actual = val !== undefined ? String(val) : '(missing)'
-          return { passed: !isNaN(n) && !isNaN(e) && n < e, actual }
+          return { passed: !Number.isNaN(n) && !Number.isNaN(e) && n < e, actual }
         }
         case 'lte': {
-          const n = parseFloat(String(val))
-          const e = parseFloat(expected)
+          const n = Number.parseFloat(String(val))
+          const e = Number.parseFloat(expected)
           actual = val !== undefined ? String(val) : '(missing)'
-          return { passed: !isNaN(n) && !isNaN(e) && n <= e, actual }
+          return { passed: !Number.isNaN(n) && !Number.isNaN(e) && n <= e, actual }
         }
         case 'gte': {
-          const n = parseFloat(String(val))
-          const e = parseFloat(expected)
+          const n = Number.parseFloat(String(val))
+          const e = Number.parseFloat(expected)
           actual = val !== undefined ? String(val) : '(missing)'
-          return { passed: !isNaN(n) && !isNaN(e) && n >= e, actual }
+          return { passed: !Number.isNaN(n) && !Number.isNaN(e) && n >= e, actual }
         }
         default: return { passed: false, actual: `unsupported operator ${op}` }
       }
@@ -243,14 +243,14 @@ export function evaluateAssertion(
         return { passed: false, actual }
       }
       actual = String(val.length)
-      const expectedNum = parseInt(expected)
+      const expectedNum = Number.parseInt(expected)
       switch (op) {
         case 'eq': return { passed: val.length === expectedNum, actual: `${val.length} items` }
         case 'neq': return { passed: val.length !== expectedNum, actual: `${val.length} items` }
-        case 'gt': return { passed: !isNaN(expectedNum) && val.length > expectedNum, actual: `${val.length} items` }
-        case 'lt': return { passed: !isNaN(expectedNum) && val.length < expectedNum, actual: `${val.length} items` }
-        case 'gte': return { passed: !isNaN(expectedNum) && val.length >= expectedNum, actual: `${val.length} items` }
-        case 'lte': return { passed: !isNaN(expectedNum) && val.length <= expectedNum, actual: `${val.length} items` }
+        case 'gt': return { passed: !Number.isNaN(expectedNum) && val.length > expectedNum, actual: `${val.length} items` }
+        case 'lt': return { passed: !Number.isNaN(expectedNum) && val.length < expectedNum, actual: `${val.length} items` }
+        case 'gte': return { passed: !Number.isNaN(expectedNum) && val.length >= expectedNum, actual: `${val.length} items` }
+        case 'lte': return { passed: !Number.isNaN(expectedNum) && val.length <= expectedNum, actual: `${val.length} items` }
         default: return { passed: false, actual: `unsupported operator ${op}` }
       }
     }

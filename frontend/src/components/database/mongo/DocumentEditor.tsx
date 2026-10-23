@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { parseEditorDocuments } from './bson'
 
 interface DocumentEditorProps {
@@ -13,15 +13,18 @@ interface DocumentEditorProps {
 // ponytail: plain textarea with live validation; swap for Monaco if users ask for autocompletion.
 export function DocumentEditor({ initial, busy, submitLabel, hint, onCancel, onSubmit }: DocumentEditorProps) {
   const [text, setText] = useState(initial)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   let parseError = ''
   try { parseEditorDocuments(text) } catch (e) { parseError = e instanceof Error ? e.message : String(e) }
+
+  useEffect(() => { textareaRef.current?.focus() }, [])
 
   const submit = () => { if (!parseError && !busy) void onSubmit(text) }
 
   return (
     <div className="flex flex-col">
       <textarea
-        autoFocus
+        ref={textareaRef}
         value={text}
         spellCheck={false}
         onChange={(e) => setText(e.target.value)}

@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { useAppStore } from '@/stores/app'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
+import { closeOnBackdropClick } from '@/lib/dialogBackdrop'
 
 const CONNECTIONS_KEY = 'adomnia.grpc.connections'
 const HISTORY_KEY = 'adomnia.grpc.history'
@@ -1469,8 +1470,8 @@ function GrpcLoadTestDialog({ port, address, service, method, payload, tls, caCe
     } finally { setRunning(false) }
   }
 
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" onClick={onClose}>
-    <div className="w-full max-w-2xl rounded-lg border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" role="presentation" onClick={closeOnBackdropClick(onClose)}>
+    <div className="w-full max-w-2xl rounded-lg border border-border-2 bg-surface-1 shadow-2xl">
       <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3"><Gauge size={15} className="text-accent" /><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-text-1">gRPC Load Test</div><div className="truncate font-mono text-[10px] text-text-4">{address} · {service}/{method}</div></div><button onClick={onClose} className="text-text-4 hover:text-text-1"><X size={15} /></button></div>
       <div className="flex flex-col gap-4 p-4">
         <div className="grid grid-cols-3 gap-3">{[

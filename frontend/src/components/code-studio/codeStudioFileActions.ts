@@ -32,7 +32,7 @@ export function baseName(relativePath: string): string {
 export function absolutePath(rootPath: string, relativePath: string): string {
   if (!relativePath) return rootPath
   const separator = rootPath.includes('\\') ? '\\' : '/'
-  return `${rootPath.replace(/[\\/]+$/, '')}${separator}${relativePath.split('/').join(separator)}`
+  return `${rootPath.replace(/(^|[^\\/])[\\/]+$/, '$1')}${separator}${relativePath.split('/').join(separator)}`
 }
 
 export function joinRelative(directory: string, name: string): string {

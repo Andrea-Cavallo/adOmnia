@@ -559,12 +559,21 @@ function isExternalPathRefOnly(pathItem: OpenAPIPathItem): boolean {
   return Boolean(pathItem.$ref) && importableOperations(pathItem).length === 0
 }
 
+/** Senza underscore ai due estremi: un `_+$` riscansa la coda della stringa a ogni posizione. */
+function trimUnderscores(value: string): string {
+  let start = 0
+  let end = value.length
+  while (start < end && value[start] === '_') start += 1
+  while (end > start && value[end - 1] === '_') end -= 1
+  return value.slice(start, end)
+}
+
 function buildUnresolvedRefOperation(path: string, ref: string): OpenAPIOperation {
   const leaf = ref.split(/[\\/]/).pop()?.replace(/\.(ya?ml|json)$/i, '') || path
   return {
     summary: `Referenced path: ${path}`,
     description: `This path is defined in an external OpenAPI file (${ref}). Import the bundled spec folder to hydrate the real method, parameters, request body, and responses.`,
-    operationId: leaf.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, ''),
+    operationId: trimUnderscores(leaf.replace(/[^a-zA-Z0-9_]+/g, '_')),
     responses: {
       default: {
         description: `Unresolved external PathItem reference: ${ref}`,

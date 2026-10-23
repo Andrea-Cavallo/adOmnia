@@ -16,6 +16,13 @@ import { useSpringStore } from '@/stores/codeStudioSpring'
 import { jdtMainClasses } from '@/stores/codeStudioJavaMains'
 import { findJavaTargets, type CodeStudioJavaRunTarget } from './codeStudioJavaTargets'
 
+/** Toglie le barre finali (di entrambi i separatori) dalla coda: la regex `[\\/]+$` non è lineare. */
+const withoutTrailingSeparators = (value: string): string => {
+  let end = value.length
+  while (end > 0 && (value[end - 1] === '/' || value[end - 1] === '\\')) end -= 1
+  return value.slice(0, end)
+}
+
 const GOALS: Partial<Record<CodeStudioCommandId, string[]>> = {
   'java.mvnCompile': ['compile'],
   'java.mvnTest': ['test'],
@@ -47,7 +54,7 @@ async function openCounterpart(sessionId: string, document: GoIDEEditorDocument)
   for (const relative of candidates) {
     try {
       // oxlint-disable-next-line eslint/no-await-in-loop -- early exit: try candidates in order until one opens
-      await useCodeStudioStore.getState().openDocument(`${root.replace(/[\\/]+$/, '')}${separator}${relative.split('/').join(separator)}`)
+      await useCodeStudioStore.getState().openDocument(`${withoutTrailingSeparators(root)}${separator}${relative.split('/').join(separator)}`)
       return
     } catch { /* il candidato non esiste: si prova il prossimo */ }
   }

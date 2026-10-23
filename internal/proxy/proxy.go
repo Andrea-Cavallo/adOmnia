@@ -591,6 +591,12 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if guardErr := forwardTargetError(targetURL, interceptProxyPort); guardErr != nil {
+		recordEntry(targetURL, r.Method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(start), guardErr.Error(), matched)
+		http.Error(w, guardErr.Error(), guardErr.status)
+		return
+	}
+
 	outReq, err := http.NewRequest(r.Method, targetURL, bytes.NewReader(reqBodyBytes)) // #nosec G704 -- the interceptor forwards to the destination the proxied client asked for; that is its purpose // NOSONAR -- deliberate forward proxy: the destination comes from the intercepted client request
 	if err != nil {
 		recordEntry(targetURL, r.Method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(start), err.Error(), matched)

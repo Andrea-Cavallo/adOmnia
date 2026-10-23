@@ -36,7 +36,7 @@ export function linkRecordedRequest(request: RequestItem, sources: RecordingSour
   for (const source of [...sources].reverse()) visit(source.body, '$', source.seq)
 
   const findReference = (value: unknown): string | undefined => {
-    const variable = typeof value === 'string' ? value.match(/^{{\s*([^}]+?)\s*}}$/)?.[1] : undefined
+    const variable = typeof value === 'string' ? value.match(/^{{([^}]+)}}$/)?.[1].trim() : undefined
     const comparable = variable ? vars[variable] : value
     if (typeof comparable === 'string' && /{{|^(vault|secret):/.test(comparable)) return
     if (variable && comparable === undefined) return

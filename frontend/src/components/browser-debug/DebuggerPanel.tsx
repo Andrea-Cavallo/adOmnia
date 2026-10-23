@@ -160,7 +160,7 @@ function renderHighlightedJS(line: string) {
 
 function renderHighlightedHTML(line: string) {
   const tokenPattern =
-    /(<!--.*?-->|<\/?[A-Za-z][\w:-]*|\/?>|[A-Za-z_:][\w:.-]*(?=\=)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g
+    /(<!--[^-]*(?:-(?!->)[^-]*)*-->|<\/?[A-Za-z][\w:-]*|\/?>|[A-Za-z_:][\w:.-]*(?=\=)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g
   const parts: Array<string | JSX.Element> = []
   let cursor = 0
   let match: RegExpExecArray | null
@@ -188,7 +188,7 @@ function renderHighlightedHTML(line: string) {
 }
 
 function renderHighlightedCSS(line: string) {
-  const tokenPattern = /(\/\*.*?\*\/|#[\w-]+|\.[\w-]+|--[\w-]+|[A-Za-z-]+(?=\s*:)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?(?:px|rem|em|vh|vw|%|s|ms)?\b|[{}:;,()>+~*])/g
+  const tokenPattern = /(\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/|#[\w-]+|\.[\w-]+|--[\w-]+|[A-Za-z-]+(?=\s*:)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?(?:px|rem|em|vh|vw|%|s|ms)?\b|[{}:;,()>+~*])/g
   const parts: Array<string | JSX.Element> = []
   let cursor = 0
   let match: RegExpExecArray | null
@@ -323,7 +323,7 @@ export function DebuggerPanel() {
         setError(err instanceof Error ? err.message : 'Failed to read debugger pause state')
       }
     }
-    poll()
+    void poll()
     return visibleInterval(poll, 500, { scope: "browser", kind: "live" })
   }, [enabled])
 
@@ -384,7 +384,7 @@ export function DebuggerPanel() {
   }, [enabled, refreshBreakpoints, refreshSources])
 
   const handleAddBreakpoint = useCallback(async () => {
-    const displayLine = parseInt(bpLine, 10)
+    const displayLine = Number.parseInt(bpLine, 10)
     if (!bpUrl || Number.isNaN(displayLine) || displayLine < 1) return
 
     try {

@@ -996,3 +996,17 @@ Tutte le voci sono pianificate: nessuna verifica eseguita. Riferimento `MULTILAN
 - [ ] **AI-CHAT.M3** Dopo aggiornamento esplicito a milk 0.7+: agenti configurati e modelli nel selettore, scope globale dichiarato e backup/campi config preservati; cambio crea nuova chat per il progetto; think/routing restano coerenti dopo slash command, piani task visibili, New chat non riprende contenuti precedenti. Errori e Stop non perdono il lavoro.
 - [ ] **AI-CHAT.M4** Milk ACP 0.7 rifiuta PNG/JPEG prima dell'invio con spiegazione, senza scartarli silenziosamente; file UTF-8 esterni accettati. Quando upstream annuncerà immagini ACP, riaprire il gate con test visivo reale del modello, non soltanto verifica del payload. Colore Send leggibile nei due temi e tastiera/picker utilizzabili.
 - [ ] ML-9.M20 `node --test` e suggerimenti: in un progetto con `"test": "node --test"` (nessun Vitest/Jest) il pannello Tests propone l'unità, Run stampa i risultati nell'albero (pass, fail annidato con `/` nel nome, skip) e un file con import mancante appare fallito con il messaggio; il fallimento apre file e riga corretti; senza `node_modules` il run parte comunque e con Node assente l'errore è chiaro. In un progetto Nest (`start:dev`) e in uno Next, la barra Run propone dev, build, test e l'avvio in produzione senza duplicati; il reporter non compare nella cartella del progetto (sta sotto la cache utente).
+# Run console stdin (2026-10-23)
+
+- Automated checks passed: TypeScript, frontend build, real Cargo stdin integration (`TestRealCargoRunWaitsForConsoleInput`).
+- [ ] Native Wails: run Rust `read_line`, click console output, type a number and press Enter. Check text selection, source links, keyboard focus, empty input lines and Stop while waiting for input. Repeat with another language run kind.
+
+# SonarCloud cleanup (2026-10-23)
+
+Automated checks passed: `tsc --noEmit`, full Vitest suite (455 files, 2276 tests), `npm run build`, `oxlint` (0 errors), `go build ./...`, Go tests for `milk`, `proxy`, `ide/preview`, `collab`, `nettools`, and the repository's own `accessibilitySourceAudit`.
+
+- [ ] **SQ.M1** Settings: tab through the panel with the keyboard — each row (toggle, number, text, password, textarea) must focus its control and announce the visible label; the password reveal button stays out of the tab order.
+- [ ] **SQ.M2** Dialogs opened from Git (create branch/tag, checkout, reset, prompt): the first field is focused on open, Tab never escapes into the page behind the backdrop, Esc still closes.
+- [ ] **SQ.M3** Panels with click-to-focus or backdrop dismissal (Run console, Storage, Diff/Compare, Env modal, Json viewer, Plugin manager): clicking the backdrop closes, clicking the content does not, and no click target swallows keyboard focus.
+- [ ] **SQ.M4** Request assertions and the variable substitution `{{VAR}}` still evaluate and substitute exactly as before across a real collection send.
+

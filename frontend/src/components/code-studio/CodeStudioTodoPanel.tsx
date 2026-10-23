@@ -8,7 +8,7 @@ import { lineCommentStart, lineCommentToken } from './codeStudioCommentTags'
 
 /** Commenti TODO/FIXME/XXX/BUG in Go, YAML, shell e affini: solo dopo un marcatore di commento. */
 export const TODO_PATTERN = String.raw`(?://|/\*|#)\s*(TODO|FIXME|XXX|BUG)\b`
-const TODO_KEYWORD = /\b(TODO|FIXME|XXX|BUG)\b[:\s-]*(.*)$/
+const TODO_KEYWORD = /\b(TODO|FIXME|XXX|BUG)\b[:\s-]*(.*)/
 const KEYWORDS = ['TODO', 'FIXME', 'XXX', 'BUG'] as const
 type TodoKeyword = (typeof KEYWORDS)[number]
 
@@ -60,7 +60,7 @@ export const CodeStudioTodoPanel = memo(function CodeStudioTodoPanel({ sessionId
   useEffect(() => {
     let current = true
     const request = requestProjectSearch({ sessionId, pattern: TODO_PATTERN, regex: true, caseSensitive: true, wholeWord: false, include: [], exclude: [] })
-    request.then((result) => { if (current) setItems(result.matches.map(todoItemFor).filter((item): item is CodeStudioTodoItem => item !== null)) })
+    void request.then((result) => { if (current) setItems(result.matches.map(todoItemFor).filter((item): item is CodeStudioTodoItem => item !== null)) })
       // Una scansione annullata (pannello chiuso o nuova scansione) non è un errore da mostrare.
       .then(() => null, (reason: unknown) => (!String(reason).toLowerCase().includes('cancel') ? (reason instanceof Error ? reason.message : String(reason)) : null))
       .then((message) => { if (current) setSettled({ key: scanKey, error: message }) })

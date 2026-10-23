@@ -68,10 +68,10 @@ export function OasImportModal({ onClose, onImported }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation" onClick={onClose}>
       <div
         className="w-[480px] bg-surface-1 border border-border-1 rounded-lg shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        role="presentation" onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-1">

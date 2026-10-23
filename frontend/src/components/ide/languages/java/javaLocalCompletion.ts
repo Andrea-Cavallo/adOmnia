@@ -1,6 +1,8 @@
 import { analyzeJavaFile, localJavaCompletions } from './javaLocalAnalysis'
 export interface JavaLocalSuggestion { label: string; detail: string; insertText: string; kind: 'Class' | 'Method' | 'Field' | 'Constant' | 'Variable' | 'Keyword' | 'Snippet'; snippet?: boolean }
 const KEYWORDS = 'abstract assert boolean break byte case catch char class continue default do double else enum extends final finally float for if implements import instanceof int interface long native new package private protected public record return sealed short static strictfp super switch synchronized this throw throws transient try var void volatile while yield true false null'.split(' ')
+/** Un carattere che può stare in un identificatore Java: serve a tagliare il prefisso senza regex. */
+const IDENTIFIER_CHAR = /^[\p{L}\p{N}_$]$/u
 const SNIPPETS = [
   { label: 'sout', insertText: 'System.out.println(${1:value});', detail: 'Print to standard output' },
   { label: 'fori', insertText: 'for (int ${1:i} = 0; ${1:i} < ${2:limit}; ${1:i}++) {\n\t$0\n}', detail: 'Indexed for loop' },
@@ -9,7 +11,10 @@ const SNIPPETS = [
 export function completeLocalJava(source: string, offset: number): JavaLocalSuggestion[] {
   const analysis = analyzeJavaFile(source)
   if (analysis.limited || analysis.excluded.some(x => offset > x.start && (offset < x.end || (offset === x.end && x.endInclusive)))) return []
-  const prefix = source.slice(Math.max(0, offset - 256), offset).replace(/[\p{L}\p{N}_$]*$/u, '')
+  const windowStart = Math.max(0, offset - 256)
+  let prefixEnd = offset
+  while (prefixEnd > windowStart && IDENTIFIER_CHAR.test(source[prefixEnd - 1])) prefixEnd -= 1
+  const prefix = source.slice(windowStart, prefixEnd)
   const member = prefix.endsWith('.')
   // No guessed members of unresolved expressions or library types.
   if (member && !/\bthis\.$/.test(prefix)) return []

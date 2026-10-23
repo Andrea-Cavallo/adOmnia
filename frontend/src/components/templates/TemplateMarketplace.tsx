@@ -110,7 +110,7 @@ export function TemplateMarketplace() {
   }, [])
 
   useEffect(() => {
-    loadData()
+    void loadData()
   }, [loadData])
 
   useEffect(() => {
@@ -126,7 +126,7 @@ export function TemplateMarketplace() {
         setTemplates(filtered)
       }
     }
-    filterTemplates()
+    filterTemplates().catch(() => setTemplates([]))
   }, [activeCategory, searchQuery])
 
   const applyTemplateContent = async (template: Template, content: string) => {
@@ -324,7 +324,8 @@ export function TemplateMarketplace() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleInstall(template)
+                        // A failed install leaves the card as it was, so the user can simply retry.
+                        handleInstall(template).catch(() => undefined)
                       }}
                       disabled={isInstalled}
                       className={cn(

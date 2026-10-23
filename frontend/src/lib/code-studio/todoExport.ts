@@ -13,7 +13,13 @@ export interface TodoExportUnit {
 }
 
 const OTHER = '(outside any module)'
-const normalize = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
+/** Toglie le barre finali dalla coda: la regex `\/+$` ha backtracking non lineare sui percorsi lunghi. */
+const withoutTrailingSlashes = (value: string): string => {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '/') end -= 1
+  return value.slice(0, end)
+}
+const normalize = (path: string) => withoutTrailingSlashes(path.replace(/\\/g, '/'))
 const escapeCell = (text: string) => text.replace(/[\\|]/g, '\\$&').replace(/\r?\n/g, ' ')
 
 // Cartelle che contengono servizi: il servizio è la sottocartella (services/auth), non la cartella stessa.

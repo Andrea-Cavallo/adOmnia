@@ -15,7 +15,14 @@ const LISTENING_LINE = /\b(?:listening (?:on|at)|service on|started (?:on|at)|bo
 
 const BARE_ADDRESS = /\b(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d{2,5})\b/gi
 
-const TRAILING_PUNCTUATION = /[.,;:)\]}]+$/
+/** Punteggiatura che chiude una frase attorno all'URL: tolta a mano, un `+$` riscansiona la coda a ogni posizione. */
+const TRAILING_PUNCTUATION = '.,;:)}]'
+
+function trimTrailingPunctuation(value: string): string {
+  let end = value.length
+  while (end > 0 && TRAILING_PUNCTUATION.includes(value[end - 1])) end -= 1
+  return value.slice(0, end)
+}
 
 /**
  * URL locali trovati nell'output, unici e nell'ordine in cui compaiono. `0.0.0.0` e `[::1]`
@@ -34,7 +41,7 @@ export function localServerURLs(text: string): string[] {
   for (const line of text.split(/\r?\n/)) {
     for (const match of line.matchAll(SERVER_URL)) {
       const host = /^(0\.0\.0\.0|\[::1\])$/i.test(match[1]) ? 'localhost' : match[1]
-      const path = (match[3] ?? '').replace(TRAILING_PUNCTUATION, '')
+      const path = trimTrailingPunctuation(match[3] ?? '')
       add(match[0].slice(0, match[0].indexOf('://') + 3), host, match[2] ?? '', path)
     }
     // Indirizzo senza schema (`listening on 0.0.0.0:3000`): solo quando la riga dichiara l'ascolto

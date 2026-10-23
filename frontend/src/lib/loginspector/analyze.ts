@@ -288,7 +288,7 @@ const SENSITIVE_KEYS: { pattern: RegExp; kind: string }[] = [
   { pattern: /(?:^|\.)dean$/i, kind: 'DEAN' },
   { pattern: /(?:^|\.)(?:pan|card_?number)$/i, kind: 'PAN' },
   { pattern: /(?:^|\.)(?:phone|telephone|mobile|telefono)$/i, kind: 'phone' },
-  { pattern: /(?:^|\.)(?:authorization|.*token|password|secret|cookie)$/i, kind: 'secret' },
+  { pattern: /(?:(?:^|\.)(?:authorization|password|secret|cookie)$|^.*token$)/i, kind: 'secret' },
 ]
 
 export function errorFingerprint(text: string): string {

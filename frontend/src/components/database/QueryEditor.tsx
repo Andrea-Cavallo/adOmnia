@@ -293,7 +293,7 @@ export function QueryEditor(props: QueryEditorProps) {
             </button>
             {runMenu && (
               <>
-                <div className="fixed inset-0 z-20" onClick={() => setRunMenu(false)} />
+                <div className="fixed inset-0 z-20" role="presentation" onClick={() => setRunMenu(false)} />
                 <div className="absolute right-0 top-full z-30 mt-1 w-40 overflow-hidden rounded-md border border-border-2 bg-surface-3 py-1 shadow-xl">
                   <button onClick={() => { onRun(false); setRunMenu(false) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1">
                     <Play size={12} /> Run query
@@ -435,6 +435,7 @@ export function QueryEditor(props: QueryEditorProps) {
                   key={`${item.kind}:${item.label}:${item.detail ?? ''}`}
                   role="option"
                   aria-selected={i === selected}
+                  tabIndex={-1}
                   ref={i === selected ? (node) => node?.scrollIntoView({ block: 'nearest' }) : undefined}
                   onMouseDown={(e) => { e.preventDefault(); accept(item) }}
                   onMouseEnter={() => setSelected(i)}

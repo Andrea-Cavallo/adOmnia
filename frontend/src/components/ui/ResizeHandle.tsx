@@ -60,13 +60,16 @@ export function ResizeHandle({ label, onMouseDown, withLine = true, orientation 
       onArrow(-step, event)
     }
   }
+  // A focusable separator is the ARIA APG window-splitter pattern: the keyboard target only exists
+  // when the arrow keys actually resize, so the tabindex follows `onArrow`. Sonar's S6845 treats
+  // role="separator" as non-interactive and would drop the only keyboard path to the splitter.
   return (
     <div
       role="separator"
       aria-label={label}
       aria-orientation={orientation}
       title={label}
-      tabIndex={onArrow ? 0 : undefined}
+      tabIndex={onArrow ? 0 : undefined} // NOSONAR -- see above
       onMouseDown={onMouseDown}
       onDoubleClick={onDoubleClick}
       onKeyDown={handleKeyDown}

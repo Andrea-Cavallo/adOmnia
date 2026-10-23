@@ -119,8 +119,8 @@ export function HunkStageDialog({ repoPath, path, mode, onDone, onClose }: HunkS
   const selectedIdx = [...selected].sort((a, b) => a - b)
 
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" onClick={onClose}>
-      <div className="flex max-h-[82vh] w-[680px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" role="presentation" onClick={onClose}>
+      <div className="flex max-h-[82vh] w-[680px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" role="presentation" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3">
           <Scissors size={14} className="text-accent" />
           <div className="min-w-0">

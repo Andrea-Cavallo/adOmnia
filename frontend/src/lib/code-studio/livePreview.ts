@@ -60,7 +60,7 @@ export function isRunning(preview: LivePreview | null | undefined): boolean {
 
 /** Indirizzo della pagina da mostrare: URL base più la pagina di ingresso del sito statico. */
 export function pageUrl(preview: LivePreview, path = ''): string {
-  const base = (preview.url ?? '').replace(/\/+$/, '')
+  const base = (preview.url ?? '').replace(/(?<!\/)\/+$/, '')
   const target = (path || preview.entry || '').replace(/^\/+/, '')
   return target ? `${base}/${target}` : `${base}/`
 }
@@ -213,7 +213,7 @@ export interface BuildProblem {
   message: string
 }
 
-const LOCATION = /((?:[A-Za-z]:)?[^\s:()'"`<>|]+\.(?:[cm]?[jt]sx?|css|scss|less|vue|svelte|html?|json)):(\d+)(?::(\d+))?|((?:[A-Za-z]:)?[^\s:()'"`<>|]+\.(?:[cm]?[jt]sx?|vue|svelte))\((\d+),(\d+)\)/
+const LOCATION = /(?<![^\s:()'"`<>|])((?:[A-Za-z]:)?[^\s:()'"`<>|]+\.(?:[cm]?[jt]sx?|css|scss|less|vue|svelte|html?|json)):(\d+)(?::(\d+))?|(?<![^\s:()'"`<>|])((?:[A-Za-z]:)?[^\s:()'"`<>|]+\.(?:[cm]?[jt]sx?|vue|svelte))\((\d+),(\d+)\)/
 const ERROR_WORD = /(?<![a-z])(error|failed|cannot|unexpected|expected|syntaxerror|typeerror|referenceerror|not defined|is not|ts\d{4})(?![a-z])/i
 
 /** Righe che il dev server stampa sopra la posizione (Vite/oxc: "[PARSE_ERROR] …" poi "╭─[ file:riga:col ]"). */
@@ -256,13 +256,13 @@ export function extractBuildProblems(output: string, limit = 20): BuildProblem[]
 /** Percorso di un problema rispetto alla radice del progetto, se sta dentro la cartella di lavoro. */
 export function problemRelativePath(problemPath: string, workingDirectory: string, projectRelativeDir: string): string {
   const slashes = problemPath.replace(/\\/g, '/')
-  const cwd = workingDirectory.replace(/\\/g, '/').replace(/\/+$/, '')
+  const cwd = workingDirectory.replace(/\\/g, '/').replace(/(?<!\/)\/+$/, '')
   if (cwd && slashes.toLowerCase().startsWith(`${cwd.toLowerCase()}/`)) return joinRelative(projectRelativeDir, slashes.slice(cwd.length + 1))
   if (/^([A-Za-z]:)?\//.test(slashes)) return joinRelative(projectRelativeDir, slashes.replace(/^\/+/, ''))
   return joinRelative(projectRelativeDir, slashes.replace(/^\.\//, ''))
 }
 
 function joinRelative(directory: string, file: string): string {
-  const base = directory === '.' || directory === '' ? '' : `${directory.replace(/\/+$/, '')}/`
+  const base = directory === '.' || directory === '' ? '' : `${directory.replace(/(?<!\/)\/+$/, '')}/`
   return `${base}${file}`
 }

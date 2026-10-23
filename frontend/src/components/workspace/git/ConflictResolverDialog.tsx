@@ -125,8 +125,8 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
   const blocks = editor ? findConflictBlocks(editor.result) : []
   const pick = (index: number, choice: ConflictChoice) => setEditor((current) => current ? { ...current, result: resolveConflictBlock(current.result, index, choice) } : current)
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" onClick={onClose}>
-      <div className="flex max-h-[80vh] w-[560px] flex-col overflow-hidden rounded-xl border border-warning/40 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" role="presentation" onClick={onClose}>
+      <div className="flex max-h-[80vh] w-[560px] flex-col overflow-hidden rounded-xl border border-warning/40 bg-surface-1 shadow-2xl" role="presentation" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 border-b border-border-1 bg-warning/10 px-4 py-3">
           <AlertTriangle size={15} className="text-warning" />
           <div className="text-sm font-semibold text-text-1">Resolve conflicts</div>
@@ -168,8 +168,8 @@ export function ConflictResolverDialog({ repoPath, operation, initialConflicts, 
       </div>
 
       {editor && (
-        <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/75 p-5" onClick={() => setEditor(null)}>
-          <div className="flex h-[min(86vh,900px)] w-[min(94vw,1500px)] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/75 p-5" role="presentation" onClick={() => setEditor(null)}>
+          <div className="flex h-[min(86vh,900px)] w-[min(94vw,1500px)] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" role="presentation" onClick={(e) => e.stopPropagation()}>
             <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border-1 px-4">
               <span className="text-sm font-semibold text-text-1">Three-way conflict editor</span>
               <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-3" title={editor.path}>{editor.path}</span>

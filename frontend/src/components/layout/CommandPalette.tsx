@@ -105,7 +105,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         () => setSymbolResult({ sessionId: goSessionId, items: [] }), // language server off → no symbols, no error
       )
     }, 150)
-    return () => { window.clearTimeout(timer); request?.cancel() }
+    return () => { window.clearTimeout(timer); void request?.cancel() }
   }, [goSessionId, open, query])
   const contextError = useDevContextStore((s) => (goSessionId ? s.errors[goSessionId] : undefined))
 
@@ -232,7 +232,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-start justify-center bg-black/[0.62] pt-[12vh] palette-backdrop-enter" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[300] flex items-start justify-center bg-black/[0.62] pt-[12vh] palette-backdrop-enter" role="presentation" onMouseDown={onClose}>
       <section
         role="dialog"
         aria-label={tr('Command palette')}

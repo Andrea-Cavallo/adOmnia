@@ -19,7 +19,7 @@ function useMarkdownAssets(document: GoIDEEditorDocument): Map<string, string> {
     const refs = localMarkdownAssets(document.buffer, path)
     if (refs.length === 0) { setAssets(new Map()); return }
     let cancelled = false
-    Promise.all(refs.map(async (ref) => {
+    void Promise.all(refs.map(async (ref) => {
       const key = `${sessionId}\u0000${ref.relative}`
       const cached = assetCache.get(key)
       if (cached) return [ref.raw, cached] as const

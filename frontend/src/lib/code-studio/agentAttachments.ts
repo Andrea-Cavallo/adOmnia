@@ -30,7 +30,7 @@ export async function readAgentAttachments(files: File[], imageSupported: boolea
     const buffer = await file.arrayBuffer()
     let text: string
     try { text = new TextDecoder('utf-8', { fatal: true }).decode(buffer) } catch { throw new Error(`${file.name}: attach UTF-8 text, source files, or a supported image.`) }
-    if (text.includes('\0') || file.type === 'application/pdf' || /^(PK\x03\x04|%PDF-)/.test(text)) throw new Error(`${file.name}: this binary format cannot be attached as text.`)
+    if (text.includes('\0') || file.type === 'application/pdf' || text.startsWith('PK\x03\x04') || text.startsWith('%PDF-')) throw new Error(`${file.name}: this binary format cannot be attached as text.`)
     return { name: file.name, mimeType: 'text/plain', kind: 'text' as const, text }
   }))
 }

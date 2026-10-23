@@ -18,9 +18,16 @@ const EMPTY_RUNS: GoIDETestRun[] = []
 const IDLE_TICK_MS = 20_000
 const ACTIVE_TICK_MS = 1_000
 
+/** Cartella senza separatori finali: il `[\\/]+$` equivalente è quadratico sul percorso lungo. */
+function withoutTrailingSeparators(path: string): string {
+  let end = path.length
+  while (end > 0 && (path[end - 1] === '/' || path[end - 1] === '\\')) end -= 1
+  return path.slice(0, end)
+}
+
 /** Progetto senza unità rilevate: i test Go si lanciano comunque dalla radice, come prima del dashboard. */
 function rootTarget(session: GoIDESession): TestTarget {
-  const name = session.project.rootPath.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || 'project'
+  const name = withoutTrailingSeparators(session.project.rootPath).split(/[\\/]/).pop() || 'project'
   return { key: 'go|', label: `${name} · Go`, language: 'go', workingDirectory: '', packages: ['./...'] }
 }
 

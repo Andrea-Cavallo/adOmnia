@@ -136,7 +136,7 @@ export function WelcomePanel() {
               <span className="hub-studio-icon" aria-hidden="true"><Suspense fallback={null}><TileIcon target={target}/></Suspense></span>
               <span><strong>{nav(title)}</strong><small>{t(description)}</small></span>
               {editing
-                ? <span className="hub-tile-remove" role="button" aria-label={`${t('Remove')} ${nav(title)}`} onClick={e => { e.stopPropagation(); setTiles(layout.tiles.filter(id => id !== target)) }}><X size={16}/></span>
+                ? <span className="hub-tile-remove" role="button" tabIndex={0} aria-label={`${t('Remove')} ${nav(title)}`} onClick={e => { e.stopPropagation(); setTiles(layout.tiles.filter(id => id !== target)) }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setTiles(layout.tiles.filter(id => id !== target)) } }}><X size={16}/></span>
                 : <ArrowUpRight size={21}/>}
             </button>
           })}

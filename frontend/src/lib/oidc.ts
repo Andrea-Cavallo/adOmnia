@@ -79,7 +79,7 @@ const DEFAULT_ALLOWED_ALGS = ['RS256', 'RS384', 'RS512']
 const CLOCK_SKEW_SECONDS = 60
 
 function trimTrailingSlash(value: string) {
-  return value.replace(/\/+$/, '')
+  return value.replace(/(?<!\/)\/+$/, '')
 }
 
 function discoveryUrl(issuerUrl: string) {

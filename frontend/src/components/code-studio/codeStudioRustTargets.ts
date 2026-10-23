@@ -123,7 +123,7 @@ function testFileLayout(relativePath: string): { crateDirectory: string; moduleP
 }
 
 /** Toglie stringhe e commenti di riga, così le graffe dentro non spostano la profondità. */
-const withoutLiterals = (line: string): string => line.replace(/"(?:\\.|[^"\\])*"/g, '""').replace(/\/\/.*$/, '')
+const withoutLiterals = (line: string): string => line.replace(/"(?:\\.|[^"\\])*"/g, '""').replace(/(?<!\/)\/\/.*$/, '')
 
 export function findRustTestTargets(relativePath: string, text: string): CodeStudioRustTestTarget[] {
   if (!relativePath.toLowerCase().endsWith('.rs')) return []

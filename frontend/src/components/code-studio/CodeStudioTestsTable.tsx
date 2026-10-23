@@ -58,13 +58,13 @@ export function CodeStudioTestsTable({ suites, selectedKey, expanded, ascending,
         <span>Language</span><span>Status</span><span>Duration</span><span>Last Run</span><span className="text-right">Actions</span>
       </div>
       {suites.length === 0 && <p className="px-2 py-8 text-center text-[12px] text-text-4">No test suite matches.</p>}
-      <ul role="treegrid" aria-label="Test suites">
+      <div role="treegrid" aria-label="Test suites">
         {suites.map((suite) => {
           const open = expanded.has(suite.key)
           const selected = suite.key === selectedKey
           const running = suite.status === 'running'
           return (
-            <li key={suite.key} role="presentation" className="border-b border-border-1/70 last:border-b-0">
+            <div key={suite.key} role="presentation" className="border-b border-border-1/70 last:border-b-0">
               <div
                 role="row" tabIndex={0} aria-selected={selected} aria-expanded={open}
                 onClick={() => onSelect(suite.key)} onDoubleClick={() => onToggle(suite.key)}
@@ -92,10 +92,10 @@ export function CodeStudioTestsTable({ suites, selectedKey, expanded, ascending,
                 </span>
               </div>
               {open && <PackageRows suite={suite} onSelect={(nodeId) => onSelectPackage(suite, nodeId)} />}
-            </li>
+            </div>
           )
         })}
-      </ul>
+      </div>
       {menu && <ContextMenu x={Math.max(8, menu.x)} y={menu.y} items={rowMenu(menu.suite)} appearance="studio" onSelect={(id) => { onRowMenu(menu.suite, id); setMenu(null) }} onClose={() => setMenu(null)} />}
     </section>
   )

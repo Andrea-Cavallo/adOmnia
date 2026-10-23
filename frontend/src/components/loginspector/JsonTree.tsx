@@ -76,14 +76,15 @@ function flatten(
   }
 }
 
-function collectPaths(value: unknown, path: string, out: Set<string>, budget = { left: 20000 }): void {
+function collectPaths(value: unknown, path: string, out: Set<string>, budget?: { left: number }): void {
+  const state = budget ?? { left: 20000 }
   const entries = childEntries(value)
-  if (!entries.length || budget.left <= 0) return
+  if (!entries.length || state.left <= 0) return
   out.add(path)
-  budget.left--
+  state.left--
   const isArray = Array.isArray(value)
   for (const [childKey, childValue] of entries) {
-    collectPaths(childValue, joinPath(path, childKey, isArray), out, budget)
+    collectPaths(childValue, joinPath(path, childKey, isArray), out, state)
   }
 }
 

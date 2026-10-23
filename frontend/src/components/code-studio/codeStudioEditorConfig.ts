@@ -24,22 +24,27 @@ interface EditorConfigSection {
 /** Converte un glob EditorConfig in regex sul percorso relativo alla radice del progetto. */
 export function editorConfigGlob(glob: string): RegExp {
   let source = ''
-  for (let index = 0; index < glob.length; index++) {
+  let index = 0
+  while (index < glob.length) {
     const char = glob[index]
     if (char === '*') {
-      if (glob[index + 1] === '*') { source += '.*'; index++ } else source += '[^/]*'
+      if (glob[index + 1] === '*') { source += '.*'; index += 2; continue }
+      source += '[^/]*'
     } else if (char === '?') source += '[^/]'
     else if (char === '{') {
       const end = glob.indexOf('}', index)
-      if (end < 0) { source += '\\{'; continue }
+      if (end < 0) { source += '\\{'; index += 1; continue }
       source += `(?:${glob.slice(index + 1, end).split(',').map((part) => part.replace(/[.+^$()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*')).join('|')})`
-      index = end
+      index = end + 1
+      continue
     } else if (char === '[') {
       const end = glob.indexOf(']', index)
-      if (end < 0) { source += '\\['; continue }
+      if (end < 0) { source += '\\['; index += 1; continue }
       source += `[${glob.slice(index + 1, end).replace(/^!/, '^')}]`
-      index = end
+      index = end + 1
+      continue
     } else source += char.replace(/[.+^$()|\\]/g, '\\$&')
+    index += 1
   }
   // Senza "/" il glob vale per il nome del file in qualunque cartella; con "/" dalla radice.
   const anchored = glob.includes('/') ? source.replace(/^\//, '') : `(?:.*/)?${source}`
@@ -86,9 +91,16 @@ export function indentationFor(language: string, config: EditorConfigProperties)
   return { tabSize: config.indent_size ?? config.tab_width ?? 2, insertSpaces }
 }
 
+/** Spazi e tab in coda al testo: un ciclo esplicito evita il backtracking di `[ \t]+$`. */
+function withoutTrailingBlanks(text: string): string {
+  let end = text.length
+  while (end > 0 && (text[end - 1] === ' ' || text[end - 1] === '\t')) end -= 1
+  return text.slice(0, end)
+}
+
 /** Testo dopo le regole di salvataggio sugli spazi; null se non cambia nulla. */
 export function applyWhitespaceRules(text: string, trimTrailing: boolean, finalNewline: boolean | undefined): string | null {
-  let next = trimTrailing ? text.replace(/[ \t]+(?=\r?\n|$)/g, '') : text
+  let next = trimTrailing ? withoutTrailingBlanks(text.replace(/[ \t]+(\r?\n)/g, '$1')) : text
   if (finalNewline === true && next.length > 0 && !next.endsWith('\n')) next += text.includes('\r\n') ? '\r\n' : '\n'
   return next === text ? null : next
 }

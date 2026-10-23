@@ -21,7 +21,14 @@ export function contractOperations(text: string): Set<string> {
   return operations
 }
 
-const normalise = (path: string) => path.replace(/\{[^}]+\}/g, '{}').replace(/\/+$/, '') || '/'
+/** Toglie le barre finali dalla coda: la regex `\/+$` ha backtracking non lineare sui percorsi lunghi. */
+const withoutTrailingSlashes = (value: string): string => {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '/') end -= 1
+  return value.slice(0, end)
+}
+
+const normalise = (path: string) => withoutTrailingSlashes(path.replace(/\{[^{}]+\}/g, '{}')) || '/'
 
 /** Whether an operation of the code is documented; ANY routes match any documented method. */
 export function documented(operations: Set<string>, method: string, path: string): boolean {

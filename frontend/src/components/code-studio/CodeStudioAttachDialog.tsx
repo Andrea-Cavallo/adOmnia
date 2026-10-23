@@ -127,7 +127,7 @@ export function CodeStudioAttachDialog({ sessionId, mode, onClose }: CodeStudioA
         <div role="listbox" aria-label="Processes" className="gs-list max-h-[42vh] p-1">
           {!loading && visible.length === 0 && <p className="gs-list-empty">No matching process.</p>}
           {visible.map((process, index) => (
-            <div key={process.pid} role="option" tabIndex={-1} aria-selected={index === selected} onClick={() => attach(process)} onMouseEnter={() => setSelected(index)}
+            <div key={process.pid} role="option" tabIndex={-1} aria-selected={index === selected} onClick={() => attach(process)} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); attach(process) } }} onMouseEnter={() => setSelected(index)}
               className={`flex h-8 cursor-pointer items-center gap-3 rounded-md px-2.5 ${index === selected ? 'bg-accent/15 text-text-1' : 'text-text-2'}`}>
               <span className="gs-mono w-14 shrink-0 text-right text-text-4">{process.pid}</span>
               <span className="w-40 shrink-0 truncate font-medium">{process.name}</span>

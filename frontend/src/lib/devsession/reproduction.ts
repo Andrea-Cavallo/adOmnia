@@ -56,8 +56,17 @@ const ISO_TIME = /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?
 const DYNAMIC_VAR = /\{\{\s*\$[\w.]+\s*\}\}/g
 const SQL_CLOCK = /\b(NOW\(\)|CURRENT_TIMESTAMP|CURRENT_DATE|RANDOM\(\)|RAND\(\)|UUID\(\)|GEN_RANDOM_UUID\(\)|NEWID\(\))/gi
 
+/** Senza trattini ai due estremi: come `/^-+|-+$/`, senza il `+` prima dell'ancora finale (quadratico). */
+function withoutEdgeHyphens(value: string): string {
+  let start = 0
+  let end = value.length
+  while (start < end && value[start] === '-') start += 1
+  while (end > start && value[end - 1] === '-') end -= 1
+  return value.slice(start, end)
+}
+
 export function slug(text: string): string {
-  return text.toLowerCase().replace(/\{\{[^}]*\}\}/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'request'
+  return withoutEdgeHyphens(text.toLowerCase().replace(/\{\{[^{}]*\}\}/g, '').replace(/[^a-z0-9]+/g, '-')).slice(0, 40) || 'request'
 }
 
 function placeholder(header: string): string {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Keyboard, RotateCcw, Search, X } from 'lucide-react'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandShortcut, formatBinding, type CodeStudioCommandId } from './codeStudioCommands'
@@ -16,6 +16,9 @@ export function CodeStudioShortcutsDialog({ open, onClose }: CodeStudioShortcuts
   const custom = useCodeStudioKeymap((state) => state.custom)
   const [query, setQuery] = useState('')
   const [recording, setRecording] = useState<CodeStudioCommandId | null>(null)
+  const recorderRef = useRef<HTMLInputElement>(null)
+  // Il campo di registrazione compare solo mentre si registra: il focus glielo dà l'effetto.
+  useEffect(() => { if (recording) recorderRef.current?.focus() }, [recording])
   // Mentre si registra un tasto, Esc annulla la registrazione invece di chiudere il dialog.
 
   const conflicts = useMemo(() => bindingConflicts(CODE_STUDIO_COMMANDS, { keymap, custom }), [custom, keymap])
@@ -84,7 +87,7 @@ export function CodeStudioShortcutsDialog({ open, onClose }: CodeStudioShortcuts
                       {command.id in custom && <span className="gs-badge h-[18px] text-[10.5px] text-accent">custom</span>}
                       {conflict && <span title={`Also used by: ${conflict.filter((other) => other.id !== command.id).map((other) => other.label).join(', ')}`} className="text-warning"><AlertTriangle size={14} aria-label="Shortcut conflict" /></span>}
                       {recording === command.id ? (
-                        <input data-keymap-recorder autoFocus readOnly value="Press keys… (Esc cancels)" onKeyDown={(event) => onRecordKey(event, command.id)} onBlur={() => setRecording(null)} aria-label={`New shortcut for ${command.label}`} className="h-7 w-48 rounded-md border border-accent bg-surface-0 px-2 text-[12px] text-accent outline-none" />
+                        <input ref={recorderRef} data-keymap-recorder readOnly value="Press keys… (Esc cancels)" onKeyDown={(event) => onRecordKey(event, command.id)} onBlur={() => setRecording(null)} aria-label={`New shortcut for ${command.label}`} className="h-7 w-48 rounded-md border border-accent bg-surface-0 px-2 text-[12px] text-accent outline-none" />
                       ) : (
                         <button type="button" disabled={!rebindable} onClick={() => setRecording(command.id)} title={rebindable ? 'Click to change the shortcut' : 'Double Shift cannot be changed'} className="gs-kbd h-7 cursor-pointer px-2 text-[11.5px] hover:border-accent/60 hover:text-text-1 disabled:cursor-default">
                           {shortcuts.length ? shortcuts.join('  ·  ') : 'Not set'}

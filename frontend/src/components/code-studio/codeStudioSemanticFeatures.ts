@@ -201,7 +201,7 @@ export function installRecursiveCallMarkers(editor: monaco.editor.IStandaloneCod
   let timer: ReturnType<typeof setTimeout> | null = null
   let inFlight: CancellablePromise<unknown> | null = null
   const refresh = async () => {
-    inFlight?.cancel()
+    void inFlight?.cancel()
     const model = editor.getModel()
     const prepared = model ? await prepareDocument(model) : null
     if (!prepared || !featuresForEditor(prepared.sessionId, prepared.document.document.language)?.callHierarchy || prepared.document.document.readOnly) return decorations.clear()
@@ -227,7 +227,7 @@ export function installRecursiveCallMarkers(editor: monaco.editor.IStandaloneCod
   const unsubscribe = useCodeStudioLspStore.subscribe((state, previous) => { if (state.status !== previous.status) schedule() })
   editor.onDidDispose(() => {
     if (timer) clearTimeout(timer)
-    inFlight?.cancel()
+    void inFlight?.cancel()
     unsubscribe()
   })
   schedule()

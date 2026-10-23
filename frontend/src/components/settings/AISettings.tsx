@@ -403,7 +403,7 @@ export function AISettings() {
           <p className="mt-5 max-w-3xl text-[11px] leading-relaxed text-text-3">Configure {providerInfo?.label}. Credentials stay local and are only sent to the selected provider when you run an AI action.</p>
 
           {needsApiKey && <section className="mt-6 border-b border-border-1 pb-6">
-            <label className="mb-2 block text-xs font-semibold text-text-1">API key</label>
+            <div className="mb-2 block text-xs font-semibold text-text-1">API key</div>
             <div className="grid grid-cols-[minmax(0,1fr)_180px] gap-3 max-md:grid-cols-1">
               <div className="flex h-10 items-center gap-3 rounded-md border border-border-2 bg-surface-1 px-3">
                 <Lock size={13} className={workspaceCredential || keyIsSecured ? 'text-success' : 'text-text-4'} />

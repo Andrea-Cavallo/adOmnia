@@ -81,7 +81,7 @@ export function CodeStudioMarkdownTools({ document, onJumpToLine }: CodeStudioMa
       })
     return () => {
       cancelled = true
-      try { request.cancel() } catch { /* annullamento best-effort */ }
+      try { void request.cancel() } catch { /* annullamento best-effort */ }
     }
   }, [path, sessionId, searchKey])
 

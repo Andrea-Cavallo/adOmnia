@@ -32,7 +32,10 @@ export interface CodeStudioQuickRun {
 const ALL_PACKAGES = './...'
 
 function normalize(path: string): string {
-  return path.replace(/\\/g, '/').replace(/\/+$/, '')
+  const slashed = path.replace(/\\/g, '/')
+  let end = slashed.length
+  while (end > 0 && slashed[end - 1] === '/') end -= 1
+  return slashed.slice(0, end)
 }
 
 function directoryOf(relativePath: string): string {

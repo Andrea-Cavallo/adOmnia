@@ -189,7 +189,7 @@ export function hexToRgb01(hex: string): { r: number; g: number; b: number } {
   const full = clean.length === 3
     ? clean.split('').map((c) => c + c).join('')
     : clean.padEnd(6, '0').slice(0, 6)
-  const num = parseInt(full, 16)
+  const num = Number.parseInt(full, 16)
   if (Number.isNaN(num)) return { r: 0, g: 0, b: 0 }
   return {
     r: ((num >> 16) & 0xff) / 255,

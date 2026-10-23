@@ -73,7 +73,7 @@ function registerProviders(m: typeof monaco): void {
         const names = new Set<string>()
         const block = text.match(/(?:components:[\s\S]*?schemas:|definitions:)([\s\S]*)/)
         if (block) {
-          for (const match of block[1].matchAll(/^\s{2,}([A-Za-z0-9_.-]+):/gm)) names.add(match[1])
+          for (const match of block[1].matchAll(/^[ \t]{2,}([A-Za-z0-9_.-]+):/gm)) names.add(match[1])
         }
         const prefix = text.includes('definitions:') ? '#/definitions/' : '#/components/schemas/'
         return {

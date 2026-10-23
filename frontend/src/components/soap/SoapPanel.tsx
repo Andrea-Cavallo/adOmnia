@@ -737,7 +737,7 @@ export function SoapPanel() {
                       envelope,
                       soapVersion,
                     })
-                    navigator.clipboard.writeText(curl)
+                    void navigator.clipboard.writeText(curl).catch(() => undefined)
                   }}
                   className="px-2 py-0.5 text-[10px] text-text-4 hover:text-text-2"
                   title="Copy cURL"
@@ -791,8 +791,8 @@ export function SoapPanel() {
 
       {/* Code Gen Modal */}
       {showCodeGen && currentOp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowCodeGen(false)}>
-          <div className="w-[600px] max-h-[80vh] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation" onClick={() => setShowCodeGen(false)}>
+          <div className="w-[600px] max-h-[80vh] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" role="presentation" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 px-4 py-2 border-b border-border-1">
               <span className="text-xs font-semibold text-text-1">Client Code — {currentOp.name}</span>
               <button onClick={() => setShowCodeGen(false)} className="ml-auto text-text-4 hover:text-text-1">✕</button>

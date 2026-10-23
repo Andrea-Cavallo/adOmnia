@@ -60,6 +60,13 @@ export async function runSaveActions(documentId: string): Promise<void> {
   }
 }
 
+/** Lunghezza della riga senza spazi e tab finali, senza la regex `[ \t]+$` (quadratica sul testo lungo). */
+function lengthWithoutTrailingBlanks(line: string): number {
+  let end = line.length
+  while (end > 0 && (line[end - 1] === ' ' || line[end - 1] === '\t')) end -= 1
+  return end
+}
+
 /**
  * File non Go: spazi in coda e newline finale secondo .editorconfig, altrimenti secondo la
  * preferenza Trim Trailing Whitespace. Passa da Monaco quando il file è nell'editor attivo,
@@ -82,7 +89,7 @@ async function applyNonGoWhitespace(document: GoIDEEditorDocument): Promise<void
     const lineCount = trim ? model.getLineCount() : 0
     for (let line = 1; line <= lineCount; line++) {
       const content = model.getLineContent(line)
-      const kept = content.replace(/[ \t]+$/, '').length
+      const kept = lengthWithoutTrailingBlanks(content)
       if (kept < content.length) edits.push({ range: new monaco.Range(line, kept + 1, line, content.length + 1), text: '' })
     }
     const last = model.getLineCount()

@@ -4,6 +4,7 @@ import { Activity, Loader2, RefreshCw, X } from 'lucide-react'
 import { getRuntimeEnrichment, type RuntimeEnrichment } from '@/lib/devsession-api'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import { useModalFocusTrap } from '@/lib/accessibility'
+import { closeOnBackdropClick } from '@/lib/dialogBackdrop'
 
 interface CodeStudioRuntimeEnrichmentProps {
   open: boolean
@@ -66,8 +67,8 @@ export function CodeStudioRuntimeEnrichment({ open, session, onClose }: CodeStud
   const edges = report?.edges ?? []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Runtime enrichment" tabIndex={-1} className="flex max-h-[82vh] w-[720px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center ad-modal-backdrop" role="presentation" onClick={closeOnBackdropClick(onClose)}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Runtime enrichment" tabIndex={-1} className="flex max-h-[82vh] w-[720px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl">
         <div className="flex h-10 shrink-0 items-center border-b border-border-1 px-4">
           <h2 className="text-xs font-semibold text-text-1">Runtime enrichment</h2>
           <span className="ml-2 text-[9px] text-text-4">live session telemetry on the static graph</span>

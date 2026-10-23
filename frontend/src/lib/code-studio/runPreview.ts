@@ -2,7 +2,7 @@ import type { LivePreviewReport, LivePreviewRequest } from '../livepreview-api'
 
 interface ConfigLike { kind?: string; language?: string; workingDirectory?: string; programArguments?: ReadonlyArray<string> | null }
 
-const slash = (path: string) => path.replace(/\\/g, '/').replace(/^\.\/?/, '').replace(/\/+$/, '') || '.'
+const slash = (path: string) => path.replace(/\\/g, '/').replace(/^\.\/?/, '').replace(/(^|[^/])\/+$/, '$1') || '.'
 
 /**
  * Se la configurazione lancia lo script dev di un'app Node (`<pm> run dev`), Run deve aprire la Live Preview:

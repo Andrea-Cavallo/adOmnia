@@ -32,7 +32,7 @@ const secretAuthFields: Array<keyof RequestAuth> = [
   'oauth2RefreshToken', 'oidcIdToken', 'awsSecretKey', 'awsSessionToken',
 ]
 const secretField = /(authorization|cookie|api[-_]?key|token|secret|password|credential|session)/i
-const reference = /{{\s*[^}]+\s*}}|^(vault|secret):/i
+const reference = /\{\{[^{}]+\}\}|^(vault|secret):/i
 let responseSources: RecordingSource[] = []
 
 function keepReference(value: string): string {
@@ -46,7 +46,7 @@ export function sanitizeRecordedRequest(request: RequestItem): RequestItem {
   const redactBody = (raw: string) => {
     try {
       const placeholders = new Map<string, string>()
-      const parseable = raw.replace(/"(?:\\.|[^"\\])*"|\{\{[^}]+\}\}/g, token => {
+      const parseable = raw.replace(/"(?:\\.|[^"\\])*"|\{\{[^{}]+\}\}/g, token => {
         if (token.startsWith('"')) return token
         const placeholder = `{{__record_${uid()}}}`
         placeholders.set(JSON.stringify(placeholder), token)

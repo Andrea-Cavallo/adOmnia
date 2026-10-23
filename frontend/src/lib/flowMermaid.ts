@@ -60,12 +60,12 @@ function parseEndpoint(raw: string): { key: string; label: string; shape: Mermai
 }
 
 function parseEdgeLine(line: string): { from: string; to: string; label: string } | null {
-  const arrow = line.match(/\s*(?:-->|---?>|==>|-.->|->|--)\s*/)
+  const arrow = line.match(/\s*(?:--(?:-?>)?|-\.->|==>|->)\s*/)
   if (!arrow || arrow.index === undefined) return null
   const from = line.slice(0, arrow.index).trim()
   let to = line.slice(arrow.index + arrow[0].length).trim().replace(/;$/, '')
   let label = ''
-  const labelMatch = to.match(/^\|([^|]*)\|\s*(.+)$/)
+  const labelMatch = to.match(/^\|([^|]*)\|\s*(.+)/)
   if (labelMatch) {
     label = stripQuotes(labelMatch[1])
     to = labelMatch[2].trim()
@@ -113,7 +113,7 @@ function inferCondition(label: string): FlowCondition {
   if (wordMatch) {
     return { source: 'body', path: wordMatch[1], operator: 'eq', value: 'true' }
   }
-  const statusMatch = lower.match(/\b(status|http)\s*(?:is|=|==)?\s*(\d{3})\b/)
+  const statusMatch = lower.match(/\b(status|http)\s*(?:(?:is|=|==)\s*)?(\d{3})\b/)
   if (statusMatch) {
     return { source: 'status', path: 'response.status', operator: 'eq', value: statusMatch[2] }
   }

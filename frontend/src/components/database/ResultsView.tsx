@@ -177,7 +177,7 @@ export function ResultsView({ result, isMongo, error, logs, limit, onExportJson,
             </button>
             {columnsMenu && (
               <>
-                <div className="fixed inset-0 z-20" onClick={() => setColumnsMenu(false)} />
+                <div className="fixed inset-0 z-20" role="presentation" onClick={() => setColumnsMenu(false)} />
                 <div className="absolute right-0 top-full z-30 mt-1 max-h-64 w-52 overflow-y-auto rounded-md border border-border-2 bg-surface-3 p-1 shadow-xl">
                   {columns.map((column) => {
                     const visible = !hiddenColumns.includes(column)
@@ -202,7 +202,7 @@ export function ResultsView({ result, isMongo, error, logs, limit, onExportJson,
             <button onClick={() => setExportMenu((v) => !v)} disabled={!result} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30" title="Export"><Download size={13} /></button>
             {exportMenu && (
               <>
-                <div className="fixed inset-0 z-20" onClick={() => setExportMenu(false)} />
+                <div className="fixed inset-0 z-20" role="presentation" onClick={() => setExportMenu(false)} />
                 <div className="absolute right-0 top-full z-30 mt-1 w-28 overflow-hidden rounded-md border border-border-2 bg-surface-3 py-1 shadow-xl">
                   <button onClick={() => { onExportJson(); setExportMenu(false) }} className="block w-full px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1">Export JSON</button>
                   <button onClick={() => { onExportCsv(); setExportMenu(false) }} className="block w-full px-3 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-4 hover:text-text-1">Export CSV</button>
@@ -313,14 +313,14 @@ function DataTable({ columns, rows, allRows, startIndex, paddingTop = 0, padding
               <div className="text-[11.5px] font-semibold text-text-1">{col}</div>
               <div className="text-[9.5px] font-normal text-text-4">{inferColumnKind(col, allRows)}</div>
               {gripProps && (
-                <div {...gripProps(col)} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40" aria-hidden="true" />
+                <div {...gripProps(col)} className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-accent/40" />
               )}
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {paddingTop > 0 && <tr aria-hidden="true" style={{ height: paddingTop }}><td colSpan={columns.length + 1} /></tr>}
+        {paddingTop > 0 && <tr style={{ height: paddingTop }}><td colSpan={columns.length + 1} /></tr>}
         {rows.map((row, idx) => (
           <tr key={JSON.stringify(row._id ?? startIndex + idx)} className="group">
             <td className="sticky left-0 w-10 border-b border-r border-border-1 bg-surface-1 pr-2 text-right font-mono text-[10px] text-text-4 group-hover:bg-surface-2" style={{ height: ROW_HEIGHT }}>
@@ -365,7 +365,7 @@ function DataTable({ columns, rows, allRows, startIndex, paddingTop = 0, padding
             })}
           </tr>
         ))}
-        {paddingBottom > 0 && <tr aria-hidden="true" style={{ height: paddingBottom }}><td colSpan={columns.length + 1} /></tr>}
+        {paddingBottom > 0 && <tr style={{ height: paddingBottom }}><td colSpan={columns.length + 1} /></tr>}
       </tbody>
     </table>
   )

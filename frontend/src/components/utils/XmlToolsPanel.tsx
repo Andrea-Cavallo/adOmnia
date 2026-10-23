@@ -320,7 +320,7 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className={LBL}>XML Input <span className="normal-case opacity-60">(drop file)</span></label>
+                <div className={LBL}>XML Input <span className="normal-case opacity-60">(drop file)</span></div>
                 <textarea
                   value={fmtInput} onChange={e => setFmtInput(e.target.value)}
                   rows={14} className={TA} spellCheck={false}
@@ -329,7 +329,7 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
               </div>
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                  <label className={LBL}>Formatted output</label>
+                  <div className={LBL}>Formatted output</div>
                   {fmtOutput && (
                     <button
                       onClick={() => navigator.clipboard.writeText(fmtOutput)}
@@ -358,7 +358,7 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className={LBL}>Left <span className="normal-case opacity-60">(original · drop file)</span></label>
+                <div className={LBL}>Left <span className="normal-case opacity-60">(original · drop file)</span></div>
                 <textarea
                   value={diffLeft} onChange={e => setDiffLeft(e.target.value)}
                   rows={6} className={TA} spellCheck={false}
@@ -366,7 +366,7 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className={LBL}>Right <span className="normal-case opacity-60">(modified · drop file)</span></label>
+                <div className={LBL}>Right <span className="normal-case opacity-60">(modified · drop file)</span></div>
                 <textarea
                   value={diffRight} onChange={e => setDiffRight(e.target.value)}
                   rows={6} className={TA} spellCheck={false}
@@ -442,7 +442,7 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
         {tab === 'xpath' && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
-              <label className={LBL}>XML Document <span className="normal-case opacity-60">(drop file)</span></label>
+              <div className={LBL}>XML Document <span className="normal-case opacity-60">(drop file)</span></div>
               <textarea
                 value={xpathXml} onChange={e => setXpathXml(e.target.value)}
                 rows={8} className={TA} spellCheck={false}
@@ -451,7 +451,7 @@ export function XmlToolsPanel({ initialTab }: { initialTab?: Tab } = {}) {
             </div>
             <div className="flex gap-2">
               <div className="flex flex-col gap-1 flex-1">
-                <label className={LBL}>XPath Expression</label>
+                <div className={LBL}>XPath Expression</div>
                 <input
                   value={xpathQuery} onChange={e => setXpathQuery(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') runXPath() }}

@@ -7,7 +7,7 @@ export interface PullRequestDraft { title: string; body: string }
 const MAX_DIFF_CHARS = 30000
 
 export function parsePullRequestDraft(raw: string): PullRequestDraft {
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trimEnd()
   try {
     const parsed = JSON.parse(cleaned) as { title?: unknown; body?: unknown }
     if (typeof parsed.title === 'string' && parsed.title.trim()) {

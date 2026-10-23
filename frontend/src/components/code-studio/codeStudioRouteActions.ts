@@ -44,7 +44,7 @@ export async function runRouteInlineAction(document: GoIDEEditorDocument, line: 
 
 /** Spring: `{{baseUrl}}` dell'ambiente se c'è, altrimenti `server.port` dell'applicazione, altrimenti 8080. */
 function springBaseUrl(sessionId: string, variables: Record<string, string>): string {
-  if (variables.baseUrl) return variables.baseUrl.replace(/\/+$/, '')
+  if (variables.baseUrl) return variables.baseUrl.replace(/(^|[^/])\/+$/, '$1')
   return `http://localhost:${springStateOf(sessionId).index?.serverPort || '8080'}`
 }
 

@@ -132,7 +132,7 @@ export function DockerLabPanel() {
       const s = await labStatus(runningLab.projectName)
       setContainers(s ?? [])
     }
-    poll()
+    void poll()
     return visibleInterval(poll, 3000, { scope: "dockerlab", kind: "live" })
   }, [runningLab])
 

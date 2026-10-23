@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { hitConditionError, type BreakpointDraft } from './codeStudioBreakpoints'
 
 interface CodeStudioBreakpointFieldsProps {
@@ -26,6 +26,13 @@ function Field({ label, hint, error, children }: { label: string; hint?: string;
 /** Condizione, hit count e logpoint: lo stesso form nel popover del gutter e nel dialog Breakpoints. */
 export function CodeStudioBreakpointFields({ draft, onChange, onSubmit, allowLog = true, autoFocus }: CodeStudioBreakpointFieldsProps) {
   const update = (patch: Partial<BreakpointDraft>) => onChange({ ...draft, ...patch })
+  const conditionRef = useRef<HTMLInputElement>(null)
+  const logRef = useRef<HTMLInputElement>(null)
+  // Il campo del logpoint nasce quando si attiva il log: riceve il focus come farebbe autoFocus.
+  useEffect(() => {
+    if (draft.log) logRef.current?.focus()
+    else if (autoFocus) conditionRef.current?.focus()
+  }, [autoFocus, draft.log])
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Enter') { event.preventDefault(); onSubmit() }
   }
@@ -36,7 +43,7 @@ export function CodeStudioBreakpointFields({ draft, onChange, onSubmit, allowLog
         Enabled
       </label>
       <Field label="Condition" hint="Stops only when this Go expression is true">
-        <input autoFocus={autoFocus} value={draft.condition} onChange={(event) => update({ condition: event.target.value })} onKeyDown={onKeyDown} placeholder="len(items) > 10" spellCheck={false} className={INPUT} />
+        <input ref={conditionRef} value={draft.condition} onChange={(event) => update({ condition: event.target.value })} onKeyDown={onKeyDown} placeholder="len(items) > 10" spellCheck={false} className={INPUT} />
       </Field>
       <Field label="Hit count" hint="3 = only the 3rd time · >= 5 · % 10 = every 10th" error={hitConditionError(draft.hitCondition)}>
         <input value={draft.hitCondition} onChange={(event) => update({ hitCondition: event.target.value })} onKeyDown={onKeyDown} placeholder=">= 5" spellCheck={false} className={INPUT} />
@@ -49,7 +56,7 @@ export function CodeStudioBreakpointFields({ draft, onChange, onSubmit, allowLog
           </label>
           {draft.log && (
             <Field label="Message" hint="{expression} is evaluated when the line runs; output goes to the Debug console">
-              <input autoFocus value={draft.logMessage} onChange={(event) => update({ logMessage: event.target.value })} onKeyDown={onKeyDown} placeholder="user = {user.ID}" spellCheck={false} className={INPUT} />
+              <input ref={logRef} value={draft.logMessage} onChange={(event) => update({ logMessage: event.target.value })} onKeyDown={onKeyDown} placeholder="user = {user.ID}" spellCheck={false} className={INPUT} />
             </Field>
           )}
         </div>

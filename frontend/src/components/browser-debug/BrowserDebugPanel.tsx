@@ -318,7 +318,7 @@ function TabPicker({ onConnect, onCancel, connectionError }: TabPickerProps) {
               onChange={(e) => setLaunchUrl(e.target.value)}
               placeholder="https://your-site.com"
               className="flex-1 h-8 px-2 rounded bg-surface-0 border border-border-1 text-xs text-text-1 font-mono placeholder:text-text-3 focus:outline-none focus:border-accent"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleLaunch() }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleLaunch() }}
             />
             <button
               onClick={handleLaunch}
@@ -520,7 +520,7 @@ export function BrowserDebugPanel({ initialTab = 'network' }: { initialTab?: Deb
         setConnectionError(err instanceof Error ? err.message : 'Failed to read browser traffic')
       }
     }
-    poll()
+    void poll()
     return visibleInterval(poll, 1000, { scope: "browser", kind: "live" })
   }, [connected, setEntries])
 

@@ -159,14 +159,14 @@ interface RootContext {
 
 const FUNC_DECL = /^\s*func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w*)\s*\(([^)]*)\)[^{]*\{/
 const STRUCT_DECL = /^\s*type\s+[A-Za-z_]\w*\s+struct\s*\{/
-const CTX_PARAM = /([A-Za-z_]\w*)\s+context\.Context/g
+const CTX_PARAM = /\b([A-Za-z_]\w*)\s+context\.Context/g
 const STRUCT_FIELD = /^\s*(?:[A-Za-z_]\w*\s+)?context\.Context\b/
-const ROOT_ASSIGN = /([A-Za-z_]\w*)\s*(?::=|=)\s*context\.(Background|TODO)\(\)/
-const DERIVED_ASSIGN = /([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*:=\s*context\.(WithCancel|WithTimeout|WithDeadline|WithValue)\s*\(([^)]*)\)/
-const INLINE_TIMEOUT = /context\.(WithTimeout|WithDeadline)\s*\(\s*[^,]+,\s*([^)]*)\)/
+const ROOT_ASSIGN = /\b([A-Za-z_]\w*)\s*(?::=|=)\s*context\.(Background|TODO)\(\)/
+const DERIVED_ASSIGN = /\b([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*:=\s*context\.(WithCancel|WithTimeout|WithDeadline|WithValue)\s*\(([^)]*)\)/
+const INLINE_TIMEOUT = /context\.(WithTimeout|WithDeadline)\([^,]+,([^)]*)\)/
 const DONE_CASE = /case\s*<-\s*ctx\.Done\(\)\s*:/
 const SELECT_START = /\bselect\s*\{/
-const CALL_WITH_CTX = /([A-Za-z_]\w*)\s*\(\s*([A-Za-z_]\w*)\s*(?:,|\))/
+const CALL_WITH_CTX = /\b([A-Za-z_]\w*)\s*\(\s*([A-Za-z_]\w*)\s*(?:,|\))/
 
 export function analyzeContextPropagation(source: string, options?: { timeoutThresholdMs?: number }): ContextAnalysis {
   const threshold = options?.timeoutThresholdMs ?? DEFAULT_TIMEOUT_THRESHOLD_MS
@@ -230,7 +230,7 @@ export function analyzeContextPropagation(source: string, options?: { timeoutThr
     if (STRUCT_DECL.test(cleaned)) {
       scopes.push({ kind: 'struct', line, ctxParams: [], createsRoot: false, appliesTimeout: false })
     } else if (innermostStruct() && STRUCT_FIELD.test(cleaned) && !/^\s*\{/.test(cleaned)) {
-      const fieldName = (cleaned.match(/([A-Za-z_]\w*)\s+context\.Context/) ?? [])[1] ?? 'context.Context'
+      const fieldName = (cleaned.match(/\b([A-Za-z_]\w*)\s+context\.Context/) ?? [])[1] ?? 'context.Context'
       push({
         kind: 'context-in-struct', severity: 'warning', line,
         message: `Context stored in struct field "${fieldName}".`,

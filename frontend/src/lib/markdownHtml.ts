@@ -17,7 +17,10 @@ const URL_ATTRS = new Set(['href', 'src'])
 /** Tag con corpo che può contenere righe vuote: il blocco continua finché il tag di apertura non si chiude. */
 const CONTAINER = 'p|div|details|center|table|ul|ol|blockquote|picture|h[1-6]'
 
-const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:"[^"]*"|'[^']*'|[^'">])*)>/g
+// Tag name and attribute text in one lazy-free run: the name is split from the body in the loop below, so the
+// attribute part cannot re-read the characters the name already consumed (that overlap is quadratic on "<a<a…").
+const TAG = /<(\/?)([a-zA-Z][^<>]*)>/g
+const TAG_NAME = /^[a-zA-Z][a-zA-Z0-9]*/
 const ATTR = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g
 
 const escapeText = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -67,7 +70,8 @@ export function renderSafeHtml(html: string, options: HtmlRenderOptions): string
     out += escapeText(text.slice(last, match.index))
     last = match.index + match[0].length
     const closing = match[1] === '/'
-    const tag = match[2].toLowerCase()
+    const name = TAG_NAME.exec(match[2])?.[0] ?? match[2]
+    const tag = name.toLowerCase()
     if (!ALLOWED_TAGS.has(tag)) continue
     if (closing) {
       const position = stack.lastIndexOf(tag)
@@ -75,7 +79,7 @@ export function renderSafeHtml(html: string, options: HtmlRenderOptions): string
       while (stack.length > position) out += `</${stack.pop()}>`
       continue
     }
-    out += `<${tag}${renderAttributes(tag, match[3], options)}${VOID_TAGS.has(tag) ? ' /' : ''}>`
+    out += `<${tag}${renderAttributes(tag, match[2].slice(name.length), options)}${VOID_TAGS.has(tag) ? ' /' : ''}>`
     if (!VOID_TAGS.has(tag) && !match[0].endsWith('/>')) stack.push(tag)
     else if (!VOID_TAGS.has(tag)) out += `</${tag}>`
   }
@@ -94,9 +98,10 @@ const BLOCK_START = new RegExp(`^ {0,3}<(?:(${CONTAINER})\\b|img\\b|a\\b|br\\b|h
 export function replaceHtmlBlocks(text: string, replace: (block: string) => string): string {
   const lines = text.split('\n')
   const out: string[] = []
-  for (let index = 0; index < lines.length; index += 1) {
+  let index = 0
+  while (index < lines.length) {
     const start = BLOCK_START.exec(lines[index])
-    if (!start) { out.push(lines[index]); continue }
+    if (!start) { out.push(lines[index]); index += 1; continue }
     let end = index
     if (start[0].trim().startsWith('<!--')) {
       while (end < lines.length - 1 && !lines[end].includes('-->')) end += 1
@@ -114,7 +119,7 @@ export function replaceHtmlBlocks(text: string, replace: (block: string) => stri
       while (end < lines.length - 1 && lines[end + 1].trim() !== '') end += 1
     }
     out.push(replace(lines.slice(index, end + 1).join('\n')))
-    index = end
+    index = end + 1
   }
   return out.join('\n')
 }

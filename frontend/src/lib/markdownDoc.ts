@@ -253,6 +253,14 @@ function headingSlug(text: string): string {
   return slug || 'section'
 }
 
+/** Index of a code block held back as a `\x00BLK<n>\x00` placeholder, or null when the line is not one. */
+function blockPlaceholderIndex(line: string): number | null {
+  const open = '\x00BLK'
+  if (!line.startsWith(open) || !line.endsWith('\x00')) return null
+  const digits = line.slice(open.length, -1)
+  return /^\d+$/.test(digits) ? Number(digits) : null
+}
+
 export function renderMarkdown(md: string, sourcePath?: string): string {
   const codeBlocks: string[] = []
   const withFrontmatter = md.replace(/^---\r?\n([\s\S]*?)\r?\n---(?=\r?\n|$)/, (_m, body) => {
@@ -307,9 +315,9 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
     s = s.replace(/\*([^*\n]+)\*/g, '<em class="italic text-text-2">$1</em>')
     s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) =>
       `<img src="${esc(sanitizeUrl(resolveMarkdownAssetUrl(src, sourcePath)))}" alt="${esc(alt)}" class="max-w-full rounded border border-border-1 bg-surface-1 my-2 block" loading="lazy" />`)
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) =>
+    s = s.replace(/(?<!\[)\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) =>
       `<a href="${esc(sanitizeUrl(href))}" class="text-accent underline hover:opacity-80 transition-opacity">${label}</a>`)
-    s = s.replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_m, target, alias) =>
+    s = s.replace(/(?<!\[)\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_m, target, alias) =>
       `<a href="adomnia-md:${esc(target)}" class="text-accent underline hover:opacity-80 transition-opacity">${esc(alias || target)}</a>`)
     // `==testo==` è l'evidenziazione usata da Yuque: resta testo, non HTML.
     s = s.replace(/==([^=\n]+)==/g, '<mark class="rounded bg-warning/25 px-0.5 text-text-1">$1</mark>')
@@ -330,20 +338,21 @@ export function renderMarkdown(md: string, sourcePath?: string): string {
   for (let idx = 0; idx < lines.length; idx += 1) {
     const raw = lines[idx]
     const line = raw.trim()
-    const block = line.match(/^\x00BLK(\d+)\x00$/)
-    if (block) { closeList(); out.push(codeBlocks[Number(block[1])]); continue }
+    const block = blockPlaceholderIndex(line)
+    if (block !== null) { closeList(); out.push(codeBlocks[block]); continue }
 
     // Contenitori Yuque `:::info … :::` (callout): il corpo usa le stesse regole inline del testo.
-    const callout = line.match(/^:::\s*([A-Za-z]+)?\s*(.*)$/)
+    const callout = /^:::[ \t]*([A-Za-z]*)/.exec(line)
     if (callout) {
-      const body: string[] = callout[2]?.trim() ? [callout[2]] : []
+      const summary = line.slice(callout[0].length).replace(/^[ \t]*/, '')
+      const body: string[] = summary.trim() ? [summary] : []
       idx += 1
       while (idx < lines.length && !/^:::\s*$/.test(lines[idx].trim())) {
         body.push(lines[idx])
         idx += 1
       }
       closeList()
-      out.push(renderCallout(callout[1], body, inlineEsc))
+      out.push(renderCallout(callout[1] || undefined, body, inlineEsc))
       continue
     }
 
@@ -439,7 +448,7 @@ export function normalizeRelPath(path: string): string {
 }
 
 export function noteKey(path: string): string {
-  return normalizeRelPath(path).replace(/#.*$/, '').replace(/\.(md|markdown)$/i, '').toLowerCase()
+  return normalizeRelPath(path).replace(/(?<!#)#.*$/, '').replace(/\.(md|markdown)$/i, '').toLowerCase()
 }
 
 export function noteTitle(file: MarkdownFileEntry): string {
@@ -473,7 +482,7 @@ export function resolveMarkdownTarget(
   fromFile: MarkdownFileEntry,
   lookup: Map<string, MarkdownFileEntry>,
 ): MarkdownFileEntry | undefined {
-  const clean = target.trim().replace(/^adomnia-md:/, '').replace(/#.*$/, '')
+  const clean = target.trim().replace(/^adomnia-md:/, '').replace(/(?<!#)#.*$/, '')
   if (!clean || /^(https?:|mailto:|tel:|data:|javascript:)/i.test(clean)) return undefined
   const fromDir = fromFile.dir === '.' ? '' : fromFile.dir
   const candidates = [
@@ -499,18 +508,18 @@ export function extractMarkdownEdges(
     const resolved = resolveMarkdownTarget(target, file, lookup)
     edges.push({
       from: file.relPath,
-      to: resolved?.relPath || target.replace(/#.*$/, ''),
+      to: resolved?.relPath || target.replace(/(?<!#)#.*$/, ''),
       label,
       resolved: Boolean(resolved),
       type,
     })
   }
 
-  const standard = /!?\[[^\]]*]\(([^)]+)\)/g
+  const standard = /(?<![!\[])!?\[[^\]]*]\(([^)]+)\)/g
   let match: RegExpExecArray | null
   while ((match = standard.exec(content))) pushTarget(match[1], match[1], 'markdown')
 
-  const wiki = /\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?]]/g
+  const wiki = /(?<!\[)\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?]]/g
   while ((match = wiki.exec(content))) pushTarget(match[1], match[2] || match[1], 'wiki')
   return edges
 }
@@ -613,7 +622,7 @@ export function extractTags(content: string): string[] {
   const tags = new Set<string>()
   const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
   if (frontmatter) {
-    const tagLine = frontmatter[1].match(/^tags:\s*(.+)$/m)
+    const tagLine = frontmatter[1].match(/^tags:(.*)$/m)
     if (tagLine) {
       tagLine[1]
         .replace(/[[\],]/g, ' ')
@@ -633,8 +642,8 @@ function noteMemoryText(content: string, title: string): string {
     .replace(/^---\r?\n[\s\S]*?\r?\n---/, '')
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\[[^\]]+]\([^)]+\)/g, (match) => match.replace(/^\[|\]\([^)]+\)$/g, ''))
-    .replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?]]/g, (_m, target, alias) => alias || target)
+    .replace(/(?<!\[)\[[^\]]+]\([^)]+\)/g, (match) => match.replace(/^\[|\]\([^)]+\)$/g, ''))
+    .replace(/(?<!\[)\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?]]/g, (_m, target, alias) => alias || target)
     .replace(/\s+/g, ' ')
     .trim()
   return body || title

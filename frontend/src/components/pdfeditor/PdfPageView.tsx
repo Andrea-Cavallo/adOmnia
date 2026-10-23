@@ -43,11 +43,15 @@ export function PdfPageView(props: PdfPageViewProps) {
   // Fetch intrinsic page size once so we can size the placeholder before render.
   useEffect(() => {
     let cancelled = false
-    doc.getPage(page).then((p) => {
-      if (cancelled) return
-      const vp = p.getViewport({ scale: 1 })
-      setDims({ widthPt: vp.width, heightPt: vp.height })
-    })
+    doc.getPage(page)
+      .then((p) => {
+        if (cancelled) return
+        const vp = p.getViewport({ scale: 1 })
+        setDims({ widthPt: vp.width, heightPt: vp.height })
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason))
+      })
     return () => { cancelled = true }
   }, [doc, page])
 

@@ -121,7 +121,9 @@ function parseCurlCollection(text: string): Collection {
 }
 
 function parseHttpCollection(filename: string, text: string): Collection {
-  const requests = text.split(/\n\s*###.*\n/g).map((block, index) => {
+  // `###` starts a new request block; the separator line is matched from the line start (the blocks lose their
+  // surrounding whitespace anyway), instead of making `\s*` skip blank lines for every newline in the file.
+  const requests = text.split(/^[ \t]*###[^\n]*/gm).map((block, index) => {
     const lines = block.trim().split(/\r?\n/)
     const first = lines.findIndex((line) => /^(GET|QUERY|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S+/i.test(line.trim()))
     if (first < 0) return null

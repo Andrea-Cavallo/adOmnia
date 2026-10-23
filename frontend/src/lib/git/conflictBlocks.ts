@@ -22,24 +22,26 @@ const label = (line: string): string => line.replace(/\r$/, '').slice(8).trim()
 export function findConflictBlocks(text: string): ConflictBlock[] {
   const lines = text.split('\n')
   const blocks: ConflictBlock[] = []
-  for (let index = 0; index < lines.length; index++) {
-    if (!marker(lines[index], '<<<<<<<')) continue
+  let index = 0
+  while (index < lines.length) {
+    if (!marker(lines[index], '<<<<<<<')) { index++; continue }
     const start = index
     const ours: string[] = []
     let base: string[] | null = null
     const theirs: string[] = []
     let section: 'ours' | 'base' | 'theirs' = 'ours'
     let end = -1
-    for (index = start + 1; index < lines.length; index++) {
-      const line = lines[index]
+    for (let cursor = start + 1; cursor < lines.length; cursor++) {
+      const line = lines[cursor]
       if (section === 'ours' && marker(line, '|||||||')) { section = 'base'; base = []; continue }
       if (section !== 'theirs' && marker(line, '=======')) { section = 'theirs'; continue }
-      if (section === 'theirs' && marker(line, '>>>>>>>')) { end = index; break }
+      if (section === 'theirs' && marker(line, '>>>>>>>')) { end = cursor; break }
       if (section === 'ours' && marker(line, '<<<<<<<')) break // marker annidato o rotto: si riparte da qui
       ;(section === 'ours' ? ours : section === 'base' ? base! : theirs).push(line)
     }
-    if (end < 0) { index = start; continue }
+    if (end < 0) { index = start + 1; continue }
     blocks.push({ start, end, ours, base, theirs, oursLabel: label(lines[start]), theirsLabel: label(lines[end]) })
+    index = end + 1
   }
   return blocks
 }

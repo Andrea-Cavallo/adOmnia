@@ -203,8 +203,8 @@ export function CodeStudioLivePreview({ session, embedded = false }: LivePreview
 /** Cartella del dev server rispetto al progetto ("." per la radice), per aprire i file degli errori. */
 function relativeDirectory(projectRoot: string, directory: string | undefined): string {
   if (!directory) return '.'
-  const root = projectRoot.replace(/\\/g, '/').replace(/\/+$/, '')
-  const dir = directory.replace(/\\/g, '/').replace(/\/+$/, '')
+  const root = projectRoot.replace(/\\/g, '/').replace(/(^|[^/])\/+$/, '$1')
+  const dir = directory.replace(/\\/g, '/').replace(/(^|[^/])\/+$/, '$1')
   if (dir.toLowerCase() === root.toLowerCase()) return '.'
   return dir.toLowerCase().startsWith(`${root.toLowerCase()}/`) ? dir.slice(root.length + 1) : '.'
 }

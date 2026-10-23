@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, ClipboardCopy, GitBranch, Loader2, Tag, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,8 +18,8 @@ export function DialogShell({
   danger?: boolean
 }) {
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" onClick={onClose}>
-      <div className={cn('flex max-h-[82vh] flex-col overflow-hidden rounded-xl border bg-surface-1 shadow-2xl', danger ? 'border-error/40' : 'border-border-2', width)} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" role="presentation" onClick={onClose}>
+      <div className={cn('flex max-h-[82vh] flex-col overflow-hidden rounded-xl border bg-surface-1 shadow-2xl', danger ? 'border-error/40' : 'border-border-2', width)} role="presentation" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3">
           {icon}
           <div className="text-sm font-semibold text-text-1">{title}</div>
@@ -69,11 +69,13 @@ export function CreateBranchDialog({ sourceLabel, suggested, busy, onClose, onSu
   const [name, setName] = useState(suggested)
   const [checkout, setCheckout] = useState(true)
   const [push, setPush] = useState(false)
+  const nameRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { nameRef.current?.focus() }, [])
   const valid = /^[^\s~^:?*[\\]+$/.test(name.trim()) && !name.trim().endsWith('/')
   return (
     <DialogShell title="Create branch from commit" icon={<GitBranch size={15} className="text-accent" />} onClose={onClose}
       footer={<><CancelBtn onClick={onClose} /><PrimaryBtn onClick={() => onSubmit({ name: name.trim(), checkout, push })} disabled={!valid || busy} busy={busy}>Create</PrimaryBtn></>}>
-      <div><FieldLabel>Branch name</FieldLabel><input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="feature/my-branch" />
+      <div><FieldLabel>Branch name</FieldLabel><input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="feature/my-branch" />
         {!valid && name.trim() !== '' && <div className="mt-1 text-[10px] text-error">Invalid branch name.</div>}</div>
       <div><FieldLabel>Source commit</FieldLabel><div className="rounded border border-border-1 bg-surface-0 px-2 py-1.5 font-mono text-[11px] text-text-3">{sourceLabel}</div></div>
       <div className="space-y-1.5"><Check checked={checkout} onChange={setCheckout} label="Check out after creation" /><Check checked={push} onChange={setPush} label="Push to origin" /></div>
@@ -93,11 +95,13 @@ export function CreateTagDialog({ sourceLabel, busy, onClose, onSubmit }: {
   const [annotated, setAnnotated] = useState(false)
   const [message, setMessage] = useState('')
   const [push, setPush] = useState(false)
+  const nameRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { nameRef.current?.focus() }, [])
   const valid = /^[^\s~^:?*[\\]+$/.test(name.trim())
   return (
     <DialogShell title="Create tag from commit" icon={<Tag size={15} className="text-accent" />} onClose={onClose}
       footer={<><CancelBtn onClick={onClose} /><PrimaryBtn onClick={() => onSubmit({ name: name.trim(), annotated, message, push })} disabled={!valid || busy} busy={busy}>Create</PrimaryBtn></>}>
-      <div><FieldLabel>Tag name</FieldLabel><input autoFocus value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="v1.2.0" /></div>
+      <div><FieldLabel>Tag name</FieldLabel><input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} className={INPUT} placeholder="v1.2.0" /></div>
       <div className="flex gap-4 text-xs text-text-2">
         <label className="flex cursor-pointer items-center gap-1.5"><input type="radio" checked={!annotated} onChange={() => setAnnotated(false)} className="accent-accent" /> Lightweight</label>
         <label className="flex cursor-pointer items-center gap-1.5"><input type="radio" checked={annotated} onChange={() => setAnnotated(true)} className="accent-accent" /> Annotated</label>
@@ -119,13 +123,15 @@ export function CheckoutCommitDialog({ sourceLabel, busy, onClose, onSubmit }: {
 }) {
   const [mode, setMode] = useState<'detached' | 'branch'>('branch')
   const [branch, setBranch] = useState('')
+  const branchRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { branchRef.current?.focus() }, [])
   const valid = mode === 'detached' || /^[^\s~^:?*[\\]+$/.test(branch.trim())
   return (
     <DialogShell title="Checkout commit" icon={<GitBranch size={15} className="text-accent" />} onClose={onClose}
       footer={<><CancelBtn onClick={onClose} /><PrimaryBtn onClick={() => onSubmit({ branch: mode === 'branch' ? branch.trim() : '' })} disabled={!valid || busy} busy={busy}>Checkout</PrimaryBtn></>}>
       <div className="rounded border border-border-1 bg-surface-0 px-2 py-1.5 font-mono text-[11px] text-text-3">{sourceLabel}</div>
       <label className="flex cursor-pointer items-start gap-2 text-xs text-text-2"><input type="radio" checked={mode === 'branch'} onChange={() => setMode('branch')} className="mt-0.5 accent-accent" /><span><span className="font-medium text-text-1">Checkout and create branch</span><br /><span className="text-text-4">Safest — your work stays on a named branch.</span></span></label>
-      {mode === 'branch' && <input autoFocus value={branch} onChange={(e) => setBranch(e.target.value)} className={INPUT} placeholder="branch name" />}
+      {mode === 'branch' && <input ref={branchRef} value={branch} onChange={(e) => setBranch(e.target.value)} className={INPUT} placeholder="branch name" />}
       <label className="flex cursor-pointer items-start gap-2 text-xs text-text-2"><input type="radio" checked={mode === 'detached'} onChange={() => setMode('detached')} className="mt-0.5 accent-accent" /><span><span className="font-medium text-text-1">Checkout (detached HEAD)</span><br /><span className="text-text-4">Inspect this commit without a branch.</span></span></label>
       {mode === 'detached' && (
         <div className="flex items-start gap-2 rounded border border-warning/40 bg-warning/10 p-2 text-[11px] text-warning"><AlertTriangle size={13} className="mt-0.5 shrink-0" /> In detached HEAD, new commits can become unreachable unless you create a branch.</div>
@@ -288,10 +294,12 @@ export function PromptDialog({ title, label, placeholder, initial = '', busy, on
   onSubmit: (value: string) => void
 }) {
   const [value, setValue] = useState(initial)
+  const valueRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { valueRef.current?.focus() }, [])
   return (
     <DialogShell title={title} onClose={onClose}
       footer={<><CancelBtn onClick={onClose} /><PrimaryBtn onClick={() => onSubmit(value.trim())} disabled={busy || !value.trim()} busy={busy}>OK</PrimaryBtn></>}>
-      <div><FieldLabel>{label}</FieldLabel><input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) onSubmit(value.trim()) }} className={INPUT} placeholder={placeholder} /></div>
+      <div><FieldLabel>{label}</FieldLabel><input ref={valueRef} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) onSubmit(value.trim()) }} className={INPUT} placeholder={placeholder} /></div>
     </DialogShell>
   )
 }

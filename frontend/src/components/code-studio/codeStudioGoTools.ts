@@ -27,7 +27,7 @@ export interface CodeStudioGoToolContext {
 }
 
 const QUOTED_IMPORT = /"([^"\s]+)"/
-const GO_MOD_REQUIRE = /^\s*(?:require\s+)?([A-Za-z0-9_.~][A-Za-z0-9_.~/-]*\.[A-Za-z0-9_.~/-]+)\s+v\d/
+const GO_MOD_REQUIRE = /^\s*(?:require\s+)?([A-Za-z0-9_.~][A-Za-z0-9_~/-]*\.[A-Za-z0-9_.~/-]+)\s+v\d/
 
 /** Target proposto all'apertura del dialog: il package corrente, il modulo della riga o la parola sotto il cursore. */
 export function defaultGoToolTarget(tool: GoIDEGoTool, context: CodeStudioGoToolContext): string {

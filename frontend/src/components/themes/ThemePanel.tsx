@@ -72,13 +72,13 @@ export function ThemePanel() {
   }, [setThemes, setLoading])
 
   useEffect(() => {
-    loadThemes()
+    void loadThemes()
   }, [loadThemes])
 
   useEffect(() => {
     return () => {
       watchInterval.current?.()
-      stopWatching()
+      void stopWatching().catch(() => undefined)
     }
   }, [])
 
@@ -103,7 +103,7 @@ export function ThemePanel() {
 
   const handleExport = async (id: string) => {
     const json = await exportTheme(id)
-    if (json) navigator.clipboard.writeText(json)
+    if (json) await navigator.clipboard.writeText(json).catch(() => undefined)
     setMenuOpenId(null)
   }
 
@@ -149,10 +149,15 @@ export function ThemePanel() {
 
   const loadSkinsDirectory = async () => {
     setDirLoading(true)
-    const [skins, dir] = await Promise.all([scanSkinsDirectory(), getSkinsDirectory()])
-    setDirSkins(skins)
-    setSkinsDir(dir)
-    setDirLoading(false)
+    try {
+      const [skins, dir] = await Promise.all([scanSkinsDirectory(), getSkinsDirectory()])
+      setDirSkins(skins)
+      setSkinsDir(dir)
+    } catch {
+      // Keep what is already shown; the spinner must not stay on.
+    } finally {
+      setDirLoading(false)
+    }
   }
 
   const toggleWatching = async () => {
@@ -181,14 +186,18 @@ export function ThemePanel() {
 
   const loadTokens = async () => {
     setTokensLoading(true)
-    const ns = await getTokenNamespace()
-    setTokens(ns)
-    setTokensLoading(false)
+    try {
+      setTokens(await getTokenNamespace())
+    } catch {
+      // Keep what is already shown; the spinner must not stay on.
+    } finally {
+      setTokensLoading(false)
+    }
   }
 
   useEffect(() => {
-    if (tab === 'skins' && dirSkins.length === 0) loadSkinsDirectory()
-    if (tab === 'tokens' && Object.keys(tokens).length === 0) loadTokens()
+    if (tab === 'skins' && dirSkins.length === 0) void loadSkinsDirectory()
+    if (tab === 'tokens' && Object.keys(tokens).length === 0) void loadTokens()
   }, [tab])
 
   const installSkin = async (skin: Theme) => {

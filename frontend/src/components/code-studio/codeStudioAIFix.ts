@@ -57,7 +57,7 @@ const FILE_CLOSE = /^=== END FILE ===\s*$/
 export function localPackageDirForProblem(message: string, source: string, modules: ReadonlyArray<{ path: string; modulePath?: string }>): string | null {
   const alias = message.match(/undefined: (\w+)\.\w+/)?.[1]
   if (!alias) return null
-  for (const [, explicitAlias, importPath] of source.matchAll(/^\s*(?:import\s+)?(\w+|\.)?\s*"([^"]+)"/gm)) {
+  for (const [, explicitAlias, importPath] of source.matchAll(/^\s*(?:import\s+)?(?:(\w+|\.)\s*)?"([^"]+)"/gm)) {
     const name = explicitAlias ?? importPath.split('/').pop()
     if (name !== alias) continue
     for (const module of modules) {
@@ -94,6 +94,16 @@ export function buildAIFixPrompt(target: AIFixFile, problem: AIFixProblem, other
 }
 
 /**
+ * Taglia le righe vuote in coda: l'AI spesso chiude il file con più newline.
+ * Un ciclo esplicito evita il backtracking di `\n+$` sul testo intero.
+ */
+function withoutTrailingNewlines(value: string): string {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '\n') end -= 1
+  return value.slice(0, end)
+}
+
+/**
  * Legge i file restituiti dall'AI. Accetta solo percorsi fra quelli inviati: una risposta non può
  * toccare altri file del progetto. Tollera recinti markdown attorno al contenuto.
  */
@@ -111,7 +121,7 @@ export function parseAIFixResponse(response: string, allowedPaths: readonly stri
       const lines = current.lines
       if (/^```/.test(lines[0] ?? '')) lines.shift()
       if (/^```\s*$/.test(lines[lines.length - 1] ?? '')) lines.pop()
-      const content = `${lines.join('\n').replace(/\n+$/, '')}\n`
+      const content = `${withoutTrailingNewlines(lines.join('\n'))}\n`
       if (allowed.has(current.relativePath) && startsWithGoPackageClause(content)) {
         files.push({ relativePath: current.relativePath, content })
       }

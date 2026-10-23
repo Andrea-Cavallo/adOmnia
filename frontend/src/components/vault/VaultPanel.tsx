@@ -79,13 +79,13 @@ export function VaultPanel() {
   const unlock = () => run(async () => {
     await api('/vault/unlock', { passphrase })
     setMessage('Vault unlocked successfully')
-    refresh()
+    void refresh()
   })
 
   const lock = () => run(async () => {
     await api('/vault/lock', {})
     setMessage('Vault locked')
-    refresh()
+    void refresh()
   })
 
   const encrypt = () => run(async () => {
@@ -183,7 +183,7 @@ export function VaultPanel() {
           type="password"
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !unlocked && passphrase) unlock() }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !unlocked && passphrase) void unlock() }}
           placeholder="Enter your vault passphrase..."
           className="w-full h-9 px-3 bg-surface-2 border border-border-2 rounded-lg text-sm text-text-1 outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 placeholder:text-text-4 transition-all"
         />

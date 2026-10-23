@@ -247,4 +247,11 @@ describe('inline code escaping', () => {
     expect(html).not.toContain('&amp;amp;')
     expect(html).toContain('&lt;b&gt;')
   })
+
+  it('keeps fenced code blocks intact next to prose that only looks like a block placeholder', () => {
+    const html = renderMarkdown('before\n\n```go\nfunc main() {}\n```\n\nBLK0 and BLK1\n')
+    expect(html).toContain('func main() {}')
+    expect(html.match(/<pre/g)).toHaveLength(1)
+    expect(html).toContain('BLK0 and BLK1')
+  })
 })

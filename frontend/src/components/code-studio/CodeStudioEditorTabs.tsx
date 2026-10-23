@@ -52,7 +52,7 @@ export function documentsToClose(action: TabAction, ordered: GoIDEEditorDocument
 /** Slot di chiusura a larghezza fissa: a riposo mostra il punto di modifica, al passaggio del mouse la X. */
 function TabCloseButton({ label, dirty = false, onClose }: { label: string; dirty?: boolean; onClose: () => void }) {
   return (
-    <span role="button" tabIndex={-1} aria-label={label} onClick={(event) => { event.stopPropagation(); onClose() }} className="code-studio-tab-close">
+    <span role="button" tabIndex={-1} aria-label={label} onClick={(event) => { event.stopPropagation(); onClose() }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); onClose() } }} className="code-studio-tab-close">
       {dirty && <span className="code-studio-tab-dirty" title="Unsaved changes" />}
       <X size={12} className="code-studio-tab-x" />
     </span>
@@ -113,7 +113,7 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
 
   return (
     <div className={`code-studio-editor-tabbar flex min-w-0 shrink-0 items-stretch border-b border-border-1 ${multiline ? 'code-studio-editor-tabbar--multiline' : 'h-[36px]'}`}>
-    <div ref={listRef} role="tablist" aria-label="Open files" onKeyDown={moveFocus} className="code-studio-editor-tablist flex min-w-0 flex-1 items-stretch overflow-x-auto px-1">
+    <div ref={listRef} role="tablist" tabIndex={0} aria-label="Open files" onKeyDown={moveFocus} className="code-studio-editor-tablist flex min-w-0 flex-1 items-stretch overflow-x-auto px-1">
       {ordered.map((item) => {
         const active = item.document.id === activeId && !previewTab?.active
         const isPinned = !!pinned[item.document.id]

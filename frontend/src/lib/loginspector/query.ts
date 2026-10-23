@@ -257,7 +257,7 @@ function expressionTokens(input: string): string[] {
 
 function literal(token: string): unknown {
   if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith("'") && token.endsWith("'"))) return token.slice(1, -1)
-  if (/^-?(?:\d+\.?\d*|\.\d+)$/.test(token)) return Number(token)
+  if (/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(token)) return Number(token)
   if (/^(true|false)$/i.test(token)) return token.toLowerCase() === 'true'
   if (/^null$/i.test(token)) return null
   return token

@@ -23,6 +23,9 @@ export const MarkdownPreview = forwardRef<HTMLDivElement, MarkdownPreviewProps>(
     <div
       ref={container}
       data-a11y-click-exempt="delegated-native-links"
+      // Not a control: it only delegates the clicks of the native links inside it (Enter on a focused link
+      // fires the same click), so it has no key handler of its own.
+      role="presentation"
       className={cn('flex-1 p-5 overflow-y-auto bg-surface-0', className)}
       onScroll={onScroll}
       onClick={(event) => {

@@ -121,7 +121,7 @@ function PresetManager({
     } catch { /* ignore */ }
   }, [port, protocol])
 
-  useEffect(() => { if (open) fetchPresets() }, [open, fetchPresets])
+  useEffect(() => { if (open) void fetchPresets() }, [open, fetchPresets])
 
   const save = async () => {
     if (!saveName.trim()) return
@@ -137,7 +137,7 @@ function PresetManager({
         body: JSON.stringify({ name: saveName, protocol, content, headers: hdrs }),
       })
       setSaveName('')
-      fetchPresets()
+      void fetchPresets()
     } finally {
       setSaving(false)
     }
@@ -147,7 +147,7 @@ function PresetManager({
     const url = serverUrl(port, `/broker/presets/delete?id=${encodeURIComponent(id)}`)
     if (!url) return
     await sidecarFetch(url, { method: 'POST' })
-    fetchPresets()
+    void fetchPresets()
   }
 
   return (
@@ -161,7 +161,7 @@ function PresetManager({
         <div className="px-3 pb-3 space-y-2">
           <div className="flex gap-1.5">
             <input value={saveName} onChange={e => setSaveName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') save() }}
+              onKeyDown={e => { if (e.key === 'Enter') void save() }}
               placeholder="Preset name…" className={cn(inputClass, 'flex-1')} />
             <button onClick={save} disabled={!saveName.trim() || saving}
               className="px-2 py-1 bg-accent text-white rounded text-[11px] font-semibold disabled:opacity-50">

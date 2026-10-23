@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Database, FolderPlus, Loader2, RefreshCw, Search, Table2, Trash2 } from 'lucide-react'
 import { confirm } from '@/lib/confirmDialog'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,12 @@ export function MongoNavigator(props: MongoNavigatorProps) {
   const [creatingIn, setCreatingIn] = useState('')
   const [newName, setNewName] = useState('')
   const [createError, setCreateError] = useState('')
+  const newCollectionInput = useRef<HTMLInputElement>(null)
+
+  // Il nome della nuova collezione compare dopo il comando "new": il focus lo diamo qui.
+  useEffect(() => {
+    if (creatingIn) newCollectionInput.current?.focus()
+  }, [creatingIn])
 
   const q = search.trim().toLowerCase()
   const matches = (name: string) => !q || name.toLowerCase().includes(q)
@@ -117,7 +123,7 @@ export function MongoNavigator(props: MongoNavigatorProps) {
                   {creatingIn === db.name && (
                     <div className="px-1 py-1">
                       <input
-                        autoFocus
+                        ref={newCollectionInput}
                         value={newName}
                         onChange={(e) => { setNewName(e.target.value); setCreateError('') }}
                         onKeyDown={(e) => { if (e.key === 'Enter') void submitCreate(); if (e.key === 'Escape') setCreatingIn('') }}

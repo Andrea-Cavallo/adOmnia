@@ -1,6 +1,6 @@
 function relativeLuminance(hex: string): number {
   const channel = (index: number) => {
-    const value = parseInt(hex.slice(index, index + 2), 16) / 255
+    const value = Number.parseInt(hex.slice(index, index + 2), 16) / 255
     return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
   }
   return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4)

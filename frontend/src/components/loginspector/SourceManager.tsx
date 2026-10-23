@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import type { LogSessionSource } from './useLogImport'
 
@@ -30,6 +30,10 @@ export function SourceManager({ sources, onAdd, onRename, onToggle, onRemove, on
   const [draft, setDraft] = useState('')
   const replacingIdRef = useRef<string | null>(null)
   const replaceInputRef = useRef<HTMLInputElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
+  // Si rinomina dentro una lista: il focus va sul campo che compare, senza `autoFocus`.
+  useEffect(() => { if (editingId) renameInputRef.current?.focus() }, [editingId])
 
   const startRename = (source: LogSessionSource) => {
     setEditingId(source.id)
@@ -74,7 +78,7 @@ export function SourceManager({ sources, onAdd, onRename, onToggle, onRemove, on
               {editingId === source.id ? (
                 <form className="min-w-0 flex-1" onSubmit={(event) => { event.preventDefault(); finishRename() }}>
                   <input
-                    autoFocus
+                    ref={renameInputRef}
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                     onBlur={finishRename}

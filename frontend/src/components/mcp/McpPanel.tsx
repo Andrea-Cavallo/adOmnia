@@ -324,7 +324,7 @@ function McpControlRoom() {
 
   const buildResolvedConfigJSON = (config: McpSavedConfig): string => {
     const envVars = useEnvironmentsStore.getState().getResolvedVars()
-    const stripMissing = (text: string) => substVars(text, envVars).replace(/\{\{[^}]+\}/g, '')
+    const stripMissing = (text: string) => substVars(text, envVars).replace(/\{\{[^{}]+\}/g, '')
     return JSON.stringify({
       transport: config.transport,
       command: stripMissing(config.command),

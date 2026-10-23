@@ -99,22 +99,30 @@ function contextualColumns(query: string, before: string, schema: SqlSchema, typ
   return null
 }
 
+/** Trailing token at the caret: word characters, counted from its first letter or underscore. */
+function trailingWord(text: string): string {
+  let start = text.length
+  while (start > 0 && /[\w$]/.test(text[start - 1])) start--
+  while (start < text.length && !/[A-Za-z_]/.test(text[start])) start++
+  return text.slice(start)
+}
+
 export function sqlCompletions(query: string, caret: number, schema: SqlSchema, explicit = false, types?: SqlColumnTypes): SqlCompletion | null {
   const before = query.slice(0, caret)
   // ponytail: no tokenizer, so completion is suppressed only inside an unterminated '…' string or -- comment on this line.
   const line = before.slice(before.lastIndexOf('\n') + 1)
   if ((line.match(/'/g)?.length ?? 0) % 2 === 1 || line.includes('--')) return null
 
-  const qualified = /([\w$]+)\.([\w$]*)$/.exec(before)
+  const qualified = /(^|[^\w$])([\w$]+)\.([\w$]*)$/.exec(before)
   if (qualified) {
-    const table = sqlAliases(query, schema).get(qualified[1].toLowerCase())
-      ?? Object.keys(schema).find((t) => t.toLowerCase() === qualified[1].toLowerCase())
+    const table = sqlAliases(query, schema).get(qualified[2].toLowerCase())
+      ?? Object.keys(schema).find((t) => t.toLowerCase() === qualified[2].toLowerCase())
     if (!table) return null
-    const items = rank(columnItems(table, schema, types), qualified[2])
-    return items.length ? { start: caret - qualified[2].length, prefix: qualified[2], items } : null
+    const items = rank(columnItems(table, schema, types), qualified[3])
+    return items.length ? { start: caret - qualified[3].length, prefix: qualified[3], items } : null
   }
 
-  const word = /[A-Za-z_][\w$]*$/.exec(before)?.[0] ?? ''
+  const word = trailingWord(before)
   if (!word && !explicit) return null
   const start = caret - word.length
   const tables = Object.keys(schema).map((t) => ({ label: t, kind: 'table' as const, detail: `${schema[t].length} columns` }))

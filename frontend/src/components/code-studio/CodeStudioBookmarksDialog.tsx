@@ -71,7 +71,7 @@ export function CodeStudioBookmarksDialog({ open, sessionId, mode = 'bookmarks',
       <div ref={listRef} role="listbox" aria-label={recent ? 'Recent locations' : 'Bookmarks'} tabIndex={0} aria-activedescendant={bookmarks[selected] ? `bookmark-${selected}` : undefined} onKeyDown={onKeyDown} className="max-h-[50vh] overflow-auto p-1.5 outline-none">
         {bookmarks.length === 0 && <p className="gs-list-empty">{recent ? 'No locations yet: open files and move around.' : 'No bookmarks yet.'}</p>}
         {bookmarks.map((bookmark, index) => (
-          <div key={`${bookmark.relativePath}:${bookmark.line}`} id={`bookmark-${index}`} role="option" tabIndex={-1} aria-selected={index === selected} onClick={() => openBookmark(bookmark)} onMouseEnter={() => setSelected(index)}
+          <div key={`${bookmark.relativePath}:${bookmark.line}`} id={`bookmark-${index}`} role="option" tabIndex={-1} aria-selected={index === selected} onClick={() => openBookmark(bookmark)} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openBookmark(bookmark) } }} onMouseEnter={() => setSelected(index)}
             className={`group flex h-9 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 ${index === selected ? 'bg-accent/15 text-text-1' : 'text-text-2'}`}>
             <CodeStudioFileIcon name={bookmark.relativePath.split('/').pop() ?? bookmark.relativePath} relativePath={bookmark.relativePath} />
             <span className="shrink-0 text-[12.5px]">{bookmark.relativePath.split('/').pop()}<span className="text-text-4">:{bookmark.line}</span></span>

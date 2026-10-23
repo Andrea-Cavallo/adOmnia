@@ -155,7 +155,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
       const text = e.target?.result as string
       try {
         JSON.parse(text) // validate
-        doInstall(text)
+        void doInstall(text)
       } catch {
         setError('The file is not valid JSON.')
       }
@@ -179,7 +179,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
       setError('Name and author are required.')
       return
     }
-    doInstall(formToJson(form))
+    void doInstall(formToJson(form))
   }
 
   const TABS: { id: InstallTab; icon: React.ElementType; label: string }[] = [
@@ -285,7 +285,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
               <Field label="Description" value={form.description} onChange={v => setF('description', v)} placeholder="What the plugin does..." />
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-medium text-text-3 mb-1 uppercase tracking-wider">Runtime</label>
+                  <div className="block text-[10px] font-medium text-text-3 mb-1 uppercase tracking-wider">Runtime</div>
                   <select
                     value={form.runtime}
                     onChange={(e) => setF('runtime', e.target.value)}
@@ -301,7 +301,7 @@ function InstallModal({ onClose, onInstalled }: { onClose: () => void; onInstall
                 <Field label="Homepage" value={form.homepage} onChange={v => setF('homepage', v)} placeholder="https://..." />
               </div>
               <div>
-                <label className="block text-[10px] font-medium text-text-3 mb-1.5 uppercase tracking-wider">Permissions</label>
+                <div className="block text-[10px] font-medium text-text-3 mb-1.5 uppercase tracking-wider">Permissions</div>
                 <div className="flex flex-wrap gap-1.5">
                   {PERMISSIONS.map(p => (
                     <button
@@ -445,7 +445,7 @@ export function PluginManager() {
   }, [setPlugins, setLoading])
 
   useEffect(() => {
-    loadPlugins()
+    void loadPlugins()
   }, [loadPlugins])
 
   const handleToggle = async (plugin: PluginInstance) => {
@@ -634,7 +634,7 @@ export function PluginManager() {
                       aria-pressed={plugin.enabled}
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleToggle(plugin)
+                        void handleToggle(plugin).catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Could not change the plugin state.'))
                       }}
                       className={cn(
                         'relative z-10 w-8 h-4 rounded-full transition-colors flex-shrink-0',

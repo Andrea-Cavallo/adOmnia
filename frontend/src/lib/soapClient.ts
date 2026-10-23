@@ -240,7 +240,7 @@ function parseSchema(
   for (const el of elements) {
     const name = el.getAttribute('name') ?? ''
     const type = el.getAttribute('type') ?? undefined
-    const minOccurs = parseInt(el.getAttribute('minOccurs') ?? '1')
+    const minOccurs = Number.parseInt(el.getAttribute('minOccurs') ?? '1')
 
     const children: Record<string, XmlSchemaElement> = {}
     const complexType = findChild(el, 'complexType')
@@ -254,7 +254,7 @@ function parseSchema(
           children[cName] = {
             name: cName,
             type: ce.getAttribute('type') ?? 'string',
-            minOccurs: parseInt(ce.getAttribute('minOccurs') ?? '1'),
+            minOccurs: Number.parseInt(ce.getAttribute('minOccurs') ?? '1'),
           }
         }
       }
@@ -481,7 +481,7 @@ function elementToJson(el: Element | null): unknown {
     if (text === 'true') return true
     if (text === 'false') return false
     const num = Number(text)
-    if (!isNaN(num) && text !== '') return num
+    if (!Number.isNaN(num) && text !== '') return num
     return text
   }
 

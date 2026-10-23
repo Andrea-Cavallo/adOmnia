@@ -108,7 +108,7 @@ function normalizeMockPath(rawUrl: string): string {
   const withoutVars = rawUrl
     .replace(/\{\{\s*base_url\s*\}\}/gi, '')
     .replace(/\{\{\s*mockApiBase\s*\}\}/gi, '')
-    .replace(/\{\{[^}]+\}\}/g, ':param')
+    .replace(/(?<!\{)\{\{[^}]+\}\}/g, ':param')
   try {
     const parsed = new URL(withoutVars.startsWith('http') ? withoutVars : `http://local${withoutVars.startsWith('/') ? '' : '/'}${withoutVars}`)
     return parsed.pathname || '/'
@@ -867,8 +867,8 @@ export function MockPanel() {
 
   useEffect(() => {
     if (!port) return
-    refreshStatus()
-    refreshHits()
+    void refreshStatus()
+    void refreshHits()
     return visibleInterval(() => { void refreshStatus(); void refreshHits() }, 2000, { scope: "mock", kind: "live" })
   }, [port, refreshStatus, refreshHits])
 

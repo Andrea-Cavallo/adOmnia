@@ -195,6 +195,11 @@ function GraphCanvas({
   const dragOrigin = useRef({ x: 0, y: 0 })
   const [selected, setSelected] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditingRow | null>(null)
+  const editInputRef = useRef<HTMLInputElement>(null)
+  const editingRow = editing ? `${editing.nodeId}:${editing.rowIndex}` : ''
+
+  // The edited row is created on click: focus it once it exists, instead of autoFocus on a re-rendered input.
+  useEffect(() => { if (editingRow) editInputRef.current?.focus() }, [editingRow])
 
   const nodeMap = useMemo(() => {
     const m: Record<string, GNode> = {}
@@ -299,6 +304,7 @@ function GraphCanvas({
       {/* Canvas */}
       <div
         ref={containerRef}
+        role="presentation"
         className="flex-1"
         style={{
           background: 'var(--color-surface-0)',
@@ -428,7 +434,7 @@ function GraphCanvas({
                     </span>
                     {isEditing ? (
                       <input
-                        autoFocus
+                        ref={editInputRef}
                         value={editing.draft}
                         onMouseDown={(event) => event.stopPropagation()}
                         onClick={(event) => event.stopPropagation()}
@@ -688,11 +694,11 @@ export function JsonGraphModal({
   }, [onChange, parsed.value])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75" role="presentation" onClick={onClose}>
       <div
         className="flex flex-col rounded-lg border border-border-1 bg-surface-1 shadow-2xl overflow-hidden"
         style={{ width: '92vw', maxWidth: 1400, height: '90vh' }}
-        onClick={e => e.stopPropagation()}
+        role="presentation" onClick={e => e.stopPropagation()}
       >
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border-1 bg-surface-2 flex-shrink-0">

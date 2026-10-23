@@ -37,7 +37,16 @@ function MatchHint({ match }: { match?: string }) {
   )
 }
 
-const GO_LOCATION = /([\w./-]+\.go):(\d+)/
+const GO_LOCATION = /\.go:(\d+)/
+
+/** `file.go:N` della riga: il percorso è il tratto di [\w./-] subito prima di `.go:`, letto all'indietro. */
+function goLocation(text: string): { file: string; line: number } | null {
+  const match = GO_LOCATION.exec(text)
+  if (!match) return null
+  let start = match.index
+  while (start > 0 && /[\w./-]/.test(text[start - 1])) start -= 1
+  return { file: text.slice(start, match.index + 3), line: Number(match[1]) }
+}
 
 /** Service log lines, filterable; used by the response Logs tab and the service logs drawer. */
 /** `ownerSessionId`: lines printed by another service (matched by the request id) are labelled with it. */
@@ -85,12 +94,12 @@ export function LiveLogList({ entries, empty, goSessionId, ownerSessionId, toolb
 
 /** Go to code (a file.go:N in the line) and back to the request that caused it. */
 function LineActions({ entry, goSessionId, tabId }: { entry: LiveLogEntry; goSessionId?: string; tabId?: string }) {
-  const location = goSessionId ? GO_LOCATION.exec(entry.text) : null
+  const location = goSessionId ? goLocation(entry.text) : null
   if (!location && !tabId) return null
   return (
     <span className="flex shrink-0 items-center gap-1 font-sans">
       {location && goSessionId && (
-        <button type="button" title={`Open ${location[1]}:${location[2]} in Code Studio`} onClick={() => void openLocationInCodeStudio(goSessionId, { function: '', relativePath: location[1].replace(/^\.\//, ''), line: Number(location[2]) })}
+        <button type="button" title={`Open ${location.file}:${location.line} in Code Studio`} onClick={() => void openLocationInCodeStudio(goSessionId, { function: '', relativePath: location.file.replace(/^\.\//, ''), line: location.line })}
           className="rounded px-1 text-[10px] text-text-4 hover:bg-surface-3 hover:text-accent">code</button>
       )}
       {tabId && <button type="button" title="Open the request that logged this line" onClick={() => openRequestTab(tabId)} className="rounded px-1 text-[10px] text-text-4 hover:bg-surface-3 hover:text-accent">request</button>}

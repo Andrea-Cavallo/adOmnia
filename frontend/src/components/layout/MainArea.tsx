@@ -209,7 +209,7 @@ function clampComposerHeight(h: number): number {
 function loadComposerWidth(): number {
   try {
     const stored = localStorage.getItem(COMPOSER_WIDTH_KEY)
-    if (stored) return clampComposerWidth(parseInt(stored, 10))
+    if (stored) return clampComposerWidth(Number.parseInt(stored, 10))
   } catch { /* ignore */ }
   return Math.round(window.innerWidth * defaultComposerWidthRatio())
 }
@@ -217,7 +217,7 @@ function loadComposerWidth(): number {
 function loadComposerHeight(): number {
   try {
     const stored = localStorage.getItem(COMPOSER_HEIGHT_KEY)
-    if (stored) return clampComposerHeight(parseInt(stored, 10))
+    if (stored) return clampComposerHeight(Number.parseInt(stored, 10))
   } catch { /* ignore */ }
   return clampComposerHeight(Math.round(window.innerHeight * 0.52))
 }
@@ -389,7 +389,7 @@ function ActiveRequestBar({
 
         <details ref={actionsRef} className="api-actions">
           <summary aria-label={tr('Request actions')} title={tr('Request actions')}><MoreHorizontal size={18} /></summary>
-          <div className="api-actions-menu" data-a11y-click-exempt onClick={() => {
+          <div className="api-actions-menu" data-a11y-click-exempt role="presentation" onClick={() => {
             if (actionsRef.current) actionsRef.current.open = false
             actionsRef.current?.querySelector('summary')?.focus()
           }}>
@@ -570,6 +570,11 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   const [recordSaveOpen, setRecordSaveOpen] = useState(false)
   const [recordSaving, setRecordSaving] = useState(false)
   const [recordSaveError, setRecordSaveError] = useState('')
+  const recordNameRef = useRef<HTMLInputElement>(null)
+  // La finestra di salvataggio può aprirsi da più punti: il focus sul nome lo diamo qui.
+  useEffect(() => {
+    if (recordSaveOpen) recordNameRef.current?.focus()
+  }, [recordSaveOpen])
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null)
   const [mockFeedback, setMockFeedback] = useState<DropFeedback | null>(null)
   const sendAbortRef = useRef<AbortController | null>(null)
@@ -1194,7 +1199,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
               </div>)}
             </div>
             <p className="mt-2 text-[11px] text-text-3">{tr('Matching response values are linked to later requests automatically. Review or edit them in the Flow Variables tab.')}</p>
-            <input autoFocus value={recordName} onChange={(event) => setRecordName(event.target.value)} className="mt-4 h-10 w-full rounded-lg border border-border-2 bg-surface-0 px-3 text-sm text-text-1 outline-none focus:border-accent" />
+            <input ref={recordNameRef} value={recordName} onChange={(event) => setRecordName(event.target.value)} className="mt-4 h-10 w-full rounded-lg border border-border-2 bg-surface-0 px-3 text-sm text-text-1 outline-none focus:border-accent" />
             {recordSaveError && <p className="mt-2 text-xs text-error">{recordSaveError}</p>}
             <div className="mt-5 flex justify-end gap-2">
               <button disabled={recordSaving} onClick={() => { cancelRecording(); setRecordName(''); setRecordSaveOpen(false) }} className="rounded-lg px-3 py-2 text-xs font-semibold text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-50">{tr('Discard recording')}</button>

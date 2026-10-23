@@ -92,7 +92,7 @@ export async function loadInvestigation(id = AUTOSAVE_INVESTIGATION_ID): Promise
     const metadata = await new Promise<InvestigationMetadata | undefined>((resolve, reject) => {
       const request = transaction.objectStore(META_STORE).get(id)
       request.onsuccess = () => resolve(request.result as InvestigationMetadata | undefined)
-      request.onerror = () => reject(request.error)
+      request.onerror = () => reject(request.error || new Error('Could not read investigation metadata'))
     })
     if (!metadata || metadata.version !== 1) return null
     const sourceContents: Record<string, string> = {}
@@ -105,7 +105,7 @@ export async function loadInvestigation(id = AUTOSAVE_INVESTIGATION_ID): Promise
         else missingSourceIds.push(source.id)
         resolve()
       }
-      request.onerror = () => reject(request.error)
+      request.onerror = () => reject(request.error || new Error('Could not read investigation source content'))
     })))
     return { ...metadata, sourceContents, missingSourceIds }
   } finally {

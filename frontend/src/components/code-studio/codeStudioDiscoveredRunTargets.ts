@@ -2,7 +2,10 @@ import { GoIDERunConfigurationKind, type GoIDERunConfiguration, type GoIDERunTar
 import { moduleScopeFor } from './codeStudioQuickActions'
 
 function normalize(path: string): string {
-  return path.replace(/\\/g, '/').replace(/\/+$/, '')
+  const slashed = path.replace(/\\/g, '/')
+  let end = slashed.length
+  while (end > 0 && slashed[end - 1] === '/') end -= 1
+  return slashed.slice(0, end)
 }
 
 export function moduleDirectoryForTarget(session: Pick<GoIDESession, 'project'>, target: GoIDERunTarget): string | null {

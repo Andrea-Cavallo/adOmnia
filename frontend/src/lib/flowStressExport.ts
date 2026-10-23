@@ -93,12 +93,12 @@ export function stressPlanJson(graph: FlowGraphDefinition, config: FlowStressCon
 }
 
 export function stressPlanFileName(flowName: string): string {
-  const slug = flowName.trim().replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'flow'
+  const slug = flowName.trim().replace(/[^\w-]+/g, '-').replace(/^-+|(?<!-)-+$/g, '').toLowerCase() || 'flow'
   return `${slug}.stress.json`
 }
 
 export function stressFileName(flowName: string, startedAt: string, ext: 'csv' | 'json' | 'html' | 'xml'): string {
-  const slug = flowName.trim().replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'flow'
+  const slug = flowName.trim().replace(/[^\w-]+/g, '-').replace(/^-+|(?<!-)-+$/g, '').toLowerCase() || 'flow'
   return `${slug}-stress-${startedAt.slice(0, 19).replace(/[:T]/g, '-')}.${ext}`
 }
 

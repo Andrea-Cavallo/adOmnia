@@ -104,8 +104,8 @@ export function ContextSwitcher({ onOpenLogs }: { onOpenLogs: (sessionId: string
 
   if (!items) return null
   return (
-    <div className="fixed inset-0 z-[320] flex items-center justify-center bg-black/25" onMouseDown={() => setItems(null)}>
-      <div role="listbox" aria-label="Current development context" className="w-[min(520px,calc(100vw-32px))] overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl shadow-black/50" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-[320] flex items-center justify-center bg-black/25" role="presentation" onMouseDown={() => setItems(null)}>
+      <div role="listbox" aria-label="Current development context" tabIndex={-1} className="w-[min(520px,calc(100vw-32px))] overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl shadow-black/50" onMouseDown={(event) => event.stopPropagation()}>
         <div className="border-b border-border-1 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-4">Current development context</div>
         <ul className="py-1">
           {items.map((item, i) => (

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Loader2, Search, X } from 'lucide-react'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import './codeStudioModal.css'
+import { closeOnBackdropClick } from '@/lib/dialogBackdrop'
 
 export type CodeStudioModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
 export type CodeStudioTone = 'accent' | 'warning' | 'danger' | 'success' | 'info'
@@ -53,7 +54,7 @@ export function CodeStudioModal({
   if (!open) return null
 
   return createPortal(
-    <div className={`gs-modal-backdrop ad-modal-backdrop ${top ? 'gs-modal-top' : ''} ${elevated ? 'gs-modal-elevated' : ''}`} onClick={persistent ? undefined : onClose} data-a11y-click-exempt="dialog-backdrop">
+    <div className={`gs-modal-backdrop ad-modal-backdrop ${top ? 'gs-modal-top' : ''} ${elevated ? 'gs-modal-elevated' : ''}`} role="presentation" onClick={persistent ? undefined : closeOnBackdropClick(onClose)} data-a11y-click-exempt="dialog-backdrop">
       <div
         ref={dialogRef}
         role="dialog"
@@ -62,7 +63,6 @@ export function CodeStudioModal({
         aria-label={ariaLabel}
         tabIndex={-1}
         className={`gs-modal gs-modal-${size} ${tall ? 'gs-modal-tall' : ''} ${className}`}
-        onClick={(event) => event.stopPropagation()}
       >
         <header className={`gs-modal-header ${divided ? 'gs-modal-header-divided' : ''}`}>
           {Icon && <span className={`gs-modal-icon gs-tone-${tone}`} aria-hidden="true"><Icon size={17} /></span>}
@@ -184,8 +184,8 @@ export function CodeStudioPalette({ open, onClose, ariaLabel, icon: Icon = Searc
   useModalFocusTrap(open, onClose, dialogRef)
   if (!open) return null
   return createPortal(
-    <div className="gs-modal-backdrop gs-modal-top ad-modal-backdrop" onClick={onClose} data-a11y-click-exempt="dialog-backdrop">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={ariaLabel} tabIndex={-1} className={`gs-modal gs-palette ${wide ? 'gs-palette-lg' : ''}`} onClick={(event) => event.stopPropagation()}>
+    <div className="gs-modal-backdrop gs-modal-top ad-modal-backdrop" role="presentation" onClick={closeOnBackdropClick(onClose)} data-a11y-click-exempt="dialog-backdrop">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={ariaLabel} tabIndex={-1} className={`gs-modal gs-palette ${wide ? 'gs-palette-lg' : ''}`}>
         <div className="gs-palette-header">
           <Icon size={17} />
           {prefix && <span className="gs-palette-prefix">{prefix}</span>}

@@ -73,11 +73,11 @@ function parseSetCookie(raw: string, requestUrl: string): JarEntry | null {
 
   let expires: number | undefined
   if (attrs['max-age'] !== undefined) {
-    const maxAge = parseInt(attrs['max-age'], 10)
-    if (!isNaN(maxAge)) expires = maxAge <= 0 ? 0 : Date.now() + maxAge * 1000
+    const maxAge = Number.parseInt(attrs['max-age'], 10)
+    if (!Number.isNaN(maxAge)) expires = maxAge <= 0 ? 0 : Date.now() + maxAge * 1000
   } else if (attrs['expires']) {
     const d = new Date(attrs['expires']).getTime()
-    if (!isNaN(d)) expires = d
+    if (!Number.isNaN(d)) expires = d
   }
 
   const secure = 'secure' in attrs

@@ -311,7 +311,7 @@ export function SsePanel() {
       setStatus('connected')
       useAppStore.getState().setSseRunning(true)
       addEvent({ type: 'open', payload: `Connected to ${resolvedUrl}`, timestamp: Date.now(), system: true })
-      openInternalStream(data.sessionId)
+      void openInternalStream(data.sessionId)
     } catch (err) {
       setStatus('error')
       useAppStore.getState().setSseRunning(false)

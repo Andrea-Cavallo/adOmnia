@@ -10,16 +10,21 @@ import type { Collection, RequestAuth, RequestItem, TreeNode } from '@/lib/types
 /** Extract path-parameter names from a URL with {param} or {{param}} patterns. */
 function extractPathParams(url: string): string[] {
   const params: string[] = []
-  // Match both {param} (OpenAPI style) and {{param}} (Insomnia/adOmnia variable)
-  const re = /\{+([^}]+?)\}+/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(url)) !== null) {
-    // Skip adOmnia environment variables that are wrapped in {{}}  — they look like
+  // Scan by hand: a regex with two unbounded brace runs backtracks on long URLs.
+  let index = 0
+  while (index < url.length) {
+    const open = url.indexOf('{', index)
+    if (open < 0) break
+    let nameStart = open
+    while (url[nameStart] === '{') nameStart += 1
+    const close = url.indexOf('}', nameStart)
+    if (close < 0) break
+    const name = url.slice(nameStart, close).trim()
+    // Skip adOmnia environment variables that are wrapped in {{}} — they look like
     // {{baseUrl}} and are not path parameters.
-    const raw = m[0]
-    const name = m[1].trim()
-    if (raw.startsWith('{{')) continue   // skip env variables
-    if (name && !params.includes(name)) params.push(name)
+    const isEnvironmentVariable = url[open + 1] === '{'
+    if (name && !isEnvironmentVariable && !params.includes(name)) params.push(name)
+    index = close + 1
   }
   return params
 }

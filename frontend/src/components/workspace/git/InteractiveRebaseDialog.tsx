@@ -82,8 +82,9 @@ export function InteractiveRebaseDialog({ repoPath, plan, onStarted, onClose }: 
   }
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Interactive rebase" tabIndex={-1} className="flex max-h-[82vh] w-[620px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" role="presentation" onClick={onClose}>
+      <div className="contents" role="presentation" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Interactive rebase" tabIndex={-1} className="flex max-h-[82vh] w-[620px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl">
         <div className="border-b border-border-1 px-4 py-3">
           <div className="text-sm font-semibold text-text-1">Interactive rebase</div>
           <div className="mt-0.5 font-mono text-[10px] text-text-4">{plan.branch} · base {plan.baseRef.slice(0, 9)} · {items.length} commits</div>
@@ -147,6 +148,7 @@ export function InteractiveRebaseDialog({ repoPath, plan, onStarted, onClose }: 
             {busy && <Loader2 size={12} className="animate-spin" />} Start rebase
           </button>
         </div>
+      </div>
       </div>
     </div>
   )

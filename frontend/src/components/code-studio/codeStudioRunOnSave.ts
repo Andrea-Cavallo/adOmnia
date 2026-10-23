@@ -14,7 +14,7 @@ export interface SavedFile {
 type RestartState = Pick<ReturnType<typeof useCodeStudioStore.getState>, 'executions' | 'configByRun' | 'runConfigsBySession'>
 type RestartConfig = { language?: string; workingDirectory?: string; target?: string; programArguments?: string[] }
 
-const slash = (path: string) => path.replace(/\\/g, '/').replace(/^\.\/?/, '').replace(/\/+$/, '')
+const slash = (path: string) => path.replace(/\\/g, '/').replace(/^\.\/?/, '').replace(/(^|[^/])\/+$/, '$1')
 
 // Cartelle di output e dipendenze: salvarvi un file non è una modifica al sorgente e farebbe ripartire il servizio in loop.
 const GENERATED_PATH = /(^|\/)(node_modules|target|build|dist|out|vendor|\.git|\.gradle|\.next|\.idea)(\/|$)/

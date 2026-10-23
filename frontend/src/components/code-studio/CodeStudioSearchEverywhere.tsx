@@ -144,7 +144,7 @@ export function CodeStudioSearchEverywhere({ open, sessionId, availability, onCo
     return () => {
       cancelled = true
       window.clearTimeout(timer)
-      symbolRequest?.cancel()
+      void symbolRequest?.cancel()
     }
   }, [lspReady, open, query, sessionId])
 

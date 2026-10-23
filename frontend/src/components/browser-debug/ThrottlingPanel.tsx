@@ -60,7 +60,7 @@ export function ThrottlingPanel() {
         setError(err instanceof Error ? err.message : 'Failed to load throttle profiles')
       }
     }
-    load()
+    void load()
   }, [])
 
   const handleSelectProfile = useCallback(
@@ -85,11 +85,11 @@ export function ThrottlingPanel() {
   )
 
   const handleApplyCustom = useCallback(async () => {
-    const download = parseInt(customDownload, 10)
-    const upload = parseInt(customUpload, 10)
-    const latency = parseInt(customLatency, 10)
+    const download = Number.parseInt(customDownload, 10)
+    const upload = Number.parseInt(customUpload, 10)
+    const latency = Number.parseInt(customLatency, 10)
 
-    if (isNaN(download) || isNaN(upload) || isNaN(latency)) return
+    if (Number.isNaN(download) || Number.isNaN(upload) || Number.isNaN(latency)) return
 
     setSelectedProfile('Custom')
     try {
@@ -194,8 +194,9 @@ export function ThrottlingPanel() {
           </div>
           <div className="flex items-end gap-2">
             <div className="flex flex-col gap-1">
-              <label className="text-[9px] text-text-3">Download (Kbps)</label>
+              <label htmlFor="throttle-download" className="text-[9px] text-text-3">Download (Kbps)</label>
               <input
+                id="throttle-download"
                 type="text"
                 value={customDownload}
                 onChange={(e) => setCustomDownload(e.target.value)}
@@ -204,8 +205,9 @@ export function ThrottlingPanel() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[9px] text-text-3">Upload (Kbps)</label>
+              <label htmlFor="throttle-upload" className="text-[9px] text-text-3">Upload (Kbps)</label>
               <input
+                id="throttle-upload"
                 type="text"
                 value={customUpload}
                 onChange={(e) => setCustomUpload(e.target.value)}
@@ -214,8 +216,9 @@ export function ThrottlingPanel() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-[9px] text-text-3">Latency (ms)</label>
+              <label htmlFor="throttle-latency" className="text-[9px] text-text-3">Latency (ms)</label>
               <input
+                id="throttle-latency"
                 type="text"
                 value={customLatency}
                 onChange={(e) => setCustomLatency(e.target.value)}

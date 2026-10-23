@@ -11,7 +11,7 @@ set -euo pipefail
 profile="${1:-coverage.out}"
 threshold="${COVERAGE_THRESHOLD:-80}"
 
-if [ ! -s "$profile" ]; then
+if [[ ! -s "$profile" ]]; then
   echo "### Go coverage"
   echo
   echo "No coverage profile at \`$profile\` (the test step failed before writing it)."
@@ -37,7 +37,7 @@ rows="$(awk '
   }
 ' "$profile" | sort -t "$(printf '\t')" -k1,1n -k2,2)"
 
-if [ -z "$rows" ]; then
+if [[ -z "$rows" ]]; then
   echo "### Go coverage"
   echo
   echo "The profile has no \`internal/\` or \`cmd/\` code."

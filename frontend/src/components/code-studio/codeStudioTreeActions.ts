@@ -44,13 +44,29 @@ function report(message: string): void {
   useCodeStudioLspStore.setState({ message })
 }
 
+/**
+ * Toglie le barre finali camminando dalla coda: `\/+$` su un percorso arbitrario è
+ * backtracking non lineare, e qui il percorso può arrivare dall'utente.
+ */
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '/') end -= 1
+  return value.slice(0, end)
+}
+
+function withoutEdgeSlashes(value: string): string {
+  let start = 0
+  while (start < value.length && value[start] === '/') start += 1
+  return withoutTrailingSlashes(value.slice(start))
+}
+
 /** Import path Go della cartella (o della cartella del file): modulo più interno + percorso relativo. */
 export function goImportPath(session: Pick<GoIDESession, 'project'>, relativePath: string, directory: boolean): string | null {
   const packageDirectory = directory ? relativePath : parentOf(relativePath)
   const scope = moduleScopeFor(session, joinRelative(packageDirectory, DIRECTORY_PROBE))
   const module = (goModules(session.project)).find((item) => {
-    const root = session.project.realPath.replace(/\\/g, '/').replace(/\/+$/, '')
-    const path = item.path.replace(/\\/g, '/').replace(/\/+$/, '')
+    const root = withoutTrailingSlashes(session.project.realPath.replace(/\\/g, '/'))
+    const path = withoutTrailingSlashes(item.path.replace(/\\/g, '/'))
     return path === (scope.moduleDirectory ? `${root}/${scope.moduleDirectory}` : root)
   })
   if (!module?.modulePath) return null
@@ -94,8 +110,8 @@ function isInside(path: string, ancestor: string): boolean {
 
 /** Destinazione di un drop nel Project tree. Null significa drop non valido o nessuno spostamento. */
 export function treeDropDestination(source: string, targetFolder: string): string | null {
-  const normalizedSource = source.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
-  const normalizedTarget = targetFolder.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+  const normalizedSource = withoutEdgeSlashes(source.replace(/\\/g, '/'))
+  const normalizedTarget = withoutEdgeSlashes(targetFolder.replace(/\\/g, '/'))
   if (!normalizedSource || isInside(normalizedTarget, normalizedSource)) return null
   const destination = joinRelative(normalizedTarget, baseName(normalizedSource))
   return destination === normalizedSource ? null : destination

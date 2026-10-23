@@ -185,8 +185,9 @@ function FlowSwitcher({
       {open && (
         <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[340px] overflow-hidden rounded-xl border border-border-1 bg-surface-1 shadow-[0_24px_48px_rgba(0,0,0,0.28)]">
           <div className="border-b border-border-1 p-3">
-            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-4">Flow name</label>
+            <label htmlFor="flow-name" className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-4">Flow name</label>
             <input
+              id="flow-name"
               value={flowName}
               onChange={(event) => setFlowName(event.target.value)}
               placeholder="Untitled API flow"
@@ -311,7 +312,7 @@ function FlowCanvas({
       <div
         ref={scrollRef}
         tabIndex={0}
-        role="region"
+        role="application"
         aria-label="Flow canvas. Drag to pan, Ctrl scroll to zoom, F to fit, Shift drag to snap."
         onKeyDown={event => {
           if (event.target !== event.currentTarget) return
@@ -1089,7 +1090,7 @@ export function FlowsPanel() {
 
   useEffect(() => {
     let cancelled = false
-    loadFlowDefinitions().then((flows) => {
+    void loadFlowDefinitions().then((flows) => {
       if (cancelled) return
       setSavedFlows(flows)
       const first = [...flows].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]

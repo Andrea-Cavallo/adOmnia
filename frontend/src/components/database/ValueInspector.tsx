@@ -62,7 +62,7 @@ export function ValueInspector({ request, onClose }: ValueInspectorProps) {
   })()
 
   return (
-    <div className="fixed inset-0 z-[260] flex justify-end bg-black/40" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <div className="fixed inset-0 z-[260] flex justify-end bg-black/40" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <aside role="dialog" aria-modal="true" aria-label={`${request.title} inspector`} className="flex h-full w-[min(560px,65vw)] flex-col border-l border-border-2 bg-surface-1 shadow-2xl">
         <header className="flex h-11 flex-none items-center gap-2 border-b border-border-1 px-3.5">
           <span className="truncate font-mono text-[12px] font-semibold text-text-1">{request.title}</span>

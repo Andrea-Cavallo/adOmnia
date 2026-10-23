@@ -28,7 +28,7 @@ export function ResourceLowResourceControls() {
       {PAUSABLE_SERVICES.map((service) => <li key={service.id}>
         <label className="flex items-start gap-2">
           <input type="checkbox" className="mt-0.5 accent-accent" disabled={busy} checked={paused.includes(service.id)} onChange={() => void setPaused(paused.includes(service.id) ? paused.filter((id) => id !== service.id) : [...paused, service.id])} />
-          <span><span className="text-text-2">{tr(service.label as TrKey)}</span> <span className="text-text-4">· {tr(service.hint as TrKey)}</span></span>
+          <span className="text-text-2">{tr(service.label as TrKey)} <span className="text-text-4">· {tr(service.hint as TrKey)}</span></span>
         </label>
       </li>)}
     </ul>

@@ -111,6 +111,13 @@ export function primarySession(model: LiveModel, preferredId?: string | null): L
 
 export const baseUrlFor = (session: LiveSession) => (session.port ? `http://localhost:${session.port}` : '')
 
+/** Trailing slashes removed without `/\/+$/`, whose repetition before the end anchor is quadratic. */
+const withoutTrailingSlashes = (url: string): string => {
+  let end = url.length
+  while (end > 0 && url[end - 1] === '/') end -= 1
+  return url.slice(0, end)
+}
+
 /** Where requests to a service go: its local live session, or a fixed URL (Docker, DEV…). */
 export interface ServiceTarget { kind: 'local' | 'docker' | 'remote'; url?: string; label?: string }
 
@@ -121,7 +128,7 @@ export function serviceVars(model: LiveModel, targets: Record<string, ServiceTar
     if (session.port && !(`service:${session.service}` in vars)) vars[`service:${session.service}`] = baseUrlFor(session)
   }
   for (const [service, target] of Object.entries(targets)) {
-    if (target.kind !== 'local' && target.url) vars[`service:${service}`] = target.url.replace(/\/+$/, '')
+    if (target.kind !== 'local' && target.url) vars[`service:${service}`] = withoutTrailingSlashes(target.url)
   }
   return vars
 }
@@ -153,10 +160,10 @@ export function sessionForRequest(model: LiveModel, rawUrl: string, resolvedUrl:
   const service = linkedService(rawUrl)
   const port = loopbackPort(resolvedUrl)
   const byPort = port ? live.filter((s) => s.port === port) : []
-  if (byPort.length) return byPort.reduce((a, b) => (timeOf(b.startedAt) > timeOf(a.startedAt) ? b : a))
+  if (byPort.length) return byPort.reduce((a, b) => (timeOf(b.startedAt) > timeOf(a.startedAt) ? b : a), byPort[0])
   if (service) {
     const byService = live.filter((s) => s.service === service)
-    if (byService.length) return byService.reduce((a, b) => (timeOf(b.startedAt) > timeOf(a.startedAt) ? b : a))
+    if (byService.length) return byService.reduce((a, b) => (timeOf(b.startedAt) > timeOf(a.startedAt) ? b : a), byService[0])
   }
   return null
 }

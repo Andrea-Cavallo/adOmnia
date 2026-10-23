@@ -14,7 +14,7 @@ export interface CodeStudioJavaRunTarget {
   relativePath: string
 }
 
-const PACKAGE = /^\s*package\s+([\w.]+)\s*;/m
+const PACKAGE = /^[ \t]*package\s+([\w.]+)\s*;/m
 const MAIN_METHOD = /public\s+static\s+void\s+main\s*\(\s*(?:final\s+)?String\s*(?:\[\s*\]|\.\.\.)/
 /** Java 25: `main` senza `public`/`static`, con o senza argomenti: la riga del nome, quando JDT ha già deciso. */
 const ANY_MAIN_METHOD = /\bvoid\s+main\s*\(/
@@ -56,7 +56,13 @@ interface JavaTestProject {
   units?: ReadonlyArray<{ language: string; root: string }> | null
 }
 
-const slash = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
+/** Toglie le barre finali dalla coda: la regex `\/+$` ha backtracking non lineare sui percorsi lunghi. */
+const withoutTrailingSlashes = (value: string): string => {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '/') end -= 1
+  return value.slice(0, end)
+}
+const slash = (path: string) => withoutTrailingSlashes(path.replace(/\\/g, '/'))
 
 /** Richiesta di test per il ▶ di un metodo: nell'unità Java più interna che contiene il file, solo quel metodo. */
 export function javaTestRequest(sessionId: string, project: JavaTestProject, target: CodeStudioJavaRunTarget) {

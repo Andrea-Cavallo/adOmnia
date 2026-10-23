@@ -60,7 +60,7 @@ export function Popover({ children, onClose, wide = false, extraWide = false }: 
 }) {
   return (
     <>
-      <div className="fixed inset-0 z-30" onClick={onClose} />
+      <div className="fixed inset-0 z-30" role="presentation" onClick={onClose} />
       <div className={cn(
         'absolute right-0 top-8 z-40 min-w-[176px] rounded-md border border-border-2 bg-surface-1 p-1 shadow-[0_12px_40px_rgba(0,0,0,.45)]',
         wide && 'w-72',
@@ -109,7 +109,7 @@ export function AddFieldForm({ value, onChange, onSubmit, placeholder, action }:
         aria-label={placeholder}
         className="h-7 min-w-0 flex-1 rounded border border-border-2 bg-surface-0 px-2 font-mono text-[10px] text-text-1 outline-none focus:border-accent"
       />
-      <button className="h-7 rounded border border-accent/40 px-2 text-[10px] text-accent-light hover:bg-accent/15">{action}</button>
+      <button type="submit" className="h-7 rounded border border-accent/40 px-2 text-[10px] text-accent-light hover:bg-accent/15">{action}</button>
     </form>
   )
 }

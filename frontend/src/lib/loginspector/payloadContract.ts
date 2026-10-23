@@ -43,7 +43,7 @@ export interface PayloadContractResult {
 }
 
 function routeShape(route: string): string[] {
-  return route.split('?')[0].replace(/\/+$/, '').split('/').filter(Boolean)
+  return route.split('?')[0].replace(/(^|[^/])\/+$/, '$1').split('/').filter(Boolean)
 }
 
 /** `/orders/{id}` matches `/orders/8f21`; a `:param` template matches too. */
@@ -163,7 +163,7 @@ export function validateLogPayload(sources: ContractSource[], input: PayloadCont
     const valid = validate(input.payload)
     const violations: PayloadViolation[] = valid ? [] : (validate.errors ?? []).map((error) => ({
       path: error.keyword === 'required'
-        ? `${jsonPath(error.instancePath)}${jsonPath(error.instancePath) === '$' ? '.' : '.'}${String((error.params as { missingProperty?: string }).missingProperty ?? '')}`
+        ? `${jsonPath(error.instancePath)}.${String((error.params as { missingProperty?: string }).missingProperty ?? '')}`
         : jsonPath(error.instancePath),
       keyword: error.keyword,
       message: error.message ?? 'does not satisfy the contract',

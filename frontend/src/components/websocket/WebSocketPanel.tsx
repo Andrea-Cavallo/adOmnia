@@ -331,7 +331,7 @@ const PARALLEL_EXAMPLE = '{"type":"subscribe","room":"load-test","n":{{$i}}}\n--
 
 // Commands for a parallel send are separated by a line containing only `---`.
 function splitCommands(text: string): string[] {
-  return text.split(/^\s*---\s*$/m).map((block) => block.trim()).filter(Boolean)
+  return text.split(/^[ \t]*---[ \t]*$/m).map((block) => block.trim()).filter(Boolean)
 }
 
 function clampInt(value: number, min: number, max: number) {

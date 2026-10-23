@@ -226,7 +226,8 @@ export async function runFlowStress(graph: FlowGraphDefinition, config: FlowStre
       acc.activity(elapsed(), activeVus)
     }
     try {
-      for (let first = true; ; first = false) {
+      let first = true
+      for (;;) {
         if (config.mode === 'stages') {
           const eligible = vu < targetAt(elapsed())
           setActive(eligible)
@@ -254,6 +255,7 @@ export async function runFlowStress(graph: FlowGraphDefinition, config: FlowStre
         const measured = phase ? phase.measure : elapsed() >= (config.warmupS ?? 0) * 1000
         acc.iteration(!result.entries.some((entry) => entry.status === 'failed'), measured)
         iterationsDone += 1
+        first = false
       }
     } finally {
       setActive(false)
