@@ -167,7 +167,7 @@ func (s *StaticServer) resolve(urlPath string) (string, int) {
 		return "", http.StatusNotFound
 	}
 	candidate := filepath.Join(s.root, filepath.FromSlash(cleaned))
-	real, err := filepath.EvalSymlinks(candidate)
+	real, err := filepath.EvalSymlinks(candidate) // NOSONAR -- candidate is path.Clean-ed and segment-checked above; the containment check below answers 404 for anything outside s.root, so the response never reveals which paths beyond the served folder exist (no filesystem oracle)
 	if err != nil {
 		return "", http.StatusNotFound
 	}

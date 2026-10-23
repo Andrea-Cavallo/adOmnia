@@ -4,7 +4,7 @@
 //
 // Usage: node scripts/generate-brand-icons.mjs <path-to-simple-icons-checkout>
 // To add a brand: append its slug (the SVG file name in icons/) to SLUGS and rerun.
-import { readFileSync, statSync, writeFileSync } from 'node:fs'
+import { readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 
 const SLUGS = [
@@ -21,32 +21,38 @@ const SLUGS = [
 ]
 
 const rootArgument = process.argv[2]
-if (!rootArgument) {
+if (typeof rootArgument !== 'string' || rootArgument.length === 0 || rootArgument.includes('\0')) {
   console.error('usage: node scripts/generate-brand-icons.mjs <simple-icons checkout>')
   process.exit(1)
 }
 
-// The checkout the developer passes on the command line, made absolute. Everything this script reads is then
-// resolved under it and refused if it would leave it (the slug list below is a constant, but the check does
-// not depend on that).
-const root = resolve(rootArgument)
-if (!statSync(root, { throwIfNoEntry: false })?.isDirectory()) {
-  console.error(`not a directory: ${root}`)
+// The checkout the developer passes on the command line, made absolute and canonicalised with realpath so
+// a symlinked root cannot shift under the check. It is used only as the base directory of inRoot(): every
+// read goes through inRoot, which allows plain `name.ext` segments and refuses anything that would leave the
+// checkout (the slug list below is a constant, but the check does not depend on that).
+const resolvedRoot = resolve(rootArgument)
+if (!statSync(resolvedRoot, { throwIfNoEntry: false })?.isDirectory()) { // NOSONAR -- the only argv-derived value in the script: it is the base directory the developer names, canonicalised right below and never used for a read outside inRoot()
+  console.error(`not a directory: ${resolvedRoot}`)
   process.exit(1)
 }
+const root = realpathSync(resolvedRoot)
 
+const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/
 function inRoot(...segments) {
+  for (const segment of segments) {
+    if (!SAFE_SEGMENT.test(segment) || segment.includes('..')) throw new Error(`refusing unsafe path segment: ${segment}`)
+  }
   const target = resolve(root, ...segments)
   if (target !== root && !target.startsWith(root + sep)) throw new Error(`refusing to read outside the checkout: ${target}`)
   return target
 }
 
-const data = JSON.parse(readFileSync(inRoot('data', 'simple-icons.json'), 'utf8'))
+const data = JSON.parse(readFileSync(inRoot('data', 'simple-icons.json'), 'utf8')) // NOSONAR -- constant segments, allowlisted in inRoot and confined to the canonicalised checkout root
 const byTitle = new Map(data.map((entry) => [entry.title, entry]))
 
 const icons = SLUGS.map((slug) => {
   if (!/^[a-z0-9-]+$/.test(slug)) throw new Error(`invalid icon slug: ${slug}`)
-  const svg = readFileSync(inRoot('icons', `${slug}.svg`), 'utf8')
+  const svg = readFileSync(inRoot('icons', `${slug}.svg`), 'utf8') // NOSONAR -- slug is a constant validated above, the path resolves under the canonicalised root and is confined by inRoot()
   const title = svg.match(/<title>([^<]+)<\/title>/)?.[1]
   const path = svg.match(/ d="([^"]+)"/)?.[1]
   const entry = title && byTitle.get(title.replace(/&amp;/g, '&'))

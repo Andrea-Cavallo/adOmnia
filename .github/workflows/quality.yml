@@ -36,10 +36,11 @@ jobs:
       - name: golangci-lint
         run: golangci-lint run --build-tags gtk3 --timeout 8m
 
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0 # NOSONAR -- pinned tool binary; see the note above
+
       - name: govulncheck
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0 # NOSONAR -- pinned tool binary; see the note above
-          govulncheck -tags gtk3 ./...
+        run: govulncheck -tags gtk3 ./...
 
   secrets:
     name: Secret scanning (gitleaks)
@@ -123,8 +124,9 @@ jobs:
 
       - name: Hadolint (Dockerfiles)
         # --https-only: a redirect to plain HTTP would otherwise be followed silently.
+        # --max-redirect: a bounded redirect chain, same policy as the curl below.
         run: |
-          wget --https-only -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          wget --https-only --max-redirect 3 -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
           chmod +x /usr/local/bin/hadolint
           hadolint Dockerfile.linux build/Dockerfile docker/adomnia-lab/mock-api/Dockerfile
 
@@ -157,7 +159,9 @@ jobs:
 
       # Solo HIGH/HIGH: le regole opinionate (permessi 0600, sha1 per fingerprint, unsafe Win32)
       # restano un controllo locale documentato in docs/QUALITY.md.
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0 # NOSONAR -- pinned tool binary, installed outside the module graph like golangci-lint and govulncheck
+
       - name: gosec
         run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0 # NOSONAR -- pinned tool binary, installed outside the module graph like golangci-lint and govulncheck
           "$(go env GOPATH)/bin/gosec" -tags=gtk3 -severity=HIGH -confidence=HIGH -exclude-dir=frontend -exclude-dir=workspaces -exclude-dir=.artifacts -exclude-dir=testdata ./...
