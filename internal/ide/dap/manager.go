@@ -347,12 +347,14 @@ func (m *DebugManager) handshake(session *debugger, launch Launch, client *Clien
 	}
 	command, arguments := launch.Spec.Launch(session.buildDir)
 	launchCtx, cancelLaunch := context.WithTimeout(context.Background(), debugLaunchTimeout)
+	// Il contesto vive finché questa funzione aspetta la risposta: cancellarlo prima farebbe
+	// fallire la call. Il defer qui in alto (S8188) cancella quando smettiamo di aspettare — anche
+	// sul percorso di timeout — così la call in sospeso non resta viva con la sessione chiusa.
+	defer cancelLaunch()
 	// La risposta di launch/attach può arrivare solo dopo configurationDone (debugpy): l'avvio
 	// non si blocca su di essa. Un errore — subito o in ritardo — chiude comunque la sessione.
-	// Il contesto vive finché la richiesta non risponde: cancellarlo prima farebbe fallire la call.
 	launchResult := make(chan error, 1)
 	go func() {
-		defer cancelLaunch()
 		err := client.Call(launchCtx, command, arguments, nil)
 		launchResult <- err
 		if err != nil && !errors.Is(err, context.Canceled) {

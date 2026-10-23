@@ -28,27 +28,27 @@ package_tarball() {
 
     for size in 16 24 32 48 64 128 256 512; do
         icon="assets/icons/linux/adOmnia_${size}x${size}.png"
-        if [ -f "$icon" ]; then
+        if [[ -f "$icon" ]]; then
             cp "$icon" "$stage/icons/"
         fi
     done
 
     cp assets/icons/linux/adomnia-symbolic.svg "$stage/icons/"
 
-    if [ -f assets/icons/linux/adOmnia_256x256.png ]; then
+    if [[ -f assets/icons/linux/adOmnia_256x256.png ]]; then
         cp assets/icons/linux/adOmnia_256x256.png "$stage/adomnia.png"
     fi
 
-    if [ -f build/linux/adOmnia.desktop ]; then
+    if [[ -f build/linux/adOmnia.desktop ]]; then
         cp build/linux/adOmnia.desktop "$stage/adomnia.desktop"
-    elif [ -f build/linux/adomnia.desktop ]; then
+    elif [[ -f build/linux/adomnia.desktop ]]; then
         cp build/linux/adomnia.desktop "$stage/adomnia.desktop"
     else
         echo "Missing Linux desktop entry: build/linux/adOmnia.desktop" >&2
         exit 1
     fi
 
-    if [ -f build/linux/install.sh ]; then
+    if [[ -f build/linux/install.sh ]]; then
         cp build/linux/install.sh "$stage/"
         chmod +x "$stage/install.sh"
     fi
@@ -91,7 +91,7 @@ build_and_package() {
         LINUX_BUILD_TAGS="production gtk3" \
         wails3 task linux:build
 
-    if [ "$COMPRESS_WITH_UPX" = "1" ]; then
+    if [[ "$COMPRESS_WITH_UPX" = "1" ]]; then
         upx --best --lzma bin/adomnia
     fi
 

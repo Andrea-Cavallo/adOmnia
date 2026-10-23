@@ -22,5 +22,5 @@ case "$(go env GOOS)" in
     windows) artifact="bin/adomnia.exe" ;;
     *) artifact="bin/adomnia" ;;
 esac
-test -f "$artifact"
+[[ -f "$artifact" ]]
 echo "Created $artifact"

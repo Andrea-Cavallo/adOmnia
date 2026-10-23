@@ -3,7 +3,7 @@
 # Usage: ./uninstall.sh (without sudo); application data is preserved.
 set -euo pipefail
 
-if [ "$(id -u)" -eq 0 ]; then
+if [[ "$(id -u)" -eq 0 ]]; then
     echo "Run ./uninstall.sh as your normal user, without sudo." >&2
     exit 1
 fi

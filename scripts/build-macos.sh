@@ -31,7 +31,7 @@ fi
 
 echo "Building adOmnia ${VERSION} for macOS (universal)"
 "$WAILS3_BIN" generate bindings -clean=true -ts ./...
-(cd frontend && npm ci && npm run build)
+(cd frontend && npm ci && npm run build) # NOSONAR -- npm ci enforces the lockfile; install scripts are required by the frontend toolchain
 
 mkdir -p "$DIST_DIR" "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 LDFLAGS="-s -w -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE} -X main.GitCommit=${GIT_COMMIT}"

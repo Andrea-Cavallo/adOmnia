@@ -61,7 +61,7 @@ export function summarizeActivity(samples) {
       const at = Date.parse(sample.at)
       return at > end - 60_000 && at <= end
     })
-    const states = [...new Set(window.map(sample => sample.activity?.state ?? 'Unknown'))].sort()
+    const states = [...new Set(window.map(sample => sample.activity?.state ?? 'Unknown'))].sort((a, b) => a.localeCompare(b))
     return {
       minute,
       complete: Number.isFinite(first) && last >= end && window.length >= 2,
@@ -202,7 +202,7 @@ function recordingFiles(input) {
   if (statSync(target).isDirectory()) {
     return readdirSync(target)
       .filter(name => name.endsWith('.jsonl'))
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .map(name => resolve(target, name))
   }
   return [target]

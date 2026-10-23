@@ -18,8 +18,8 @@ for asset in \
   "adomnia-${VERSION}-windows-amd64.exe" \
   "adomnia-${VERSION}-linux-amd64-gtk3-webkitgtk-4.1.tar.gz" \
   "adomnia-${VERSION}-macos-universal.dmg"; do
-  if [ ! -f "dist/${asset}" ]; then
-    curl -fL -o "dist/${asset}" "${BASE}/${asset}"
+  if [[ ! -f "dist/${asset}" ]]; then
+    curl --proto '=https' --tlsv1.2 -fL -o "dist/${asset}" "${BASE}/${asset}"
   fi
 done
 

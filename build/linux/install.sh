@@ -3,7 +3,7 @@
 # Uso: ./install.sh (senza sudo)
 set -euo pipefail
 
-if [ "$(id -u)" -eq 0 ]; then
+if [[ "$(id -u)" -eq 0 ]]; then
     echo "Esegui ./install.sh come utente normale, senza sudo." >&2
     exit 1
 fi
@@ -26,7 +26,7 @@ ICON_SIZES=(16 24 32 48 64 128 256 512)
 for sz in "${ICON_SIZES[@]}"; do
     SRC="$SCRIPT_DIR/icons/adOmnia_${sz}x${sz}.png"
     DEST_DIR="$HICOLOR_BASE/${sz}x${sz}/apps"
-    if [ -f "$SRC" ]; then
+    if [[ -f "$SRC" ]]; then
         mkdir -p "$DEST_DIR"
         cp "$SRC" "$DEST_DIR/adomnia.png"
         echo "    ${sz}x${sz} -> $DEST_DIR/adomnia.png"
@@ -35,13 +35,13 @@ for sz in "${ICON_SIZES[@]}"; do
     fi
 done
 
-if [ -f "$SCRIPT_DIR/icons/adomnia-symbolic.svg" ]; then
+if [[ -f "$SCRIPT_DIR/icons/adomnia-symbolic.svg" ]]; then
     mkdir -p "$HICOLOR_BASE/scalable/apps"
     cp "$SCRIPT_DIR/icons/adomnia-symbolic.svg" "$HICOLOR_BASE/scalable/apps/"
 fi
 
 # Fallback single-icon copy (for environments that look in app dir)
-if [ -f "$SCRIPT_DIR/adomnia.png" ]; then
+if [[ -f "$SCRIPT_DIR/adomnia.png" ]]; then
     mkdir -p "$DATA_DIR/adomnia"
     cp "$SCRIPT_DIR/adomnia.png" "$DATA_DIR/adomnia/adomnia.png"
 fi
@@ -61,7 +61,7 @@ EXEC_PATH="${EXEC_PATH//\`/\\\`}"
 EXEC_PATH="${EXEC_PATH//\$/\\\$}"
 EXEC_PATH="${EXEC_PATH//\\/\\\\}"
 EXEC_PATH="${EXEC_PATH//%/%%}"
-while IFS= read -r line || [ -n "$line" ]; do
+while IFS= read -r line || [[ -n "$line" ]]; do
     case "$line" in
         Exec=*) printf 'Exec="%s"\n' "$EXEC_PATH" ;;
         *) printf '%s\n' "$line" ;;
@@ -74,7 +74,7 @@ echo ""
 echo "Installazione completata. Avvia adOmnia dal launcher o con:"
 echo "  $INSTALL_DIR/adomnia"
 echo "Dati e impostazioni esistenti non sono stati modificati."
-if [ -e /opt/adomnia/adomnia ]; then
+if [[ -e /opt/adomnia/adomnia ]]; then
     echo "La vecchia installazione in /opt/adomnia è rimasta intatta."
     echo "Dopo aver verificato questa copia, rimuovila con il vecchio uninstall.sh (sudo)."
 fi
