@@ -29,7 +29,7 @@ require (
 	github.com/miekg/dns v1.1.73
 	github.com/nats-io/nats.go v1.54.0
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
-	github.com/rabbitmq/amqp091-go v1.15.0
+	github.com/rabbitmq/amqp091-go v1.16.0
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/romshark/jscan v1.2.0
 	github.com/shirou/gopsutil/v4 v4.26.9
