@@ -14,8 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"adomnia/internal/ide/project"
 )
 
 // Download scarica url in destination (file nuovo, mai sovrascritto), verifica la SHA-256 attesa e
@@ -99,6 +97,7 @@ func extractZip(ctx context.Context, label, archivePath, destination string, max
 		return err
 	}
 	defer reader.Close()
+	cleanDestination := filepath.Clean(destination)
 	var expanded uint64
 	for _, entry := range reader.File {
 		if err := ctx.Err(); err != nil {
@@ -108,9 +107,16 @@ func extractZip(ctx context.Context, label, archivePath, destination string, max
 		if expanded > uint64(maxBytes) {
 			return fmt.Errorf("archive %s expands beyond the allowed limit", label)
 		}
-		target := filepath.Join(destination, filepath.FromSlash(entry.Name))
-		if err := project.EnsureWithin(destination, target); err != nil {
-			return fmt.Errorf("archive %s is unsafe: %w", label, err)
+		target := filepath.Join(cleanDestination, filepath.FromSlash(entry.Name))
+		// Zip Slip: no absolute names, and the joined path must stay strictly under the destination.
+		if strings.HasPrefix(entry.Name, "/") || filepath.IsAbs(filepath.FromSlash(entry.Name)) || filepath.VolumeName(filepath.FromSlash(entry.Name)) != "" {
+			return fmt.Errorf("archive %s is unsafe: absolute entry name", label)
+		}
+		if target == cleanDestination {
+			continue // the root directory entry itself: nothing to extract
+		}
+		if !strings.HasPrefix(target, cleanDestination+string(os.PathSeparator)) {
+			return fmt.Errorf("archive %s is unsafe: entry escapes the destination", label)
 		}
 		if entry.FileInfo().Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("archive %s contains a forbidden symlink", label)
@@ -153,6 +159,7 @@ func extractTarGzip(ctx context.Context, label, archivePath, destination string,
 	}
 	defer gzipReader.Close()
 	reader := tar.NewReader(gzipReader)
+	cleanDestination := filepath.Clean(destination)
 	var expanded int64
 	for {
 		if err := ctx.Err(); err != nil {
@@ -165,9 +172,16 @@ func extractTarGzip(ctx context.Context, label, archivePath, destination string,
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(destination, filepath.FromSlash(header.Name))
-		if err := project.EnsureWithin(destination, target); err != nil {
-			return fmt.Errorf("archive %s is unsafe: %w", label, err)
+		target := filepath.Join(cleanDestination, filepath.FromSlash(header.Name))
+		// Zip Slip: no absolute names, and the joined path must stay strictly under the destination.
+		if strings.HasPrefix(header.Name, "/") || filepath.IsAbs(filepath.FromSlash(header.Name)) || filepath.VolumeName(filepath.FromSlash(header.Name)) != "" {
+			return fmt.Errorf("archive %s is unsafe: absolute entry name", label)
+		}
+		if target == cleanDestination {
+			continue // the root directory entry itself: nothing to extract
+		}
+		if !strings.HasPrefix(target, cleanDestination+string(os.PathSeparator)) {
+			return fmt.Errorf("archive %s is unsafe: entry escapes the destination", label)
 		}
 		if header.Size < 0 || expanded+header.Size > maxBytes {
 			return fmt.Errorf("archive %s expands beyond the allowed limit", label)

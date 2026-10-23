@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { QueryConsole } from './QueryConsole'
+import { QueryConsole, literalBody } from './QueryConsole'
 import { QueryEditor } from './QueryEditor'
 import { interpret } from './queryInterpreter'
 import { blankTab } from './dbShared'
@@ -67,5 +67,13 @@ describe('QueryEditor interpretation strip', () => {
 
   it('shows nothing for an empty editor', () => {
     expect(render('')).not.toContain('aria-live="polite"')
+  })
+})
+
+describe('literalBody', () => {
+  it('escapes the dollar sign and the backslash that precedes it, so a template never becomes a snippet variable', () => {
+    expect(literalBody('SELECT $1')).toBe(String.raw`SELECT \$1`)
+    expect(literalBody(String.raw`path\$x`)).toBe(String.raw`path\\\$x`)
+    expect(literalBody('plain')).toBe('plain')
   })
 })

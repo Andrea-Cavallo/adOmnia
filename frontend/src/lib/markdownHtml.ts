@@ -58,7 +58,11 @@ export function renderSafeHtml(html: string, options: HtmlRenderOptions): string
   let out = ''
   let last = 0
   const stack: string[] = []
-  const text = html.replace(/<!--[\s\S]*?-->/g, '')
+  let text = html
+  for (let previous = ''; previous !== text; ) {
+    previous = text
+    text = text.replace(/<!--[\s\S]*?-->/g, '') // repeat: "<!<!-- -->-- x -->" must not leave a comment behind
+  }
   for (const match of text.matchAll(TAG)) {
     out += escapeText(text.slice(last, match.index))
     last = match.index + match[0].length

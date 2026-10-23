@@ -45,7 +45,7 @@ export function evidenceMarkdown(events: LogEvent[], title: string, notes: strin
     '',
     '| Time | Level | Service | Source | Message |',
     '|---|---|---|---|---|',
-    ...events.map((event) => `| ${event.ts !== null ? new Date(event.ts).toISOString() : event.tsRaw || '-'} | ${event.level} | ${event.service || '-'} | ${(event.sourceName || '-')}:${event.line} | ${event.message.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')} |`),
+    ...events.map((event) => `| ${event.ts !== null ? new Date(event.ts).toISOString() : event.tsRaw || '-'} | ${event.level} | ${event.service || '-'} | ${(event.sourceName || '-')}:${event.line} | ${event.message.replace(/[\\|]/g, '\\$&').replace(/\r?\n/g, ' ')} |`),
   ]
   return lines.join('\n')
 }

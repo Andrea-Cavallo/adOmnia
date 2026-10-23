@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { buildEvidenceBundle, serializeEvidence } from './evidence'
+import { buildEvidenceBundle, evidenceMarkdown, serializeEvidence } from './evidence'
 import { EMPTY_FILTERS } from './query'
 import { parseLogText } from './parse'
 
 describe('shareable evidence package', () => {
+  it('keeps a message with a backslash before a pipe inside its table cell', () => {
+    const event = parseLogText(JSON.stringify({ timestamp: '2026-09-10T08:00:00Z', message: String.raw`C:\logs|tail` })).events[0]
+    expect(evidenceMarkdown([event], 'run', '')).toContain(String.raw`C:\\logs\|tail`)
+  })
+
+
   it('redacts raw, nested JSON and generated notes while distinguishing UI-hidden fields', () => {
     const secret = 'super-secret-value'
     const event = parseLogText(JSON.stringify({

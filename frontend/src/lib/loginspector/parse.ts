@@ -38,7 +38,20 @@ function isJavaThrowable(body: string): boolean {
 const GO_PANIC = /^\s*(?:panic:|fatal error:)/
 const GO_GOROUTINE = /^goroutine\s+\d+\s+\[/
 const GO_FILE_FRAME = /^\s*\/?\S*\.go:\d+(?:\s+\+0x[0-9a-f]+)?\s*$/
-const GO_FUNC_FRAME = /^(?:\S+\.)+\S*\([^)]*\)$/
+// `main.run(0x1)`, `pkg/sub.(*T).Method(...)`: one run of non-space text with a dot after its first character,
+// then an argument list that ends the line (no `)` inside it). The previous regex, `/^(?:\S+\.)+\S*\([^)]*\)$/`,
+// backtracked exponentially on `!.!.!.…`; a regex that avoids that is still quadratic on a long line, so this scans
+// the text a fixed number of times instead.
+function isGoFuncFrame(body: string): boolean {
+  const last = body.length - 1
+  if (last < 3 || body[last] !== ')') return false
+  const firstDot = body.indexOf('.', 1)
+  if (firstDot === -1) return false
+  const afterArgs = Math.max(firstDot, body.lastIndexOf(')', last - 1))
+  const open = body.indexOf('(', afterArgs + 1)
+  if (open === -1 || open > last - 1) return false
+  return !/\s/.test(body.slice(0, open))
+}
 const GO_CREATED_BY = /^created by\s+\S/
 const GO_EXIT = /^exit status\s+\d+\s*$/
 const GO_SIGNAL = /^\[signal\s/
@@ -143,7 +156,7 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
     if (startsWithTimestamp(body)) return false
 
     if (draft.goStack) {
-      return GO_GOROUTINE.test(body) || GO_FILE_FRAME.test(body) || GO_FUNC_FRAME.test(body)
+      return GO_GOROUTINE.test(body) || GO_FILE_FRAME.test(body) || isGoFuncFrame(body)
         || GO_CREATED_BY.test(body) || GO_EXIT.test(body) || GO_SIGNAL.test(body) || /^\s/.test(body)
     }
     if (JAVA_FRAME.test(body) || JAVA_MORE.test(body) || JAVA_CAUSE.test(body)) return true

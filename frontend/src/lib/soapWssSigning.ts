@@ -252,11 +252,16 @@ function getOrCreateSecurityHeader(doc: Document, soapNs: string): Element {
   return security
 }
 
+const SOAP_11_NS = 'http://schemas.xmlsoap.org/soap/envelope/'
+const SOAP_12_NS = 'http://www.w3.org/2003/05/soap-envelope'
+
+/** SOAP version from the namespace of the root element: the URL appearing elsewhere (comment, payload) does not count. */
 function detectSoapNs(envelope: string): string {
-  if (envelope.includes('http://www.w3.org/2003/05/soap-envelope')) {
-    return 'http://www.w3.org/2003/05/soap-envelope'
+  try {
+    return parseSoapDoc(envelope).documentElement.namespaceURI === SOAP_12_NS ? SOAP_12_NS : SOAP_11_NS
+  } catch {
+    return SOAP_11_NS // unparsable: the caller's own parse reports the error
   }
-  return 'http://schemas.xmlsoap.org/soap/envelope/'
 }
 
 function ensureBodyHasWsuId(doc: Document, soapNs: string, id: string): Element {

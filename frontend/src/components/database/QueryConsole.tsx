@@ -66,8 +66,8 @@ function shorten(query: string): string {
 }
 
 /** A personal template is literal text: its `$` must not start a snippet stop. */
-function literalBody(query: string): string {
-  return query.replace(/\$/g, '\\$')
+export function literalBody(query: string): string {
+  return query.replace(/[\\$]/g, '\\$&')
 }
 
 const tabClass = (on: boolean) => cn(

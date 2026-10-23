@@ -35,6 +35,11 @@ describe('todosToMarkdown', () => {
     expect(md).toContain('### `services/auth/key.go`')
     expect(md).toContain('- [ ] **FIXME** (L3) a \\| b')
   })
+  it('escapes a backslash before escaping the pipe that follows it', () => {
+    const tricky = [{ keyword: 'TODO', text: 'a\\|b', relativePath: 'tools/run.sh', line: 1 }]
+    const out = todosToMarkdown(tricky, { projectName: 'p', projectRoot: '/p', units: [] })
+    expect(out).toContain(String.raw`a\\\|b`)
+  })
   it('handles empty input', () => {
     expect(todosToMarkdown([], { projectName: 'x', projectRoot: '/x', units: [] })).toContain('No TODO')
   })

@@ -2,6 +2,7 @@ import http from 'node:http'
 
 const startedAt = new Date().toISOString()
 const name = process.env.ADOMNIA_LAB_NAME || 'adomnia-lab'
+const MAX_DELAY_MS = 5000
 
 async function readBody(req) {
   const chunks = []
@@ -49,7 +50,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/slow') {
-    const delay = Math.min(Number(url.searchParams.get('ms') || 500), 5000)
+    // The lab server must not be tied up by a query string: 0..MAX_DELAY_MS, 500 when missing or not a number.
+    let delay = Number.parseInt(url.searchParams.get('ms') ?? '', 10)
+    if (!Number.isFinite(delay) || delay < 0) delay = 500
+    if (delay > MAX_DELAY_MS) delay = MAX_DELAY_MS
     await new Promise((resolve) => setTimeout(resolve, delay))
     send(res, 200, { ok: true, delay })
     return

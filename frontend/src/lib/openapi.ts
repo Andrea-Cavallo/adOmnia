@@ -848,7 +848,7 @@ export function exportToOpenApi(collections: Collection[]): string {
   const baseUrl = inferBaseUrl(allNodes)
 
   const secSchemes: Record<string, unknown> = {}
-  const paths: Record<string, Record<string, unknown>> = {}
+  const operationsByPath = new Map<string, Map<string, unknown>>()
 
   function buildOperation(req: RequestItem, tag: string | undefined): Record<string, unknown> {
     const op: Record<string, unknown> = {}
@@ -923,8 +923,9 @@ export function exportToOpenApi(collections: Collection[]): string {
         if (!['get', 'query', 'post', 'put', 'patch', 'delete', 'head', 'options'].includes(method)) continue
 
         const path = derivePath(req, baseUrl)
-        if (!paths[path]) paths[path] = {}
-        paths[path][method] = buildOperation(req, tag)
+        const operations = operationsByPath.get(path) ?? new Map<string, unknown>()
+        operations.set(method, buildOperation(req, tag))
+        operationsByPath.set(path, operations)
       }
     }
   }
@@ -940,7 +941,7 @@ export function exportToOpenApi(collections: Collection[]): string {
       version: '1.0.0',
     },
     ...(baseUrl ? { servers: [{ url: baseUrl }] } : {}),
-    paths,
+    paths: Object.fromEntries([...operationsByPath].map(([path, operations]) => [path, Object.fromEntries(operations)])),
     ...(Object.keys(secSchemes).length > 0 ? { components: { securitySchemes: secSchemes } } : {}),
   }
 

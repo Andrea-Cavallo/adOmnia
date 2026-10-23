@@ -211,7 +211,7 @@ ${schemaSection}
 }
 
 function flagsMarkdown(flags: ConfigKey[], profiles: string[]): string {
-  const cell = (value: string | undefined) => (value === undefined ? '—' : `\`${stripText(value).replace(/\|/g, '\\|')}\``)
+  const cell = (value: string | undefined) => (value === undefined ? '—' : `\`${stripText(value).replace(/[\\|]/g, '\\$&')}\``)
   const rows = flags.map((flag) => `| \`${flag.name}\` | ${flag.status} | ${profiles.map((profile) => cell(flag.values[profile])).join(' | ')} |`)
   return `# Feature flags
 
@@ -289,7 +289,7 @@ function pathOf(url: string): string {
 /** The service's configuration when the bug was seen: variables read by the code and their .env values. */
 function configMarkdown(service: string, config: ConfigReport): string {
   const profiles = config.profiles
-  const cell = (value: string | undefined) => (value === undefined ? '—' : `\`${stripText(value).replace(/\|/g, '\\|')}\``)
+  const cell = (value: string | undefined) => (value === undefined ? '—' : `\`${stripText(value).replace(/[\\|]/g, '\\$&')}\``)
   const rows = config.keys.map((key) => `| \`${key.name}\` | ${key.status} | ${profiles.map((profile) => cell(key.values[profile])).join(' | ')} |`)
   return [
     `# Configuration of ${service}`, '',

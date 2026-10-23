@@ -13,8 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"adomnia/internal/ide/project"
 )
 
 // StaticOptions configura un server per file statici.
@@ -165,6 +163,9 @@ func (s *StaticServer) serveHTML(w http.ResponseWriter, r *http.Request, file *o
 // (.git, .env, .adomnia…), il path traversal e i link simbolici che escono dalla radice.
 func (s *StaticServer) resolve(urlPath string) (string, int) {
 	cleaned := path.Clean("/" + urlPath)
+	if strings.Contains(cleaned, "..") { // path.Clean already removed every ".." element: what is left is a hostile or odd name
+		return "", http.StatusNotFound
+	}
 	for _, segment := range strings.Split(cleaned, "/") {
 		if strings.HasPrefix(segment, ".") && segment != "" && segment != ".well-known" {
 			return "", http.StatusNotFound
@@ -178,26 +179,26 @@ func (s *StaticServer) resolve(urlPath string) (string, int) {
 	if err != nil {
 		return "", http.StatusNotFound
 	}
-	if project.EnsureWithin(s.root, real) != nil {
+	// s.root is already symlink-resolved and clean: the resolved target must be the root or strictly under it.
+	if real != s.root && !strings.HasPrefix(real, s.root+string(filepath.Separator)) {
 		return "", http.StatusForbidden
 	}
-	info, err := os.Stat(real) // #nosec G703 -- real is symlink-resolved and checked by project.EnsureWithin above // NOSONAR -- path confined to the previewed project root after symlink resolution
+	info, err := os.Stat(real) // #nosec G703 -- real is symlink-resolved and confined to s.root by the prefix check above
 	if err != nil {
 		return "", http.StatusNotFound
 	}
 	if info.IsDir() {
 		index := filepath.Join(real, "index.html")
-		if realIndex, indexErr := filepath.EvalSymlinks(index); indexErr == nil && project.EnsureWithin(s.root, realIndex) == nil && isRegular(realIndex) {
+		realIndex, indexErr := filepath.EvalSymlinks(index)
+		if indexErr != nil || !strings.HasPrefix(realIndex, s.root+string(filepath.Separator)) {
+			return "", http.StatusNotFound
+		}
+		if indexInfo, statErr := os.Stat(realIndex); statErr == nil && indexInfo.Mode().IsRegular() { // #nosec G703 -- realIndex is symlink-resolved and confined to s.root by the prefix check above
 			return realIndex, http.StatusOK
 		}
 		return "", http.StatusNotFound
 	}
 	return real, http.StatusOK
-}
-
-func isRegular(path string) bool {
-	info, err := os.Stat(path) // #nosec G703 -- stat only, caller passes a symlink-resolved path validated by project.EnsureWithin
-	return err == nil && info.Mode().IsRegular()
 }
 
 func isHTML(path string) bool {

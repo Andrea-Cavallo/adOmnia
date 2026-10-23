@@ -11,7 +11,7 @@ const redis: JsonCompleteContext = { driver: 'redis', collections: [], fields: {
 /** `|` marks the caret. */
 function complete(source: string, ctx = mongo, explicit = false) {
   const caret = source.indexOf('|')
-  const text = source.replace('|', '')
+  const text = source.slice(0, caret) + source.slice(caret + 1)
   const result = jsonCompletions(text, caret, ctx, explicit)
   return result?.items.map((i) => i.label) ?? null
 }

@@ -2,6 +2,7 @@ package golang
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -33,7 +34,7 @@ func (m *DebugExtensions) GoroutineCreation(id DebugSessionID, threadID int) (Go
 		return GoroutineCreation{}, fmt.Errorf("creation site unreadable: %w", err)
 	}
 	result := GoroutineCreation{}
-	if parent, err := m.evaluateUint(id, "runtime.curg.parentGoid", frameID); err == nil {
+	if parent, err := m.evaluateUint(id, "runtime.curg.parentGoid", frameID); err == nil && parent <= math.MaxInt32 {
 		result.ParentID = int(parent)
 	}
 	if gopc == 0 {

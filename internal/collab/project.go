@@ -71,7 +71,7 @@ func privateProjectPath(path string) bool {
 }
 
 func projectPath(root, relative string) (string, error) {
-	if relative == "" || filepath.IsAbs(relative) || strings.Contains(relative, ":") || strings.Contains(relative, "\x00") || privateProjectPath(relative) {
+	if relative == "" || filepath.IsAbs(relative) || strings.Contains(relative, ":") || strings.Contains(relative, "..") || strings.Contains(relative, "\x00") || privateProjectPath(relative) {
 		return "", errors.New("file escluso dalla condivisione")
 	}
 	candidate := filepath.Join(root, filepath.FromSlash(relative))
@@ -79,7 +79,8 @@ func projectPath(root, relative string) (string, error) {
 		return "", errors.New("path fuori dal progetto")
 	}
 	resolved, err := filepath.EvalSymlinks(candidate)
-	if err != nil || ideproject.EnsureWithin(root, resolved) != nil {
+	// The shared root is already resolved: the target must be strictly under it (symlinks included).
+	if err != nil || !strings.HasPrefix(resolved, filepath.Clean(root)+string(filepath.Separator)) {
 		return "", errors.New("file non disponibile nel progetto")
 	}
 	resolvedRelative, err := filepath.Rel(root, resolved)

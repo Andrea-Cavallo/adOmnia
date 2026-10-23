@@ -110,7 +110,7 @@ function exportRunMarkdown(flowName: string, run: RunEntry[]) {
   lines.push('| Step | Status | HTTP | Duration | Error |')
   lines.push('| --- | --- | ---: | ---: | --- |')
   run.forEach((entry) => {
-    lines.push(`| ${entry.nodeLabel} | ${entry.status.toUpperCase()} | ${entry.httpStatus ?? '-'} | ${Math.round(entry.durationMs)}ms | ${(entry.error ?? '').replace(/\|/g, '\\|')} |`)
+    lines.push(`| ${entry.nodeLabel} | ${entry.status.toUpperCase()} | ${entry.httpStatus ?? '-'} | ${Math.round(entry.durationMs)}ms | ${(entry.error ?? '').replace(/[\\|]/g, '\\$&')} |`)
   })
   return lines.join('\n')
 }
