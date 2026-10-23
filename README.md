@@ -17,9 +17,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml"><img alt="Build and tests" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=develop&label=build%20%26%20tests"></a>
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/quality.yml"><img alt="Lint and security scans" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/quality.yml?branch=develop&label=lint%20%26%20security"></a>
-  <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/codeql.yml?branch=develop&label=CodeQL"></a>
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml"><img alt="Build and tests" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=main&label=build%20%26%20tests"></a>
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/quality.yml"><img alt="Lint and security scans" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/quality.yml?branch=main&label=lint%20%26%20security"></a>
+  <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/codeql.yml?branch=main&label=CodeQL"></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/Andrea-Cavallo/adOmnia"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/Andrea-Cavallo/adOmnia/badge"></a>
   <a href=".github/dependabot.yml"><img alt="Dependabot enabled" src="https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot&logoColor=white"></a>
 </p>

@@ -1,0 +1,10 @@
+# Falsi positivi verificati di gitleaks (chiavi finte nei test, esempio di docs, nome di una chiave localStorage).
+# Vale per qualunque versione di gitleaks: .gitleaks.toml usa [[allowlists]] che le versioni < 8.25 ignorano.
+05761a70a0eb44d34bc2567691246a98346c0743:frontend/src/lib/loginspector/chainToFlow.test.ts:generic-api-key:10
+05761a70a0eb44d34bc2567691246a98346c0743:frontend/src/lib/loginspector/chainToFlow.test.ts:generic-api-key:15
+60612619a5f5b08142b634195895cce026f291ee:internal/ide/security/security_test.go:generic-api-key:26
+60612619a5f5b08142b634195895cce026f291ee:internal/ide/security/security_test.go:private-key:45
+777fb7716c95b06d985f364b25aa0017f6d0d0ab:frontend/src/components/scenarios/DailyScenariosPanel.tsx:generic-api-key:90
+8cdaf4a35664d7f91369dbac14f02920a0759f75:internal/airedact/redact_test.go:private-key:24
+d2316de600d425d06b09873f9c2e235c761b6d37:frontend/src/lib/aiRedaction.test.ts:aws-access-token:8
+e92f13fdb318ec331fc577612a05e3f3237a6b52:docs/QUALITY.md:curl-auth-user:55
