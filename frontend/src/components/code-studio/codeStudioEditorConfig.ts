@@ -100,7 +100,7 @@ function withoutTrailingBlanks(text: string): string {
 
 /** Testo dopo le regole di salvataggio sugli spazi; null se non cambia nulla. */
 export function applyWhitespaceRules(text: string, trimTrailing: boolean, finalNewline: boolean | undefined): string | null {
-  let next = trimTrailing ? withoutTrailingBlanks(text.replace(/[ \t]+(\r?\n)/g, '$1')) : text
+  let next = trimTrailing ? withoutTrailingBlanks(text.replace(/(?<![ \t])[ \t]+(\r?\n)/g, '$1')) : text
   if (finalNewline === true && next.length > 0 && !next.endsWith('\n')) next += text.includes('\r\n') ? '\r\n' : '\n'
   return next === text ? null : next
 }

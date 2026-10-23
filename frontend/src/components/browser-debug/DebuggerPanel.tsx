@@ -160,7 +160,7 @@ function renderHighlightedJS(line: string) {
 
 function renderHighlightedHTML(line: string) {
   const tokenPattern =
-    /(<!--[^-]*(?:-(?!->)[^-]*)*-->|<\/?[A-Za-z][\w:-]*|\/?>|[A-Za-z_:][\w:.-]*(?=\=)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g
+    /(<!--[\s\S]*?-->|<\/?[A-Za-z][\w:-]*|\/?>|(?<![A-Za-z_:])[A-Za-z_:][\w:.-]*(?=\=)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g
   const parts: Array<string | JSX.Element> = []
   let cursor = 0
   let match: RegExpExecArray | null
@@ -188,7 +188,7 @@ function renderHighlightedHTML(line: string) {
 }
 
 function renderHighlightedCSS(line: string) {
-  const tokenPattern = /(\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/|#[\w-]+|\.[\w-]+|--[\w-]+|[A-Za-z-]+(?=\s*:)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?(?:px|rem|em|vh|vw|%|s|ms)?\b|[{}:;,()>+~*])/g
+  const tokenPattern = /(\/\*[\s\S]*?\*\/|#[\w-]+|\.[\w-]+|--[\w-]+|(?<![A-Za-z-])[A-Za-z-]+(?=\s*:)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?(?:px|rem|em|vh|vw|%|s|ms)?\b|[{}:;,()>+~*])/g
   const parts: Array<string | JSX.Element> = []
   let cursor = 0
   let match: RegExpExecArray | null

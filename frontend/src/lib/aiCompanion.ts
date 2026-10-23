@@ -50,7 +50,7 @@ export interface CompanionReply {
 
 function unwrapJSON(value: string): string {
   const trimmed = value.trim()
-  const fenced = trimmed.match(/^```(?:json)?\s*((?:(?!```)[\s\S])*)```$/i)
+  const fenced = trimmed.match(/^```(?:json)?\s*((?!\s)[^`]*(?:`(?!``)[^`]*)*)```$/i)
   return (fenced?.[1] ?? trimmed).trim()
 }
 

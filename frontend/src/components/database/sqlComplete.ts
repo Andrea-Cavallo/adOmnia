@@ -91,7 +91,7 @@ function contextualColumns(query: string, before: string, schema: SqlSchema, typ
     return table ? { items: columnItems(table, schema, types), operators: false } : null
   }
 
-  if (/\b(?:WHERE|ON|HAVING|AND|OR)\s+(?:[^;]*?[\s(,=<>!+*/-])?[\w$]*$/i.test(statement) || /\b(?:GROUP|ORDER)\s+BY\s+(?:[^;]*,\s*)?[\w$]*$/i.test(statement)) {
+  if (/\b(?:WHERE|ON|HAVING|AND|OR)\s+(?:(?:[^\s;][^;]*)?[\s(,=<>!+*/-])?[\w$]*$/i.test(statement) || /\b(?:GROUP|ORDER)\s+BY\s+(?:(?:[^\s;][^;]*)?,\s*)?[\w$]*$/i.test(statement)) {
     const scope = [...new Set(sqlAliases(query, schema).values())]
     if (!scope.length) return null
     return { items: scope.flatMap((t) => columnItems(t, schema, types)), operators: true }

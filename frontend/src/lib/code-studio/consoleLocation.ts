@@ -6,7 +6,7 @@ export interface ConsoleLocation {
 
 // go build/vet, javac via Gradle (`Foo.java:12: error:`) e Maven (`Foo.java:[12,34]`). Un'estensione per volta: il resto
 // ("example.com:443") non è un sorgente.
-const LOCATION = /((?:[A-Za-z]:[\\/])?[^\s:[\]()]+):(?:\[(\d+)(?:,(\d+))?\]|(\d+)(?::(\d+))?)/g
+const LOCATION = /(?<![^\s:[\]()](?![A-Za-z]:[\\/]))((?:[A-Za-z]:[\\/])?[^\s:[\]()]+):(?:\[(\d+)(?:,(\d+))?\]|(\d+)(?::(\d+))?)/g
 /** L'estensione si verifica dopo il match: dentro la regex il `.` del percorso si scontrerebbe col gruppo finale. */
 const SOURCE_EXTENSION = /\.(?:go|java|kt|kts|groovy)$/
 

@@ -17,7 +17,7 @@ const NO_CHILDREN: Record<number, GoIDEDebugVariable[]> = {}
 const INLINE_VALUE_GAP = '    '
 /** Identificatori e selettori Go (p.X.Y): quello che si valuta al passaggio del mouse. */
 const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/
-const SELECTOR_BEFORE = /[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\.$/
+const SELECTOR_BEFORE = /(?<![A-Za-z_])(?:[A-Za-z_][A-Za-z0-9_]*\.)+$/
 
 /** Solo i file Go e Java del progetto accettano breakpoint: fuori dal progetto il debugger non li risolverebbe. */
 export function canHoldBreakpoints(document: GoIDEEditorDocument | null): document is GoIDEEditorDocument {

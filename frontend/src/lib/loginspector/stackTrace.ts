@@ -83,17 +83,17 @@ function javaPackagePath(qualified: string): string {
 const JAVA_FRAME = /^\s*at\s+(?:[\w$.][\w$.-]*(?:@[\w$.-]*)?\/)?([\w$.<>]+)\((?:([\w$.]+\.\w+):(\d+)|([^)]*))\)\s*$/
 const JAVA_ELIDED = /^\s*\.\.\.\s+(\d+)\s+more\s*$/
 const JAVA_SECTION = /^(?:Caused by:|Suppressed:)/
-const GO_LOCATION = /^\s+((?:(?!\.go:)[\s\S])+\.go):(\d+)(?:\s+\+0x[0-9a-f]+)?\s*$/
+const GO_LOCATION = /^\s+((?:\S(?:(?!\.go:)[\s\S])*|\s)\.go):(\d+)(?:\s+\+0x[0-9a-f]+)?\s*$/
 const GO_FUNCTION = /^([\w./\-()*]+\.[\w.()*]+)\(.*\)$/
-const JS_FRAME = /^\s*at\s+(?:((?:(?!\s\()[\s\S])+)\s+\()?((?:(?!:\d+:\d+)[\s\S])+):(\d+):(\d+)\)?\s*$/
-const PY_FRAME = /^\s*File\s+"([^"]+)",\s+line\s+(\d+)(?:,\s+in\s+(.+))?\s*$/
+const JS_FRAME = /^\s*at\s+(?=\S)(?:((?:\S|\s(?!\())+)\s+\()?((?:(?!:\d+:\d+)[\s\S])+):(\d+):(\d+)\)?\s*$/
+const PY_FRAME = /^\s*File\s+"([^"]+)",\s+line\s+(\d+)(?:,\s+in\s+([^\r\n\u2028\u2029]+)(?:[\r\n\u2028\u2029]\s*)?|\s*)$/
 
 export function detectStackLanguage(stack: string): StackLanguage {
-  if (/^\s*at\s+(?:[\w$.][\w$.-]*(?:@[\w$.-]*)?\/)?[\w$.]+\([\w$.]+\.java:\d+\)/m.test(stack)) return 'java'
-  if (/^\s*File\s+"[^"]+",\s+line\s+\d+/m.test(stack)) return 'python'
+  if (/^[^\S\r\n\u2028\u2029]*at\s+(?:[\w$.][\w$.-]*(?:@[\w$.-]*)?\/)?[\w$.]+\([\w$.]+\.java:\d+\)/m.test(stack)) return 'java'
+  if (/^[^\S\r\n\u2028\u2029]*File\s+"[^"]+",\s+line\s+\d+/m.test(stack)) return 'python'
   if (/\.go:\d+/.test(stack) || /^goroutine\s+\d+/m.test(stack)) return 'go'
-  if (/\s+at\s+(?:(?!:\d+:\d+)[\s\S])+:\d+:\d+/.test(stack)) return 'javascript'
-  if (/^\s*at\s+[\w$.]+\(/m.test(stack)) return 'java'
+  if (/(?<!\s)\s+at\s(?:(?!:\d+:\d+)[\s\S])+:\d+:\d+/.test(stack)) return 'javascript'
+  if (/^[^\S\r\n\u2028\u2029]*at\s+[\w$.]+\(/m.test(stack)) return 'java'
   return 'unknown'
 }
 

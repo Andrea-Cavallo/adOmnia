@@ -60,7 +60,7 @@ function parseEndpoint(raw: string): { key: string; label: string; shape: Mermai
 }
 
 function parseEdgeLine(line: string): { from: string; to: string; label: string } | null {
-  const arrow = line.match(/\s*(?:--(?:-?>)?|-\.->|==>|->)\s*/)
+  const arrow = line.match(/(?<!\s)\s*(?:--(?:-?>)?|-\.->|==>|->)\s*/)
   if (!arrow || arrow.index === undefined) return null
   const from = line.slice(0, arrow.index).trim()
   let to = line.slice(arrow.index + arrow[0].length).trim().replace(/;$/, '')

@@ -4,7 +4,7 @@
 
 // The `{{...}}` branch is matched first so env vars are consumed and never seen
 // as `{id}` path params.
-const PATH_PARAM_RE = /\{(?:\{[^}]*\}|([A-Za-z_][\w-]*)(?::([^{}]*))?)\}|:([A-Za-z_][\w-]*)/g
+const PATH_PARAM_RE = /(?<!\{(?=\{\{))\{(?:\{[^}]*\}|([A-Za-z_][\w-]*)(?::([^{}]*))?)\}|:([A-Za-z_][\w-]*)/g
 
 function pathPortion(url: string): string {
   const withoutHash = url.split('#')[0] ?? url
