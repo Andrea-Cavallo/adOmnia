@@ -3,10 +3,21 @@ export function bytesToHex(bytes: Uint8Array): string {
 }
 
 export function uuidv4() {
+  // UUID v4 con entropia crittografica: la vecchia costruzione con Math.random era prevedibile (S2245).
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
+    const r = crypto.getRandomValues(new Uint8Array(1))[0] % 16
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
+}
+
+/** Intero uniforme in [0, max) con entropia crittografica (rejection sampling, nessun Math.random). */
+function randomInt(max: number): number {
+  if (max <= 0) return 0
+  const limit = Math.floor(0x100000000 / max) * max
+  let value = crypto.getRandomValues(new Uint32Array(1))[0]
+  while (value >= limit) value = crypto.getRandomValues(new Uint32Array(1))[0]
+  return value % max
 }
 
 export function jsonToYaml(obj: unknown, indent = 0): string {
@@ -62,7 +73,8 @@ export function generatePassword(len: number, upper: boolean, nums: boolean, sym
   if (upper) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   if (nums) chars += '0123456789'
   if (syms) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?'
-  return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  // Le password escono da un CSPRNG (randomInt): Math.random era prevedibile (S2245).
+  return Array.from({ length: len }, () => chars[randomInt(chars.length)]).join('')
 }
 
 export function formatTimestamp(ts: number): { utc: string; local: string; unix: number; iso: string } {
@@ -77,7 +89,7 @@ export function formatTimestamp(ts: number): { utc: string; local: string; unix:
 
 export function fakeName() {
   const firstNames = ['Alice', 'Bob', 'Carol', 'Dave', 'Eve', 'Frank', 'Grace', 'Heidi']
-  return firstNames[Math.floor(Math.random() * firstNames.length)]
+  return firstNames[randomInt(firstNames.length)]
 }
 
 export function fakeEmail() {
@@ -85,16 +97,16 @@ export function fakeEmail() {
 }
 
 export function fakePhone() {
-  return `+1-${Array.from({ length: 10 }, () => Math.floor(Math.random() * 10)).join('').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}`
+  return `+1-${Array.from({ length: 10 }, () => randomInt(10)).join('').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}`
 }
 
 export function fakeIP() {
-  return Array.from({ length: 4 }, () => Math.floor(Math.random() * 256)).join('.')
+  return Array.from({ length: 4 }, () => randomInt(256)).join('.')
 }
 
 export function fakeWords(n: number) {
   const words = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua'.split(' ')
-  return Array.from({ length: n }, () => words[Math.floor(Math.random() * words.length)]).join(' ')
+  return Array.from({ length: n }, () => words[randomInt(words.length)]).join(' ')
 }
 
 export function parseQuery(q: string): Record<string, string> {

@@ -226,7 +226,7 @@ window.addEventListener('message',(e)=>{
   if(e.data?.type==='devlogs-entries') render(e.data.entries)
   else if(e.data==='devlogs-clear') window.opener?.postMessage('devlogs-clear','*')
 })
-window.opener?.postMessage('devlogs-ready','*')
+window.opener?.postMessage('devlogs-ready', window.location.origin)
 </script></body></html>`)
     popup.document.close()
 
@@ -236,7 +236,7 @@ window.opener?.postMessage('devlogs-ready','*')
         setPoppedOut(false)
         return
       }
-      popup.postMessage({ type: 'devlogs-entries', entries: useDevLogsStore.getState().entries }, '*')
+      popup.postMessage({ type: 'devlogs-entries', entries: useDevLogsStore.getState().entries }, window.location.origin)
     }
     send()
     const unsub = useDevLogsStore.subscribe(() => send())

@@ -653,11 +653,11 @@ func OpenApplyLog(dir string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", path)
+		cmd = exec.Command("open", path) // NOSONAR -- OS tools launched by bare name through PATH on files from the updater own install dir
 	case "linux":
-		cmd = exec.Command("xdg-open", path)
+		cmd = exec.Command("xdg-open", path) // NOSONAR -- OS tools launched by bare name through PATH on files from the updater own install dir
 	default:
-		cmd = exec.Command("notepad.exe", path)
+		cmd = exec.Command("notepad.exe", path) // NOSONAR -- OS tools launched by bare name through PATH on files from the updater own install dir
 	}
 	process.ConfigureDetachedGUI(cmd)
 	if err := cmd.Start(); err != nil {

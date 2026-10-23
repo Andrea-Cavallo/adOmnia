@@ -58,8 +58,8 @@ export function NetToolsPanel() {
   // DNS Compare
   const [cmpHost, setCmpHost] = useState('')
   const [cmpType, setCmpType] = useState('A')
-  const [cmpServer1, setCmpServer1] = useState('8.8.8.8')
-  const [cmpServer2, setCmpServer2] = useState('1.1.1.1')
+  const [cmpServer1, setCmpServer1] = useState('8.8.8.8') // NOSONAR -- default public DNS resolvers and example gateway shown as UI labels and defaults, chosen by the user
+  const [cmpServer2, setCmpServer2] = useState('1.1.1.1') // NOSONAR -- default public DNS resolvers and example gateway shown as UI labels and defaults, chosen by the user
   const [cmpResult, setCmpResult] = useState<object | null>(null)
 
   // DNS Cache
@@ -206,7 +206,7 @@ export function NetToolsPanel() {
                 <select value={dnsType} onChange={(e) => setDnsType(e.target.value)} className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent">
                   {DNS_TYPES.map((t) => <option key={t}>{t}</option>)}
                 </select>
-                <input value={dnsServer} onChange={(e) => setDnsServer(e.target.value)} placeholder="8.8.8.8"
+                <input value={dnsServer} onChange={(e) => setDnsServer(e.target.value)} placeholder="8.8.8.8" // NOSONAR -- default public DNS resolvers and example gateway shown as UI labels and defaults, chosen by the user
                   className="w-36 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
                 <button onClick={() => post('/dns/lookup', { host: dnsHost, type: dnsType, server: dnsServer }, setDnsResult)}
                   disabled={loading || !dnsHost} className="px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover">
@@ -265,10 +265,10 @@ export function NetToolsPanel() {
                 </select>
               </div>
               <div className="flex gap-2">
-                <input value={cmpServer1} onChange={(e) => setCmpServer1(e.target.value)} placeholder="8.8.8.8"
+                <input value={cmpServer1} onChange={(e) => setCmpServer1(e.target.value)} placeholder="8.8.8.8" // NOSONAR -- default public DNS resolvers and example gateway shown as UI labels and defaults, chosen by the user
                   className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
                 <span className="text-text-4 self-center">vs</span>
-                <input value={cmpServer2} onChange={(e) => setCmpServer2(e.target.value)} placeholder="1.1.1.1"
+                <input value={cmpServer2} onChange={(e) => setCmpServer2(e.target.value)} placeholder="1.1.1.1" // NOSONAR -- default public DNS resolvers and example gateway shown as UI labels and defaults, chosen by the user
                   className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
                 <button onClick={() => post('/dns/compare', { host: cmpHost, type: cmpType, servers: [cmpServer1, cmpServer2] }, setCmpResult)}
                   disabled={loading || !cmpHost} className="px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover">
@@ -320,7 +320,7 @@ export function NetToolsPanel() {
           <div className="flex flex-col gap-3">
             <div className="bg-surface-1 border border-border-1 rounded-md p-3">
               <div className="flex gap-2">
-                <input value={scanHost} onChange={(e) => setScanHost(e.target.value)} placeholder="192.168.1.1"
+                <input value={scanHost} onChange={(e) => setScanHost(e.target.value)} placeholder="192.168.1.1" // NOSONAR -- default public DNS resolvers and example gateway shown as UI labels and defaults, chosen by the user
                   className="flex-1 h-8 px-2.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
                 <input value={scanPorts} onChange={(e) => setScanPorts(e.target.value)} placeholder="common | 80,443 | 1-1000"
                   className="w-48 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />

@@ -190,14 +190,16 @@ var (
 // mai dentro il progetto). Il file è condiviso da tutte le esecuzioni: nessun download.
 func preparePytestPlugin() (string, error) {
 	pytestPluginOnce.Do(func() {
-		directory := filepath.Join(os.TempDir(), "adomnia-python-tools")
-		if err := os.MkdirAll(directory, 0o755); err != nil {
+		// Cartella casuale per-processo (CreateTemp-style) e permessi restrittivi: il plugin viene
+		// importato da pytest, nessun altro utente del sistema deve poterlo riscrivere (S6554).
+		directory, err := os.MkdirTemp("", "adomnia-python-tools-")
+		if err != nil {
 			pytestPluginError = err
 			return
 		}
 		path := filepath.Join(directory, pytestPluginModule+".py")
 		if current, err := os.ReadFile(path); err != nil || !bytes.Equal(current, pytestPluginSource) {
-			if err := os.WriteFile(path, pytestPluginSource, 0o644); err != nil {
+			if err := os.WriteFile(path, pytestPluginSource, 0o600); err != nil {
 				pytestPluginError = err
 				return
 			}

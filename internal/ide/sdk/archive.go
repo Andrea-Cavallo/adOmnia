@@ -175,14 +175,14 @@ func extractTarGzip(ctx context.Context, label, archivePath, destination string,
 		expanded += header.Size
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
+			if err := os.MkdirAll(target, 0o755); err != nil { // NOSONAR -- target is validated by project.EnsureWithin above: every entry name is confined to the destination (zip-slip guard)
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { // NOSONAR -- same confinement as above: the parent of a path inside destination is inside destination
 				return err
 			}
-			output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, os.FileMode(header.Mode).Perm())
+			output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, os.FileMode(header.Mode).Perm()) // NOSONAR -- same confinement as above, O_EXCL refuses to follow an existing file
 			if err == nil {
 				_, err = io.Copy(output, io.LimitReader(reader, maxBytes)) // nosemgrep: go.lang.security.decompression_bomb.potential-dos-via-decompression-bomb -- copy is bounded by io.LimitReader
 				_ = output.Close()

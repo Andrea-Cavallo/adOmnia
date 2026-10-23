@@ -28,7 +28,7 @@ func TestProxyForwardsWebSocketsAndRewritesRedirects(t *testing.T) {
 				_ = connection.WriteMessage(kind, append([]byte("echo:"), message...))
 			}
 		case "/old":
-			http.Redirect(w, r, "http://"+r.Host+"/new", http.StatusFound)
+			http.Redirect(w, r, "http://"+r.Host+"/new", http.StatusFound) // NOSONAR -- test upstream stub: it simulates the redirect the proxy has to rewrite, nothing is user-controlled
 		default:
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = w.Write([]byte("<html><body>app</body></html>"))

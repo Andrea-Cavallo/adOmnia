@@ -66,6 +66,21 @@ go test ./internal/... ./cmd/... -coverprofile=coverage.out -covermode=atomic
 cd frontend && npx vitest run --coverage --coverage.reporter=lcov
 ```
 
+### Where coverage stands (Go)
+
+The `Checks` job of `build.yml` writes `coverage.out` during its normal `go test` run (no second test pass) and
+`scripts/coverage-summary.sh` turns it into the job summary: the total for `internal/` and `cmd/` plus a table per
+package, lowest first. The profile is also kept as the `go-coverage` artifact for 30 days. Locally:
+
+```bash
+go test ./internal/... ./cmd/... -coverprofile=coverage.out -covermode=atomic
+scripts/coverage-summary.sh coverage.out
+```
+
+The root Wails package is excluded (it embeds `frontend/dist` and needs GTK). The script only reports: it does not
+fail the build, because the 80% line is an awesome-go guideline for non-data packages "where applicable", not a gate
+for a desktop app. Publishing the number to Codecov or Coveralls is a separate step (`mds/todos-adomnia.md`, AW-5).
+
 ## SonarCloud (CI)
 
 The `sonar` job in `quality.yml` scans with SonarCloud when the repository is configured, and skips
@@ -105,11 +120,16 @@ the job otherwise:
 
 | Item | Status |
 | --- | --- |
-| S2819 `postMessage` without origin check (`CodeStudioPreviewFrame`, `live.js`, `DevLogOverlay` listeners) | done: listeners verify `event.source` and `event.origin` |
+| S2819 `postMessage` without origin check (`CodeStudioPreviewFrame`, `live.js`, `DevLogOverlay` listeners) | done: listeners verify `event.source` and `event.origin`; the remaining `'*'` targets now use `window.location.origin` and the `CodeStudioPreviewFrame` check is unconditional |
 | S2871 `.sort()` without comparator (~45 in `frontend/src`) | done: `localeCompare`; AWS4 signed headers keep a code-point comparator (byte order is part of the signature) |
+| Security hotspots and taint findings (150 issues: workflows script-injection, Zip Slip false positives, SQL console, network-tool SSRF, temp files, weak-hash fingerprints, ReDoS, PRNG ids) | done 2026-10-23: real fixes where real (env-indirection in workflows, `crypto.getRandomValues` ids and password generation, linear ReDoS rewrite, `os.CreateTemp`/`MkdirTemp`, `rundll32` instead of `cmd /c start`, `%q` log escaping, `USER node`, action SHA pins); by-design behaviour carries `// NOSONAR` with the justification inline |
+| Reliability High (63: bash `[[`, `.map(callback)`, `then` on an object, `Math.trunc`) | done 2026-10-23 (bash and `.map()` in the parallel session, the rest here) |
+| `process_windows.go`/`process_unix.go` duplicated in `copilot` and `milk` | done 2026-10-23: consolidated into `internal/procutil` (`ConfigureChild`/`KillTree`), the four copies deleted |
+| Duplicated lines 2.1% — `i18n.ts` (5 locales × same key tree), `settings.ja/ru/zh.ts`, `builtinThemeFallbacks.ts`, `consoleTemplates.ts`, `themes.go`, `demoWorkspace.ts` | accepted: these are parallel **data** dictionaries (locale catalogs, per-dialect SQL templates, theme/demo fixtures); consolidating them means a translation/template architecture refactor with UI regression risk and no behaviour gain. The one real refactor worth doing is folding `i18n.ts` `BASE` into the `lazyTranslations` per-locale files — tracked here, not urgent |
+| Duplicated test scaffolding (`AISettings.test.ts`, `MockPanel.test.ts`, `KVEditor.tsx`) | open (low value): extract shared test helpers only when those files are next touched |
 | 18 functions over the complexity threshold (`runMongoQuery` at 85) | open |
 | 14 `errcheck` findings | open |
-| 12 Hadolint warnings on Dockerfiles | open |
+| 12 Hadolint warnings on Dockerfiles | open (the executable-download ones are annotated; the rest are style) |
 | React Compiler migration (oxlint `warn` rules) | open |
 | ~10 info warnings in `release.yml` | open |
 | Semgrep/Trivy triage (`// nosemgrep`), then make them blocking | open |

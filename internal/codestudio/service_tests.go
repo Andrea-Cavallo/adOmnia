@@ -169,11 +169,17 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 }
 
 func newCoverageProfilePath() (string, error) {
-	directory := filepath.Join(os.TempDir(), "adomnia-coverage")
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return "", fmt.Errorf("temporary coverage folder unavailable: %w", err)
+	// CreateTemp riserva un nome casuale con permessi restrittivi nella cartella temporanea
+	// dell'utente: nessuna directory fissa da condividere con altri utenti (S6554).
+	file, err := os.CreateTemp("", "adomnia-cover-*.out")
+	if err != nil {
+		return "", fmt.Errorf("temporary coverage profile unavailable: %w", err)
 	}
-	return filepath.Join(directory, newID("cover")+".out"), nil
+	path := file.Name()
+	if err := file.Close(); err != nil {
+		return "", fmt.Errorf("temporary coverage profile unavailable: %w", err)
+	}
+	return path, nil
 }
 
 // GetTestRun restituisce l'esecuzione di test con l'output completo di ogni nodo.

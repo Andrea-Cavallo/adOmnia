@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
+
+	"adomnia/internal/procutil"
 )
 
 // ─── stress_run ────────────────────────────────────────────────────────────
@@ -139,7 +140,7 @@ func (s *mcpServer) appStartupTime() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("executable: %w", err)
 	}
-	cmd := exec.Command(executable, "mcp")
+	cmd := procutil.Command(executable, "mcp")
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
 		return "", fmt.Errorf("stdin pipe: %w", err)

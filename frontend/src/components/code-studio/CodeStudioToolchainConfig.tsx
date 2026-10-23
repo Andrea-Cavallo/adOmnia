@@ -115,7 +115,7 @@ export function ToolchainConfigSection({ sessionId, onError }: Props) {
       </CodeStudioField>
       <div className="grid grid-cols-2 gap-x-3 gap-y-3">
         <CodeStudioField label="Corporate proxy" hint={proxyProblem(corporate.proxy) ? <span className="text-danger">{proxyProblem(corporate.proxy)}</span> : 'HTTPS_PROXY and HTTP_PROXY for go, git and gopls. A password in the URL stays in memory only.'}>
-          <input value={corporate.proxy} onChange={(event) => setCorporate({ proxy: event.target.value })} placeholder="http://proxy.corp:8080" aria-invalid={!!proxyProblem(corporate.proxy)} className={inputClass} />
+          <input value={corporate.proxy} onChange={(event) => setCorporate({ proxy: event.target.value })} placeholder="http://proxy.corp:8080" aria-invalid={!!proxyProblem(corporate.proxy)} className={inputClass} /> {/* NOSONAR -- documentation placeholder showing the corporate proxy URL format */}
         </CodeStudioField>
         <CodeStudioField label="No proxy for" hint="NO_PROXY: hosts reached directly, e.g. your Git server.">
           <input value={corporate.noProxy} onChange={(event) => setCorporate({ noProxy: event.target.value })} placeholder="git.corp.example,localhost" className={inputClass} />

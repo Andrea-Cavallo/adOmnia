@@ -90,7 +90,7 @@ export function patchCoverage(report: GoIDECoverageReport, changed: Record<strin
 }
 
 const BRANCH_LABEL = new Map<string, string>([
-  ['then', 'if never true'],
+  ['then', 'if never true'], // NOSONAR -- Map key naming the "then" branch of a conditional in the coverage view, not a thenable property
   ['else', 'else never taken'],
   ['case', 'case never matched'],
   ['default', 'default never reached'],

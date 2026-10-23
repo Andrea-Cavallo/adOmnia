@@ -265,7 +265,7 @@ func (c *securityChecker) checkHTTPLiteral(literal *ast.BasicLit) {
 		return
 	}
 	value, err := strconv.Unquote(literal.Value)
-	if err != nil || !strings.HasPrefix(value, "http://") || len(value) <= len("http://") {
+	if err != nil || !strings.HasPrefix(value, "http://") || len(value) <= len("http://") { // NOSONAR -- the audit tool flags http:// URLs found in user code; the literal is the detection
 		return
 	}
 	host := strings.TrimPrefix(value, "http://")

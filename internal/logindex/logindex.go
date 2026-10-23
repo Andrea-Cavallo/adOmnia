@@ -462,7 +462,7 @@ func (j *Job) index(ctx context.Context) {
 // Open starts indexing path and returns immediately: the caller polls Status.
 func Open(path string) (*Job, error) {
 	cleaned := filepath.Clean(path)
-	info, err := os.Stat(cleaned)
+	info, err := os.Stat(cleaned) // NOSONAR -- the log inspector stats the log file the user picked to index; probing it is the feature
 	if err != nil {
 		return nil, fmt.Errorf("cannot read %s: %w", path, err)
 	}
@@ -480,7 +480,7 @@ func Open(path string) (*Job, error) {
 		_ = os.RemoveAll(dir)
 		return nil, err
 	}
-	reader, err := os.Open(cleaned)
+	reader, err := os.Open(cleaned) // NOSONAR -- cleaned is the log file the user chose to index in the log inspector (Open file dialog); the index itself lives in os.MkdirTemp
 	if err != nil {
 		_ = writer.Close()
 		_ = os.RemoveAll(dir)

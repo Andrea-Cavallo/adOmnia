@@ -105,7 +105,7 @@ func workspaceSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[workspace] saved \"%s\" (%d tabs)", req.Name, tabs)
+	log.Printf("[workspace] saved %q (%d tabs)", req.Name, tabs) // NOSONAR -- %q escapes control characters, so a crafted workspace name cannot forge log lines
 	w.Header().Set("Content-Type", "application/json")
 	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "name": req.Name, "tabs": tabs})
 }

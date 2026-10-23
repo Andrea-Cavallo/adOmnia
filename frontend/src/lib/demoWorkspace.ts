@@ -281,13 +281,13 @@ const FORGE_CORE_WORKSPACE: WorkspaceV1 = {
       children: [
         {id:'fw1',name:'Real-time Chat',type:'folder',children:[
           {id:'rw1',name:'Chat Room Connect',type:'request',method:'WS',
-            url:'ws://{{ws_host}}/ws/chat/{{room_id}}',params:[],
+            url:'ws://{{ws_host}}/ws/chat/{{room_id}}',params:[], // NOSONAR -- demo workspace sample data: the ws:// template is the demo broker URL, not a connection adOmnia makes
             headers:[{id:'wh11',key:'X-Auth-Token',value:'{{access_token}}',enabled:true}],
             bodies:[{id:'wb11',name:'Join Message',type:'raw',lang:'json',form:[],
               raw:'{"type":"join","room_id":"{{room_id}}","user_id":"{{user_id}}","display_name":"Demo User"}'}],
             activeBodyIdx:0,auth:{type:'bearer',token:'{{access_token}}',username:'',password:''}},
           {id:'rw2',name:'Send Chat Message',type:'request',method:'WS',
-            url:'ws://{{ws_host}}/ws/chat/{{room_id}}',params:[],
+            url:'ws://{{ws_host}}/ws/chat/{{room_id}}',params:[], // NOSONAR -- demo workspace sample data: the ws:// template is the demo broker URL, not a connection adOmnia makes
             headers:[{id:'wh21',key:'X-Auth-Token',value:'{{access_token}}',enabled:true}],
             bodies:[{id:'wb21',name:'Chat Message',type:'raw',lang:'json',form:[],
               raw:'{"type":"message","room_id":"{{room_id}}","text":"Hello from adOmnia!","ts":"2026-05-15T10:00:00Z"}'}],
@@ -295,13 +295,13 @@ const FORGE_CORE_WORKSPACE: WorkspaceV1 = {
         ]},
         {id:'fw2',name:'Market Data',type:'folder',children:[
           {id:'rw3',name:'EUR/USD Price Feed',type:'request',method:'WS',
-            url:'ws://{{ws_host}}/ws/market/prices',params:[],
+            url:'ws://{{ws_host}}/ws/market/prices',params:[], // NOSONAR -- demo workspace sample data: the ws:// template is the demo broker URL, not a connection adOmnia makes
             headers:[],
             bodies:[{id:'wb31',name:'Subscribe',type:'raw',lang:'json',form:[],
               raw:'{"action":"subscribe","channels":["EURUSD","GBPUSD","USDJPY"],"interval_ms":1000}'}],
             activeBodyIdx:0,auth:{type:'none',token:'',username:'',password:''}},
           {id:'rw4',name:'Order Book Stream',type:'request',method:'WS',
-            url:'ws://{{ws_host}}/ws/market/orderbook',params:[],
+            url:'ws://{{ws_host}}/ws/market/orderbook',params:[], // NOSONAR -- demo workspace sample data: the ws:// template is the demo broker URL, not a connection adOmnia makes
             headers:[],
             bodies:[{id:'wb41',name:'Subscribe',type:'raw',lang:'json',form:[],
               raw:'{"action":"subscribe","symbol":"EURUSD","depth":10}'}],
@@ -309,13 +309,13 @@ const FORGE_CORE_WORKSPACE: WorkspaceV1 = {
         ]},
         {id:'fw3',name:'Notifications',type:'folder',children:[
           {id:'rw5',name:'User Notifications',type:'request',method:'WS',
-            url:'ws://{{ws_host}}/ws/notifications/{{user_id}}',params:[],
+            url:'ws://{{ws_host}}/ws/notifications/{{user_id}}',params:[], // NOSONAR -- demo workspace sample data: the ws:// template is the demo broker URL, not a connection adOmnia makes
             headers:[{id:'wh51',key:'X-Auth-Token',value:'{{access_token}}',enabled:true}],
             bodies:[{id:'wb51',name:'Auth Frame',type:'raw',lang:'json',form:[],
               raw:'{"type":"auth","token":"{{access_token}}"}'}],
             activeBodyIdx:0,auth:{type:'bearer',token:'{{access_token}}',username:'',password:''}},
           {id:'rw6',name:'System Alerts',type:'request',method:'WS',
-            url:'ws://{{ws_host}}/ws/alerts/system',params:[],
+            url:'ws://{{ws_host}}/ws/alerts/system',params:[], // NOSONAR -- demo workspace sample data: the ws:// template is the demo broker URL, not a connection adOmnia makes
             headers:[{id:'wh61',key:'X-Auth-Token',value:'{{access_token}}',enabled:true}],
             bodies:[{id:'wb61',name:'Subscribe',type:'raw',lang:'json',form:[],
               raw:'{"type":"subscribe","topics":["system.health","deployment.events","error.rate"]}'}],

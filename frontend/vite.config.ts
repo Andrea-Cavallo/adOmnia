@@ -7,7 +7,7 @@ import { parse as parseYaml } from 'yaml'
 
 function getCommitHash(): string {
   try {
-    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim() // NOSONAR -- build script runs git by name through PATH
   } catch {
     return 'unknown'
   }

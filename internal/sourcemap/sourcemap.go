@@ -192,13 +192,16 @@ func withinRoots(path string, roots []string) bool {
 }
 
 func osOpenCommand(path string) *exec.Cmd {
+	// Il percorso è già passato da withinRoots (Open non arriva qui altrimenti): resta da non
+	// farlo reinterpretare da una shell. Su Windows `cmd /c start` riparsa la riga di comando
+	// (`&`, `|`, …): si usa rundll32, che riceve il percorso come singolo argomento inerte.
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("open", path)
+		return exec.Command("open", path) // NOSONAR -- path validated by withinRoots; no shell is involved
 	case "linux":
-		return exec.Command("xdg-open", path)
+		return exec.Command("xdg-open", path) // NOSONAR -- path validated by withinRoots; no shell is involved
 	default:
-		return exec.Command("cmd", "/c", "start", "", path)
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", path) // NOSONAR -- path validated by withinRoots and passed as a single literal argument (no cmd.exe re-parsing)
 	}
 }
 
@@ -215,7 +218,7 @@ func editorCommand(template, path string, line int) (*exec.Cmd, error) {
 		field = strings.ReplaceAll(field, "{line}", fmt.Sprint(line))
 		args = append(args, field)
 	}
-	return exec.Command(fields[0], args...), nil
+	return exec.Command(fields[0], args...), nil // NOSONAR -- no shell is involved (args are passed literally): the template is the editor command the user configured and path was validated by withinRoots
 }
 
 // Open launches the configured editor on path:line. The path must live inside
@@ -227,7 +230,7 @@ func Open(roots []string, path string, line int, editor string) error {
 	if !withinRoots(path, roots) {
 		return fmt.Errorf("%q is outside the selected repositories", path)
 	}
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(path); err != nil { // NOSONAR -- the path was confined to the user-selected roots above; the existence check is part of opening it in the editor
 		return fmt.Errorf("file not found: %w", err)
 	}
 	cmd, err := editorCommand(editor, path, line)

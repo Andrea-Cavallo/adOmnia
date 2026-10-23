@@ -134,7 +134,7 @@ type grpcInvokeResponse struct {
 func grpcTLSConfig(caCertPath, clientCertPath, clientKeyPath string) (*tls.Config, error) {
 	config := &tls.Config{MinVersion: tls.VersionTLS12}
 	if caCertPath != "" {
-		pemBytes, err := os.ReadFile(caCertPath)
+		pemBytes, err := os.ReadFile(caCertPath) // NOSONAR -- the certificate paths come from the mTLS settings the user filled in the gRPC panel (a file picker); the sidecar is loopback-only, same trust domain as the app
 		if err != nil {
 			return nil, fmt.Errorf("read CA certificate: %w", err)
 		}

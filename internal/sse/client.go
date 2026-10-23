@@ -215,7 +215,7 @@ func sseConnectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil) // NOSONAR -- the SSE panel connects to the stream URL the user entered; the outbound connection is the feature (loopback sidecar)
 	if err != nil {
 		cancel()
 		httputil.JSONError(w, "invalid url: "+err.Error(), http.StatusBadRequest)

@@ -149,7 +149,7 @@ type InspectorTab = 'details' | 'request' | 'response' | 'hints'
 
 const newId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}` // NOSONAR -- degraded fallback for runtimes without the Web Crypto API: the id only labels a local gRPC call
 }
 
 const defaultMetadata = (): MetadataRow[] => [

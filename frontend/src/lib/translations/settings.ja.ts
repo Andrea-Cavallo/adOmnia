@@ -163,7 +163,7 @@ export const JA_TRANSLATIONS = {
       "skipCertVerifyWarning": "⚠️ 証明書の検証をスキップすると、接続が MITM 攻撃に対して脆弱になります。テスト時のみ使用してください。",
       "clientCertPem": "クライアント証明書 (mTLS)",
       "clientCertPemDesc": "相互 TLS 認証用の PEM ファイルのパスです。",
-      "clientCertPassphrase": "クライアント証明書のパスフレーズ",
+      "clientCertPassphrase": "クライアント証明書のパスフレーズ", // NOSONAR -- Japanese UI label for the passphrase field, not a credential
       "clientCertPassphraseDesc": "クライアント証明書のパスフレーズです (設定している場合)。",
       "sendCookiesAutomatically": "Cookie を自動的に送信",
       "sendCookiesAutomaticallyDesc": "リクエストに Cookie を自動的に含めます。",

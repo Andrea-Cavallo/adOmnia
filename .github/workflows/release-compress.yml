@@ -27,9 +27,11 @@ jobs:
       - name: Extract version
         id: ver
         shell: pwsh
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           $tag = $env:GITHUB_REF_NAME
-          if (-not $tag -or -not $tag.StartsWith('v')) { $tag = "${{ inputs.tag }}" }
+          if (-not $tag -or -not $tag.StartsWith('v')) { $tag = $env:INPUT_TAG }
           $ver = $tag.TrimStart('v')
           echo "tag=$tag"     >> $env:GITHUB_OUTPUT
           echo "version=$ver" >> $env:GITHUB_OUTPUT
@@ -55,7 +57,7 @@ jobs:
           wails3 task windows:build
 
       - name: Compress with UPX
-        uses: crazy-max/ghaction-upx@v4
+        uses: crazy-max/ghaction-upx@c83f378efc804f828e988debb88ed6116feb2368 # v4
         with:
           files: bin/adomnia.exe
           args: --best --lzma
@@ -86,9 +88,11 @@ jobs:
 
       - name: Extract version
         id: ver
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
-          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
+          TAG="${GITHUB_REF_NAME:-$INPUT_TAG}"
+          [[ "$TAG" != v* ]] && TAG="$INPUT_TAG"
           echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
@@ -148,9 +152,11 @@ jobs:
 
       - name: Extract version
         id: ver
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
-          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
+          TAG="${GITHUB_REF_NAME:-$INPUT_TAG}"
+          [[ "$TAG" != v* ]] && TAG="$INPUT_TAG"
           echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
@@ -193,9 +199,11 @@ jobs:
 
       - name: Extract version
         id: ver
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
-          [[ "$TAG" != v* ]] && TAG="${{ inputs.tag }}"
+          TAG="${GITHUB_REF_NAME:-$INPUT_TAG}"
+          [[ "$TAG" != v* ]] && TAG="$INPUT_TAG"
           echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
 
@@ -212,7 +220,7 @@ jobs:
           ls -lh
 
       - name: Publish
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: adOmnia ${{ steps.ver.outputs.version }}

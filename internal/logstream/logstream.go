@@ -408,7 +408,7 @@ func Start(config Config) (*Session, error) {
 		if config.Path == "" {
 			return nil, errors.New("select a file")
 		}
-		if _, err := os.Stat(config.Path); err != nil {
+		if _, err := os.Stat(config.Path); err != nil { // NOSONAR -- the log-tail session stats the file the user selected to follow; probing it is the feature
 			return nil, fmt.Errorf("cannot read %s: %w", config.Path, err)
 		}
 	} else if _, _, err := containerArgs(config); err != nil {

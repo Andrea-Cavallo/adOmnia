@@ -63,7 +63,7 @@ const DEFAULT_FORM: Omit<McpSavedConfig, 'id'> = {
 
 function makeId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
-  return `call-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `call-${Date.now()}-${Math.random().toString(36).slice(2)}` // NOSONAR -- degraded fallback for runtimes without the Web Crypto API: the id only labels a local MCP call
 }
 
 function parseList<T>(raw: string, key: string): T[] {

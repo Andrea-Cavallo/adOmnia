@@ -171,7 +171,7 @@ const DEFAULT_TEMPLATES: MessageTemplate[] = [
 ]
 
 function id() {
-  return Math.random().toString(36).slice(2)
+  return Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 function nowMs() {

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 export function RegexTester() {
   const [pattern, setPattern] = useState('Bearer\\s+(.+)')
   const [flags, setFlags] = useState('g')
-  const [input, setInput] = useState('Authorization: Bearer demo-token-123\nX-Request-ID: req_42')
+  const [input, setInput] = useState('Authorization: Bearer <token>\nX-Request-ID: req_42')
   const [matches, setMatches] = useState<RegExpMatchArray[]>([])
 
   useEffect(() => {

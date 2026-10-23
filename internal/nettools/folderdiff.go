@@ -244,7 +244,7 @@ func ReadFolderDiffFile(scanID, relativePath string, maxBytes int64) (map[string
 }
 
 func ensureDir(path string) error {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) // NOSONAR -- path is one of the two folders the user chose to compare in the folder-diff tool; probing it is the feature
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func ensureDir(path string) error {
 
 func scanFolder(root string, maxFileMB int64) (map[string]fileMeta, error) {
 	out := map[string]fileMeta{}
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error { // NOSONAR -- root is the folder the user chose to compare; the walk never leaves it (Rel + SkipDir below)
 		if err != nil {
 			return nil
 		}

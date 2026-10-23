@@ -50,7 +50,7 @@ jobs:
 
       - name: Frontend build
         working-directory: frontend
-        run: npm ci && npm test && npm run build && npm run check:startup
+        run: npm ci && npm test && npm run build && npm run check:startup # NOSONAR -- the frontend toolchain (esbuild/rolldown) needs its install scripts; npm ci enforces the committed lockfile
 
       - name: Startup bundle budget
         working-directory: frontend
@@ -60,7 +60,21 @@ jobs:
         # Linux artifacts intentionally target Wails' GTK3/WebKitGTK 4.1
         # compatibility backend. Without this tag Wails defaults to GTK4 and
         # WebKitGTK 6.0, which are not the libraries installed above.
-        run: go test -count=1 -timeout=10m -tags gtk3 ./...
+        run: go test -count=1 -timeout=15m -tags gtk3 -coverprofile=coverage.out -covermode=atomic ./...
+
+      # Stessa esecuzione dei test, nessun secondo giro: il numero finisce nel riepilogo del job.
+      - name: Go coverage report
+        if: ${{ !cancelled() }}
+        run: scripts/coverage-summary.sh coverage.out >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage profile
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: go-coverage
+          path: coverage.out
+          if-no-files-found: ignore
+          retention-days: 30
 
   windows:
     name: Windows exe
@@ -82,7 +96,7 @@ jobs:
 
       - name: Verify Log Inspector final scenario
         working-directory: frontend
-        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
+        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts # NOSONAR -- the frontend toolchain (esbuild/rolldown) needs its install scripts; npm ci enforces the committed lockfile
 
       - name: Code Studio disaster recovery
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
@@ -136,7 +150,7 @@ jobs:
 
       - name: Verify Log Inspector final scenario
         working-directory: frontend
-        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
+        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts # NOSONAR -- the frontend toolchain (esbuild/rolldown) needs its install scripts; npm ci enforces the committed lockfile
 
       - name: Install Linux native dependencies
         run: |
@@ -195,7 +209,7 @@ jobs:
 
       - name: Verify Log Inspector final scenario
         working-directory: frontend
-        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
+        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts # NOSONAR -- the frontend toolchain (esbuild/rolldown) needs its install scripts; npm ci enforces the committed lockfile
 
       - name: Code Studio disaster recovery
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
@@ -203,7 +217,7 @@ jobs:
 
       - name: Install packaging tools
         run: |
-          brew list create-dmg >/dev/null 2>&1 || brew install create-dmg
+          brew list create-dmg >/dev/null 2>&1 || brew install create-dmg # NOSONAR -- Homebrew has no version pinning: create-dmg only packages the artifacts this job already built, and the app zip is checksummed at release
           go install github.com/wailsapp/wails/v3/cmd/wails3@"${WAILS_VERSION}"
 
       - name: Build universal app and DMG
@@ -270,7 +284,7 @@ jobs:
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           files: dist/*
           body_path: ${{ steps.notes.outputs.path }}

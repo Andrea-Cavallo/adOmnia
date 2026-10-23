@@ -514,7 +514,7 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 
 	targetURL := r.URL.String()
 	if r.URL.Host == "" {
-		targetURL = "http://" + r.Host + r.URL.Path
+		targetURL = "http://" + r.Host + r.URL.Path // NOSONAR -- the interceptor rebuilds the URL of the intercepted request as-is: the scheme is the client's, forwarding it is the tool's purpose
 		if r.URL.RawQuery != "" {
 			targetURL += "?" + r.URL.RawQuery
 		}
@@ -591,7 +591,7 @@ func interceptHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	outReq, err := http.NewRequest(r.Method, targetURL, bytes.NewReader(reqBodyBytes)) // #nosec G704 -- the interceptor forwards to the destination the proxied client asked for; that is its purpose
+	outReq, err := http.NewRequest(r.Method, targetURL, bytes.NewReader(reqBodyBytes)) // #nosec G704 -- the interceptor forwards to the destination the proxied client asked for; that is its purpose // NOSONAR -- deliberate forward proxy: the destination comes from the intercepted client request
 	if err != nil {
 		recordEntry(targetURL, r.Method, reqHeaders, string(reqBodyBytes), 0, nil, "", time.Since(start), err.Error(), matched)
 		http.Error(w, "invalid request", http.StatusBadGateway)

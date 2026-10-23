@@ -128,7 +128,7 @@ func dnsLookupHandler(w http.ResponseWriter, r *http.Request) {
 		if cfg != nil && len(cfg.Servers) > 0 {
 			dnsServer = cfg.Servers[0] + ":53"
 		} else {
-			dnsServer = "8.8.8.8:53"
+			dnsServer = "8.8.8.8:53" // NOSONAR -- default public resolvers for the DNS tools, editable in the UI
 		}
 	}
 	if !strings.Contains(dnsServer, ":") {
@@ -216,7 +216,7 @@ func dnsTraceHandler(w http.ResponseWriter, r *http.Request) {
 
 	dnsServer := req.Server
 	if dnsServer == "" {
-		dnsServer = "8.8.8.8:53"
+		dnsServer = "8.8.8.8:53" // NOSONAR -- default public resolvers for the DNS tools, editable in the UI
 	}
 	if !strings.Contains(dnsServer, ":") {
 		dnsServer += ":53"
@@ -302,7 +302,7 @@ func dnsCompareHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.Servers) == 0 {
-		req.Servers = []string{"8.8.8.8:53", "1.1.1.1:53", "9.9.9.9:53"}
+		req.Servers = []string{"8.8.8.8:53", "1.1.1.1:53", "9.9.9.9:53"} // NOSONAR -- default public resolvers for the DNS tools, editable in the UI
 	}
 
 	type resolverResult struct {
@@ -658,7 +658,7 @@ func corsTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Preflight request (OPTIONS)
 	var preflight *corsHeaders
-	preflightReq, err := http.NewRequest(http.MethodOptions, req.URL, nil)
+	preflightReq, err := http.NewRequest(http.MethodOptions, req.URL, nil) // NOSONAR -- the CORS tester probes exactly the URL the user typed; the outbound request is the tool's purpose (loopback sidecar)
 	if err != nil {
 		httputil.JSONError(w, "invalid url: "+err.Error(), http.StatusBadRequest)
 		return
@@ -724,7 +724,7 @@ func corsTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Actual request (GET)
 	var actual *corsHeaders
-	actualReq, err := http.NewRequest(http.MethodGet, req.URL, nil)
+	actualReq, err := http.NewRequest(http.MethodGet, req.URL, nil) // NOSONAR -- same as the preflight above: the CORS tester calls the URL the user typed, by design
 	if err == nil {
 		actualReq.Header.Set("Origin", req.Origin)
 		actualResp, err := client.Do(actualReq)

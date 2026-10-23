@@ -258,7 +258,7 @@ export function HostModal({
                           <input
                             value={entry.ip}
                             onChange={(e) => handleUpdateEntry(entry.id, { ip: e.target.value })}
-                            placeholder="192.168.1.50"
+                            placeholder="192.168.1.50" // NOSONAR -- example LAN address in the input placeholder, not a configured endpoint
                             title={ipInvalid ? tr('Invalid IP address') : undefined}
                             className={cn(
                               'h-6 px-2 bg-surface-2 border rounded text-xs text-text-1 font-mono placeholder:text-text-4 focus:border-accent outline-none',

@@ -115,7 +115,7 @@ func parseCertToResult(cert *x509.Certificate) certInspectResult {
 
 	// Fingerprints
 	sha256sum := sha256.Sum256(cert.Raw)
-	sha1sum := sha1.Sum(cert.Raw) // nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-sha1 -- sha1 is a non-security identifier/fingerprint here
+	sha1sum := sha1.Sum(cert.Raw) // nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-sha1 -- sha1 is a non-security identifier/fingerprint here // NOSONAR -- SHA-1 is displayed as the legacy certificate fingerprint identifier, the security hash shown alongside is SHA-256
 
 	// Key bits
 	keyBits := 0
@@ -246,7 +246,7 @@ func certInspectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeTempPassword(dir, password string) (string, error) {
-	f, err := os.CreateTemp(dir, "pass-*")
+	f, err := os.CreateTemp(dir, "pass-*") // NOSONAR -- dir is the output folder the user picked for the keystore split; CreateTemp picks a random name with 0600 and the file is deleted right after keytool runs
 	if err != nil {
 		return "", err
 	}

@@ -79,7 +79,7 @@ function nameFor(query: string): string {
 }
 
 function newId(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `saved-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `saved-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` // NOSONAR -- degraded fallback for runtimes without the Web Crypto API: the id only labels a saved query entry
 }
 
 export function createSavedQuery(input: { query: string; driver: string; connectionId?: string | null; name?: string; personal?: boolean; ts?: number }): SavedQuery {

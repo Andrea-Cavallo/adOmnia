@@ -285,7 +285,7 @@ func (m *Manager) Start() error {
 func (m *Manager) launch(binary ServerBinary, settings Settings, profile GitHubProfile) error {
 	cmd := procutil.Command(binary.Path, "--stdio")
 	cmd.Env = serverEnvironment(settings)
-	configureProcess(cmd)
+	procutil.ConfigureChild(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
@@ -474,7 +474,7 @@ func (m *Manager) Stop() {
 	select {
 	case <-running.exited:
 	case <-time.After(stopTimeout):
-		_ = terminateProcess(running.cmd)
+		_ = procutil.KillTree(running.cmd)
 		<-running.exited
 	}
 	m.mu.Lock()
@@ -491,7 +491,7 @@ func (m *Manager) abandon(running *process) {
 	}
 	m.mu.Unlock()
 	_ = running.stdin.Close()
-	_ = terminateProcess(running.cmd)
+	_ = procutil.KillTree(running.cmd)
 }
 
 func (m *Manager) isCurrent(running *process) bool {

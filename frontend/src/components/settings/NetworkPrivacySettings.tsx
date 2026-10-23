@@ -70,7 +70,7 @@ export function NetworkPrivacySettings() {
       </SettingsCard>
 
       <SettingsCard>
-        <TextInput label="Proxy" desc="Corporate proxy for all of adOmnia: API client, AI, Git, Go toolchain and gopls. Empty uses HTTPS_PROXY from the system. Put the password in the system, not in the URL." value={draft.proxyUrl} placeholder="http://proxy.corp:8080" onChange={(proxyUrl) => update({ proxyUrl })} />
+        <TextInput label="Proxy" desc="Corporate proxy for all of adOmnia: API client, AI, Git, Go toolchain and gopls. Empty uses HTTPS_PROXY from the system. Put the password in the system, not in the URL." value={draft.proxyUrl} placeholder="http://proxy.corp:8080" onChange={(proxyUrl) => update({ proxyUrl })} /> {/* NOSONAR -- documentation placeholder showing the corporate proxy URL format */}
         <TextInput label="No proxy for" desc="Hosts reached directly (NO_PROXY), separated by commas." value={draft.noProxy} placeholder="git.corp.example,.internal" onChange={(noProxy) => update({ noProxy })} />
         <TextInput label="Corporate CA bundle (PEM)" desc="Absolute path of a PEM file added to the system certificates for TLS inspection. TLS verification is never turned off." value={draft.caBundlePath} placeholder="C:/certs/corporate-ca.pem" onChange={(caBundlePath) => update({ caBundlePath })} />
         <div className="flex items-center justify-end gap-3 px-2 pb-3">

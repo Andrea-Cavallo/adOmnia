@@ -25,11 +25,14 @@ jobs:
 
       - name: Resolve version
         id: ver
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            TAG="$RELEASE_TAG"
           else
-            TAG="${{ inputs.tag }}"
+            TAG="$INPUT_TAG"
           fi
           [ -n "$TAG" ] || { echo "No tag to publish."; exit 1; }
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"

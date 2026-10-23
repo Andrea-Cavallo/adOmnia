@@ -36,7 +36,7 @@ const DEFAULT_COLOR_KEYS = [
 type EditorTab = 'colors' | 'fonts' | 'validation' | 'contrast'
 
 function generateId(): string {
-  return `theme-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return `theme-${Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')}`
 }
 
 function createBlankTheme(): Theme {

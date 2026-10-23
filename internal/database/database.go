@@ -278,7 +278,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	resp := dbQueryResponse{Driver: driver, Limited: limited, Destructive: destructive, StatementType: stmtType, Explain: explainMode}
 	if isResultQuery(limitedQuery) {
-		cols, rows, err := runRows(ctx, db, limitedQuery)
+		cols, rows, err := runRows(ctx, db, limitedQuery) // NOSONAR -- this is the SQL console: the statement the user typed is meant to run verbatim on their own connection; the sidecar is loopback-only and applyLimit only appends a numeric LIMIT
 		if err != nil {
 			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
@@ -286,7 +286,7 @@ func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
 		resp.Columns = cols
 		resp.Rows = rows
 	} else {
-		res, err := db.ExecContext(ctx, limitedQuery)
+		res, err := db.ExecContext(ctx, limitedQuery) // NOSONAR -- same as above: user-authored SQL executed by design in the database console
 		if err != nil {
 			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
@@ -921,7 +921,7 @@ func destructiveQuery(driver, query string) (bool, bool) {
 }
 
 func runRows(ctx context.Context, db *sql.DB, query string) ([]string, []map[string]interface{}, error) {
-	rows, err := db.QueryContext(ctx, query)
+	rows, err := db.QueryContext(ctx, query) // NOSONAR -- query is the SQL the user typed in the console (see databaseQueryHandler); running it verbatim is the feature
 	if err != nil {
 		return nil, nil, err
 	}

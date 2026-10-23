@@ -29,14 +29,17 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Debian package versions rotate with every security update; the NodeSource major (20.x) is the pin.
 # hadolint ignore=DL3008
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+# NOSONAR -- this runs the NodeSource setup script the same way the vendor documents; it is the
+# build stage only (no runtime container), versions are pinned by the major channel and the
+# resulting artifacts are checksummed in SHA256SUMS.txt at release time.
+RUN curl --proto '=https' --tlsv1.2 -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # linuxdeploy bundles all .so deps (webkit, gtk, etc.) into the AppImage
-RUN curl -fsSL -o /usr/local/bin/linuxdeploy \
+RUN curl --proto '=https' --tlsv1.2 -fsSL -o /usr/local/bin/linuxdeploy \
         https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
-    && curl -fsSL -o /usr/local/bin/linuxdeploy-plugin-appimage \
+    && curl --proto '=https' --tlsv1.2 -fsSL -o /usr/local/bin/linuxdeploy-plugin-appimage \
         https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage \
     && chmod +x /usr/local/bin/linuxdeploy /usr/local/bin/linuxdeploy-plugin-appimage
 
@@ -47,6 +50,9 @@ RUN go mod download
 
 COPY frontend/package*.json ./frontend/
 WORKDIR /src/frontend
+# NOSONAR -- the frontend toolchain (esbuild/rolldown and friends) needs its install scripts to
+# place the platform binary; --ignore-scripts would break the build. This is the build stage and
+# `npm ci` enforces the committed lockfile.
 RUN npm ci
 WORKDIR /src
 
@@ -80,5 +86,7 @@ RUN set -e && \
     mkdir -p /out && \
     mv ./*.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
 
+# NOSONAR -- artifact-only image: it carries the AppImage file out of the build and is never run as
+# a container, so there is no process or user to drop.
 FROM scratch AS artifact
 COPY --from=builder /out /

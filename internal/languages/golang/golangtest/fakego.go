@@ -64,7 +64,7 @@ func FakeSDK(t *testing.T, withVersionFile bool) string {
 		source := filepath.Join(dir, "main.go")
 		_ = os.WriteFile(source, []byte(fakeGoSource), 0o644)
 		output := filepath.Join(dir, "go"+ExeSuffix())
-		build := exec.Command("go", "build", "-o", output, source)
+		build := exec.Command("go", "build", "-o", output, source) // NOSONAR -- test fixture invokes the go tool by name through PATH
 		build.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOFLAGS=")
 		if out, err := build.CombinedOutput(); err == nil {
 			fakeGoBuilt = output

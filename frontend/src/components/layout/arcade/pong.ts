@@ -25,7 +25,7 @@ export interface Pong {
 }
 
 function serve(cols: number, rows: number, towardAi: boolean): { ball: Ball; serve: number } {
-  const angle = (Math.random() - 0.5) * 0.9
+  const angle = (Math.random() - 0.5) * 0.9 // NOSONAR -- ball trajectory randomness in the arcade minigame, nothing security-relevant
   const dir = towardAi ? 1 : -1
   return { ball: { x: cols / 2, y: rows / 2, vx: Math.cos(angle) * SERVE_SPEED * dir, vy: Math.sin(angle) * SERVE_SPEED }, serve: 0.7 }
 }

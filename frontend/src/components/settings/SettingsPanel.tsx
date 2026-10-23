@@ -695,7 +695,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 label={s.proxy.upstreamProxy}
                 desc={s.proxy.upstreamProxyDesc}
                 value={settings.proxy.upstreamProxy}
-                placeholder="http://user:pass@host:port"
+                placeholder="http://user:pass@host:port" // NOSONAR -- placeholder for the proxy URL format and the loopback CA export on 127.0.0.1
                 onChange={(v) => updateProxy({ upstreamProxy: v })}
               />
               <TextAreaInput
@@ -725,7 +725,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                       try {
                         const port = await safeGetServerPort()
                         if (!port) return
-                        window.open(`http://127.0.0.1:${port}/proxy/ca/export?format=pem`, '_blank')
+                        window.open(`http://127.0.0.1:${port}/proxy/ca/export?format=pem`, '_blank') // NOSONAR -- placeholder for the proxy URL format and the loopback CA export on 127.0.0.1
                       } catch {
                         console.error('Failed to export CA cert')
                       }
