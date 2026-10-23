@@ -3,6 +3,7 @@ package rust
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -43,7 +44,8 @@ LLVM version: 19.1.7
 	if err != nil || host != "x86_64-pc-windows-msvc" || version != "1.85.0" {
 		t.Fatalf("host=%q version=%q err=%v", host, version, err)
 	}
-	if !windowsHostUsesMSVC(host) || windowsHostUsesMSVC("x86_64-unknown-linux-gnu") {
+	// MSVC only matters on a Windows machine: elsewhere the helper is false by design.
+	if windowsHostUsesMSVC(host) != (runtime.GOOS == "windows") || windowsHostUsesMSVC("x86_64-unknown-linux-gnu") {
 		t.Fatal("MSVC detection wrong")
 	}
 }

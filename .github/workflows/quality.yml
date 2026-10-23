@@ -81,10 +81,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Virtualenv: con `pip --user` urllib3 2.x si mescola con il `requests` di sistema (Python 3.10) e
+      # stampa FutureWarning rumorosi; isolato, l'output resta quello di Semgrep.
       - name: Semgrep
         run: |
-          python3 -m pip install --user semgrep==1.182.0
-          "$HOME/.local/bin/semgrep" scan --config p/security-audit --config p/secure-defaults --error
+          python3 -m venv "$RUNNER_TEMP/semgrep"
+          "$RUNNER_TEMP/semgrep/bin/pip" install --quiet semgrep==1.182.0
+          "$RUNNER_TEMP/semgrep/bin/semgrep" scan --config p/security-audit --config p/secure-defaults --error
 
   trivy:
     name: Trivy (vuln, secrets, misconfig)

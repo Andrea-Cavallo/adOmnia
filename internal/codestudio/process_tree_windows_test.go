@@ -34,3 +34,18 @@ func TestWindowsStopTerminatesChildTree(t *testing.T) {
 	}
 	t.Fatalf("il processo figlio %d è rimasto attivo dopo Stop", childPID)
 }
+
+func childPIDFromEvents(t *testing.T, events <-chan processEvent, runID RunID) int {
+	t.Helper()
+	event := waitProcessEvent(t, events, func(event processEvent) bool {
+		output, ok := event.payload.(ProcessOutput)
+		return ok && event.execution.ID == runID && strings.Contains(output.Text, "CHILD_PID=")
+	})
+	output := event.payload.(ProcessOutput)
+	value := strings.TrimSpace(strings.TrimPrefix(output.Text, "CHILD_PID="))
+	pid, err := strconv.Atoi(value)
+	if err != nil {
+		t.Fatalf("PID figlio non valido: %q", value)
+	}
+	return pid
+}
