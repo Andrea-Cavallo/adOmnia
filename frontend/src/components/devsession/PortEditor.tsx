@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LiveSession } from '@/lib/devsession-api'
 import { useDevSessionStore } from '@/stores/devSession'
 
@@ -14,6 +14,8 @@ export function PortEditor({ session }: { session: LiveSession }) {
   const setPort = useDevSessionStore((s) => s.setPort)
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (editing) inputRef.current?.focus() }, [editing])
   if (editing) {
     const commit = () => {
       const port = Number(value)
@@ -22,7 +24,7 @@ export function PortEditor({ session }: { session: LiveSession }) {
     }
     return (
       <input
-        autoFocus
+        ref={inputRef}
         aria-label="Service port"
         inputMode="numeric"
         value={value}

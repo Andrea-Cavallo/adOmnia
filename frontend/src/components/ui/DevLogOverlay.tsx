@@ -73,7 +73,7 @@ export function DevLogOverlay({ visible, onClose }: { visible: boolean; onClose:
   useEffect(() => {
     if (poppedOut && popupRef.current && !popupRef.current.closed) {
       const sendEntries = () => {
-        popupRef.current?.postMessage({ type: 'devlogs-entries', entries: useDevLogsStore.getState().entries }, '*')
+        popupRef.current?.postMessage({ type: 'devlogs-entries', entries: useDevLogsStore.getState().entries }, window.location.origin)
       }
       sendEntries()
       const unsub = useDevLogsStore.subscribe(() => sendEntries())
@@ -191,7 +191,7 @@ body{font-family:'JetBrains Mono','Consolas',monospace;font-size:11px;background
 <button onclick="setSource('all')" id="src-all">all</button>
 <button onclick="setSource('frontend')" id="src-frontend">frontend</button>
 <button onclick="setSource('backend')" id="src-backend">backend</button>
-<button onclick="window.opener?.postMessage('devlogs-clear','*')">clear</button>
+<button onclick="window.opener?.postMessage('devlogs-clear',location.origin)">clear</button>
 <button onclick="window.close()">close</button>
 </div>
 <div id="log"></div>
@@ -224,7 +224,7 @@ function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g
 window.addEventListener('message',(e)=>{
   if(e.source!==window.opener||e.origin!==location.origin) return
   if(e.data?.type==='devlogs-entries') render(e.data.entries)
-  else if(e.data==='devlogs-clear') window.opener?.postMessage('devlogs-clear','*')
+  else if(e.data==='devlogs-clear') window.opener?.postMessage('devlogs-clear',location.origin)
 })
 window.opener?.postMessage('devlogs-ready', window.location.origin)
 </script></body></html>`)
@@ -290,6 +290,7 @@ window.opener?.postMessage('devlogs-ready', window.location.origin)
       {visible && !poppedOut && (
         <div
           ref={panelRef}
+          role="presentation"
           onMouseDown={handleMouseDown}
           className={cn(
             'fixed z-[9999] bg-surface-1 border border-border-2 rounded-lg shadow-2xl',

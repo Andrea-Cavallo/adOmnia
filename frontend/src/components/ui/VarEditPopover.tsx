@@ -30,12 +30,17 @@ export function varEditTarget(varName: string, x: number, y: number): VarEditTar
 export function VarEditPopover({ target, onClose }: { target: VarEditTarget; onClose: () => void }) {
   const tr = useUiTranslation()
   const popoverRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const environments = useEnvironmentsStore((s) => s.environments)
   const updateVariables = useEnvironmentsStore((s) => s.updateVariables)
 
   const env = environments.find((e) => e.id === target.envId)
   const existing = env?.variables.find((variable) => variable.key === target.varName)
   const [value, setValue] = useState(existing?.value ?? '')
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -81,7 +86,7 @@ export function VarEditPopover({ target, onClose }: { target: VarEditTarget; onC
       </div>
       <div className="flex items-center gap-1.5">
         <input
-          autoFocus
+          ref={inputRef}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={(event) => {

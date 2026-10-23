@@ -57,7 +57,7 @@ export function authorForRange(blame: GoIDEVCSBlameLine[], startLine: number, en
   const committed = lines.filter((line) => !UNCOMMITTED_HASH.test(line.hash))
   const hasUncommitted = committed.length < lines.length
   if (committed.length === 0) return hasUncommitted ? 'new *' : ''
-  const latest = committed.reduce((best, line) => line.date > best.date ? line : best)
+  const latest = committed.reduce((best, line) => line.date > best.date ? line : best, committed[0])
   return hasUncommitted ? `${latest.author} *` : latest.author
 }
 

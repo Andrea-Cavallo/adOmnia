@@ -99,8 +99,8 @@ function parseYamlValue(val: string): unknown {
   if (t === 'true') return true
   if (t === 'false') return false
   if (t === 'null' || t === '~') return null
-  if (/^-?\d+$/.test(t)) return parseInt(t, 10)
-  if (/^-?\d+\.\d+$/.test(t)) return parseFloat(t)
+  if (/^-?\d+$/.test(t)) return Number.parseInt(t, 10)
+  if (/^-?\d+\.\d+$/.test(t)) return Number.parseFloat(t)
   if ((t.startsWith("'") && t.endsWith("'")) || (t.startsWith('"') && t.endsWith('"'))) {
     return t.slice(1, -1)
   }

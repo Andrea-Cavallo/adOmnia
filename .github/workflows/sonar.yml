@@ -67,11 +67,11 @@ jobs:
       - name: Coverage (frontend)
         if: steps.guard.outputs.configured == 'true'
         working-directory: frontend
-        run: npm ci && npx vitest run --coverage --coverage.reporter=lcov
+        run: npm ci --ignore-scripts && npm run test -- --coverage --coverage.reporter=lcov
 
       - name: SonarCloud scan
         if: steps.guard.outputs.configured == 'true'
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703 # v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:

@@ -65,7 +65,7 @@ export function ConsolePanel() {
         setError(err instanceof Error ? err.message : 'Failed to read console logs')
       }
     }
-    poll()
+    void poll()
     return visibleInterval(poll, 1000, { scope: "browser", kind: "live" })
   }, [])
 
@@ -98,7 +98,7 @@ export function ConsolePanel() {
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         e.preventDefault()
-        handleEval()
+        void handleEval()
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
         if (commandHistory.length === 0) return

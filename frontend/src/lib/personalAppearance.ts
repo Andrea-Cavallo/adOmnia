@@ -15,8 +15,8 @@ function mix(a: string, b: string, amount: number): string {
     '#' +
     [1, 3, 5]
       .map((i) => {
-        const from = parseInt(a.slice(i, i + 2), 16),
-          to = parseInt(b.slice(i, i + 2), 16)
+        const from = Number.parseInt(a.slice(i, i + 2), 16),
+          to = Number.parseInt(b.slice(i, i + 2), 16)
         const value = from + (to - from) * amount
         return (to > from ? Math.ceil(value) : Math.floor(value))
           .toString(16)

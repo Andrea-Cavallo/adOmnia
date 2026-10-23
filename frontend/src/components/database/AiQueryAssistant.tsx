@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { suggestQueryWithAI, lineDiff, type AiSchemaTable } from './aiQuerySuggest'
@@ -34,6 +34,10 @@ export function AiQueryAssistant({ driver, provider, currentQuery, schema, onIns
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [suggestion, setSuggestion] = useState('')
+  const intentRef = useRef<HTMLInputElement>(null)
+
+  // The assistant opens on demand: the cursor starts in the field, without the `autoFocus` attribute.
+  useEffect(() => { intentRef.current?.focus() }, [])
 
   const interpretation = useMemo(() => (suggestion ? interpret(driver, suggestion) : null), [driver, suggestion])
   const diff = useMemo(() => {
@@ -64,7 +68,7 @@ export function AiQueryAssistant({ driver, provider, currentQuery, schema, onIns
       <div className="flex items-center gap-2">
         <Sparkles size={13} className="flex-none text-accent" />
         <input
-          autoFocus
+          ref={intentRef}
           value={intent}
           onChange={(e) => setIntent(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !busy) void ask(); if (e.key === 'Escape') onClose() }}

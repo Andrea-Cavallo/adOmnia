@@ -9,7 +9,7 @@ export interface RunGroup<T> {
   items: T[]
 }
 
-const slash = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
+const slash = (path: string) => path.replace(/\\/g, '/').replace(/(?<!\/)\/+$/, '')
 const basename = (path: string) => slash(path).split('/').pop() || path
 
 /** L'unità che contiene la working directory della configurazione (la più profonda vince). */

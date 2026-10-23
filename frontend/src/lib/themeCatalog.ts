@@ -40,9 +40,9 @@ export function inferThemeMode(theme?: Theme | null): 'dark' | 'light' {
       ? hex.split('').map((ch) => ch + ch).join('')
       : hex
     if (full.length === 6) {
-      const r = parseInt(full.slice(0, 2), 16)
-      const g = parseInt(full.slice(2, 4), 16)
-      const b = parseInt(full.slice(4, 6), 16)
+      const r = Number.parseInt(full.slice(0, 2), 16)
+      const g = Number.parseInt(full.slice(2, 4), 16)
+      const b = Number.parseInt(full.slice(4, 6), 16)
       const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
       return luminance > 0.58 ? 'light' : 'dark'
     }
@@ -50,14 +50,14 @@ export function inferThemeMode(theme?: Theme | null): 'dark' | 'light' {
 
   const oklchMatch = surface.match(/oklch\(([\d.]+)%\s/)
   if (oklchMatch) {
-    return parseFloat(oklchMatch[1]) > 60 ? 'light' : 'dark'
+    return Number.parseFloat(oklchMatch[1]) > 60 ? 'light' : 'dark'
   }
 
   const rgbMatch = surface.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/)
   if (rgbMatch) {
-    const r = parseInt(rgbMatch[1], 10)
-    const g = parseInt(rgbMatch[2], 10)
-    const b = parseInt(rgbMatch[3], 10)
+    const r = Number.parseInt(rgbMatch[1], 10)
+    const g = Number.parseInt(rgbMatch[2], 10)
+    const b = Number.parseInt(rgbMatch[3], 10)
     const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
     return luminance > 0.58 ? 'light' : 'dark'
   }

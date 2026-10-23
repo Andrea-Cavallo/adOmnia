@@ -20,7 +20,7 @@ function clampSidebarWidth(w: number): number {
 function loadSidebarWidth(): number {
   try {
     const stored = localStorage.getItem(SIDEBAR_WIDTH_KEY)
-    if (stored) return clampSidebarWidth(parseInt(stored, 10))
+    if (stored) return clampSidebarWidth(Number.parseInt(stored, 10))
   } catch { /* ignore */ }
   return 256
 }

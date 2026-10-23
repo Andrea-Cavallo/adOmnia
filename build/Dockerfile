@@ -21,7 +21,8 @@ RUN go mod download
 
 COPY frontend/package*.json ./frontend/
 WORKDIR /build/frontend
-RUN npm ci
+# Lockfile-exact install without dependency lifecycle scripts (esbuild/rolldown ship their binaries as optional deps).
+RUN npm ci --ignore-scripts
 WORKDIR /build
 
 # Copy source code

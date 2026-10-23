@@ -78,10 +78,20 @@ export function buildQueryPrompt(request: AiQueryRequest): { system: string; use
   return { system, user }
 }
 
+/** Corpo del primo recinto markdown chiuso; scansione con indexOf, il contenuto non viene riletto dalla regex. */
+function fencedQuery(response: string): string | null {
+  for (let open = response.indexOf('```'); open !== -1; open = response.indexOf('```', open + 1)) {
+    const lineEnd = response.indexOf('\n', open)
+    if (lineEnd === -1) return null
+    const close = response.indexOf('```', lineEnd)
+    if (close !== -1) return response.slice(lineEnd + 1, close)
+  }
+  return null
+}
+
 /** Extracts the query from a model answer: first code fence if any, else the text; JSON drivers must parse. */
 export function parseQueryResponse(driver: string, response: string): string {
-  const fenced = /```[a-zA-Z]*\s*\n([\s\S]*?)```/.exec(response)
-  const text = (fenced ? fenced[1] : response).trim()
+  const text = (fencedQuery(response) ?? response).trim()
   if (!text) throw new Error('The AI did not return a query.')
   if (driver === 'mongodb' || driver === 'redis') {
     try {

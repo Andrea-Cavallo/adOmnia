@@ -63,7 +63,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
 
   const vars = getResolvedVars()
   const resolvedUrl = substVars(request.url, vars)
-  const unresolved = resolvedUrl.match(/\{\{[^}]+\}\}/)?.[0]
+  const unresolved = resolvedUrl.match(/\{\{[^{}]+\}\}/)?.[0]
   const inputs = { concurrency, totalReqs, durationS, useDuration, warmupReqs, burst, gapRequests, gapMs }
 
   const callApi = async <T,>(path: string, init?: RequestInit): Promise<T> => {

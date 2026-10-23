@@ -24,7 +24,7 @@ export interface CodeStudioToolTarget {
 
 const MAKE_TARGET = /^([A-Za-z0-9_][A-Za-z0-9_.\-/]*)(?:\s+[A-Za-z0-9_.\-/]+)*\s*::?(?!=)/
 const DOCKER_FROM = /^\s*FROM\s+(?:--\S+\s+)*\S+(?:\s+AS\s+([A-Za-z0-9][A-Za-z0-9._-]*))?\s*$/i
-const DOCKER_EXPOSE = /^\s*EXPOSE\s+(.+)$/i
+const DOCKER_EXPOSE = /^\s*EXPOSE\s+(.+)/i
 const DOCKER_ARG = /^\s*ARG\s+([A-Za-z_][A-Za-z0-9_]*)(?:=(\S*))?/i
 const SENSITIVE_NAME = /pass|secret|token|key|credential|pwd/i
 

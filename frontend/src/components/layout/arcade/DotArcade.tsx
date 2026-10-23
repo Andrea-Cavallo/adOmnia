@@ -232,7 +232,7 @@ function Arcade<S>({ game, onExit }: ArcadeProps<S>) {
     : phase === 'ready' ? game.help
     : phase === 'paused' ? 'Paused · P to resume'
     : phase === 'over' ? `${t(endMessage)} · ${t('Enter to play again')}` : ''
-  return <div ref={wrapRef} className="hub-snake" data-phase={phase} tabIndex={0} role="application" aria-label={t(game.title)}>
+  return <div ref={wrapRef} className="hub-snake" data-phase={phase} role="application" aria-label={t(game.title)}>
     <div className="hub-snake-bar">
       <strong>{t(game.title)}</strong>
       <span>{String(score).padStart(3, '0')}</span>

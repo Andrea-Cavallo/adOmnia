@@ -370,8 +370,8 @@ export function ApiDocsPanel({ standalone = false }: { standalone?: boolean }) {
         </div>
         <Menu id="import" menu={menu} setMenu={setMenu} icon={<Boxes size={13} />} label="Import collection">
           <div className="w-64 space-y-2 p-3">
-            <label className="text-[11px] font-semibold text-text-3">Collection</label>
-            <select value={collectionId} onChange={(e) => setCollectionId(e.target.value)} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-[12px] text-text-1 outline-none focus:border-accent">
+            <label htmlFor="apidocs-import-collection" className="text-[11px] font-semibold text-text-3">Collection</label>
+            <select id="apidocs-import-collection" value={collectionId} onChange={(e) => setCollectionId(e.target.value)} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-[12px] text-text-1 outline-none focus:border-accent">
               <option value="__all__">All collections ({collections.length})</option>
               {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -413,8 +413,8 @@ export function ApiDocsPanel({ standalone = false }: { standalone?: boolean }) {
 
         <Menu id="generate" menu={menu} setMenu={setMenu} icon={<WandSparkles size={13} />} label="Generate">
           <div className="w-64 space-y-2 p-3">
-            <label className="text-[11px] font-semibold text-text-3">From collection</label>
-            <select value={collectionId} onChange={(e) => setCollectionId(e.target.value)} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-[12px] text-text-1 outline-none focus:border-accent">
+            <label htmlFor="apidocs-generate-collection" className="text-[11px] font-semibold text-text-3">From collection</label>
+            <select id="apidocs-generate-collection" value={collectionId} onChange={(e) => setCollectionId(e.target.value)} className="h-8 w-full rounded border border-border-2 bg-surface-2 px-2 text-[12px] text-text-1 outline-none focus:border-accent">
               <option value="__all__">All collections ({collections.length})</option>
               {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -450,8 +450,8 @@ export function ApiDocsPanel({ standalone = false }: { standalone?: boolean }) {
           <Menu id="more" menu={menu} setMenu={setMenu} icon={<MoreVertical size={14} />} label="" iconOnly align="right">
             <div className="w-60 py-1">
               <div className="border-b border-border-1 px-3 py-1.5">
-                <label className="text-[10px] font-semibold uppercase text-text-4">Save target</label>
-                <select value={saveCollectionId} onChange={(e) => setSaveCollectionId(e.target.value)} className="mt-1 h-7 w-full rounded border border-border-2 bg-surface-2 px-1.5 text-[11px] text-text-1 outline-none focus:border-accent">
+                <label htmlFor="apidocs-save-collection" className="text-[10px] font-semibold uppercase text-text-4">Save target</label>
+                <select id="apidocs-save-collection" value={saveCollectionId} onChange={(e) => setSaveCollectionId(e.target.value)} className="mt-1 h-7 w-full rounded border border-border-2 bg-surface-2 px-1.5 text-[11px] text-text-1 outline-none focus:border-accent">
                   <option value="">Choose collection…</option>
                   {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -518,7 +518,7 @@ function Menu({
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
+          <div className="fixed inset-0 z-40" role="presentation" onClick={() => setMenu(null)} />
           <div className={`absolute top-8 z-50 overflow-hidden rounded-md border border-border-2 bg-surface-1 shadow-xl ${align === 'right' ? 'right-0' : 'left-0'}`}>
             {children}
           </div>

@@ -1039,7 +1039,8 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       case 'tools.runtimeEnrichment': return setRuntimeEnrichmentOpen(true)
     }
   }
-  runCommandRef.current = runCommand
+  // The switch returns whatever the handler returns; the ref only needs a void call.
+  runCommandRef.current = (id) => { void runCommand(id) }
 
   const openRealPaths = new Set(store.sessions.map((session) => session.project.realPath))
   const recentNotOpen = store.recentProjects.filter((project) => !openRealPaths.has(project.realPath))

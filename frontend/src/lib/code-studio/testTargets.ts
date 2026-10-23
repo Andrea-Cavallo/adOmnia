@@ -10,7 +10,13 @@ export interface TestTarget {
   packages: string[]
 }
 
-const slash = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
+/** Toglie le barre finali dalla coda: la regex `\/+$` ha backtracking non lineare sui percorsi lunghi. */
+const withoutTrailingSlashes = (value: string): string => {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '/') end -= 1
+  return value.slice(0, end)
+}
+const slash = (path: string) => withoutTrailingSlashes(path.replace(/\\/g, '/'))
 const basename = (path: string) => slash(path).split('/').pop() || path
 
 function relativeDirectory(project: ProjectLike, root: string): string {

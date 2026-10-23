@@ -142,7 +142,7 @@ function Flyout({ cat, activeRail, onSelect, onClose, onFocusTrigger }: FlyoutPr
   }
 
   return (
-    <div id={`rail-menu-${cat.key}`} role="menu" aria-label={nav(cat.label)} onKeyDown={handleKeyDown} className="adomnia-rail__flyout absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl py-2 overflow-hidden">
+    <div id={`rail-menu-${cat.key}`} role="menu" tabIndex={-1} aria-label={nav(cat.label)} onKeyDown={handleKeyDown} className="adomnia-rail__flyout absolute left-full top-0 ml-2 w-52 bg-surface-1 border border-border-1 rounded-xl shadow-2xl py-2 overflow-hidden">
       <div className="flex items-center justify-between px-3 pt-1 pb-2 border-b border-border-1/60">
         <span className="text-[10px] font-bold text-accent tracking-wide uppercase">{nav(cat.label)}</span>
         <button aria-label={tr('Close')} title={tr('Close')} onClick={onClose} className="rounded p-1 text-text-3 hover:text-text-1"><X size={12} /></button>

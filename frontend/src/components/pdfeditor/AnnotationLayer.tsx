@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   screenToPoint,
   pointToScreen,
@@ -262,6 +262,10 @@ function AnnotationView({
   onUpdate,
 }: AnnotationViewProps) {
   const px = (pt: number) => pointToScreen(pt, zoom)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Doppio clic o F2 aprono la modifica: il focus va nel testo, senza `autoFocus`.
+  useEffect(() => { if (editing) textareaRef.current?.focus() }, [editing])
 
   if (a.type === 'ink') {
     return <InkPath points={a.paths} zoom={zoom} color={a.color} width={a.width} selected={selected} onSelect={onSelect} />
@@ -319,7 +323,7 @@ function AnnotationView({
       <div {...keyboardProps} data-a11y-click-exempt="keyboard-props-spread" style={boxStyle} onPointerDown={(e) => onBeginDrag(e, a, 'move')} onDoubleClick={onStartEdit}>
         {editing ? (
           <textarea
-            autoFocus
+            ref={textareaRef}
             value={a.text}
             onFocus={onChangeStart}
             onChange={(e) => onUpdate({ ...a, text: e.target.value })}

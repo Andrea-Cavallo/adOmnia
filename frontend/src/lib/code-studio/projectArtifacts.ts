@@ -17,7 +17,7 @@ export async function openProjectArtifact(ref: EntityRef, intent: 'inspect' | 's
  if (intent === 'mtls') {
   const session = useCodeStudioStore.getState().sessions.find(item => item.id === ref.sessionId)
   if (!session) throw new Error('The source project is no longer open')
-  const certificate = `${session.project.realPath.replace(/[\\/]+$/, '')}/${path}`
+  const certificate = `${session.project.realPath.replace(/(?<![\\/])[\\/]+$/, '')}/${path}`
   handoffToPanel('settings', ref, 'mtls', { certificate })
   return
  }

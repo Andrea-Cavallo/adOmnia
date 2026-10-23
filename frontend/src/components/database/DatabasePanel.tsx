@@ -692,7 +692,7 @@ export function DatabasePanel() {
     if (isMongo || isRedis) {
       try { setQuery(JSON.stringify(JSON.parse(query), null, 2)) } catch { /* leave invalid JSON untouched */ }
     } else {
-      setQuery(query.split('\n').map((l) => l.replace(/\s+$/, '')).join('\n').trim())
+      setQuery(query.split('\n').map((l) => l.trimEnd()).join('\n').trim())
     }
   }
 
@@ -929,7 +929,7 @@ export function DatabasePanel() {
       </>)}
 
       {createObjectOpen && (
-        <div className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateObjectOpen(false) }}>
+        <div role="presentation" className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateObjectOpen(false) }}>
           <div role="dialog" aria-modal="true" aria-labelledby="database-create-title" className="w-full max-w-sm rounded-md border border-border-2 bg-surface-2 shadow-2xl">
             <div className="flex h-11 items-center gap-2 border-b border-border-1 px-3.5">
               <Database size={14} className="text-accent" />

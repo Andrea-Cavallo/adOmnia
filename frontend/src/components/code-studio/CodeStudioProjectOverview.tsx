@@ -30,7 +30,7 @@ const UNIT_KINDS: Readonly<Record<string, string>> = {
 }
 
 function relativeTo(root: string, path: string): string {
-  const normalizedRoot = root.replace(/\\/g, '/').replace(/\/+$/, '')
+  const normalizedRoot = root.replace(/\\/g, '/').replace(/(^|[^/])\/+$/, '$1')
   const normalizedPath = path.replace(/\\/g, '/')
   if (normalizedPath.toLowerCase() === normalizedRoot.toLowerCase()) return '.'
   const prefix = `${normalizedRoot}/`

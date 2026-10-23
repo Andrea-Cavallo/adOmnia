@@ -10,7 +10,8 @@ import { navigateToLocation, type StudioLocation } from './codeStudioNavigation'
 const FIRST_LINE = { startLine: 1, startColumn: 1, endLine: 1, endColumn: 1 }
 
 function normalizePath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/\/+$/, '')
+  // `(?<!\/)` ancora il gruppo di barre finali: senza, la regex riprova da ogni posizione.
+  return path.replace(/\\/g, '/').replace(/(?<!\/)\/+$/, '')
 }
 
 function isWithin(path: string, root: string): boolean {

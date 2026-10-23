@@ -109,9 +109,9 @@ export function mysqlTree(text: string): PlanNode[] {
     if (!m) continue
     const depth = m[1].length
     const body = m[2]
-    const label = body.replace(/\s*\((cost|actual)[^)]*\)/g, '').trim()
+    const label = body.replace(/(?<![ \t])[ \t]*\((cost|actual)[^)]*\)/g, '').trim()
     const cost = /\(cost=([\d.]+) rows=([\d.e+]+)\)/.exec(body)
-    const actual = /\(actual time=([\d.]+)\.\.([\d.]+) rows=([\d.e+]+) loops=(\d+)\)/.exec(body)
+    const actual = /\(actual time=(\d+(?:\.\d+)*)\.\.(\d+(?:\.\d+)*) rows=([\d.e+]+) loops=(\d+)\)/.exec(body)
     const metrics: [string, string][] = []
     if (cost) metrics.push(['cost', cost[1]], ['est. rows', cost[2]])
     if (actual) metrics.push(['time', `${actual[2]} ms`], ['rows', actual[3]], ['loops', actual[4]])

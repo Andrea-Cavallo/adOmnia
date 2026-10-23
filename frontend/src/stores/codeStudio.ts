@@ -260,7 +260,7 @@ export interface GoIDEState {
   handleFilesChanged: (sessionId: string, batch: GoIDEFilesChanged) => Promise<void>
   stopRun: (runId?: string) => Promise<void>
   restartRun: (runId?: string) => Promise<void>
-  sendRunInput: (runId: string, text: string) => Promise<void>
+  sendRunInput: (runId: string, text: string) => Promise<boolean>
   hasActiveRuns: (sessionId: string) => Promise<boolean>
   loadRunConfigurations: (sessionId: string) => Promise<void>
   saveRunConfiguration: (config: GoIDERunConfiguration) => Promise<GoIDERunConfiguration | null>
@@ -1238,7 +1238,13 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
   },
 
   sendRunInput: async (runId, text) => {
-    try { await writeGoIDERunInput(runId, text) } catch (error) { set({ error: errorMessage(error) }) }
+    try {
+      await writeGoIDERunInput(runId, text)
+      return true
+    } catch (error) {
+      set({ error: errorMessage(error) })
+      return false
+    }
   },
 
   hasActiveRuns: async (sessionId) => hasActiveGoIDERuns(sessionId),

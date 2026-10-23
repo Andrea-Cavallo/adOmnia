@@ -18,6 +18,12 @@ type ArchFunction = GoIDEArchitecture['functions'][number]
 const SERVICE = /^\s*service\s+([A-Za-z_]\w*)\s*\{/
 const RPC = /\brpc\s+([A-Za-z_]\w*)\s*\(\s*(stream\s+)?([\w.]+)\s*\)\s*returns\s*\(\s*(stream\s+)?([\w.]+)\s*\)/g
 
+/** The line without its `//` comment: the first two slashes end it (protobuf has no other comment form). */
+function withoutComment(line: string): string {
+  const at = line.indexOf('//')
+  return at === -1 ? line : line.slice(0, at)
+}
+
 /** rpc declarations with their service; comments are ignored, one rpc per line (protoc style). */
 export function protoRpcs(text: string): ProtoRpc[] {
   const out: ProtoRpc[] = []
@@ -25,7 +31,7 @@ export function protoRpcs(text: string): ProtoRpc[] {
   let depth = 0
   let serviceDepth = -1
   text.split('\n').forEach((raw, index) => {
-    const line = raw.replace(/\/\/.*$/, '')
+    const line = withoutComment(raw)
     const declared = SERVICE.exec(line)
     if (declared) {
       service = declared[1]
@@ -75,7 +81,7 @@ export function protoDeclarations(text: string): ProtoDeclaration[] {
   const stack: Array<{ name: string; depth: number }> = []
   let depth = 0
   text.split('\n').forEach((raw, index) => {
-    const line = raw.replace(/\/\/.*$/, '')
+    const line = withoutComment(raw)
     for (const match of line.matchAll(DECLARATION)) {
       const column = (match.index ?? 0) + match[0].length - match[2].length + 1
       out.push({ name: match[2], kind: match[1] as ProtoDeclaration['kind'], line: index + 1, column, parent: stack[stack.length - 1]?.name })
@@ -94,7 +100,7 @@ export function protoDeclarations(text: string): ProtoDeclaration[] {
 
 /** Paths of `import "…";` statements. */
 export function protoImports(text: string): string[] {
-  return [...text.matchAll(/^\s*import\s+(?:public\s+|weak\s+)?"([^"]+)"\s*;/gm)].map((m) => m[1])
+  return [...text.matchAll(/^[ \t]*import[ \t]+(?:public[ \t]+|weak[ \t]+)?"([^"\n]+)"[ \t]*;/gm)].map((m) => m[1])
 }
 
 /** The type declaration a (possibly qualified) name refers to, by its last segment. */

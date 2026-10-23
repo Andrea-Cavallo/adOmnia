@@ -91,9 +91,11 @@ export function analyzeJavaFile(source: string): JavaLocalAnalysis {
     const begin = statementStart(i)
     // Annotation arguments (`@GetMapping(value = "/x")`) may contain `=`; only look outside parentheses.
     let initializer = false
-    for (let k = begin; k < i; k++) {
-      if (t[k].text === '(' && pairs.has(k)) k = pairs.get(k)!
-      else if (t[k].text === '=' || t[k].text === 'new') { initializer = true; break }
+    let k = begin
+    while (k < i) {
+      if (t[k].text === '(' && pairs.has(k)) { k = pairs.get(k)! + 1; continue }
+      if (t[k].text === '=' || t[k].text === 'new') { initializer = true; break }
+      k += 1
     }
     if (initializer) continue
     let end = close + 1

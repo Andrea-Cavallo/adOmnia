@@ -3,7 +3,7 @@
 
 /** Project-relative path when the file lives under one of the open project roots. */
 export function relativeToRoots(file: string, roots: readonly { id: string; root: string }[]): { sessionId: string; relativePath: string } | null {
-  const normalize = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
+  const normalize = (path: string) => path.replace(/\\/g, '/').replace(/(?<!\/)\/+$/, '')
   const target = normalize(file)
   for (const { id, root } of roots) {
     const base = normalize(root)

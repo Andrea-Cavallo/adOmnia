@@ -135,8 +135,8 @@ export function ConnectionsSidebar(props: ConnectionsSidebarProps) {
               </button>
               {menuId === conn.id && (
                 <>
-                  <div className="fixed inset-0 z-20" onClick={(event) => { event.stopPropagation(); setMenuId('') }} />
-                  <div className="dbc-menu" onClick={(e) => e.stopPropagation()}>
+                  <div className="fixed inset-0 z-20" role="presentation" onClick={(event) => { event.stopPropagation(); setMenuId('') }} />
+                  <div className="dbc-menu" role="presentation" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => { onDelete(conn.id); setMenuId('') }} disabled={connections.length <= 1}>
                       <Trash2 size={12} /> Delete
                     </button>

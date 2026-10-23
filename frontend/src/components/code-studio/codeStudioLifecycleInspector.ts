@@ -73,7 +73,7 @@ function codeOnly(source: string): string {
 
 function functionBodies(code: string): FunctionBody[] {
   const bodies: FunctionBody[] = []
-  const starts = /\bfunc\s*(?:\([^)]*\)\s*)?([A-Za-z_]\w*)[^{}]*\{/g
+  const starts = /\bfunc(?:\s*\([^)]*\))?\s*([A-Za-z_]\w*)[^{}]*\{/g
   let match: RegExpExecArray | null
   while ((match = starts.exec(code))) {
     const open = starts.lastIndex - 1

@@ -115,7 +115,7 @@ export function saveLastRepo(path: string): void {
 export const GIT_FOCUS_REPO_EVENT = 'adomnia:git-focus-repo'
 
 function sameRepoPath(left: string, right: string): boolean {
-  const clean = (path: string) => path.trim().replace(/\/+$/, '')
+  const clean = (path: string) => path.trim().replace(/(^|[^/])\/+$/, '$1')
   const a = clean(left)
   const b = clean(right)
   // Percorsi Windows (lettera di unità): il filesystem non distingue maiuscole e minuscole.

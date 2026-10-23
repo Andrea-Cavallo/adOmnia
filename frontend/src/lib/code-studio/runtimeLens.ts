@@ -83,6 +83,13 @@ export function lensTooltip(stat: OtlpLensStat): string {
 
 export interface NodeRuntime { count: number; errors: number; p95Ms: number }
 
+/** Trailing slashes removed without `/\/+$/`, whose repetition before the end anchor is quadratic. */
+const withoutTrailingSlashes = (path: string): string => {
+  let end = path.length
+  while (end > 0 && path[end - 1] === '/') end -= 1
+  return path.slice(0, end)
+}
+
 interface RuntimeNode { id: string; kind: string; label: string; file?: string; line?: number }
 
 /**
@@ -97,7 +104,7 @@ export function runtimeByNode(stats: readonly OtlpLensStat[], root: string, node
     out.set(id, { count: current.count + stat.count, errors: current.errors + stat.errors, p95Ms: Math.max(current.p95Ms, stat.p95Ms) })
   }
   const normalize = (path: string) => path.split(String.fromCharCode(92)).join('/')
-  const base = normalize(root).replace(/\/+$/, '').toLowerCase()
+  const base = withoutTrailingSlashes(normalize(root)).toLowerCase()
   const relative = (file: string) => {
     const path = normalize(file)
     return path.toLowerCase().startsWith(`${base}/`) ? path.slice(base.length + 1) : path

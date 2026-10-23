@@ -31,6 +31,16 @@ const FILTER_OPERATORS = [
 ]
 const UPDATE_OPERATORS = ['$set', '$unset', '$inc', '$push', '$pull', '$addToSet', '$pop', '$rename', '$min', '$max', '$mul', '$currentDate', '$setOnInsert']
 const MAX_ITEMS = 50
+const WORD_CHAR = /[\w$]/
+const DIGIT = /\d/
+
+/** Ultima parola-chiave digitata prima del cursore, equivalente a `/[A-Za-z_$][\w$]*$/`. */
+function trailingKeyWord(text: string): string {
+  let start = text.length
+  while (start > 0 && WORD_CHAR.test(text[start - 1])) start -= 1
+  while (start < text.length && DIGIT.test(text[start])) start += 1
+  return text.slice(start)
+}
 
 interface Frame {
   kind: 'obj' | 'arr'
@@ -114,7 +124,7 @@ export function jsonCompletions(text: string, caret: number, ctx: JsonCompleteCo
   let quote = false
   if (!scan.inString) {
     // Outside a string only a key position can be completed, and it needs a typed word or Ctrl+Space.
-    const word = /[A-Za-z_$][\w$]*$/.exec(text.slice(0, caret))?.[0] ?? ''
+    const word = trailingKeyWord(text.slice(0, caret))
     if (!top.expectingKey || (!word && !explicit)) return null
     prefix = word
     start = caret - word.length

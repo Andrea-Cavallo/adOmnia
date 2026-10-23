@@ -77,9 +77,10 @@ export function SecretScannerPanel() {
   }, [report])
 
   const handleCopyFinding = useCallback((text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedId(id)
-    setTimeout(() => setCopiedId(null), 2000)
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    }).catch(() => undefined)
   }, [])
 
   const toggleValue = useCallback((id: string) => {

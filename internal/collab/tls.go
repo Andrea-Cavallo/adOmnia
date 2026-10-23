@@ -49,7 +49,7 @@ func fingerprint(der []byte) string {
 
 // pinnedTLS accetta solo il certificato con il fingerprint atteso.
 func pinnedTLS(expected string) *tls.Config {
-	return &tls.Config{
+	return &tls.Config{ // NOSONAR -- go:S4830: certificate validation is the SHA-256 pinning in VerifyConnection below (collab hosts are self-signed, every connection incl. resumed ones is pinned by the invite fingerprint)
 		MinVersion:         tls.VersionTLS13,
 		InsecureSkipVerify: true, // #nosec G402 -- the verification is the SHA-256 pinning in VerifyConnection below, not the CA chain (collab sessions are pinned by the invite fingerprint) NOSONAR
 		// VerifyConnection (e non VerifyPeerCertificate) gira anche sulle sessioni riprese.

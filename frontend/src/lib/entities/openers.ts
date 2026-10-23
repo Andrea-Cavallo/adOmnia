@@ -16,6 +16,13 @@ import type { EntityRef } from './types'
 const DB_TYPES = new Set(['postgres', 'mysql', 'mongodb', 'redis'])
 const DEFAULT_GO_HTTP = 'http://localhost:8080'
 
+/** Senza gli slash finali: `.replace(/\/+$/, '')` con la stessa semantica ma senza backtracking quadratico. */
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length
+  while (end > 0 && value[end - 1] === '/') end -= 1
+  return value.slice(0, end)
+}
+
 /** `:50051` → `localhost:50051`: l'indirizzo di ascolto del server diventa quello da chiamare. */
 export function grpcTargetAddress(listen: string | undefined): string {
   const address = (listen ?? '').trim()
@@ -27,7 +34,7 @@ export function grpcTargetAddress(listen: string | undefined): string {
 /** URL ws:// per un endpoint WebSocket del codice: client → URL letterale, server → baseUrl dell'ambiente + path. */
 export function websocketUrlFor(ref: EntityRef, baseUrl: string | undefined): string {
   if (ref.attrs.url) return ref.attrs.url
-  const base = (baseUrl || DEFAULT_GO_HTTP).replace(/^http/, 'ws').replace(/\/+$/, '')
+  const base = withoutTrailingSlashes((baseUrl || DEFAULT_GO_HTTP).replace(/^http/, 'ws'))
   return `${base}${ref.attrs.path ?? '/'}`
 }
 const CONTRACT_RAILS: Record<string, RailItem> = { oas: 'apidocs', proto: 'grpc', wsdl: 'soap' }

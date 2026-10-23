@@ -7,7 +7,8 @@ import { buildApiDocModel, parseSpecText } from './parseSpec'
 
 function stripMarkdownFence(value: string): string {
   const trimmed = value.trim()
-  const fenced = trimmed.match(/^```(?:json|yaml|yml)?\s*([\s\S]*?)\s*```$/i)
+  // Il contenuto del blocco viene trimmato subito dopo: i `\s*` attorno al gruppo erano solo ambiguità.
+  const fenced = trimmed.match(/^```(?:json|yaml|yml)?([\s\S]*?)```$/i)
   return (fenced?.[1] ?? trimmed).trim()
 }
 

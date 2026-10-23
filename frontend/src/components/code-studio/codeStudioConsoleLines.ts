@@ -20,8 +20,10 @@ export interface ConsoleParsedLine {
 
 // Escape ANSI: OSC (titoli) e CSI (colori, spostamenti cursore). Solo il SGR (`[…m`) porta colore
 // e resta nel `raw` per renderAnsi; tutto il resto viene tolto, altrimenti compare come testo.
-const escapePattern = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b\[[0-?]*[ -/]*[@-~]/g
-const sgrPattern = /^\x1b\[[0-9;]*m$/
+// Stessi codici ANSI (ESC = \x1b, BEL = \x07) scritti come escape: il pattern resta identico senza caratteri
+// di controllo nel sorgente.
+const escapePattern = new RegExp('\\x1b\\][^\\x07\\x1b]*(?:\\x07|\\x1b\\\\)?|\\x1b\\[[0-?]*[ -/]*[@-~]', 'g')
+const sgrPattern = new RegExp('^\\x1b\\[[0-9;]*m$')
 
 function cleanDisplay(raw: string): string {
   return raw.replace(escapePattern, (match) => (sgrPattern.test(match) ? match : ''))

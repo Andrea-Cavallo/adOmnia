@@ -116,7 +116,7 @@ export function WorkspacePanel() {
     const data = await api('/workspace/save', { name, state })
     setMessage(`Saved "${data.name}" with ${data.tabs ?? 0} tabs`)
     setLoadedState(state)
-    refresh()
+    void refresh()
   })
 
   const load = (wsName?: string) => run(async () => {
@@ -136,7 +136,7 @@ export function WorkspacePanel() {
     await api(`/workspace/delete?name=${encodeURIComponent(wsName)}`)
     removeRecentWorkspace(wsName)
     setMessage(`Deleted "${wsName}"`)
-    refresh()
+    void refresh()
   })
 
   const loadDemo = () => run(async () => {
@@ -160,7 +160,7 @@ export function WorkspacePanel() {
     envStore.save()
 
     setMessage('ForgeCore Gateway API demo loaded')
-    refresh()
+    void refresh()
   })
 
   const handleInteropFile = async (file: File | undefined) => {
@@ -292,7 +292,7 @@ export function WorkspacePanel() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && name) save() }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && name) void save() }}
               placeholder="workspace name…"
               className="flex-1 h-8 px-2.5 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 outline-none focus:border-accent placeholder:text-text-4"
             />

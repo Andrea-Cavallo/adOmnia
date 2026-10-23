@@ -22,14 +22,14 @@ const GO_ASM: monaco.languages.IMonarchLanguage = {
   directives: ['TEXT', 'DATA', 'GLOBL', 'FUNCDATA', 'PCDATA', 'NOSPLIT', 'RODATA', 'NOPTR', 'WRAPPER', 'NEEDCTXT', 'TOPFRAME', 'DUPOK'],
   tokenizer: {
     root: [
-      [/\/\/.*$/, 'comment'],
+      [/\/\/[^\n]*/, 'comment'],
       [/\/\*/, 'comment', '@comment'],
       [/^\s*#\s*(include|define|ifdef|ifndef|else|endif|undef)\b/, 'keyword'],
       [/"[^"]*"/, 'string'],
       [/<[^>]+>/, 'string'],
       [/\$-?(0x[0-9A-Fa-f]+|\d+)/, 'number'],
-      [/\b(0x[0-9A-Fa-f]+|\d+)\b/, 'number'],
-      [/\b(R\d+|X\d+|Y\d+|Z\d+|F\d+|V\d+|[A-D]X|[SD]I|[SB]P|R(8|9|1[0-5])|SP|FP|SB|PC|LR|CTR|g)\b/, 'variable.predefined'],
+      [/\b(0x[0-9A-Fa-f]+|\d+)(?![0-9A-Za-z_])/, 'number'],
+      [/\b(R\d+|X\d+|Y\d+|Z\d+|F\d+|V\d+|[A-D]X|[SD]I|[SB]P|FP|SB|PC|LR|CTR|g)(?![0-9A-Za-z_])/, 'variable.predefined'],
       [/[·\w]+(?=\()/, 'entity.name.function'],
       [/^[A-Za-z_][\w]*:/, 'tag'],
       [/\b[A-Z][A-Z0-9_.]*\b/, { cases: { '@directives': 'keyword', '@default': 'keyword.operator' } }],
@@ -45,7 +45,7 @@ const GO_ASM: monaco.languages.IMonarchLanguage = {
 const MAKEFILE: monaco.languages.IMonarchLanguage = {
   tokenizer: {
     root: [
-      [/#.*$/, 'comment'],
+      [/#[^\n]*/, 'comment'],
       [/^\s*(-?include|sinclude|ifeq|ifneq|ifdef|ifndef|else|endif|define|endef|export|unexport|override|vpath)(?=\s|$)/, 'keyword'],
       [/^\.[A-Z_]+(?=\s*:)/, 'keyword'],
       // Target e variabili partono da colonna 0: le righe di ricetta (tab) non li imitano.

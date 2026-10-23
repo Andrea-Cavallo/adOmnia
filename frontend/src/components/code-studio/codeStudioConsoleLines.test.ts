@@ -63,6 +63,11 @@ describe('parseConsoleLines', () => {
     expect(lines[0].raw).toBe('\x1b[31mERROR\x1b[0m done')
   })
 
+  it('strips an OSC hyperlink closed with the ST terminator (ESC + backslash)', () => {
+    const lines = parseConsoleLines([chunk('\x1b]8;;http://example.test\x1b\\link\x1b]8;;\x1b\\ end\n')])
+    expect(lines[0].text).toBe('link end')
+  })
+
   it('reports file locations on the cleaned text', () => {
     const lines = parseConsoleLines([chunk('[ERROR] /work/src/Main.java:[12,34] cannot find symbol\n')])
     expect(lines[0].path).toBe('/work/src/Main.java')

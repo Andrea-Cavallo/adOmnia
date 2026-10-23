@@ -327,7 +327,7 @@ function xmlFormat(xml: string): string {
     // Basic indent
     const tabs = (n: number) => '  '.repeat(n)
     let indent = 0
-    result = result.replace(/(<\/?[^>]+>)/g, (m) => {
+    result = result.replace(/(<\/?[^<>]+>)/g, (m) => {
       if (m.startsWith('</')) indent = Math.max(0, indent - 1)
       const out = tabs(indent) + m
       if (!m.startsWith('</') && !m.endsWith('/>') && !m.startsWith('<?')) indent++
@@ -417,10 +417,10 @@ function parseTime(tag: number, buf: Uint8Array, s: number, e: number): { str: s
   const raw = decodeStr(buf, s, e)
   let year: number, mo: string, d: string, h: string, mi: string, sec: string
   if (tag === 0x17) { // UTCTime YYMMDDHHMMSS
-    year = parseInt(raw.slice(0, 2)) + (parseInt(raw.slice(0, 2)) >= 50 ? 1900 : 2000)
+    year = Number.parseInt(raw.slice(0, 2)) + (Number.parseInt(raw.slice(0, 2)) >= 50 ? 1900 : 2000)
     ;[mo, d, h, mi, sec] = [raw.slice(2, 4), raw.slice(4, 6), raw.slice(6, 8), raw.slice(8, 10), raw.slice(10, 12)]
   } else { // GeneralizedTime YYYYMMDDHHMMSS
-    year = parseInt(raw.slice(0, 4))
+    year = Number.parseInt(raw.slice(0, 4))
     ;[mo, d, h, mi, sec] = [raw.slice(4, 6), raw.slice(6, 8), raw.slice(8, 10), raw.slice(10, 12), raw.slice(12, 14)]
   }
   return {
@@ -886,9 +886,8 @@ function cpMember(cp: CpEntry[], index: number): { owner: string; name: string; 
 }
 
 function quoteJava(value: string): string {
+  // JSON.stringify already writes control characters in their escaped form.
   return JSON.stringify(value)
-    .replace(/\u0001/g, '\\u0001')
-    .replace(/\u0002/g, '\\u0002')
 }
 
 function cpValue(cp: CpEntry[], index: number): string {
@@ -1339,7 +1338,7 @@ function classInspect(hex: string, mode: 'skeleton' | 'details'): string {
   if (cleanHex.slice(0, 8).toUpperCase() !== 'CAFEBABE') {
     return `Magic: ${cleanHex.slice(0, 8) || '(empty)'} — expected CAFEBABE\nNot a valid Java class file.`
   }
-  const bytes = new Uint8Array(cleanHex.match(/.{1,2}/g)?.map((b) => parseInt(b, 16)) ?? [])
+  const bytes = new Uint8Array(cleanHex.match(/.{1,2}/g)?.map((b) => Number.parseInt(b, 16)) ?? [])
   const result = parseClassStructure(bytes)
   if (typeof result === 'string') return result
   return mode === 'skeleton' ? renderClassSkeleton(result) : renderClassDetails(result)
@@ -1785,7 +1784,7 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
               <input value={tsInput} onChange={(e) => setTsInput(e.target.value)} placeholder="Unix timestamp or ISO date" className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono focus:border-accent outline-none" />
               <button onClick={() => {
                 const ts = Number(tsInput)
-                setTsOutput(formatTimestamp(isNaN(ts) ? Date.parse(tsInput) : ts * 1000))
+                setTsOutput(formatTimestamp(Number.isNaN(ts) ? Date.parse(tsInput) : ts * 1000))
               }} className="px-3 py-1.5 bg-accent text-white rounded text-xs font-medium">Convert</button>
               <button onClick={() => { setTsInput(String(Math.floor(Date.now() / 1000))); setTsOutput(formatTimestamp(Date.now())) }} className="px-3 py-1.5 bg-surface-2 text-text-2 border border-border-2 rounded text-xs">Now</button>
             </div>
@@ -1851,8 +1850,9 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Left</label>
+                <label htmlFor="utils-diff-left" className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Left</label>
                 <textarea
+                  id="utils-diff-left"
                   value={diffMode === 'json' ? diffLeft : xmlDiffLeft}
                   onChange={(e) => diffMode === 'json' ? setDiffLeft(e.target.value) : setXmlDiffLeft(e.target.value)}
                   placeholder={diffMode === 'json' ? 'Left JSON' : 'Left XML'}
@@ -1862,8 +1862,9 @@ export function UtilsPanel({ initialTool = 'base64' }: { initialTool?: string })
                 />
               </div>
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Right</label>
+                <label htmlFor="utils-diff-right" className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Right</label>
                 <textarea
+                  id="utils-diff-right"
                   value={diffMode === 'json' ? diffRight : xmlDiffRight}
                   onChange={(e) => diffMode === 'json' ? setDiffRight(e.target.value) : setXmlDiffRight(e.target.value)}
                   placeholder={diffMode === 'json' ? 'Right JSON' : 'Right XML'}

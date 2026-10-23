@@ -201,14 +201,14 @@ export function NetToolsPanel() {
           <div className="flex flex-col gap-3">
             <div className="bg-surface-1 border border-border-1 rounded-md p-3">
               <div className="flex gap-2 flex-wrap">
-                <input value={dnsHost} onChange={(e) => setDnsHost(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') post('/dns/lookup', { host: dnsHost, type: dnsType, server: dnsServer }, setDnsResult) }}
+                <input value={dnsHost} onChange={(e) => setDnsHost(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void post('/dns/lookup', { host: dnsHost, type: dnsType, server: dnsServer }, setDnsResult) }}
                   placeholder="your-domain.com" className="flex-1 h-8 px-2.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4 min-w-[200px]" />
                 <select value={dnsType} onChange={(e) => setDnsType(e.target.value)} className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent">
                   {DNS_TYPES.map((t) => <option key={t}>{t}</option>)}
                 </select>
                 <input value={dnsServer} onChange={(e) => setDnsServer(e.target.value)} placeholder="8.8.8.8" // NOSONAR -- default public DNS resolvers and example gateway shown as UI labels and defaults, chosen by the user
                   className="w-36 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
-                <button onClick={() => post('/dns/lookup', { host: dnsHost, type: dnsType, server: dnsServer }, setDnsResult)}
+                <button onClick={() => void post('/dns/lookup', { host: dnsHost, type: dnsType, server: dnsServer }, setDnsResult)}
                   disabled={loading || !dnsHost} className="px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover">
                   {loading ? '…' : 'Lookup'}
                 </button>
@@ -223,12 +223,12 @@ export function NetToolsPanel() {
           <div className="flex flex-col gap-3">
             <div className="bg-surface-1 border border-border-1 rounded-md p-3">
               <div className="flex gap-2">
-                <input value={traceHost} onChange={(e) => setTraceHost(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') post('/dns/trace', { host: traceHost, type: traceType }, setTraceResult) }}
+                <input value={traceHost} onChange={(e) => setTraceHost(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void post('/dns/trace', { host: traceHost, type: traceType }, setTraceResult) }}
                   placeholder="your-domain.com" className="flex-1 h-8 px-2.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
                 <select value={traceType} onChange={(e) => setTraceType(e.target.value)} className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent">
                   {DNS_TYPES.map((t) => <option key={t}>{t}</option>)}
                 </select>
-                <button onClick={() => post('/dns/trace', { host: traceHost, type: traceType }, setTraceResult)}
+                <button onClick={() => void post('/dns/trace', { host: traceHost, type: traceType }, setTraceResult)}
                   disabled={loading || !traceHost} className="px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover">
                   Trace
                 </button>
@@ -270,7 +270,7 @@ export function NetToolsPanel() {
                 <span className="text-text-4 self-center">vs</span>
                 <input value={cmpServer2} onChange={(e) => setCmpServer2(e.target.value)} placeholder="1.1.1.1" // NOSONAR -- default public DNS resolvers and example gateway shown as UI labels and defaults, chosen by the user
                   className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
-                <button onClick={() => post('/dns/compare', { host: cmpHost, type: cmpType, servers: [cmpServer1, cmpServer2] }, setCmpResult)}
+                <button onClick={() => void post('/dns/compare', { host: cmpHost, type: cmpType, servers: [cmpServer1, cmpServer2] }, setCmpResult)}
                   disabled={loading || !cmpHost} className="px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover">
                   Compare
                 </button>
@@ -324,7 +324,7 @@ export function NetToolsPanel() {
                   className="flex-1 h-8 px-2.5 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
                 <input value={scanPorts} onChange={(e) => setScanPorts(e.target.value)} placeholder="common | 80,443 | 1-1000"
                   className="w-48 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4" />
-                <button onClick={() => post('/portscan', { host: scanHost, ports: scanPorts }, setScanResult)}
+                <button onClick={() => void post('/portscan', { host: scanHost, ports: scanPorts }, setScanResult)}
                   disabled={loading || !scanHost} className="px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover">
                   Scan
                 </button>
@@ -436,7 +436,7 @@ export function NetToolsPanel() {
                 <select value={corsMethod} onChange={(e) => setCorsMethod(e.target.value)} className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent">
                   {['GET', 'QUERY', 'POST', 'PUT', 'DELETE', 'PATCH'].map((m) => <option key={m}>{m}</option>)}
                 </select>
-                <button onClick={() => post('/cors', { url: corsUrl, origin: corsOrigin, method: corsMethod }, setCorsResult)}
+                <button onClick={() => void post('/cors', { url: corsUrl, origin: corsOrigin, method: corsMethod }, setCorsResult)}
                   disabled={loading || !corsUrl || !corsOrigin} className="px-4 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 hover:bg-accent-hover">
                   Test CORS
                 </button>

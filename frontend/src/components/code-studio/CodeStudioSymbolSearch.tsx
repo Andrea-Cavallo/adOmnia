@@ -42,7 +42,7 @@ export function CodeStudioSymbolSearch({ open, sessionId, onClose }: CodeStudioS
     setLoading(true)
     const timer = window.setTimeout(() => {
       request = requestWorkspaceSymbols(sessionId, query.trim())
-      request.then((items) => { setResults(items); setSelected(0); setError(null) })
+      void request.then((items) => { setResults(items); setSelected(0); setError(null) })
         .catch((reason: unknown) => { if (!String(reason).includes('cancel')) setError(String(reason)) })
         .finally(() => setLoading(false))
     }, SEARCH_DEBOUNCE_MS)

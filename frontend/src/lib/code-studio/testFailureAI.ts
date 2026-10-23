@@ -13,9 +13,9 @@ export async function testFailureDraft(run: GoIDETestRun, result: GoIDETestResul
   const directory = result.directory || run.results.find((item) => item.package === result.package && !item.name)?.directory || run.request.workingDirectory
   const paths = [...new Set([
     ...(result.failure?.relativePath ? [result.failure.relativePath] : []),
-    ...[...output.matchAll(/(?:^|\n)\s*((?:[A-Za-z]:[\\/])?[^:\r\n]+\.go):\d+/g)].map((match) => {
+    ...[...output.matchAll(/^[ \t]*((?:[A-Za-z]:[\\/])?[^\s:][^:\r\n]*\.go):\d+/gm)].map((match) => {
       const path = match[1].replace(/\\/g, '/')
-      const root = projectRoot.replace(/\\/g, '/').replace(/\/+$/, '')
+      const root = projectRoot.replace(/\\/g, '/').replace(/(?<!\/)\/+$/, '')
       if (root && (/^[A-Za-z]:\//.test(path) ? path.toLowerCase().startsWith(root.toLowerCase() + '/') : path.startsWith(root + '/'))) return path.slice(root.length + 1)
       return path.startsWith('/') || /^[A-Za-z]:\//.test(path) || !directory || path.startsWith(`${directory}/`) ? path : `${directory}/${path}`
     }),

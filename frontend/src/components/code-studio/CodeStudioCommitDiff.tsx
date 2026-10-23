@@ -137,7 +137,7 @@ export function CodeStudioCommitDiff({ sessionId, relativePath }: { sessionId: s
     try {
       const dirty = useCodeStudioStore.getState().documents.find((item) => item.document.sessionId === sessionId && item.document.relativePath === relativePath && item.dirty)
       if (dirty && !await useCodeStudioStore.getState().saveDocument(dirty.document.id)) throw new Error('save the file first: it has unsaved changes that could not be written')
-      const staged = await applyCodeStudioHunkToIndex(sessionId, `${rootPath.replace(/[\\/]+$/, '')}/${relativePath}`, lineChangeRange(change), 'stage')
+      const staged = await applyCodeStudioHunkToIndex(sessionId, `${rootPath.replace(/(^|[^\\/])[\\/]+$/, '$1')}/${relativePath}`, lineChangeRange(change), 'stage')
       const text = staged > 0 ? `Staged ${staged} change block${staged === 1 ? '' : 's'} of ${name}.` : `Nothing to stage in ${name}: this block is already in the index.`
       useCodeStudioLspStore.setState({ message: text })
       report(text)

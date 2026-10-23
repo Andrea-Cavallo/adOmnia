@@ -191,6 +191,8 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const lintReports = useCodeStudioLspStore((state) => state.lint[sessionId]?.reports)
   const [search, setSearch] = useToolView(sessionId, tool, 'filter', '')
   const [input, setInput] = useToolView(sessionId, tool, 'stdin', '')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const sendingInput = useRef(false)
   const allExecutions = useCodeStudioStore((state) => state.executions)
   const executions = useMemo(() => allExecutions.filter((execution) => execution.sessionId === sessionId), [allExecutions, sessionId])
   const activeRunId = useCodeStudioStore((state) => state.activeRunBySession[sessionId] ?? null)
@@ -234,9 +236,15 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const visibleLines = matchingLines.slice(windowStart.start)
 
   const submitInput = async () => {
-    if (!active || !input) return
-    await sendRunInput(active.id, `${input}\n`)
-    setInput('')
+    if (active?.status !== 'running' || sendingInput.current) return
+    sendingInput.current = true
+    try {
+      if (await sendRunInput(active.id, `${input}\n`)) {
+        setInput((current) => current === input ? '' : current)
+      }
+    } finally {
+      sendingInput.current = false
+    }
   }
 
   const hide = () => logsOnly ? useStudioTools.setState((state) => ({ views: { ...state.views, [toolKey(sessionId, 'logs')]: { ...state.views[toolKey(sessionId, 'logs')], open: false } } })) : useCodeStudioStore.getState().updateLayout({ bottomOpen: false })
@@ -294,7 +302,12 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
           <summary className="cursor-pointer text-accent">BuildKit · {buildSteps.filter(step=>step.state==='done'||step.state==='cached').length}/{buildSteps.length} steps · {buildSteps.filter(step=>step.state==='cached').length} cached</summary>
           {buildSteps.map(step=><p key={step.id} className={step.state==='error'?'text-danger':'text-text-3'}>#{step.id} · {step.state} · {step.title} {step.duration ?? ''}</p>)}
         </details>}
-        <div className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 text-[12.5px] leading-[21px]" style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontVariantLigatures: 'none' }}>
+        {/* Clicking the transcript focuses the stdin field, the way a terminal does; the field is already
+            reachable with Tab, so this div is a pointer convenience and not a control. */}
+        <div data-a11y-click-exempt onClick={(event) => {
+          if ((event.target as HTMLElement).closest('button, a') || window.getSelection()?.toString()) return
+          inputRef.current?.focus({ preventScroll: true })
+        }} className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 text-[12.5px] leading-[21px]" style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontVariantLigatures: 'none' }}>
           {!active && <p className="font-sans text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
           {active && visibleLines.length === 0 && <p className="text-text-4">Waiting for output…</p>}
           {hiddenLines > 0 && (
@@ -317,10 +330,10 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
             )
           })}
         </div>
-        {active?.status === 'running' && active.kind === 'run' && (
+        {active?.status === 'running' && (
           <form onSubmit={(event) => { event.preventDefault(); void submitInput() }} className="flex h-9 shrink-0 items-center border-t border-border-1 px-3">
             <span className="mr-2 font-mono text-[11px] text-accent">stdin ›</span>
-            <input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Program input" className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-text-1 outline-none" placeholder="Type input and press Enter" />
+            <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} aria-label="Program input" className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-text-1 outline-none focus-visible:ring-1 focus-visible:ring-accent" placeholder="Type input and press Enter" />
           </form>
         )}
         </div>

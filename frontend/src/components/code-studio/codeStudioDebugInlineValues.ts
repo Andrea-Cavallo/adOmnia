@@ -44,7 +44,7 @@ export function inlineValueVariables(lines: string[], pausedLine: number, variab
     const pattern = new RegExp(`(^|[^.\\w])${escapeRegExp(variable.name)}\\b`)
     for (let line = Math.min(pausedLine, lines.length); line >= lowest; line--) {
       const text = lines[line - 1] ?? ''
-      const code = text.replace(/\/\/.*$/, '')
+      const code = text.replace(/\/\/[^\r\n]*/, '')
       if (pattern.test(code)) {
         byLine.set(line, [...(byLine.get(line) ?? []), variable])
         break

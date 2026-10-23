@@ -19,7 +19,7 @@ ENV APPIMAGE_EXTRACT_AND_RUN=1
 # Debian package versions rotate with every security update; the base image tag already pins the release.
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl file gcc g++ git imagemagick \
+    ca-certificates curl file gcc g++ git gnupg imagemagick \
     libayatana-appindicator3-dev libgtk-3-dev libwebkit2gtk-4.1-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
@@ -27,12 +27,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Fail a piped RUN when any stage of the pipe fails.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# NOSONAR -- this runs the NodeSource setup script the same way the vendor documents; it is the
-# build stage only (no runtime container), versions are pinned by the major channel and the
-# resulting artifacts are checksummed in SHA256SUMS.txt at release time.
+# Node.js from the NodeSource apt repository, set up with the vendor's keyring method: the signing key is
+# downloaded to a file, dearmored and referenced with signed-by, so apt verifies the package signatures and
+# no downloaded script is executed. The repository path (node_20.x) pins the Node major.
 # Debian package versions rotate with every security update; the NodeSource major (20.x) is the pin.
 # hadolint ignore=DL3008
-RUN curl --proto '=https' --tlsv1.2 -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+RUN mkdir -p /etc/apt/keyrings \
+    && curl --proto '=https' --tlsv1.2 --max-redirs 3 -fsSL -o /tmp/nodesource.gpg.key \
+        https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    && gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg /tmp/nodesource.gpg.key \
+    && rm /tmp/nodesource.gpg.key \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
@@ -50,10 +57,9 @@ RUN go mod download
 
 COPY frontend/package*.json ./frontend/
 WORKDIR /src/frontend
-# NOSONAR -- the frontend toolchain (esbuild/rolldown and friends) needs its install scripts to
-# place the platform binary; --ignore-scripts would break the build. This is the build stage and
-# `npm ci` enforces the committed lockfile.
-RUN npm ci
+# `npm ci` installs exactly the committed lockfile; --ignore-scripts keeps dependency lifecycle scripts from
+# running (esbuild/rolldown get their platform binary from optional dependencies, no script needed).
+RUN npm ci --ignore-scripts
 WORKDIR /src
 
 COPY . .
@@ -86,7 +92,8 @@ RUN set -e && \
     mkdir -p /out && \
     mv ./*.AppImage "/out/adOmnia-${VERSION}-linux-amd64.AppImage"
 
-# NOSONAR -- artifact-only image: it carries the AppImage file out of the build and is never run as
-# a container, so there is no process or user to drop.
+# Artifact-only image: it carries the AppImage file out of the build and is never run as a container.
+# A numeric non-root USER keeps it safe if someone runs it anyway (no passwd file is needed for a uid).
 FROM scratch AS artifact
+USER 65534:65534
 COPY --from=builder /out /

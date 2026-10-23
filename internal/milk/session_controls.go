@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 func (m *Manager) SessionControls(root string) (SessionControls, error) {
@@ -274,13 +275,42 @@ func prefixPaths(files []string) []string {
 	return out
 }
 
-func writeImageAttachment(attachment ImageAttachment, mime string, data []byte) (string, error) {
-	directory := filepath.Join(os.TempDir(), "adomnia-milk-images")
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return "", fmt.Errorf("cannot prepare the image attachment folder: %w", err)
+// attachmentRoot è la cartella privata dell'utente per gli allegati ("" = cache non disponibile); sostituibile nei test.
+// Non si usa un percorso fisso nella cartella temporanea condivisa: è scrivibile da tutti gli utenti locali e un
+// nome prevedibile potrebbe essere creato in anticipo da un altro utente.
+var attachmentRoot = func() string {
+	cache, err := os.UserCacheDir()
+	if err != nil || cache == "" {
+		return ""
 	}
-	// Anche se la cartella arriva da una versione precedente: permessi restrittivi sempre.
-	if err := os.Chmod(directory, 0o700); err != nil {
+	return filepath.Join(cache, "adomnia", "milk-images")
+}
+
+var (
+	fallbackAttachmentOnce sync.Once
+	fallbackAttachmentDir  string
+	fallbackAttachmentErr  error
+)
+
+// attachmentDirectory restituisce una cartella 0700 per gli allegati: quella della cache utente o, senza cache,
+// una cartella temporanea con nome casuale (os.MkdirTemp la crea 0700).
+func attachmentDirectory() (string, error) {
+	if directory := attachmentRoot(); directory != "" {
+		if err := os.MkdirAll(directory, 0o700); err != nil {
+			return "", err
+		}
+		// Anche se la cartella arriva da una versione precedente: permessi restrittivi sempre.
+		return directory, os.Chmod(directory, 0o700)
+	}
+	fallbackAttachmentOnce.Do(func() {
+		fallbackAttachmentDir, fallbackAttachmentErr = os.MkdirTemp("", "adomnia-milk-images-*")
+	})
+	return fallbackAttachmentDir, fallbackAttachmentErr
+}
+
+func writeImageAttachment(attachment ImageAttachment, mime string, data []byte) (string, error) {
+	directory, err := attachmentDirectory()
+	if err != nil {
 		return "", fmt.Errorf("cannot prepare the image attachment folder: %w", err)
 	}
 	sum := sha256.Sum256(data)

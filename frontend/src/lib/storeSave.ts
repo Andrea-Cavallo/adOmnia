@@ -40,12 +40,8 @@ export function immediateSave(key: string, fn: () => Promise<void>): void {
   if (previous) {
     write = previous.then(save)
   } else {
-    try {
-      write = save()
-    } catch (e) {
-      reportSaveError(e)
-      return
-    }
+    // save() is async and reports its own failures, so it never throws here.
+    write = save()
   }
   writes.set(key, write)
   void write.then(() => {

@@ -9,6 +9,7 @@ import (
 	"encoding/json/v2"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -217,5 +218,44 @@ func TestNewSessionRequestsFreshMilkContextAndKeepsLegacyModelList(t *testing.T)
 	}
 	if len(result.Controls) != 2 || result.Controls[0].ID != "think" || result.Controls[1].ID != "_legacy_model" {
 		t.Fatalf("capabilities lost: %+v", result)
+	}
+}
+
+func TestImageAttachmentsLiveInAPrivateFolderNotInTheSharedTempDir(t *testing.T) {
+	base := filepath.Join(t.TempDir(), "cache", "adomnia", "milk-images")
+	original := attachmentRoot
+	attachmentRoot = func() string { return base }
+	t.Cleanup(func() { attachmentRoot = original })
+
+	path, err := writeImageAttachment(ImageAttachment{Name: "shot.png"}, "image/png", []byte("png-bytes"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(path) != base {
+		t.Fatalf("attachment written to %s, want the private folder %s", path, base)
+	}
+	if got, err := os.ReadFile(path); err != nil || string(got) != "png-bytes" {
+		t.Fatalf("content = %q, %v", got, err)
+	}
+	if runtime.GOOS != "windows" {
+		for _, entry := range []string{base, path} {
+			info, err := os.Stat(entry)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.Mode().Perm()&0o077 != 0 {
+				t.Fatalf("%s is accessible to other users: %v", entry, info.Mode().Perm())
+			}
+		}
+	}
+}
+
+func TestDefaultAttachmentFolderIsNotTheSharedTempDir(t *testing.T) {
+	root := attachmentRoot()
+	if root == "" {
+		t.Skip("no user cache directory on this machine")
+	}
+	if rel, err := filepath.Rel(os.TempDir(), root); err == nil && !strings.HasPrefix(rel, "..") {
+		t.Fatalf("%s is inside the shared temp dir %s", root, os.TempDir())
 	}
 }

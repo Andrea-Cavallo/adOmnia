@@ -7,7 +7,7 @@ import { withContentKeys } from '@/lib/contentKeys'
 // Supports the subset that shows up in real specs: links, bold, italic, inline
 // code, paragraphs, and unordered lists.
 
-const INLINE = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|`([^`]+)`|\*([^*]+)\*|_([^_]+)_/g
+const INLINE = /\[([^[\]]+)\]\(([^()\s]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|`([^`]+)`|\*([^*]+)\*|_([^_]+)_/g
 
 function inlineNodes(text: string, keyBase: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = []

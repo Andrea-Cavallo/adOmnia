@@ -176,7 +176,7 @@ export function createLogParser(options: ParseOptions & { format?: LogFormat } =
         truncated = true
         return
       }
-      const clean = stripAnsi(line).replace(/\s+$/, '')
+      const clean = stripAnsi(line).trimEnd()
       const size = utf8ByteLength(clean)
       const { body, ts, stream } = splitCriPrefix(clean)
 

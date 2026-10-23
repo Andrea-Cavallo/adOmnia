@@ -35,10 +35,10 @@ export function terminalLinkTarget(path: string, workingDirectory: string, proje
 
 /** Percorso relativo alla radice del progetto ('' per la radice stessa), o null se è fuori dal progetto. */
 export function projectRelativePath(absolute: string, projectRoots: readonly string[]): string | null {
-  const normalized = absolute.replace(/\\/g, '/').replace(/\/+$/, '')
+  const normalized = absolute.replace(/\\/g, '/').replace(/(^|[^/])\/+$/, '$1')
   for (const root of projectRoots) {
     if (!root) continue
-    const base = root.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+    const base = root.replace(/\\/g, '/').replace(/(^|[^/])\/+$/, '$1').toLowerCase()
     if (normalized.toLowerCase() === base) return ''
     if (normalized.toLowerCase().startsWith(base + '/')) return normalized.slice(base.length + 1)
   }
@@ -94,14 +94,16 @@ export class TerminalLineTracker {
   push(data: string): string[] {
     const done: string[] = []
     if (data.startsWith('\x1b[200~')) data = data.slice(6).replace(/\x1b\[201~$/, '')
-    for (let index = 0; index < data.length; index++) {
+    let index = 0
+    while (index < data.length) {
       const char = data[index]
+      let consumed = 1
       if (char === '\r' || char === '\n') {
         const command = this.line.trim()
         if (command && !this.uncertain) done.push(command)
         this.line = ''
         this.uncertain = false
-        if (char === '\r' && data[index + 1] === '\n') index++
+        if (char === '\r' && data[index + 1] === '\n') consumed = 2
       } else if (char === '\x7f' || char === '\b') {
         this.line = this.line.slice(0, -1)
       } else if (char === '\x03' || char === '\x15') {
@@ -109,10 +111,11 @@ export class TerminalLineTracker {
         this.uncertain = false
       } else if (char === '\x1b' || char === '\t' || char < ' ') {
         this.uncertain = true
-        if (char === '\x1b') index = skipEscape(data, index)
+        if (char === '\x1b') consumed = skipEscape(data, index) - index + 1
       } else {
         this.line += char
       }
+      index += consumed
     }
     return done
   }
@@ -143,5 +146,5 @@ export function cleanBufferText(lines: readonly { text: string; wrapped: boolean
     if (line.wrapped && out.length) out[out.length - 1] += line.text
     else out.push(line.text)
   }
-  return out.map((line) => line.replace(/\s+$/, '')).join('\n').replace(/\n+$/, '')
+  return out.map((line) => line.trimEnd()).join('\n').trimEnd()
 }

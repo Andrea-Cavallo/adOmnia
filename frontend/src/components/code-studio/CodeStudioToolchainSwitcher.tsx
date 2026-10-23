@@ -41,7 +41,7 @@ export function CodeStudioToolchainSwitcher({ sessionId, toolchain, className, o
         {toolchain?.warning && <TriangleAlert size={11} />}{label}
       </button>
       {open && <>
-        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 z-40" role="presentation" onClick={() => setOpen(false)} />
         <div role="menu" className="absolute bottom-full right-0 z-50 mb-1 w-64 overflow-hidden rounded-md border border-border-2 bg-surface-1 py-1 text-[11px] shadow-xl">
           <div className="px-3 pb-1 pt-0.5 text-[9px] font-semibold uppercase tracking-wide text-text-4">Go SDK for this project</div>
           {installed === null && <div className="flex items-center gap-2 px-3 py-1.5 text-text-4"><Loader2 size={11} className="animate-spin" /> Loading…</div>}

@@ -356,7 +356,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
         const path = row.dataset.treePath ?? ''
         setSelectedPath(path)
         setCreationFolder(row.dataset.treeDirectory === 'true' ? path : parentOf(path))
-      }} role="tree" aria-label="Project files" onKeyDown={moveTreeFocus} className="min-h-0 flex-1 overflow-auto px-2 py-1" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => {
+      }} role="tree" aria-label="Project files" tabIndex={0} onKeyDown={moveTreeFocus} className="min-h-0 flex-1 overflow-auto px-2 py-1" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => {
         if (event.target !== event.currentTarget) return
         event.preventDefault()
         const source = event.dataTransfer.getData('application/x-adomnia-code-studio-path')

@@ -71,6 +71,69 @@ func writeCrate(t *testing.T, source string) string {
 	return root
 }
 
+func TestRealCargoRunWaitsForConsoleInput(t *testing.T) {
+	requireRealCargo(t)
+	root := writeCrate(t, `use std::io;
+fn main() {
+    println!("enter the number:");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+    let number: u64 = input.trim().parse().unwrap();
+    println!("NUMBER:{}", number);
+}`)
+	spec, err := New().CommandSpec(run.Request{Kind: "bin", Root: root, WorkingDirectory: root, LanguageOptions: []byte(`{}`), Environment: os.Environ()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec.SessionID, spec.Kind = "interactive", "bin"
+	manager := run.NewProcessManager()
+	t.Cleanup(manager.Shutdown)
+	ready := make(chan struct{}, 1)
+	finished := make(chan run.Execution, 1)
+	var output strings.Builder
+	manager.SetEventSink(func(kind string, execution run.Execution, payload any) {
+		if chunk, ok := payload.(run.ProcessOutput); ok {
+			output.WriteString(chunk.Text)
+			if strings.Contains(chunk.Text, "enter the number:") {
+				select {
+				case ready <- struct{}{}:
+				default:
+				}
+			}
+		}
+		if kind == "run.finished" {
+			finished <- execution
+		}
+	})
+	execution, err := manager.Start(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-ready:
+	case <-finished:
+		t.Fatal("program exited before accepting input")
+	case <-time.After(time.Minute):
+		t.Fatal("program did not prompt for input")
+	}
+	select {
+	case <-finished:
+		t.Fatal("stdin reached EOF before user input")
+	case <-time.After(150 * time.Millisecond):
+	}
+	if err := manager.WriteStdin(execution.ID, "12\n"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case result := <-finished:
+		if result.ExitCode == nil || *result.ExitCode != 0 || !strings.Contains(output.String(), "NUMBER:12") {
+			t.Fatalf("input failed: %+v\n%s", result, output.String())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("program did not consume input")
+	}
+}
+
 // Con cargo vero: l'errore di tipo diventa un diagnostico strutturato, la console mostra il testo
 // leggibile di rustc e nessun JSON di cargo; una build pulita pubblica una lista vuota (non nil).
 func TestRealCargoBuildErrorsBecomeDiagnosticsAndReadableConsole(t *testing.T) {

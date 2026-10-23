@@ -27,6 +27,7 @@ export function DialogOverlay({ open, onClose, children, className }: DialogProp
     <div
       ref={overlayRef}
       data-a11y-click-exempt="dialog-backdrop"
+      role="presentation"
       tabIndex={-1}
       onClick={handleBackdropClick}
       className={cn(

@@ -392,10 +392,10 @@ function SaveEnvVarModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60" role="presentation" onClick={onClose}>
       <div
         className="w-[440px] max-w-[92vw] rounded-lg border border-border-1 bg-surface-1 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
+        role="presentation" onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3">
           <span className="flex-1 text-sm font-semibold text-text-1">{tr('Save as environment variable')}</span>
@@ -468,8 +468,8 @@ function FullscreenBodyModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
-      <div className="w-full h-full max-w-[95vw] max-h-[95vh] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" role="presentation" onClick={onClose}>
+      <div className="w-full h-full max-w-[95vw] max-h-[95vh] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" role="presentation" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
           <span className="text-sm font-semibold text-text-1 flex-1">{tr('Response Body')}</span>
           <button onClick={() => navigator.clipboard.writeText(body)} className="px-2 py-1 text-xs text-accent hover:text-accent-light">{tr('Copy')}</button>
@@ -505,9 +505,10 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   const [copiedBody, setCopiedBody] = useState(false)
   const copyBody = () => {
     if (!response) return
-    navigator.clipboard.writeText(response.body)
-    setCopiedBody(true)
-    setTimeout(() => setCopiedBody(false), 1200)
+    void navigator.clipboard.writeText(response.body).then(() => {
+      setCopiedBody(true)
+      setTimeout(() => setCopiedBody(false), 1200)
+    }).catch(() => undefined)
   }
   // Right-click on a response value → save it into an environment variable.
   const [valueMenu, setValueMenu] = useState<{ x: number; y: number; value: string; copyText: string; suggestedKey: string } | null>(null)

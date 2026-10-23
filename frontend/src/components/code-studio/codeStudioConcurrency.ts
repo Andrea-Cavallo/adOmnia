@@ -328,21 +328,24 @@ export function parseRaceReports(text: string): RaceReport[] {
     const raw = text.slice(cursor, end < 0 ? undefined : end + RACE_END.length)
     const lines = raw.split(/\r?\n/)
     const report: RaceReport = { id: '', accesses: [], goroutines: [], raw, occurrences: 1, sources: [] }
-    for (let index = 1; index < lines.length; index++) {
+    let index = 1
+    while (index < lines.length) {
       const line = lines[index].trim()
       const access = ACCESS_LINE.exec(line)
       if (access) {
         const parsed = parseFrames(lines, index + 1)
         report.accesses.push({ kind: access[1], address: access[2], goroutine: access[3] ? Number(access[3]) : MAIN_GOROUTINE_ID, frames: parsed.frames })
-        index = parsed.next - 1
+        index = parsed.next
         continue
       }
       const created = CREATED_LINE.exec(line)
       if (created) {
         const parsed = parseFrames(lines, index + 1)
         report.goroutines.push({ id: Number(created[1]), state: created[2], createdAt: parsed.frames })
-        index = parsed.next - 1
+        index = parsed.next
+        continue
       }
+      index += 1
     }
     const first = report.accesses[0]?.frames[0]
     report.id = `${first?.path ?? ''}:${first?.line ?? 0}|${report.accesses[1]?.frames[0]?.line ?? 0}|${report.accesses[0]?.address ?? reports.length}`

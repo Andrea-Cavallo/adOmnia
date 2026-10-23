@@ -17,7 +17,7 @@ export function CodeExportDialog({ request, onClose }: { request: CodeRequest; o
   }
 
   return (
-    <div className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div role="presentation" className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-labelledby="code-export-title" className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-md border border-border-2 bg-surface-2 shadow-2xl">
         <div className="flex h-11 flex-none items-center gap-2 border-b border-border-1 px-3.5">
           <Code2 size={14} className="text-accent" />

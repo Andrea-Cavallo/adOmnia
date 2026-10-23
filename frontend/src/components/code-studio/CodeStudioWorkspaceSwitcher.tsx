@@ -51,7 +51,7 @@ function WorkspaceNameDialog({ dialog, onClose }: { dialog: NameDialog; onClose:
     >
       <form id="code-studio-workspace-form" onSubmit={(event) => { event.preventDefault(); void submit() }}>
         <CodeStudioField label="Name">
-          <input ref={inputRef} autoFocus value={name} maxLength={MAX_NAME_LENGTH} onChange={(event) => setName(event.target.value)} placeholder="e.g. Payments" className="gs-input" />
+          <input ref={inputRef} value={name} maxLength={MAX_NAME_LENGTH} onChange={(event) => setName(event.target.value)} placeholder="e.g. Payments" className="gs-input" />
         </CodeStudioField>
       </form>
     </CodeStudioModal>

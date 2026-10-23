@@ -4,8 +4,8 @@
 //
 // Usage: node scripts/generate-brand-icons.mjs <path-to-simple-icons-checkout>
 // To add a brand: append its slug (the SVG file name in icons/) to SLUGS and rerun.
-import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync, statSync, writeFileSync } from 'node:fs'
+import { join, resolve, sep } from 'node:path'
 
 const SLUGS = [
   'go', 'docker', 'git', 'github', 'githubactions', 'gitlab', 'kubernetes', 'helm', 'terraform',
@@ -20,20 +20,33 @@ const SLUGS = [
   'claude',
 ]
 
-const root = process.argv[2]
-if (!root) {
+const rootArgument = process.argv[2]
+if (!rootArgument) {
   console.error('usage: node scripts/generate-brand-icons.mjs <simple-icons checkout>')
   process.exit(1)
 }
 
-// NOSONAR -- root is the Simple Icons checkout the developer passes on the command line: this is a
-// dev-only generator, run by hand (or by an agent) against a local clone, never on user input.
-const data = JSON.parse(readFileSync(join(root, 'data', 'simple-icons.json'), 'utf8'))
+// The checkout the developer passes on the command line, made absolute. Everything this script reads is then
+// resolved under it and refused if it would leave it (the slug list below is a constant, but the check does
+// not depend on that).
+const root = resolve(rootArgument)
+if (!statSync(root, { throwIfNoEntry: false })?.isDirectory()) {
+  console.error(`not a directory: ${root}`)
+  process.exit(1)
+}
+
+function inRoot(...segments) {
+  const target = resolve(root, ...segments)
+  if (target !== root && !target.startsWith(root + sep)) throw new Error(`refusing to read outside the checkout: ${target}`)
+  return target
+}
+
+const data = JSON.parse(readFileSync(inRoot('data', 'simple-icons.json'), 'utf8'))
 const byTitle = new Map(data.map((entry) => [entry.title, entry]))
 
 const icons = SLUGS.map((slug) => {
-  // NOSONAR -- slug comes from the constant SLUGS list above, never from a request or argument.
-  const svg = readFileSync(join(root, 'icons', `${slug}.svg`), 'utf8')
+  if (!/^[a-z0-9-]+$/.test(slug)) throw new Error(`invalid icon slug: ${slug}`)
+  const svg = readFileSync(inRoot('icons', `${slug}.svg`), 'utf8')
   const title = svg.match(/<title>([^<]+)<\/title>/)?.[1]
   const path = svg.match(/ d="([^"]+)"/)?.[1]
   const entry = title && byTitle.get(title.replace(/&amp;/g, '&'))

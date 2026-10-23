@@ -333,7 +333,7 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
       </section>
 
       {insertText != null && selected && (
-        <div className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setInsertText(null) }}>
+        <div className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setInsertText(null) }}>
           <div role="dialog" aria-modal="true" aria-labelledby="mongo-insert-title" className="w-full max-w-2xl overflow-hidden rounded-md border border-border-2 bg-surface-2 shadow-2xl">
             <div className="flex h-11 items-center gap-2 border-b border-border-1 px-3.5">
               <FileJson size={14} className="text-accent" />
@@ -428,7 +428,7 @@ function DocumentTable({ allRows, rows, start, paddingTop, paddingBottom, widthO
         </tr>
       </thead>
       <tbody>
-        {paddingTop > 0 && <tr aria-hidden="true" style={{ height: paddingTop }}><td colSpan={columns.length + 1} /></tr>}
+        {paddingTop > 0 && <tr role="presentation" style={{ height: paddingTop }}><td colSpan={columns.length + 1} /></tr>}
         {rows.map((row, i) => {
           const raw = rawDocs[start + i]
           return (
@@ -466,7 +466,7 @@ function DocumentTable({ allRows, rows, start, paddingTop, paddingBottom, widthO
             </tr>
           )
         })}
-        {paddingBottom > 0 && <tr aria-hidden="true" style={{ height: paddingBottom }}><td colSpan={columns.length + 1} /></tr>}
+        {paddingBottom > 0 && <tr role="presentation" style={{ height: paddingBottom }}><td colSpan={columns.length + 1} /></tr>}
       </tbody>
     </table>
   )

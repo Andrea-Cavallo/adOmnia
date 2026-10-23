@@ -33,7 +33,7 @@ function provider(side: MyBatisSide): monaco.languages.DefinitionProvider {
       if (!document) return null
       // Un'interfaccia mapper ha il metodo sulla riga; un mapper XML ha lo statement: le altre righe non costano nulla.
       const text = model.getLineContent(position.lineNumber)
-      if (side === 'java' ? !/\w+\s*\(/.test(text) : !/<(select|insert|update|delete)\b/.test(text)) return null
+      if (side === 'java' ? !/\b\w+\s*\(/.test(text) : !/<(select|insert|update|delete)\b/.test(text)) return null
       const index = await indexFor(document.document.sessionId)
       const link = index ? mybatisLinkAt(index.links ?? [], document.document.relativePath, position.lineNumber, side) : null
       const target = link ? mybatisTarget(link, side) : null

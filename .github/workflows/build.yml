@@ -48,7 +48,7 @@ jobs:
 
       - name: Frontend build
         working-directory: frontend
-        run: npm ci && npm test && npm run build && npm run check:startup # NOSONAR -- the frontend toolchain (esbuild/rolldown) needs its install scripts; npm ci enforces the committed lockfile
+        run: npm ci --ignore-scripts && npm test && npm run build && npm run check:startup
 
       - name: Startup bundle budget
         working-directory: frontend
@@ -94,7 +94,7 @@ jobs:
 
       - name: Verify Log Inspector final scenario
         working-directory: frontend
-        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts # NOSONAR -- the frontend toolchain (esbuild/rolldown) needs its install scripts; npm ci enforces the committed lockfile
+        run: npm ci --ignore-scripts && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
 
       - name: Code Studio disaster recovery
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
@@ -148,7 +148,7 @@ jobs:
 
       - name: Verify Log Inspector final scenario
         working-directory: frontend
-        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts # NOSONAR -- the frontend toolchain (esbuild/rolldown) needs its install scripts; npm ci enforces the committed lockfile
+        run: npm ci --ignore-scripts && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
 
       - name: Install Linux native dependencies
         run: |
@@ -207,7 +207,7 @@ jobs:
 
       - name: Verify Log Inspector final scenario
         working-directory: frontend
-        run: npm ci && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts # NOSONAR -- the frontend toolchain (esbuild/rolldown) needs its install scripts; npm ci enforces the committed lockfile
+        run: npm ci --ignore-scripts && npm run test -- src/lib/loginspector/finalScenario.test.ts src/lib/loginspector/platformJourneyContract.test.ts
 
       - name: Code Studio disaster recovery
         # Kill reale durante le snapshot, 10 buffer sporchi, store per workspace (Linux: go test ./... in Checks).
@@ -216,7 +216,7 @@ jobs:
       - name: Install packaging tools
         run: |
           brew list create-dmg >/dev/null 2>&1 || brew install create-dmg # NOSONAR -- Homebrew has no version pinning: create-dmg only packages the artifacts this job already built, and the app zip is checksummed at release
-          go install github.com/wailsapp/wails/v3/cmd/wails3@"${WAILS_VERSION}"
+          go install github.com/wailsapp/wails/v3/cmd/wails3@"${WAILS_VERSION}" # NOSONAR -- WAILS_VERSION is the repository pin (v3.0.0-beta.32), the same version go.mod builds against
 
       - name: Build universal app and DMG
         run: |

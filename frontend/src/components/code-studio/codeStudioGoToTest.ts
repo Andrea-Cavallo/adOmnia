@@ -6,7 +6,7 @@ export interface GoFunctionRef {
   receiver: string
 }
 
-const FUNC_DECL = /^func\s+(?:\(\s*(?:\w+\s+)?\*?\s*([\w.]+)(?:\[[^\]]*\])?\s*\)\s*)?(\w+)/
+const FUNC_DECL = /^func[ \t]+(?:\([ \t]*(?:\w+[ \t]+)?(?:\*[ \t]*)?([\w.]+)(?:\[[^\]]*\])?[ \t]*\)[ \t]*)?(\w+)/
 
 export function isTestFile(relativePath: string): boolean {
   return relativePath.endsWith('_test.go')

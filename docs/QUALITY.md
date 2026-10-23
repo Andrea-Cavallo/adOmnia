@@ -59,7 +59,12 @@ sonar-scanner -Dsonar.host.url=http://localhost:9000 -Dsonar.token=<token>
 ```
 
 The analysis profile lives in `sonar-project.properties` (sources, exclusions for generated code and
-testdata, test inclusions, coverage report paths). Coverage is optional; to feed it:
+testdata, test inclusions, coverage report paths). `frontend/coverage/**` and `frontend/src/wailsjs/**` are
+excluded: the lcov HTML report is generated output, and analysing it produced ~1,400 findings about the
+report's own tables and inputs instead of the product; the Wails bindings are generated the same way.
+`sonar.cpd.exclusions` keeps `frontend/src/lib/translations/**` out of the duplication metric only — the same
+keys repeat once per language, so the duplication is structural — while those files stay analysed for issues
+and coverage. Coverage is optional; to feed it:
 
 ```bash
 go test ./internal/... ./cmd/... -coverprofile=coverage.out -covermode=atomic

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, FilePlus2, History, Pencil, Play, Search, Star, Trash2, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { parseSnippet, renderSnippetText } from './snippet'
@@ -86,6 +86,8 @@ export function QueryConsole(props: QueryConsoleProps) {
   const [savedCategory, setSavedCategory] = useState<ConsoleCategory | ''>('')
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
+  const renameRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (renaming) renameRef.current?.focus() }, [renaming])
 
   const all = useMemo(() => templatesFor(driver), [driver])
   const personal = useMemo(() => saved.filter((q) => q.personal), [saved])
@@ -206,7 +208,7 @@ export function QueryConsole(props: QueryConsoleProps) {
                 <div key={q.id} className="mb-1 rounded-md border border-border-1 bg-surface-2 hover:border-accent/40">
                   {renaming?.id === q.id ? (
                     <input
-                      autoFocus
+                      ref={renameRef}
                       value={renaming.name}
                       aria-label="Saved query name"
                       onChange={(e) => setRenaming({ id: q.id, name: e.target.value })}

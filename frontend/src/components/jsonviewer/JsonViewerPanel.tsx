@@ -299,6 +299,7 @@ export function JsonViewerPanel() {
     return (
       <section
         data-a11y-click-exempt="pane-activation-follows-focus"
+        role="presentation"
         className={cn(
           'flex min-h-0 flex-1 flex-col overflow-hidden border-border-1',
           pane === 'right' && 'border-l',
@@ -394,7 +395,7 @@ export function JsonViewerPanel() {
   return (
     <>
       {session.isFullscreen && (
-        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => updateSession({ isFullscreen: false })} />
+        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" role="presentation" onClick={() => updateSession({ isFullscreen: false })} />
       )}
       <div
         className={shellClass}

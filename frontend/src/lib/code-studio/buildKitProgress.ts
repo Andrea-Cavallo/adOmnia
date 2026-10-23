@@ -4,10 +4,10 @@ export interface BuildKitStep { id: string; title: string; state: 'running' | 'c
 export function buildKitProgress(text: string): BuildKitStep[] {
   const steps = new Map<string, BuildKitStep>()
   for (const line of text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g,'').split(/\r?\n/)) {
-    const match = /^#(\d+)\s+(.+)$/.exec(line)
+    const match = /^#(\d+)\s+(\S.*)$/.exec(line)
     if (!match) continue
     const [,id,body] = match
-    const terminal = /^(DONE|CACHED|ERROR|CANCELED)(?:\s+(.*))?$/.exec(body)
+    const terminal = /^(DONE|CACHED|ERROR|CANCELED)(?:\s+(\S.*))?$/.exec(body)
     const existing = steps.get(id)
     if (terminal && existing) {
       const states = { DONE:'done', CACHED:'cached', ERROR:'error', CANCELED:'cancelled' } as const

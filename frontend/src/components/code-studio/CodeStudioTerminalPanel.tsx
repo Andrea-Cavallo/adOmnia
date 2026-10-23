@@ -91,6 +91,7 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
   const [splitId, setSplitId] = useToolView<string | null>(session.id, 'terminal', 'splitId', null)
   const [focusedId, setFocusedId] = useToolView<string | null>(session.id, 'terminal', 'focusedId', null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const renameRef = useRef<HTMLInputElement | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -116,6 +117,11 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
   useEffect(() => {
     listGoIDETerminalProfiles().then(setProfiles).catch((reason) => setError(errorText(reason))).finally(() => setProfilesLoaded(true))
   }, [])
+
+  // Il campo di rinomina compare al doppio clic sul nome del terminale: il focus lo diamo qui.
+  useEffect(() => {
+    if (renamingId) renameRef.current?.select()
+  }, [renamingId])
 
   useEffect(() => {
     let cancelled = false
@@ -341,7 +347,7 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
           if (!current) return <span className="text-[12px] text-text-4">No terminal</span>
           return renamingId === current.id ? (
             <input
-              autoFocus
+              ref={renameRef}
               defaultValue={current.name}
               maxLength={64}
               aria-label="Terminal name"
@@ -510,6 +516,7 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
         {terminals.map((terminal) => (
           <div
             key={terminal.id}
+            role="presentation"
             className={`terminal-pane absolute inset-y-0 px-3 py-1.5 ${splitVisible && terminal.id === splitId ? 'border-l border-border-1' : ''}`}
             style={paneStyle(terminal.id)}
             onMouseDown={() => setFocusedId(terminal.id)}

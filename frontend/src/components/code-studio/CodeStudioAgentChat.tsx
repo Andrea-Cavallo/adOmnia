@@ -62,7 +62,7 @@ function openLinksOutside(event: MouseEvent<HTMLDivElement>) {
 
 function Prose({ markdown }: { markdown: string }) {
   const html = useMemo(() => toSafeHtml(markdown), [markdown])
-  return <div className="milk-prose" data-a11y-click-exempt onClick={openLinksOutside} dangerouslySetInnerHTML={{ __html: html }} />
+  return <div className="milk-prose" data-a11y-click-exempt role="presentation" onClick={openLinksOutside} dangerouslySetInnerHTML={{ __html: html }} />
 }
 
 /** milk's core idea, made visible: which agent answered — the cheap primary or the deep escalation. */

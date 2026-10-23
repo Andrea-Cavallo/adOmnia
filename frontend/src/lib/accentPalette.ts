@@ -2,7 +2,7 @@ export function validAccent(value?: string): value is string {
   return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
 }
 
-function rgb(hex: string): number[] { return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)) }
+function rgb(hex: string): number[] { return [1, 3, 5].map(i => Number.parseInt(hex.slice(i, i + 2), 16)) }
 function toHex(channels: number[]): string { return '#' + channels.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('') }
 export function luminance(color: string): number {
   const values = rgb(color).map(v => { const c = v / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4 })

@@ -66,7 +66,7 @@ export function CodeStudioMoveSymbolDialog() {
     }
   }
   return (
-    <div className="gs-modal-backdrop ad-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) close() }}>
+    <div className="gs-modal-backdrop ad-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close() }}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="code-studio-move-symbol-title" className="w-[520px] max-w-[calc(100vw-32px)] rounded-lg border border-border-1 bg-surface-1 p-4 shadow-xl">
         <div className="mb-3 flex items-center gap-2">
           <FolderInput size={15} className="text-accent" />

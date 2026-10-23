@@ -108,8 +108,38 @@ const HTTP_METHODS: HttpMethod[] = ['GET', 'QUERY', 'POST', 'PUT', 'PATCH', 'DEL
 const TEMPLATE_REFERENCE = /\{\{\s*([\w.-]+)\s*\}\}/g
 function stripFence(value: string) {
   const trimmed = value.trim()
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+  // The captured body is trimmed below, so the whitespace around it does not need its own quantifier.
+  const fenced = trimmed.match(/^```(?:[ \t]*json)?([\s\S]*?)```$/i)
   return (fenced?.[1] ?? trimmed).trim()
+}
+
+/** Leading and trailing underscores, for the placeholder names built from arbitrary keys. */
+function trimUnderscores(value: string): string {
+  let start = 0
+  let end = value.length
+  while (start < end && value[start] === '_') start += 1
+  while (end > start && value[end - 1] === '_') end -= 1
+  return value.slice(start, end)
+}
+
+/**
+ * `key: value` / `key = value` on one line when the key names a secret. Scanned in one pass instead of
+ * matching the same characters twice around the keyword, which is quadratic on long unbroken keys.
+ */
+function secretAssignment(line: string): { prefix: string; value: string } | null {
+  let at = 0
+  while (at < line.length && /\s/.test(line[at])) at += 1
+  if (line[at] === '"' || line[at] === "'") at += 1
+  const keyStart = at
+  while (at < line.length && /[\w .-]/.test(line[at])) at += 1
+  if (!SECRET_NAME.test(line.slice(keyStart, at))) return null
+  if (line[at] === '"' || line[at] === "'") at += 1
+  while (at < line.length && /\s/.test(line[at])) at += 1
+  if (line[at] !== ':' && line[at] !== '=') return null
+  at += 1
+  while (at < line.length && /\s/.test(line[at])) at += 1
+  if (at >= line.length) return null
+  return { prefix: line.slice(0, at), value: line.slice(at) }
 }
 
 export function sanitizeAiFlowText(value: string): { text: string; replacements: string[] } {
@@ -117,12 +147,12 @@ export function sanitizeAiFlowText(value: string): { text: string; replacements:
   const text = value
     .split(/\r?\n/)
     .map((line) => {
-      const keyValue = line.match(/^(\s*["']?[\w .-]*(?:token|secret|password|passwd|pwd|api[-_ ]?key|apikey|authorization|cookie|client[-_ ]?secret|refresh)[\w .-]*["']?\s*[:=]\s*)(.+)$/i)
-      if (keyValue) {
-        const keyName = keyValue[1].replace(/[^\w]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '').toUpperCase()
+      const assignment = secretAssignment(line)
+      if (assignment) {
+        const keyName = trimUnderscores(assignment.prefix.replace(/[^\w]/g, '_').replace(/_+/g, '_')).toUpperCase()
         const token = keyName === 'AUTHORIZATION' ? '{{ACCESS_TOKEN}}' : `{{${keyName || 'SECRET'}}}`
         replacements.add(token)
-        return `${keyValue[1]}${token}`
+        return `${assignment.prefix}${token}`
       }
       return line.replace(SECRET_VALUE, (match) => {
         const token = match.toLowerCase().startsWith('bearer') ? '{{ACCESS_TOKEN}}' : '{{SECRET_VALUE}}'
@@ -217,10 +247,14 @@ function pathFromJsonPath(path: string) {
 }
 
 function conditionFromExpression(expression: string): FlowCondition {
-  const binary = expression.match(/^\s*(.+?)\s*(==|!=|>=|<=|>|<)\s*(.+?)\s*$/)
-  if (!binary) return { source: 'expression', path: expression, operator: 'exists', value: '' }
-  const [, left, op, rightRaw] = binary
-  const operator: ConditionOperator = op === '==' ? 'eq' : op === '!=' ? 'neq' : op === '>' ? 'gt' : op === '<' ? 'lt' : op === '>=' ? 'gte' : 'lte'
+  // Same leftmost operator as the old alternation; slicing avoids scanning the same characters twice.
+  const operatorToken = /(==|!=|>=|<=|>|<)/.exec(expression)
+  if (!operatorToken || operatorToken.index === 0 || operatorToken.index + operatorToken[0].length >= expression.length) {
+    return { source: 'expression', path: expression, operator: 'exists', value: '' }
+  }
+  const operator: ConditionOperator = operatorToken[0] === '==' ? 'eq' : operatorToken[0] === '!=' ? 'neq' : operatorToken[0] === '>' ? 'gt' : operatorToken[0] === '<' ? 'lt' : operatorToken[0] === '>=' ? 'gte' : 'lte'
+  const left = expression.slice(0, operatorToken.index)
+  const rightRaw = expression.slice(operatorToken.index + operatorToken[0].length)
   return { source: 'expression', path: left.trim(), operator, value: rightRaw.trim().replace(/^["']|["']$/g, '') }
 }
 

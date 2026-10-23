@@ -8,6 +8,13 @@ interface GoalSuggestion {
 
 const slash = (path: string) => path.replace(/\\/g, '/')
 
+/** Trailing slashes removed without `/\/+$/`, whose unbounded repetition before the end anchor is quadratic. */
+const withoutTrailingSlashes = (path: string): string => {
+  let end = path.length
+  while (end > 0 && path[end - 1] === '/') end -= 1
+  return path.slice(0, end)
+}
+
 /**
  * La proposta Java il cui comando ha esattamente questi argomenti (`['clean','install']`), nell'unità
  * più interna che contiene il file attivo; senza file attivo vale la prima. Il wrapper (mvnw/gradlew) lo ha già scelto il backend.
@@ -19,7 +26,7 @@ export function javaGoalSuggestion<T extends GoalSuggestion>(suggestions: readon
   let best: T | null = null
   let bestLength = -1
   for (const item of matches) {
-    const directory = slash(item.configuration.workingDirectory).replace(/^\.$/, '').replace(/\/+$/, '')
+    const directory = withoutTrailingSlashes(slash(item.configuration.workingDirectory).replace(/^\.$/, ''))
     const contains = directory === '' || file.startsWith(`${directory}/`)
     if (contains && directory.length > bestLength) { best = item; bestLength = directory.length }
   }
@@ -38,11 +45,11 @@ export function javaTargetAtLine(targets: readonly CodeStudioJavaRunTarget[], ki
  * interna che contiene il file attivo, altrimenti la prima. null se il progetto non ha unità Maven.
  */
 export function mavenModuleFor(units: ReadonlyArray<{ language: string; kind: string; root: string }>, projectRoot: string, activeRelativePath: string): string | null {
-  const base = slash(projectRoot).replace(/\/+$/, '')
+  const base = withoutTrailingSlashes(slash(projectRoot))
   const relativeRoots = units
     .filter((unit) => unit.language === 'java' && unit.kind === 'maven')
     .map((unit) => {
-      const root = slash(unit.root).replace(/\/+$/, '')
+      const root = withoutTrailingSlashes(slash(unit.root))
       return root === base ? '' : root.startsWith(`${base}/`) ? root.slice(base.length + 1) : null
     })
     .filter((root): root is string => root !== null)
@@ -88,7 +95,7 @@ export function javaNameError(kind: JavaEntryKind | 'package', name: string): st
 
 /** Package dichiarato da una cartella `src/main/java/<package>` o `src/test/java/<package>`; vuoto altrimenti. */
 export function javaPackageOfDirectory(relativeDirectory: string): string {
-  const match = /(?:^|\/)src\/(?:main|test)\/java(?:\/(.*))?$/.exec(slash(relativeDirectory).replace(/\/+$/, ''))
+  const match = /(?:^|\/)src\/(?:main|test)\/java(?:\/(.*))?/.exec(withoutTrailingSlashes(slash(relativeDirectory)))
   return match?.[1]?.replace(/\//g, '.') ?? ''
 }
 

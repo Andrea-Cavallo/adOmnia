@@ -22,6 +22,7 @@ import { PSD2RequestPanel } from '@/components/psd2/PSD2RequestPanel'
 import { validatePSD2Request } from '@/lib/psd2Validation'
 import { queryRowsFromUrl, requestWithUrlInput, resolvedRequestUrl, rowsWithTrailingBlank, urlWithQuery } from '@/lib/requestUrl'
 import { useUiTranslation } from '@/lib/uiI18n'
+import { closeOnBackdropClick } from '@/lib/dialogBackdrop'
 
 interface ComposerProps {
   tabId: string
@@ -55,6 +56,12 @@ function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport:
   const tr = useUiTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // La finestra compare solo quando serve: il fuoco sull'incolla lo diamo al mount.
+  useEffect(() => {
+    textareaRef.current?.focus()
+  }, [])
 
   const handleImport = () => {
     const parsed = parseCurl(value.trim())
@@ -64,15 +71,15 @@ function CurlImportModal({ onClose, onImport }: { onClose: () => void; onImport:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="w-[560px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation" onClick={closeOnBackdropClick(onClose)}>
+      <div className="w-[560px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
           <span className="text-sm font-semibold text-text-1 flex-1">{tr('Import from cURL')}</span>
           <button onClick={onClose} title={tr('Close')} className="text-text-4 hover:text-text-1"><X size={16} /></button>
         </div>
         <div className="p-4 flex flex-col gap-3">
           <textarea
-            autoFocus
+            ref={textareaRef}
             className="h-40 px-3 py-2 bg-surface-2 border border-border-2 rounded font-mono text-xs text-text-1 placeholder:text-text-4 resize-none focus:border-accent outline-none"
             placeholder={"curl 'https://api.your-domain.com/v1/users' \\\n  -H 'Authorization: Bearer TOKEN' \\\n  -H 'Content-Type: application/json'"}
             value={value}
@@ -269,7 +276,7 @@ function requestVariables(request: RequestItem): string[] {
   ]
   const names = new Set<string>()
   for (const value of values) {
-    for (const match of String(value ?? '').matchAll(/\{\{\s*([^}\s]+)\s*\}\}/g)) {
+    for (const match of String(value ?? '').matchAll(/(?<!\{)\{\{\s*([^}\s]+)\s*\}\}/g)) {
       names.add(match[1])
     }
   }

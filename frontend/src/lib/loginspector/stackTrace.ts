@@ -80,19 +80,19 @@ function javaPackagePath(qualified: string): string {
 
 // Java 9+ prefixes the class with its module (`java.base/java.lang.Thread`);
 // the module is dropped so the package prefixes below still match.
-const JAVA_FRAME = /^\s*at\s+(?:[\w$.]+@?[\w$.-]*\/)?([\w$.<>]+)\((?:([\w$.]+\.\w+):(\d+)|([^)]*))\)\s*$/
+const JAVA_FRAME = /^\s*at\s+(?:[\w$.][\w$.-]*(?:@[\w$.-]*)?\/)?([\w$.<>]+)\((?:([\w$.]+\.\w+):(\d+)|([^)]*))\)\s*$/
 const JAVA_ELIDED = /^\s*\.\.\.\s+(\d+)\s+more\s*$/
-const JAVA_SECTION = /^(Caused by:|Suppressed:)\s*(.*)$/
-const GO_LOCATION = /^\s+(.+?\.go):(\d+)(?:\s+\+0x[0-9a-f]+)?\s*$/
+const JAVA_SECTION = /^(?:Caused by:|Suppressed:)/
+const GO_LOCATION = /^\s+((?:(?!\.go:)[\s\S])+\.go):(\d+)(?:\s+\+0x[0-9a-f]+)?\s*$/
 const GO_FUNCTION = /^([\w./\-()*]+\.[\w.()*]+)\(.*\)$/
-const JS_FRAME = /^\s*at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?\s*$/
-const PY_FRAME = /^\s*File\s+"(.+?)",\s+line\s+(\d+)(?:,\s+in\s+(.+))?\s*$/
+const JS_FRAME = /^\s*at\s+(?:((?:(?!\s\()[\s\S])+)\s+\()?((?:(?!:\d+:\d+)[\s\S])+):(\d+):(\d+)\)?\s*$/
+const PY_FRAME = /^\s*File\s+"([^"]+)",\s+line\s+(\d+)(?:,\s+in\s+(.+))?\s*$/
 
 export function detectStackLanguage(stack: string): StackLanguage {
-  if (/^\s*at\s+(?:[\w$.]+@?[\w$.-]*\/)?[\w$.]+\([\w$.]+\.java:\d+\)/m.test(stack)) return 'java'
-  if (/^\s*File\s+".+",\s+line\s+\d+/m.test(stack)) return 'python'
+  if (/^\s*at\s+(?:[\w$.][\w$.-]*(?:@[\w$.-]*)?\/)?[\w$.]+\([\w$.]+\.java:\d+\)/m.test(stack)) return 'java'
+  if (/^\s*File\s+"[^"]+",\s+line\s+\d+/m.test(stack)) return 'python'
   if (/\.go:\d+/.test(stack) || /^goroutine\s+\d+/m.test(stack)) return 'go'
-  if (/\s+at\s+.+:\d+:\d+/.test(stack)) return 'javascript'
+  if (/\s+at\s+(?:(?!:\d+:\d+)[\s\S])+:\d+:\d+/.test(stack)) return 'javascript'
   if (/^\s*at\s+[\w$.]+\(/m.test(stack)) return 'java'
   return 'unknown'
 }

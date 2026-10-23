@@ -60,7 +60,7 @@ function environmentVariableName(value: string): string {
     .replace(/^['"]|['"]$/g, '')
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
     .replace(/[^a-zA-Z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '')
+    .replace(/^_+|(?<!_)_+$/g, '')
     .toUpperCase()
   return normalized && /^[A-Z_]/.test(normalized) ? normalized : 'VALUE'
 }
@@ -68,7 +68,7 @@ function environmentVariableName(value: string): string {
 function suggestedVariableName(source: string, selectionStart: number, value: string): string {
   // Prefer the JSON property name, so { "type": "CREDIT_TRANSFER" } becomes
   // {{TYPE}} rather than a long variable derived from the value itself.
-  const property = source.slice(0, selectionStart).match(/"([^"\\]+)"\s*:\s*"?\s*$/)?.[1]
+  const property = source.slice(0, selectionStart).match(/"([^"\\]+)"\s*:\s*(?:"\s*)?$/)?.[1]
   return environmentVariableName(property ?? value)
 }
 
@@ -112,9 +112,9 @@ function charIndexAtPos(ta: HTMLTextAreaElement, clientX: number, clientY: numbe
   const cs   = window.getComputedStyle(ta)
   ctx.font   = `${cs.fontSize} ${cs.fontFamily}`
 
-  const paddingLeft = parseFloat(cs.paddingLeft) || 0
-  const paddingTop  = parseFloat(cs.paddingTop)  || 0
-  const lineHeight  = parseFloat(cs.lineHeight)  || parseFloat(cs.fontSize) * 1.6
+  const paddingLeft = Number.parseFloat(cs.paddingLeft) || 0
+  const paddingTop  = Number.parseFloat(cs.paddingTop)  || 0
+  const lineHeight  = Number.parseFloat(cs.lineHeight)  || Number.parseFloat(cs.fontSize) * 1.6
 
   const relX = clientX - rect.left - paddingLeft + ta.scrollLeft
   const relY = clientY - rect.top  - paddingTop  + ta.scrollTop
@@ -143,7 +143,7 @@ function resolveVarTooltip(
   hasActiveEnv: boolean,
   charIdx: number,
 ): Omit<VarTooltip, 'x' | 'y'> | null {
-  const re = /\{\{([^}]+)\}\}/g
+  const re = /(?<!\{)\{\{([^}]+)\}\}/g
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
     if (charIdx >= m.index && charIdx <= m.index + m[0].length) {
@@ -298,7 +298,7 @@ function injectVarHighlights(
   resolvedVars: Record<string, string>,
   hasActiveEnv: boolean,
 ): string {
-  const re = /\{\{([^}]+)\}\}/g
+  const re = /(?<!\{)\{\{([^}]+)\}\}/g
   let last = 0
   let result = ''
   let m: RegExpExecArray | null
@@ -510,7 +510,7 @@ export function JsonEditor({
       if (found === activeSearchIndex) {
         ta.setSelectionRange(index, index + searchTerm.length)
         const line = text.slice(0, index).split('\n').length - 1
-        const lineHeight = parseFloat(window.getComputedStyle(ta).lineHeight) || 19
+        const lineHeight = Number.parseFloat(window.getComputedStyle(ta).lineHeight) || 19
         ta.scrollTop = Math.max(0, line * lineHeight - 72)
         syncScroll()
         return

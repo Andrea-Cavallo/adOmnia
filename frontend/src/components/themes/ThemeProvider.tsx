@@ -166,7 +166,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-    loadInitial()
+    // If the theme list cannot be read the built-in look from the stylesheet stays in place.
+    void loadInitial().catch(() => undefined)
   }, [setThemes, setStoreActiveId, settingsLoaded, settingsThemeId, updateAppearance])
 
   useEffect(() => {

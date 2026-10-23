@@ -53,7 +53,7 @@ type Dialog =
   | null
 
 function slug(message: string): string {
-  return message.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+  return message.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+/, '').replace(/(^|[^-])-+$/, '$1').slice(0, 40)
 }
 
 function openExternal(url: string) {

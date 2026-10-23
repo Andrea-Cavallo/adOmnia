@@ -41,7 +41,7 @@ function isComment(line: string): boolean {
 
 function joinPath(prefix: string, path: string): string {
   if (!prefix) return path
-  return `${prefix.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`.replace(/\/$/, '') || '/'
+  return `${prefix.replace(/(^|[^/])\/+$/, '$1')}/${path.replace(/^\/+/, '')}`.replace(/\/$/, '') || '/'
 }
 
 /** Pattern di net/http (Go 1.22+): "[METHOD ][host]/path" con {name...} e {$}. */
@@ -129,6 +129,6 @@ export function requestFromRoute(route: CodeStudioHttpRoute, baseUrl: string, or
 
 /** cURL con l'indirizzo reale: la variabile baseUrl dell'ambiente se c'è, altrimenti quello trovato nel codice. */
 export function routeCurl(route: CodeStudioHttpRoute, source: string, variables: Record<string, string>): string {
-  const baseUrl = (variables[BASE_URL_VARIABLE] || findServerBaseUrl(source) || DEFAULT_GO_BASE_URL).replace(/\/+$/, '')
+  const baseUrl = (variables[BASE_URL_VARIABLE] || findServerBaseUrl(source) || DEFAULT_GO_BASE_URL).replace(/(^|[^/])\/+$/, '$1')
   return generateCode(requestFromRoute(route, baseUrl, 'Code Studio'), 'curl')
 }

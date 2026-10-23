@@ -155,8 +155,8 @@ function TrafficTab({
 
   useEffect(() => {
     if (!port) return
-    refresh()
-    refreshPending()
+    void refresh()
+    void refreshPending()
     const stop = visibleInterval(refresh, 1500, { scope: "proxy", kind: "live" })
     const stopPending = visibleInterval(refreshPending, 700, { scope: "proxy", kind: "live" })
     return () => { stop(); stopPending() }
@@ -169,7 +169,7 @@ function TrafficTab({
 
   const handleRepeat = async (id: string) => {
     await api('/proxy/repeat', { id })
-    refresh()
+    void refresh()
   }
 
   const updatePendingDraft = (id: string, patch: Partial<{ url: string; body: string }>) => {
@@ -373,7 +373,7 @@ function RulesTab({ port }: { port: number | null }) {
     if (data?.log) setLog(data.log)
   }, [api])
 
-  useEffect(() => { if (port) { loadRules(); loadLog() } }, [port, loadRules, loadLog])
+  useEffect(() => { if (port) { void loadRules(); void loadLog() } }, [port, loadRules, loadLog])
 
   const saveRules = async () => {
     await api('/proxy/rules', { rules }, 'PUT')
@@ -500,7 +500,7 @@ function CATab({ port }: { port: number | null }) {
     if (data) setExists(Boolean(data.exists))
   }, [api])
 
-  useEffect(() => { if (port) refresh() }, [port, refresh])
+  useEffect(() => { if (port) void refresh() }, [port, refresh])
 
   const run = async (fn: () => Promise<void>) => {
     setError(''); setMessage(''); setLoading(true)
@@ -509,7 +509,7 @@ function CATab({ port }: { port: number | null }) {
 
   const generate = () => run(async () => {
     const data = await api('/proxy/ca/generate', {})
-    if (data?.ok) { setMessage('CA certificate generated'); refresh() }
+    if (data?.ok) { setMessage('CA certificate generated'); void refresh() }
     else setError(data?.error || 'Failed')
   })
 
@@ -529,7 +529,7 @@ function CATab({ port }: { port: number | null }) {
 
   const deleteCa = () => run(async () => {
     const data = await api('/proxy/ca/delete', {})
-    if (data?.ok) { setMessage('CA deleted'); refresh() }
+    if (data?.ok) { setMessage('CA deleted'); void refresh() }
   })
 
   return (
@@ -610,7 +610,7 @@ function MapLocalTab({ port }: { port: number | null }) {
 
   useEffect(() => {
     if (!port) return
-    api('/proxy/map/local').then((d) => { if (d?.rules) setRules(d.rules) })
+    void api('/proxy/map/local').then((d) => { if (d?.rules) setRules(d.rules) })
   }, [port, api])
 
   const save = async () => {
@@ -676,7 +676,7 @@ function MapRemoteTab({ port }: { port: number | null }) {
 
   useEffect(() => {
     if (!port) return
-    api('/proxy/map/remote').then((d) => { if (d?.rules) setRules(d.rules) })
+    void api('/proxy/map/remote').then((d) => { if (d?.rules) setRules(d.rules) })
   }, [port, api])
 
   const save = async () => {
@@ -742,7 +742,7 @@ function ThrottleTab({ port }: { port: number | null }) {
 
   useEffect(() => {
     if (!port) return
-    api('/proxy/throttle').then((d) => { if (d?.config) setCfg(d.config) })
+    void api('/proxy/throttle').then((d) => { if (d?.config) setCfg(d.config) })
   }, [port, api])
 
   const save = async () => {
@@ -862,7 +862,7 @@ export function ProxyPanel() {
 
   useEffect(() => {
     if (!port) return
-    refreshStatus()
+    void refreshStatus()
     return visibleInterval(refreshStatus, 3000, { scope: "proxy", kind: "live" })
   }, [port, refreshStatus])
 

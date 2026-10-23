@@ -172,8 +172,10 @@ func (s *StaticServer) resolve(urlPath string) (string, int) {
 		return "", http.StatusNotFound
 	}
 	// s.root is already symlink-resolved and clean: the resolved target must be the root or strictly under it.
+	// Out of the root answers exactly like a missing file (404): a 403 would tell a caller which paths outside the
+	// served folder exist (filesystem oracle).
 	if real != s.root && !strings.HasPrefix(real, s.root+string(filepath.Separator)) {
-		return "", http.StatusForbidden
+		return "", http.StatusNotFound
 	}
 	info, err := os.Stat(real) // #nosec G703 -- real is symlink-resolved and confined to s.root by the prefix check above
 	if err != nil {

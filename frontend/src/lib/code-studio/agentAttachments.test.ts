@@ -9,6 +9,8 @@ describe('explicit agent attachments', () => {
   it('rejects unsupported images, binary documents and oversized text', async () => {
     await expect(readAgentAttachments([new File(['pixels'], 'shot.png', { type: 'image/png' })], false)).rejects.toThrow('does not accept images')
     await expect(readAgentAttachments([new File(['%PDF-1.7'], 'notes.pdf')], true)).rejects.toThrow('binary format')
+    await expect(readAgentAttachments([new File(['PK\x03\x04zip'], 'bundle.dat')], true)).rejects.toThrow('binary format')
+    await expect(readAgentAttachments([new File(['%PDF-1.4 sneaky'], 'notes.txt')], true)).rejects.toThrow('binary format')
     await expect(readAgentAttachments([new File(['x'.repeat(50000)], 'large.txt')], false)).rejects.toThrow('48 KiB')
   })
 })

@@ -114,7 +114,7 @@ export function composerTrafficRecords(history: ComposerLikeEntry[]): AppTraffic
       ...correlationIdsFromHeaders(entry.response.headers),
     ]
     if (!identifiers.length) return []
-    const recorded = entry.recordedAt ? Date.parse(entry.recordedAt) : NaN
+    const recorded = entry.recordedAt ? Date.parse(entry.recordedAt) : Number.NaN
     return [{
       id: `composer-${entry.id}`,
       source: 'composer' as const,
@@ -144,7 +144,7 @@ export function proxyTrafficRecords(entries: ProxyLikeEntry[]): AppTrafficRecord
       ...correlationIdsFromHeaders(entry.respHeaders),
     ]
     if (!identifiers.length) return []
-    const recorded = entry.timestamp ? Date.parse(entry.timestamp) : NaN
+    const recorded = entry.timestamp ? Date.parse(entry.timestamp) : Number.NaN
     return [{
       id: `proxy-${entry.id}`,
       source: 'proxy' as const,

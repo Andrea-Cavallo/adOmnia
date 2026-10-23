@@ -200,8 +200,9 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
     if (section !== 'appearance') return
     if (themes.length > 0) return
     setLoading(true)
-    loadAvailableThemes()
+    void loadAvailableThemes()
       .then(setThemes)
+      .catch(() => undefined)
       .finally(() => setLoading(false))
   }, [section, themes.length, setThemes, setLoading])
 
@@ -314,12 +315,12 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
 
   const handleResetDefaults = useCallback(() => {
     // reload will pick up defaults if saved settings are cleared
-    useSettingsStore.getState().load()
+    void useSettingsStore.getState().load()
   }, [])
 
   const handleClearAllData = useCallback(() => {
     localStorage.clear()
-    useSettingsStore.getState().load()
+    void useSettingsStore.getState().load()
     window.location.reload()
   }, [])
 

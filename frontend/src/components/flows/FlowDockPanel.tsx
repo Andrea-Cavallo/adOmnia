@@ -79,7 +79,7 @@ export function FlowDockPanel({ title, side, open, onClose, children, initialFlo
         <button className={button} title={`Close ${title}`} aria-label={`Close ${title}`} onClick={onClose}><X size={14} /></button>
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
-      {!maximized && <div role="separator" aria-label={`Resize ${title}`} aria-orientation={side === 'bottom' ? 'horizontal' : 'vertical'} aria-valuenow={Math.round(floating ? width : dockSize)} tabIndex={0}
+      {!maximized && <div role="slider" aria-label={`Resize ${title}`} aria-orientation={side === 'bottom' ? 'horizontal' : 'vertical'} aria-valuenow={Math.round(floating ? width : dockSize)} tabIndex={0}
         onPointerDown={event => gesture(event, 'resize')}
         onKeyDown={event => {
           if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return

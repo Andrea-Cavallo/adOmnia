@@ -6,6 +6,7 @@ import { useModalFocusTrap } from '@/lib/accessibility'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { prepareDocument } from './codeStudioLanguageFeatures'
 import { formatSignature, parseSignatureAt, signatureOrderProblem } from './codeStudioChangeSignature'
+import { closeOnBackdropClick } from '@/lib/dialogBackdrop'
 
 /** Ctrl+F6: legge la firma sotto il cursore e apre il dialog; spiega cosa manca altrimenti. */
 export async function openChangeSignature(editor: monaco.editor.ICodeEditor): Promise<void> {
@@ -71,8 +72,8 @@ export function CodeStudioChangeSignatureDialog() {
   }
 
   return (
-    <div className="gs-modal-backdrop gs-modal-top ad-modal-backdrop" data-a11y-click-exempt="dialog-backdrop" onClick={close}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Change Signature" className="w-[min(640px,84vw)] overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+    <div className="gs-modal-backdrop gs-modal-top ad-modal-backdrop" data-a11y-click-exempt="dialog-backdrop" role="presentation" onClick={closeOnBackdropClick(close)}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Change Signature" className="w-[min(640px,84vw)] overflow-hidden rounded-lg border border-border-2 bg-surface-1 shadow-2xl">
         <div className="flex h-10 items-center gap-2 border-b border-border-1 px-3">
           <PenLine size={14} className="text-accent" aria-hidden="true" />
           <span className="text-[11px] font-semibold text-text-1">Change Signature</span>

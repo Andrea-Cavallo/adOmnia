@@ -36,7 +36,7 @@ export type GoModLensAction = GoModDependencyAction | 'viewcode' | 'browse'
 
 const MODULE_DIRECTIVE = /^\s*module\s+\S+/
 const BLOCK_START = /^\s*(require|replace)\s*\(\s*(\/\/.*)?$/
-const SINGLE_DIRECTIVE = /^\s*(require|replace)\s+(.+)$/
+const SINGLE_DIRECTIVE = /^[ \t]*(require|replace)[ \t]+(\S.*)$/
 const INDIRECT_COMMENT = /\/\/\s*indirect\b/
 
 function stripComment(text: string): string {

@@ -321,7 +321,7 @@ export function DiffModal({
   const identical = addedCount === 0 && removedCount === 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation" onClick={onClose}>
       <div
         className={cn(
           'bg-surface-0 border border-border-1 shadow-2xl flex flex-col',
@@ -329,7 +329,7 @@ export function DiffModal({
             ? 'h-screen w-screen rounded-none'
             : 'w-[min(96vw,1100px)] h-[min(90vh,760px)] rounded-xl',
         )}
-        onClick={(e) => e.stopPropagation()}
+        role="presentation" onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1 flex-shrink-0">
@@ -599,10 +599,10 @@ export function DiffPickerModal({ currentTabId, onConfirm, onCancel }: DiffPicke
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation" onClick={onCancel}>
       <div
         className="w-[min(90vw,560px)] bg-surface-1 border border-border-1 rounded-xl shadow-2xl flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        role="presentation" onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">

@@ -80,7 +80,7 @@ export function parseSignatureAt(text: string, line: number): CodeStudioSignatur
     if (!lines[candidate]?.startsWith('func')) continue
     const offset = lines.slice(0, candidate).reduce((total, item) => total + item.length + 1, 0)
     const rest = text.slice(offset)
-    const head = /^func\s*(\([^)]*\))?\s*([A-Za-z_]\w*)\s*/.exec(rest)
+    const head = /^func\s*(?:\(([^)]*)\)\s*)?([A-Za-z_]\w*)\s*/.exec(rest)
     if (!head) return null
     let cursor = head[0].length
     if (rest[cursor] === '[') {
@@ -98,12 +98,12 @@ export function parseSignatureAt(text: string, line: number): CodeStudioSignatur
     if (line - 1 > endLine) return null // il cursore è nel corpo, non nella firma
     const results = rest.slice(paramsEnd + 1, signatureEnd < 0 ? undefined : signatureEnd).trim()
     const resultCount = !results ? 0 : results.startsWith('(') ? parseFieldList(results.slice(1, -1)).length : 1
-    const nameIndex = head[0].indexOf(head[2], head[1]?.length ?? 4)
+    const nameIndex = head[0].lastIndexOf(head[2])
     return {
       name: head[2],
       line: candidate + 1,
       column: nameIndex + 1,
-      receiver: head[1] ?? '',
+      receiver: head[1] ? `(${head[1]})` : '',
       params: parseFieldList(rest.slice(cursor + 1, paramsEnd)),
       results,
       resultCount,

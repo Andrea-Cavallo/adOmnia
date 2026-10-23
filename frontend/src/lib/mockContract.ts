@@ -42,9 +42,9 @@ function findRequest(nodes: TreeNode[], requestId: string): Extract<TreeNode, { 
 
 function pathShape(path: string): string {
   return path
-    .replace(/\{[^}]+\}/g, '{}')
+    .replace(/(?<!\{)\{[^}]+\}/g, '{}')
     .replace(/:[A-Za-z_][\w-]*/g, '{}')
-    .replace(/\/+$/, '') || '/'
+    .replace(/(?<!\/)\/+$/, '') || '/'
 }
 
 function methodForOpenApi(method: string): string {

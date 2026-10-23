@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 
 const fieldRowClass = 'grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(220px,320px)] items-center gap-x-8 gap-y-2 px-2 py-3 max-lg:grid-cols-[minmax(0,1fr)_minmax(200px,280px)] max-md:grid-cols-1'
@@ -18,13 +18,15 @@ export function Toggle({
   checked: boolean
   onChange: (v: boolean) => void
 }) {
+  const id = useId()
   return (
-    <label className={`${fieldRowClass} cursor-pointer group`}>
+    <label htmlFor={id} className={`${fieldRowClass} cursor-pointer group`}>
       <div className={fieldCopyClass}>
         <div className={fieldLabelClass}>{label}</div>
         <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <input
+        id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
@@ -86,13 +88,15 @@ export function NumberInput({
   max: number
   onChange: (v: number) => void
 }) {
+  const id = useId()
   return (
-    <label className={fieldRowClass}>
+    <label htmlFor={id} className={fieldRowClass}>
       <div className={fieldCopyClass}>
         <div className={fieldLabelClass}>{label}</div>
         <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <input
+        id={id}
         type="number"
         min={min}
         max={max}
@@ -119,13 +123,15 @@ export function TextInput({
   placeholder?: string
   onChange: (v: string) => void
 }) {
+  const id = useId()
   return (
-    <label className={fieldRowClass}>
+    <label htmlFor={id} className={fieldRowClass}>
       <div className={fieldCopyClass}>
         <div className={fieldLabelClass}>{label}</div>
         <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <input
+        id={id}
         type="text"
         value={value}
         placeholder={placeholder}
@@ -150,14 +156,16 @@ export function PasswordInput({
   onChange: (v: string) => void
 }) {
   const [show, setShow] = useState(false)
+  const id = useId()
   return (
-    <label className={fieldRowClass}>
+    <label htmlFor={id} className={fieldRowClass}>
       <div className={fieldCopyClass}>
         <div className={fieldLabelClass}>{label}</div>
         <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <div className="relative min-w-0">
         <input
+          id={id}
           type={show ? 'text' : 'password'}
           value={value}
           placeholder={placeholder}
@@ -192,13 +200,15 @@ export function TextAreaInput({
   rows?: number
   onChange: (v: string) => void
 }) {
+  const id = useId()
   return (
-    <label className={`${fieldRowClass} items-start`}>
+    <label htmlFor={id} className={`${fieldRowClass} items-start`}>
       <div className={fieldCopyClass}>
         <div className={fieldLabelClass}>{label}</div>
         <div className={fieldDescriptionClass}>{desc}</div>
       </div>
       <textarea
+        id={id}
         value={value}
         placeholder={placeholder}
         rows={rows}

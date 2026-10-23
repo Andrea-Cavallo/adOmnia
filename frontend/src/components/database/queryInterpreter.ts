@@ -463,7 +463,7 @@ function columnCandidates(masked: string, skip: Set<string>): string[] {
   let m: RegExpExecArray | null
   while ((m = re.exec(masked)) !== null) {
     const word = m[0]
-    const before = masked.slice(0, m.index).replace(/\s+$/, '')
+    const before = masked.slice(0, m.index).trimEnd()
     const after = masked.slice(m.index + word.length).replace(/^\s+/, '')
     if (before.endsWith('.')) continue                  // qualified column, handled separately
     if (after.startsWith('.')) continue                  // table / alias qualifier
@@ -491,15 +491,24 @@ function sqlSchemaIssues(masked: string, targets: string[], aliasToTable: Map<st
   }
   const hasColumn = (cols: string[], col: string): boolean => cols.some((c) => c.toLowerCase() === col.toLowerCase())
 
-  // Qualified references: `alias.column` / `table.column`.
-  const qualRe = /([A-Za-z_][\w$]*)\s*\.\s*([A-Za-z_][\w$]*|\*)/g
-  let qm: RegExpExecArray | null
-  while ((qm = qualRe.exec(masked)) !== null) {
-    const col = qm[2]
-    if (col === '*') continue
-    const table = resolveTable(qm[1])
+  // Qualified references: `alias.column` / `table.column`. Word tokens are read once and the separator between
+  // them is skipped separately, instead of letting one regex re-read the same characters from every position.
+  const words = [...masked.matchAll(/[A-Za-z_][\w$]*/g)]
+  const QUALIFIED = /^\s*\.\s*/
+  let consumed = 0
+  for (let index = 0; index < words.length; index += 1) {
+    const qualifier = words[index]
+    if (qualifier.index < consumed) continue
+    const separator = QUALIFIED.exec(masked.slice(qualifier.index + qualifier[0].length))
+    if (!separator) continue
+    const columnAt = qualifier.index + qualifier[0].length + separator[0].length
+    if (masked[columnAt] === '*') { consumed = columnAt + 1; continue }
+    const column = words[index + 1]
+    if (!column || column.index !== columnAt) continue
+    consumed = columnAt + column[0].length
+    const table = resolveTable(qualifier[0])
     const cols = table ? colByTable.get(table.toLowerCase()) : undefined
-    if (cols && !hasColumn(cols, col)) issues.push(`unknown column \`${col}\``)
+    if (cols && !hasColumn(cols, column[0])) issues.push(`unknown column \`${column[0]}\``)
   }
 
   // Unqualified references are only checked when every target table has a column

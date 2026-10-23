@@ -12,7 +12,7 @@ export interface RequestParamIssue {
   message: string
 }
 
-const MALFORMED_BRACE_PATH_PARAM_RE = /\{([^{}]*\s+[^{}]*)\}/g
+const MALFORMED_BRACE_PATH_PARAM_RE = /\{([^{}]+)\}/g
 
 /** Validate parameter mistakes that would otherwise be silently URL-encoded. */
 export function validateRequestParams(request: RequestItem): RequestParamIssue[] {
@@ -58,6 +58,7 @@ export function validateRequestParams(request: RequestItem): RequestParamIssue[]
   MALFORMED_BRACE_PATH_PARAM_RE.lastIndex = 0
   let malformed: RegExpExecArray | null
   while ((malformed = MALFORMED_BRACE_PATH_PARAM_RE.exec(pathOnly)) !== null) {
+    if (!/\s/.test(malformed[1])) continue
     issues.push({
       kind: 'path-placeholder-whitespace',
       field: `Path placeholder "{${malformed[1]}}"`,

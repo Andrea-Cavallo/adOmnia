@@ -73,10 +73,16 @@ export function buildInlineEditPrompt(target: InlineAssistantTarget, instruction
 /** Apertura tipica di una risposta chiacchierona invece di codice ("Sure! Here is…"). */
 const CHAT_OPENERS = /^(sure|here'?s|here is|okay|ok|certainly|of course|unfortunately|i (can|cannot|can't|will|am|apolog)|sorry|note that|below is|the (updated|new|fixed)|let'?s)\b/i
 
+/** Una frase chiacchierona: finisce con punteggiatura e ha uno spazio interno, non subito prima della fine. */
+function looksLikeSentence(opener: string): boolean {
+  if (!/[.:!?]$/.test(opener)) return false
+  return /\s/.test(opener.slice(1, -2))
+}
+
 function looksLikeChatReply(text: string): boolean {
   const [first] = text.split('\n', 1)
   const opener = first.trim()
-  if (!CHAT_OPENERS.test(opener) && !/^.+\s.+[.:!?]$/.test(opener)) return false
+  if (!CHAT_OPENERS.test(opener) && !looksLikeSentence(opener)) return false
   // Righe indentate o con caratteri di codice: è codice, non chiacchiere.
   return !text.split('\n').some((line) => /^\s/.test(line) || /[;{}()=<>[\]]/.test(line))
 }
@@ -86,12 +92,23 @@ function looksLikeChatReply(text: string): boolean {
  * (li estrae se ci sono); null se la risposta non contiene un frammento utilizzabile: una
  * proposta dell'AI non deve mai sostituire codice con una spiegazione.
  */
+/** Corpo del primo recinto markdown che si chiude: scansione con indexOf, senza far rileggere il contenuto alla regex. */
+function fencedBody(text: string): string | null {
+  for (let open = text.indexOf('```'); open !== -1; open = text.indexOf('```', open + 1)) {
+    const lineEnd = text.indexOf('\n', open)
+    if (lineEnd === -1) return null
+    const close = text.indexOf('```', lineEnd)
+    if (close !== -1) return text.slice(lineEnd + 1, close)
+  }
+  return null
+}
+
 export function parseInlineEditResponse(response: string): string | null {
   const text = response.replace(/\r\n/g, '\n')
-  const fenced = text.match(/```[^\n]*\n([\s\S]*?)\n?```/)
-  const body = (fenced ? fenced[1] : text).replace(/^\n+/, '').replace(/\s+$/, '')
+  const fenced = fencedBody(text)
+  const body = (fenced ?? text).replace(/^\n+/, '').trimEnd()
   if (!body) return null
-  return fenced || !looksLikeChatReply(body) ? body : null
+  return fenced !== null || !looksLikeChatReply(body) ? body : null
 }
 
 /**

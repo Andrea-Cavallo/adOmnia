@@ -238,7 +238,8 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
         await api.setWorkspace(root).catch(() => undefined)
       },
 
-      sendChat: async (root, rawMessage, context = { includeDocument: true, includeWorkspace: true }) => {
+      sendChat: async (root, rawMessage, context) => {
+        const chatContext = context ?? { includeDocument: true, includeWorkspace: true }
         const message = rawMessage.trim()
         if (!message) return false
         const thread = get().chatThreads[root] ?? emptyThread()
@@ -260,14 +261,14 @@ export function createAgentChatStore(api: AgentChatApi): AgentChatStore {
           },
         }))
         try {
-          const prepared = await prepareStudioChat(root, message, context, !api.localProvider, api.localProvider)
+          const prepared = await prepareStudioChat(root, message, chatContext, !api.localProvider, api.localProvider)
           set((state) => {
             const current = state.chatThreads[root]
             if (!current || current.busyToken !== token) return state
             return { chatThreads: { ...state.chatThreads, [root]: { ...current, messages: current.messages.map((entry) => entry.id === `${token}-user` ? { ...entry, context: prepared.labels } : entry) } } }
           })
           if (get().chatThreads[root]?.busyToken !== token) return false
-          await api.prompt({ token, root, message: prepared.message, images: (context.attachments ?? []).filter(item => item.kind === 'image').map(item => ({ name: item.name, mimeType: item.mimeType, data: item.data ?? '' })) })
+          await api.prompt({ token, root, message: prepared.message, images: (chatContext.attachments ?? []).filter(item => item.kind === 'image').map(item => ({ name: item.name, mimeType: item.mimeType, data: item.data ?? '' })) })
           // The turn is over even if the agent never sent its closing update.
           set((state) => {
             const current = state.chatThreads[root]

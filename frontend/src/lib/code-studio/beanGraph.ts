@@ -31,7 +31,8 @@ const idOf = (bean: SpringBean) => `${bean.type}|${bean.name}|${bean.member ?? '
 
 /** Il nome corto di un tipo qualificato: `com.acme.OrderService` → `OrderService`. */
 export function shortType(type: string): string {
-  const base = type.replace(/<.*$/, '')
+  const generic = type.indexOf('<')
+  const base = generic < 0 ? type : type.slice(0, generic)
   return base.slice(base.lastIndexOf('.') + 1)
 }
 

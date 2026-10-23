@@ -144,7 +144,7 @@ function selectTextareaMatch(textarea: HTMLTextAreaElement | null, search: BodyS
   const end = start + query.length
   textarea.setSelectionRange(start, end)
   const line = text.slice(0, start).split('\n').length - 1
-  const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 19
+  const lineHeight = Number.parseFloat(window.getComputedStyle(textarea).lineHeight) || 19
   textarea.scrollTop = Math.max(0, line * lineHeight - 72)
 }
 
@@ -251,7 +251,7 @@ function JsonRawEditor({ body, onChange, search }: { body: RequestBody; onChange
   const diagnostics = useMemo(() => diagnoseJson(body.raw ?? ''), [body.raw])
   const hasErrors = diagnostics.length > 0
   const unresolvedVars = Array.from(new Set(
-    Array.from((body.raw ?? '').matchAll(/\{\{([^}]+)\}\}/g))
+    Array.from((body.raw ?? '').matchAll(/\{\{([^{}]+)\}\}/g))
       .map((m) => m[1].trim())
       .filter((name) => !hasActiveEnv || !resolvedVars[name]),
   ))
@@ -702,6 +702,7 @@ export function BodyEditor({ body, onChange, isWebSocket, requestUrl, variantCon
       {maximized && (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]"
+          role="presentation"
           onClick={() => setMaximized(false)}
         />
       )}

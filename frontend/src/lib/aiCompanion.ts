@@ -50,7 +50,7 @@ export interface CompanionReply {
 
 function unwrapJSON(value: string): string {
   const trimmed = value.trim()
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+  const fenced = trimmed.match(/^```(?:json)?\s*((?:(?!```)[\s\S])*)```$/i)
   return (fenced?.[1] ?? trimmed).trim()
 }
 
@@ -148,13 +148,13 @@ export function inferMockGenerationAction(value: string): GenerateMockAction | n
   if (/\b(?:non|not|don\s*t|do not|never)\b.{0,40}\b(?:mock|simul|stub)/.test(normalized)) return null
 
   const italian = value.match(/\b(?:mockami|mocka|mockare|simula|simulami)\b\s+(.+)/i)
-  if (italian?.[1]?.trim()) return { type: 'generate-mock', description: italian[1].trim().replace(/[.!?]+$/, '') }
+  if (italian?.[1]?.trim()) return { type: 'generate-mock', description: italian[1].trim().replace(/(^|[^.!?])[.!?]+$/, '$1') }
 
   const englishFor = value.match(/\b(?:create|make|generate|build)\s+(?:me\s+)?(?:a\s+)?mock\s+(?:api|server|endpoints?)\s+(?:for|of)\s+(.+)/i)
-  if (englishFor?.[1]?.trim()) return { type: 'generate-mock', description: englishFor[1].trim().replace(/[.!?]+$/, '') }
+  if (englishFor?.[1]?.trim()) return { type: 'generate-mock', description: englishFor[1].trim().replace(/(^|[^.!?])[.!?]+$/, '$1') }
 
   const english = value.match(/\b(?:create|make|generate|build)\s+(?:me\s+)?(?:a\s+)?mock\s+(.+)/i)
-  return english?.[1]?.trim() ? { type: 'generate-mock', description: english[1].trim().replace(/[.!?]+$/, '') } : null
+  return english?.[1]?.trim() ? { type: 'generate-mock', description: english[1].trim().replace(/(^|[^.!?])[.!?]+$/, '$1') } : null
 }
 
 export function parseCompanionReply(raw: string): CompanionReply {

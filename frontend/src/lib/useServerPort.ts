@@ -11,14 +11,15 @@ export function useServerPort(): number | null {
 
   useEffect(() => {
     if (cachedPort !== null) return
-    try {
-      GetServerPort().then((p) => {
+    // Il bridge Wails può mancare (anteprima web): l'invocazione sincrona che lancia
+    // diventa un rifiuto gestito dal catch, quindi non serve un try attorno.
+    Promise.resolve()
+      .then(() => GetServerPort())
+      .then((p) => {
         cachedPort = p
         setPort(p)
-      }).catch(() => {})
-    } catch {
-      // The frontend preview can render without a Wails bridge.
-    }
+      })
+      .catch(() => {})
   }, [])
 
   return port

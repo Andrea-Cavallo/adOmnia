@@ -360,7 +360,7 @@ export function detectCellType(value: unknown): 'null' | 'num' | 'bool' | 'date'
   if (typeof value === 'number') return 'num'
   const s = String(value)
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return 'date'
-  if (!isNaN(Number(s)) && s.trim() !== '') return 'num'
+  if (!Number.isNaN(Number(s)) && s.trim() !== '') return 'num'
   return 'text'
 }
 
@@ -407,7 +407,7 @@ const SQL_KEYWORDS = new Set([
 
 export function highlightedSql(query: string): ReactNode[] {
   let offset = 0
-  return query.split(/(\s+|--.*?$|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:\\"|[^"])*"|\b\d+(?:\.\d+)?\b|[(),;=*<>+-])/gm).map((token) => {
+  return query.split(/(\s+|--.*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:\\"|[^"])*"|\b\d+(?:\.\d+)?\b|[(),;=*<>+-])/gm).map((token) => {
     const at = offset
     offset += token.length
     if (!token) return null

@@ -30,7 +30,7 @@ const FORMATS: readonly CommitFormat[] = ['conventional', 'free', 'template']
  * quello predefinito; se manca `{{summary}}` viene anteposto, così il soggetto esiste sempre.
  */
 export function normalizeCommitTemplate(template: string): string {
-  const trimmed = template.replace(/\r\n/g, '\n').replace(/^\n+/, '').replace(/\s+$/, '')
+  const trimmed = template.replace(/\r\n/g, '\n').replace(/^\n+/, '').trimEnd()
   if (!trimmed) return DEFAULT_COMMIT_TEMPLATE
   if (trimmed.includes('{{summary}}')) return trimmed
   return `{{summary}}\n\n${trimmed}`

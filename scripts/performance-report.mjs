@@ -1,17 +1,42 @@
 import { readFileSync } from 'node:fs'
 
+// Output of `go test -bench`: "BenchmarkName-8  100  12.5 ns/op  32 B/op  2 allocs/op".
+const BENCHMARK_UNITS = new Set(['ns/op', 'B/op', 'allocs/op'])
+
+/** Name without the "-<procs>" suffix Go appends (the last dash-number run). */
+function benchmarkName(field) {
+  const dash = field.lastIndexOf('-')
+  if (dash <= 0 || dash === field.length - 1) return null
+  return allDigits(field.slice(dash + 1)) ? field.slice(0, dash) : null
+}
+
+function allDigits(text) {
+  if (!text) return false
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] < '0' || text[i] > '9') return false
+  }
+  return true
+}
+
 export function parseGoBenchmarks(output) {
   const metrics = new Map()
   for (const line of output.split(/\r?\n/)) {
-    const match = line.match(/^(Benchmark\S+)-\d+\s+\d+\s+(.+)$/)
-    if (!match) continue
-    for (const value of match[2].matchAll(/([\d.eE+-]+)\s+(ns\/op|B\/op|allocs\/op)/g)) {
-      const key = `${match[1]} [${value[2]}]`
-      const samples = metrics.get(key) ?? []
-      samples.push(Number(value[1])); metrics.set(key, samples)
+    const fields = line.trim().split(/\s+/)
+    if (fields.length < 4 || !fields[0].startsWith('Benchmark')) continue
+    const name = benchmarkName(fields[0])
+    if (name === null || !allDigits(fields[1])) continue
+    for (let i = 2; i < fields.length - 1; i += 1) {
+      const unit = fields[i + 1]
+      if (!BENCHMARK_UNITS.has(unit)) continue
+      const value = Number(fields[i])
+      if (!Number.isFinite(value)) continue
+      const key = `${name} [${unit}]`
+      const entry = metrics.get(key) ?? { name, unit, samples: [] }
+      entry.samples.push(value)
+      metrics.set(key, entry)
     }
   }
-  return [...metrics].map(([name, samples]) => ({ name, unit: name.match(/\[([^\]]+)\]$/)[1], samples }))
+  return [...metrics.values()]
 }
 export function median(samples) {
   const sorted = [...samples].sort((a, b) => a - b)

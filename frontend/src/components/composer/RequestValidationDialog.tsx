@@ -48,7 +48,7 @@ export function RequestValidationDialog({ issues, onClose }: RequestValidationDi
           </div>
         </DialogBody>
         <DialogFooter className="px-4 py-3">
-          <button onClick={onClose} autoFocus className="h-7 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-hover">
+          <button onClick={onClose} data-autofocus className="h-7 rounded bg-accent px-3 text-xs font-medium text-white hover:bg-accent-hover">
             {tr('Review parameters')}
           </button>
         </DialogFooter>

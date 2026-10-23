@@ -70,8 +70,8 @@ export function CodeStudioGoWorkDialog({ open, sessionId, onClose }: CodeStudioG
       {state && state.modules.length > 0 && (
         <div className="gs-list">
           {state.modules.map((module) => (
-            <label key={module.directory} className="gs-list-row cursor-pointer">
-              <input type="checkbox" checked={selected.has(module.directory)} onChange={() => toggle(module.directory)} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
+            <label key={module.directory} htmlFor={`gowork-module-${module.directory}`} className="gs-list-row cursor-pointer">
+              <input id={`gowork-module-${module.directory}`} type="checkbox" checked={selected.has(module.directory)} onChange={() => toggle(module.directory)} className="h-[15px] w-[15px] accent-[var(--color-accent)]" />
               <span className="min-w-0 flex-1">
                 <span className="gs-mono block truncate text-text-1">{module.modulePath || module.directory}</span>
                 <span className="gs-mono block truncate text-[11px] text-text-4">./{module.directory === '.' ? '' : module.directory}</span>

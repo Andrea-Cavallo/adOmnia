@@ -21,7 +21,10 @@ export interface OAuthAuthorizationResult {
 function base64Url(bytes: Uint8Array): string {
   let raw = ''
   bytes.forEach((byte) => { raw += String.fromCharCode(byte) })
-  return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+  let encoded = btoa(raw).replace(/\+/g, '-').replace(/\//g, '_')
+  // Base64 padding only trails: the `=+$` trim is a loop so it stays linear.
+  while (encoded.endsWith('=')) encoded = encoded.slice(0, -1)
+  return encoded
 }
 
 function randomValue(length: number): string {

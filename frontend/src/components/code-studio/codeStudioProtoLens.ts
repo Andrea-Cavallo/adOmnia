@@ -118,7 +118,7 @@ async function protoDefinition(model: monaco.editor.ITextModel, position: monaco
       if (text === null) continue
       const found = findProtoType(protoDeclarations(text), token)
       if (!found) break
-      const path = `${session.project.rootPath.replace(/[\\/]+$/, '')}/${candidate}`
+      const path = `${session.project.rootPath.replace(/(?<![\\/])[\\/]+$/, '')}/${candidate}`
       const range = { startLine: found.line, startColumn: found.column, endLine: found.line, endColumn: found.column + found.name.length }
       return rememberLocations([{ uri: monaco.Uri.file(path).toString(), path, relativePath: candidate, external: false, range }])
     }

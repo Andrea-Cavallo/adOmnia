@@ -277,6 +277,9 @@ export function ObservabilityPanel() {
           if (!cancelled) setLive(false)
         }
       }
+    }).catch(() => {
+      // No token, no stream: same outcome as a permanently closed stream.
+      if (!cancelled) setLive(false)
     })
 
     return () => {
@@ -294,13 +297,13 @@ export function ObservabilityPanel() {
     setFiles(fileList)
     // Auto-select most recent file
     if (fileList.length > 0 && !selectedFile) {
-      const latest = fileList.reduce((a, b) => (a.name > b.name ? a : b))
+      const latest = fileList.reduce((a, b) => (a.name > b.name ? a : b), fileList[0])
       setSelectedFile(latest.name)
     }
   }, [selectedFile])
 
   useEffect(() => {
-    loadFiles()
+    void loadFiles()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load entries when file is selected
@@ -310,11 +313,13 @@ export function ObservabilityPanel() {
     setSelectedSpanId('')
     const load = async () => {
       setLoading(true)
-      const data = await readLogFile(selectedFile)
-      setEntries(data)
-      setLoading(false)
+      try {
+        setEntries(await readLogFile(selectedFile))
+      } finally {
+        setLoading(false)
+      }
     }
-    load()
+    load().catch(() => setEntries([]))
   }, [selectedFile])
 
   // Apply filters

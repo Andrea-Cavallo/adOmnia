@@ -44,8 +44,8 @@ export function BisectPanel({ repoPath, initialBad, onClose, onRefresh }: Bisect
   }
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" onClick={onClose}>
-      <div className="flex max-h-[80vh] w-[520px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-6" role="presentation" onClick={onClose}>
+      <div className="flex max-h-[80vh] w-[520px] flex-col overflow-hidden rounded-xl border border-border-2 bg-surface-1 shadow-2xl" role="presentation" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3">
           <Bug size={15} className="text-accent" />
           <div className="text-sm font-semibold text-text-1">Git bisect</div>

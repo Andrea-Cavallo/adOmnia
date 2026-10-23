@@ -12,6 +12,13 @@ interface CodeStudioCloneDialogProps {
 
 const URL_HINT = /^(?:(?:https?|ssh|git):\/\/\S+|[\w.-]+@[\w.-]+:\S+)$/
 
+/** Toglie le barre finali dalla coda: la regex `[\\/]+$` ha backtracking non lineare sugli URL lunghi. */
+const withoutTrailingSeparators = (value: string): string => {
+  let end = value.length
+  while (end > 0 && (value[end - 1] === '/' || value[end - 1] === '\\')) end -= 1
+  return value.slice(0, end)
+}
+
 /** File → Clone Repository…: git clone in una cartella scelta, poi il progetto si apre (non autorizzato). */
 export function CodeStudioCloneDialog({ open, onClose }: CodeStudioCloneDialogProps) {
   const [url, setUrl] = useState('')
@@ -22,7 +29,7 @@ export function CodeStudioCloneDialog({ open, onClose }: CodeStudioCloneDialogPr
   if (wasOpen !== open) { setWasOpen(open); if (open) setError(null) }
   if (!open) return null
 
-  const name = url.trim().replace(/\/+$/, '').replace(/\.git$/, '').split(/[/:]/).pop() ?? ''
+  const name = withoutTrailingSeparators(url.trim()).replace(/\.git$/, '').split(/[/:]/).pop() ?? ''
   const valid = URL_HINT.test(url.trim()) && parent.trim() !== ''
   const browse = async () => {
     const folder = await chooseGoIDEProjectFolder().catch(() => '')
@@ -61,7 +68,7 @@ export function CodeStudioCloneDialog({ open, onClose }: CodeStudioCloneDialogPr
         <CodeStudioField label="Repository URL">
           <input data-autofocus value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://github.com/owner/repo.git · git@host:owner/repo.git" className="gs-input gs-mono" />
         </CodeStudioField>
-        <CodeStudioField label="Parent folder" hint={valid && name ? <span className="gs-mono">→ {parent.replace(/[\\/]+$/, '')}{parent.includes('\\') ? '\\' : '/'}{name}</span> : undefined}>
+        <CodeStudioField label="Parent folder" hint={valid && name ? <span className="gs-mono">→ {withoutTrailingSeparators(parent)}{parent.includes('\\') ? '\\' : '/'}{name}</span> : undefined}>
           <div className="flex gap-2">
             <input value={parent} onChange={(event) => setParent(event.target.value)} placeholder="C:\Users\you\Workspaces" className="gs-input gs-mono flex-1" />
             <CodeStudioButton variant="secondary" icon={FolderOpen} onClick={() => void browse()}>Browse…</CodeStudioButton>

@@ -30,7 +30,7 @@ export interface LatexResumePreview {
 }
 
 function dedent(value: string): string {
-  const lines = value.replace(/^\n/, '').replace(/\s+$/, '').split('\n')
+  const lines = value.replace(/^\n/, '').trimEnd().split('\n')
   const indent = Math.min(...lines.filter(Boolean).map((line) => line.match(/^\s*/)?.[0].length ?? 0))
   return lines.map((line) => line.slice(indent)).join('\n')
 }
@@ -254,7 +254,7 @@ export function parseResumePreview(source: string): LatexResumePreview {
 
 export function latexToPlainText(source: string): string {
   return source
-    .replace(/%.*$/gm, '')
+    .replace(/%[^\n]*/g, '')
     .replace(/\\(documentclass|usepackage)(\[[^\]]*])?\{[^}]*}/g, '')
     .replace(/\\(begin|end)\{[^}]*}/g, '')
     .replace(/\\(section|subsection|title|author|date)\{([^}]*)}/g, '\n$2\n')

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useModalFocusTrap } from '@/lib/accessibility'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { closeOnBackdropClick } from '@/lib/dialogBackdrop'
 
 interface HostModalProps {
   profiles: HostsProfile[]
@@ -21,7 +22,7 @@ function isValidIP(value: string): boolean {
   // IPv4
   const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/
   if (ipv4.test(value)) {
-    return value.split('.').every((n) => parseInt(n, 10) <= 255)
+    return value.split('.').every((n) => Number.parseInt(n, 10) <= 255)
   }
   // IPv6 (basic check)
   const ipv6 = /^[0-9a-fA-F:]+$/
@@ -90,7 +91,7 @@ export function HostModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation" onClick={closeOnBackdropClick(onClose)}>
         <div
           ref={modalRef}
           role="dialog"
@@ -98,7 +99,6 @@ export function HostModal({
           aria-label={tr('Hosts Profiles')}
           tabIndex={-1}
           className="w-[780px] h-[500px] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95"
-          onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">

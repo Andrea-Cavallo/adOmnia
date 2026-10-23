@@ -140,15 +140,15 @@ export function KubePanel() {
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-surface-0">
       <div className="flex flex-wrap items-center gap-2 border-b border-border-1 bg-surface-1 px-3 py-2">
-        <label className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-4">Context</label>
-        <select value={context} onChange={(e) => void onContextChange(e.target.value)} className={cn(SELECT, 'min-w-[180px]')}>
+        <label htmlFor="kube-context" className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-4">Context</label>
+        <select id="kube-context" value={context} onChange={(e) => void onContextChange(e.target.value)} className={cn(SELECT, 'min-w-[180px]')}>
           {contexts.length === 0 && <option value="">No contexts</option>}
           {contexts.map((name) => (
             <option key={name} value={name}>{name}{name === currentContext ? ' · current' : ''}</option>
           ))}
         </select>
-        <label className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-4">Namespace</label>
-        <select value={namespace} onChange={(e) => void onNamespaceChange(e.target.value)} className={cn(SELECT, 'min-w-[140px]')}>
+        <label htmlFor="kube-namespace" className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-4">Namespace</label>
+        <select id="kube-namespace" value={namespace} onChange={(e) => void onNamespaceChange(e.target.value)} className={cn(SELECT, 'min-w-[140px]')}>
           {namespaces.length === 0 && <option value="">No namespaces</option>}
           {namespaces.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
@@ -264,8 +264,8 @@ function PodContainerTool({ pod, context, namespace, tool }: { pod: KubePod; con
     <div className="flex min-h-0 flex-1 flex-col">
       {pod.containers.length > 1 && (
         <div className="flex items-center gap-1.5 border-b border-border-1 px-3 py-2">
-          <label className="text-[10px] uppercase tracking-wider text-text-4">Container</label>
-          <select value={container} onChange={(e) => setContainer(e.target.value)} className={cn(SELECT, 'min-w-[120px]')}>
+          <label htmlFor="kube-tool-container" className="text-[10px] uppercase tracking-wider text-text-4">Container</label>
+          <select id="kube-tool-container" value={container} onChange={(e) => setContainer(e.target.value)} className={cn(SELECT, 'min-w-[120px]')}>
             {pod.containers.map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
         </div>
@@ -354,8 +354,8 @@ function PodLogs({ pod, context, namespace }: { pod: KubePod; context: string; n
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-1.5 border-b border-border-1 px-3 py-2">
-        <label className="text-[10px] uppercase tracking-wider text-text-4">Container</label>
-        <select value={container} onChange={(e) => setContainer(e.target.value)} className={cn(SELECT, 'min-w-[120px]')}>
+        <label htmlFor="kube-logs-container" className="text-[10px] uppercase tracking-wider text-text-4">Container</label>
+        <select id="kube-logs-container" value={container} onChange={(e) => setContainer(e.target.value)} className={cn(SELECT, 'min-w-[120px]')}>
           {pod.containers.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <div className="flex-1" />

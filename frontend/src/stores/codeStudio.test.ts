@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   getView: vi.fn(),
   openDocument: vi.fn(),
+  writeRunInput: vi.fn(),
 }))
 
 vi.mock('@/lib/code-studio-api', () => ({
@@ -37,7 +38,7 @@ vi.mock('@/lib/code-studio-api', () => ({
   startGoIDERun: vi.fn(),
   stopGoIDERun: vi.fn(),
   subscribeGoIDEEvents: vi.fn(() => () => undefined),
-  writeGoIDERunInput: vi.fn(),
+  writeGoIDERunInput: mocks.writeRunInput,
   forgetGoIDEBuffer: vi.fn(() => Promise.resolve()),
   rememberGoIDEBuffer: vi.fn(() => Promise.resolve()),
 }))
@@ -45,6 +46,20 @@ vi.mock('@/lib/code-studio-api', () => ({
 vi.mock('@/lib/confirmDialog', () => ({ confirm: mocks.confirm }))
 
 import { useCodeStudioStore, type GoIDEEditorDocument } from './codeStudio'
+
+describe('program stdin delivery', () => {
+  it('reports successful delivery, including an empty line', async () => {
+    mocks.writeRunInput.mockResolvedValueOnce(undefined)
+    expect(await useCodeStudioStore.getState().sendRunInput('python-run', '\n')).toBe(true)
+    expect(mocks.writeRunInput).toHaveBeenCalledWith('python-run', '\n')
+  })
+
+  it('reports failed delivery so the console can retain the input', async () => {
+    mocks.writeRunInput.mockRejectedValueOnce(new Error('run is not active'))
+    expect(await useCodeStudioStore.getState().sendRunInput('java-run', '12\n')).toBe(false)
+    expect(useCodeStudioStore.getState().error).toBe('run is not active')
+  })
+})
 
 const document: GoIDEEditorDocument = {
   document: {

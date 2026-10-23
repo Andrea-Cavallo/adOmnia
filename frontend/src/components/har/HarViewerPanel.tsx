@@ -198,7 +198,7 @@ function enrich(entries: HarEntry[], source: 'a' | 'b' = 'a'): RichEntry[] {
       _id: i,
       _entryIndex: i,
       _source: source,
-      _startMs: isNaN(startMs) ? 0 : Math.max(startMs, 0),
+      _startMs: Number.isNaN(startMs) ? 0 : Math.max(startMs, 0),
       _domain: parseDomain(e.request.url),
       _mimeShort: shortMime(e.response?.content?.mimeType ?? ''),
       _slow: e.time > 1000,

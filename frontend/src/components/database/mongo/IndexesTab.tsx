@@ -216,7 +216,7 @@ function CreateIndexDialog({ runMongo, db, collection, onClose, onCreated }: Cre
   const setKey = (i: number, patch: Partial<{ field: string; type: KeyType }>) => setKeys(keys.map((k, idx) => (idx === i ? { ...k, ...patch } : k)))
 
   return (
-    <div className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div role="presentation" className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div role="dialog" aria-modal="true" aria-labelledby="create-index-title" className="w-full max-w-lg rounded-md border border-border-2 bg-surface-2 shadow-2xl">
         <div className="flex h-11 items-center gap-2 border-b border-border-1 px-3.5">
           <KeyRound size={14} className="text-accent" />

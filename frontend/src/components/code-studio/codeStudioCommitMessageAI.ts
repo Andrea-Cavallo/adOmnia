@@ -71,8 +71,12 @@ export function buildCommitMessagePrompt(input: CommitMessageInput): { system: s
  */
 export function parseCommitMessage(raw: string): string {
   const text = raw.replace(/\r\n/g, '\n')
-  const fenced = text.match(/```[^\n]*\n([\s\S]*?)\n?```/)
-  const body = (fenced ? fenced[1] : text).replace(/^\n+/, '').replace(/\s+$/, '')
+  // Fence located with indexOf: the regex form needs an unbounded scan for the
+  // opening line, which backtracks quadratically on a long answer with no fence.
+  const opening = text.indexOf('```')
+  const headerEnd = opening >= 0 ? text.indexOf('\n', opening) : -1
+  const closing = headerEnd >= 0 ? text.indexOf('```', headerEnd + 1) : -1
+  const body = (closing >= 0 ? text.slice(headerEnd + 1, closing) : text).replace(/^\n+/, '').trimEnd()
   if (!body) throw new Error('the AI did not return a commit message')
   return body.length > MAX_MESSAGE_CHARS ? body.slice(0, MAX_MESSAGE_CHARS) : body
 }

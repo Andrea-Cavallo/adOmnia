@@ -13,6 +13,7 @@ import { downloadText } from '@/lib/fileUtils'
 import { EnvMatrix } from './EnvMatrix'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { Copy, Pencil } from 'lucide-react'
+import { closeOnBackdropClick } from '@/lib/dialogBackdrop'
 
 interface EnvModalProps {
   environments: Environment[]
@@ -171,7 +172,7 @@ export function EnvModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" role="presentation" onClick={closeOnBackdropClick(onClose)}>
         <div
           ref={modalRef}
           role="dialog"
@@ -179,7 +180,6 @@ export function EnvModal({
           aria-label={tr('Environments')}
           tabIndex={-1}
           className="w-[min(1100px,92vw)] h-[min(640px,86vh)] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95"
-          onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">

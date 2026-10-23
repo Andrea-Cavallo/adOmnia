@@ -42,7 +42,7 @@ export function suggestChips(driver: DbKind, text: string, interpretation: Query
 function selectToCount(text: string): string | null {
   const stmt = text.trim().replace(/;\s*$/, '')
   if (/\b(GROUP\s+BY|HAVING|UNION|DISTINCT|WITH)\b/i.test(stmt) || /\bJOIN\b/i.test(stmt)) return null
-  const match = /^\s*SELECT\s+[\s\S]+?\s+FROM\s+([\s\S]+?)\s*$/i.exec(stmt)
+  const match = /^\s*SELECT\s+(?:(?!\s+FROM\s)[\s\S])+\s+FROM\s+([\s\S]+)$/i.exec(stmt)
   if (!match) return null
   const tail = TAIL_CLAUSE.exec(match[1])
   const rest = (tail ? match[1].slice(0, tail.index) : match[1]).trim()
@@ -51,10 +51,10 @@ function selectToCount(text: string): string | null {
 
 /** Inserts `WHERE ` before the first trailing clause, or at the end. */
 function addWhere(text: string): string {
-  const stmt = text.replace(/;\s*$/, '').replace(/\s+$/, '')
+  const stmt = text.replace(/;\s*$/, '').trimEnd()
   const tail = TAIL_CLAUSE.exec(stmt)
   const at = tail ? tail.index : stmt.length
-  const head = stmt.slice(0, at).replace(/\s+$/, '')
+  const head = stmt.slice(0, at).trimEnd()
   const rest = stmt.slice(at)
   return `${head}\nWHERE ${rest ? `\n${rest}` : ''}`.trimEnd()
 }

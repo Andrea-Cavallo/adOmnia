@@ -1,7 +1,7 @@
 import type { RunTemplate } from './runFormTypes'
 
 interface ProjectContext { rootPath: string; units?: readonly { language: string; root: string }[] | null }
-const normalized = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
+const normalized = (path: string) => path.replace(/\\/g, '/').replace(/(^|[^/])\/+$/, '$1')
 
 /** Only default to a directory when the language has one unambiguous unit. */
 export function templateWorkingDirectory(template: RunTemplate, project?: ProjectContext): string {

@@ -186,7 +186,7 @@ export function openApiFromRoutes(entries: readonly GoIDEArchEntry[], title: str
     for (const verb of methods) {
       const source = (entry.handler && entry.handler !== 'func literal' ? entry.handler : entry.function ?? '').replace(/[^A-Za-z0-9]/g, '')
       let operationId = `${verb}${source || route.path.replace(/[^A-Za-z0-9]/g, '')}`
-      for (let suffix = 2; usedIds.has(operationId); suffix++) operationId = `${operationId.replace(/\d+$/, '')}${suffix}`
+      for (let suffix = 2; usedIds.has(operationId); suffix++) operationId = `${operationId.replace(/(^|\D)\d+$/, '$1')}${suffix}`
       usedIds.add(operationId)
       const handledIn = entry.handlerSite?.relativePath ? `${entry.handler} (${entry.handlerSite.relativePath}:${entry.handlerSite.line})` : `${entry.function ?? 'unknown'} (${entry.site.relativePath}:${entry.site.line})`
       paths[route.path] = {

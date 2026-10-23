@@ -27,15 +27,18 @@ jobs:
       # vecchio e rifiuta i moduli Go 1.27 ("the Go language version used to build golangci-lint is lower").
       - uses: ./.github/actions/go-wails-prereqs
 
+      # Versions pinned: `@latest` would make the gate change from one run to the next. These are CI
+      # tools, not runtime dependencies, so they are installed outside the module graph and verified
+      # against the Go checksum database instead of go.sum.
       - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 # NOSONAR -- pinned tool binary; see the note above
 
       - name: golangci-lint
         run: golangci-lint run --build-tags gtk3 --timeout 8m
 
       - name: govulncheck
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0 # NOSONAR -- pinned tool binary; see the note above
           govulncheck -tags gtk3 ./...
 
   secrets:
@@ -48,7 +51,9 @@ jobs:
 
       # Niente segreti nel repository o nella storia: gitleaks è gratuito per i repository
       # personali (per le organization serve GITLEAKS_LICENSE).
-      - uses: gitleaks/gitleaks-action@v2
+      # Pinned to the commit the v2 tag pointed at: a mutable tag would let whoever controls it
+      # change what runs in this repository's CI.
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -66,12 +71,13 @@ jobs:
 
       - name: Audit dependencies
         working-directory: frontend
-        run: npm ci && npm audit --audit-level=high
+        run: npm ci --ignore-scripts && npm audit --audit-level=high
 
       # oxlint: errori = bug (gate); warning = migrazione React Compiler e stile, visibili nel log.
+      # `npm run lint` uses the version from the lockfile instead of letting npx fetch one.
       - name: oxlint
         working-directory: frontend
-        run: npx oxlint
+        run: npm run lint
 
   semgrep:
     name: Semgrep (SAST)
@@ -97,7 +103,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: aquasecurity/trivy-action@v0.36.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scanners: vuln,secret,misconfig
@@ -116,15 +122,25 @@ jobs:
           shellcheck build.sh build/*.sh build/linux/*.sh scripts/*.sh packaging/render.sh
 
       - name: Hadolint (Dockerfiles)
+        # --https-only: a redirect to plain HTTP would otherwise be followed silently.
         run: |
-          wget -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          wget --https-only -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
           chmod +x /usr/local/bin/hadolint
           hadolint Dockerfile.linux build/Dockerfile docker/adomnia-lab/mock-api/Dockerfile
 
+      # The archive is downloaded to a file and checked against the published SHA-256 before it is
+      # extracted and run: nothing that arrives over the network is executed unverified.
       - name: actionlint (GitHub workflows)
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
         run: |
-          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-          ./actionlint -shellcheck=
+          archive="$RUNNER_TEMP/actionlint.tar.gz"
+          curl --proto '=https' --tlsv1.2 --max-redirs 3 -fsSL -o "$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum -c -
+          tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -shellcheck=
 
   gosec:
     name: gosec (Go security rules)
@@ -143,5 +159,5 @@ jobs:
       # restano un controllo locale documentato in docs/QUALITY.md.
       - name: gosec
         run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0 # NOSONAR -- pinned tool binary, installed outside the module graph like golangci-lint and govulncheck
           "$(go env GOPATH)/bin/gosec" -tags=gtk3 -severity=HIGH -confidence=HIGH -exclude-dir=frontend -exclude-dir=workspaces -exclude-dir=.artifacts -exclude-dir=testdata ./...

@@ -51,7 +51,7 @@ export function CodeStudioImplementInterfaceDialog() {
     const timer = window.setTimeout(() => {
       setLoading(true)
       pending = requestWorkspaceSymbols(request.sessionId, query.trim())
-      pending
+      void pending
         .then((symbols) => { setResults(implementableInterfaces(symbols, request.directory).slice(0, MAX_RESULTS)); setSelected(0) })
         .catch(() => setResults([]))
         .finally(() => setLoading(false))

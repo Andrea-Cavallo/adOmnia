@@ -87,7 +87,8 @@ export function ConfirmDialog({
   if (!open) return null
 
   return (
-    <div className="ad-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
+    <div className="ad-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation" onClick={onCancel}>
+      <div className="contents" role="presentation" onClick={(e) => e.stopPropagation()}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -96,7 +97,6 @@ export function ConfirmDialog({
         aria-describedby={message ? messageId : undefined}
         tabIndex={-1}
         className="w-[min(460px,100%)] overflow-hidden rounded-2xl border border-border-2 bg-surface-1"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className={cn('h-0.5 bg-gradient-to-r from-transparent to-transparent', isDanger ? 'via-status-err/70' : 'via-accent/70')} />
 
@@ -156,6 +156,7 @@ export function ConfirmDialog({
             {resolvedConfirmLabel}
           </button>
         </div>
+      </div>
       </div>
     </div>
   )

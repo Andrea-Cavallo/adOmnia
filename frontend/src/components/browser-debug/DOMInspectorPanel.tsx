@@ -246,7 +246,7 @@ export function DOMInspectorPanel() {
         setError(err instanceof Error ? err.message : 'Failed to initialize DOM inspector')
       }
     }
-    init()
+    void init()
   }, [])
 
   const refreshSource = useCallback(async () => {
@@ -420,7 +420,7 @@ export function DOMInspectorPanel() {
             value={selectorQuery}
             onChange={(e) => setSelectorQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSearch()
+              if (e.key === 'Enter') void handleSearch()
             }}
             placeholder="CSS selector..."
             className="h-6 w-full pl-6 pr-2 rounded bg-surface-1 border border-border-1 text-[10px] text-text-1 font-mono placeholder:text-text-3 focus:outline-none focus:border-accent"

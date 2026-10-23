@@ -28,7 +28,7 @@ export interface CodeStudioRunCommand {
   label: string
 }
 
-const PACKAGE_MAIN = /^\s*package\s+main\b/m
+const PACKAGE_MAIN = /^[ \t]*package[ \t]+main\b/m
 const FUNC_MAIN = /^func\s+main\s*\(\s*\)/
 const TEST_FUNC = /^func\s+((Test|Benchmark|Fuzz|Example)[A-Za-z0-9_]*)\s*\(/
 

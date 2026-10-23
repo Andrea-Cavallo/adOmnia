@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, CircleAlert, Play, Plus, Trash2 } from 'lucide-react'
 import { confirm } from '@/lib/confirmDialog'
 import { detectGoIDEGoTool, installGoIDEGoModule, runGoIDEGoTool, type GoIDEGoToolInfo } from '@/lib/code-studio-api'
@@ -20,7 +20,11 @@ export function CodeStudioExtraTools({ sessionId, goAvailable, trusted }: { sess
   const [directory, setDirectory] = useState('')
   const [draft, setDraft] = useState({ binary: '', module: '' })
   const [message, setMessage] = useState<string | null>(null)
+  const argsRef = useRef<HTMLInputElement>(null)
   const tools = [...BUILTIN_EXTRA_TOOLS, ...custom]
+
+  // Il campo argomenti compare quando si apre un tool: il focus va lì, senza `autoFocus`.
+  useEffect(() => { if (open) argsRef.current?.focus() }, [open])
 
   useEffect(() => {
     let live = true
@@ -87,7 +91,7 @@ export function CodeStudioExtraTools({ sessionId, goAvailable, trusted }: { sess
               </div>
               {open === tool.binary && (
                 <div className="mt-2 flex items-center gap-2 pl-[26px]">
-                  <input autoFocus value={args} onChange={(event) => setArgs(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void run(tool) }} aria-label={`${tool.binary} arguments`} placeholder="arguments" className="gs-input gs-mono min-w-0 flex-1" />
+                  <input ref={argsRef} value={args} onChange={(event) => setArgs(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void run(tool) }} aria-label={`${tool.binary} arguments`} placeholder="arguments" className="gs-input gs-mono min-w-0 flex-1" />
                   <input value={directory} onChange={(event) => setDirectory(event.target.value)} aria-label="Working directory" placeholder="folder (project root)" className="gs-input gs-mono w-44" />
                   <CodeStudioButton small variant="primary" icon={Play} onClick={() => void run(tool)}>Run</CodeStudioButton>
                 </div>
