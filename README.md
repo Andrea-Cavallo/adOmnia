@@ -29,14 +29,6 @@
 </p>
 
 <p align="center">
-  <a href="https://sonarcloud.io/summary/new_code?id=Andrea-Cavallo_adOmnia"><img alt="Quality gate" src="https://sonarcloud.io/api/project_badges/measure?project=Andrea-Cavallo_adOmnia&metric=alert_status"></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=Andrea-Cavallo_adOmnia"><img alt="Coverage" src="https://sonarcloud.io/api/project_badges/measure?project=Andrea-Cavallo_adOmnia&metric=coverage"></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=Andrea-Cavallo_adOmnia"><img alt="Maintainability rating" src="https://sonarcloud.io/api/project_badges/measure?project=Andrea-Cavallo_adOmnia&metric=sqale_rating"></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=Andrea-Cavallo_adOmnia"><img alt="Security rating" src="https://sonarcloud.io/api/project_badges/measure?project=Andrea-Cavallo_adOmnia&metric=security_rating"></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=Andrea-Cavallo_adOmnia"><img alt="Reliability rating" src="https://sonarcloud.io/api/project_badges/measure?project=Andrea-Cavallo_adOmnia&metric=reliability_rating"></a>
-</p>
-
-<p align="center">
   <sub>Listed in <a href="https://github.com/Andrea-Cavallo/awesome-wails">awesome-wails</a> and <a href="https://github.com/Andrea-Cavallo/awesome-api-clients">awesome-api-clients</a>.</sub>
 </p>
 
