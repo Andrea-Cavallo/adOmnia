@@ -873,7 +873,8 @@ Piano: 06 JS-11 (P2). **Prerequisito:** progetto Spring Boot + uno Quarkus o Mic
 - [ ] JS-13.M2 Con l'app Spring avviata dal Run, "Open API" (Tools → endpoint Spring) crea la collezione `<servizio> API` con una richiesta per endpoint e le risposte live compaiono in Last response; Debug request non è offerto per Java.
 - [ ] JS-3.M4 Rerun failed con due metodi falliti della stessa classe riesegue solo quei due (comando `-Dtest=Classe#a+b` / due `--tests` visibili in console); con un nome display (`test[0]`) riesegue la classe.
 - [ ] JS-6.M3 Un file con `void main()` senza `public static` (Java 25) mostra il ▶ solo quando JDT LS è `ready`; con JDT LS fermo resta la regola della regex e una classe non lanciabile non ha il ▶.
-- [ ] JS-8.M4 Dipendenza senza `<version>` in un pom con parent Spring Boot: il marker/CVE mostra la versione ereditata e non propone modifiche in quel file; "Scan vulnerabilities" su un `build.gradle` segnala i CVE delle dipendenze con versione scritta (e avvisa che le transitive non sono lette).
+- [ ] JS-8.M4 Dipendenza senza `<version>` in un pom con parent Spring Boot: il marker/CVE mostra la versione ereditata e non propone modifiche in quel file; "Scan vulnerabilities" su un `build.gradle` segnala i CVE delle dipendenze con versione scritta (e avvisa che le transitive non sono lette). **Aggiunta 2026-10-24:** su un `build.gradle` con plugin `org.springframework.boot` e dipendenze senza versione, con il BOM `spring-boot-dependencies:<versione>` nella repository `~/.m2`, anche quelle dipendenze vengono scansionate (versione ereditata); senza il BOM compare il warning "is not in the local Maven repository".
+- [ ] ML-9.M19 (aggiunta 2026-10-24) da una radice Gradle multi-modulo: `:app:bootRun --debug-jvm` e `:libs:core:test` si collegano senza l'errore "select a single Java module" e le espressioni si valutano nel modulo del task.
 
 ### JS-16 — Quarkus e MicroProfile (2026-10-19)
 
