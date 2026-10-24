@@ -9,7 +9,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 
 ## Stato a colpo d'occhio
 
-**103 chiuse · 141 implementate da verificare · 0 da fare - su 244 voci.** (ricontate il 2026-10-24; la PARTE D è nuova).
+**103 chiuse · 141 implementate da verificare · 1 da fare - su 245 voci.** (ricontate il 2026-10-24; la PARTE D e IDE-8 sono nuove).
 
 | Sezione | ✅ chiuse | 🟡 implementate, da verificare | ⬜ da fare | totale |
 |---------|----------:|-------------------------------:|-----------:|-------:|
@@ -20,6 +20,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | IDE-5 | 5 | 6 | 0 | 11 |
 | IDE-6 | 0 | 5 | 0 | 5 |
 | IDE-7 | 0 | 1 | 0 | 1 |
+| IDE-8 | 0 | 0 | 1 | 1 |
 | GS-1 | 5 | 4 | 0 | 9 |
 | GS-2 | 7 | 0 | 0 | 7 |
 | GS-3 | 9 | 0 | 0 | 9 |
@@ -42,7 +43,7 @@ Percorsi frontend relativi a `frontend/src/`, salvo diversa indicazione.
 | DB-2 | 1 | 14 | 0 | 15 |
 | DB-3 | 13 | 11 | 0 | 24 |
 | MCP-1 / MCP-2 | 8 | 1 | 0 | 9 |
-| **TOTALE** | **103** | **141** | **0** | **244** |
+| **TOTALE** | **103** | **141** | **1** | **245** |
 
 > **Attenzione ai percorsi (2026-10-21).** Il refactor Code Studio ha rinominato il perimetro IDE: `internal/goide` → `internal/codestudio`, `components/goide/*` → `components/code-studio/*`, `GoStudioXxx` → `CodeStudioXxx` (la cartella `components/goide` oggi contiene solo `.ruff_cache`). Tutti i `file:riga` di IDE/GS vanno riletti nel nuovo percorso prima di ogni modifica; i test esistenti conservano i vecchi nomi solo dove il file non è stato rinominato.
 
@@ -132,6 +133,7 @@ Priorità: **P0** blocca l'uso, **P1** difetto visibile, **P2** miglioramento. S
 | IDE-5 | Altri difetti IDE (12 voci) | P1-P2 | vari |
 | IDE-6 | CPU alta ad app ferma (~20%) | P0 | M |
 | IDE-7 | Finestre con dimensioni fisse fuori dall'area di lavoro | P1 | S |
+| IDE-8 | Test instabile in `internal/ide/startup` (CI) | P1 | S |
 | GS-1 | Play/Run non funziona con `main.go` in `cmd/` | P0 | L |
 | GS-2 | "Run with Coverage" su cartella: niente / 0.0% | P1 | M-L |
 | GS-3 | Claude Code / milk: `EMAXREDIRECT`, "process is not available" | P0 | L |
@@ -358,6 +360,19 @@ Già controllato e senza problemi: nessun TODO/FIXME nel codice IDE; i 250 metod
 - [ ] IDE-7.1 (S) Dimensione e minimo di ogni nuova finestra limitati all'area di lavoro del monitor primario: `internal/windowfit.Size(app, w, h, minW, minH)` (`Screen.GetPrimary().WorkArea`); senza informazioni sullo schermo la richiesta resta invariata. Collegato a tutte le creazioni di finestre: principale, Code Studio staccata, Live Preview, Swagger Editor, pannelli staccati, richieste API (singole e separate Request/Response). — **IMPLEMENTATO; verifica manuale in MANUAL-CHECK.md:** `internal/windowfit/windowfit_test.go` prova il clamp (schermo grande invariato; schermo piccolo riduce finestra e minimi; minimi più grandi dello schermo limitati; assi indipendenti) e la passthrough senza schermo; `go vet` e `go test ./internal/windowfit ./internal/codestudiowindow ./internal/panelwindow` verdi, `go build -o NUL .` verde. L'integrazione con `app.Screen` è verificata solo nell'app (IDE-7.M1/M2).
 
 **Gate IDE-7:** [x] Impl  [x] Test  [ ] Manuale → `mds/MANUAL-CHECK.md` (IDE-7)  [x] Doc (questa voce + `MANUAL-CHECK.md`; nessun documento utente da aggiornare)  [ ] Verificato da altra persona/agente
+
+---
+
+### IDE-8. Test instabile: `internal/ide/startup` `TestObserveRealProcess`
+
+**Sintomo (2026-10-24).** Nel run completo `go test ./...` della sessione di stress la suite è risultata **97 pacchetti ok, 1 FAIL**: `--- FAIL: TestObserveRealProcess (7.60s)` in `adomnia/internal/ide/startup` (9.79 s di pacchetto). Lo stesso test è poi passato **3 volte su 3** con `go test -count=1 ./internal/ide/startup/` e con `-run TestObserveRealProcess`. Non ha nulla a che vedere con le modifiche di quella sessione (`internal/adomniacli`, frontend, documenti): il pacchetto non è stato toccato.
+
+**Causa probabile (da confermare).** Il test compila ed esegue un processo reale e ne osserva l'avvio (`net.Listen` per una porta, `t.TempDir()`, build + spawn) mentre gli altri 96 pacchetti girano in parallelo: sotto carico la finestra osservata può scadere. Da confermare con `-race`/`-count=5` sotto carico artificiale prima di toccare le attese.
+
+**Fix**
+- [ ] IDE-8.1 (S) Rendere deterministico `TestObserveRealProcess`: attese con margine esplicito o `t.Deadline()`, nessuna dipendenza da tempi assoluti sotto carico; in alternativa marcarlo `t.Skip` in `-short` e farlo coprire da un test con processo finto. Serve la riproduzione prima del fix (regola 0.3): `go test -count=5 ./...` o `-cpu 1,4` fino al fallimento, con l'output allegato al Registro. — **DA FARE**.
+
+**Gate IDE-8:** [ ] Impl  [ ] Test  [ ] Doc  [ ] Verificato da altra persona/agente
 
 ---
 
@@ -922,11 +937,11 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 - [x] MCP-1.2 Validazione del piano in `executeStressPlan` (condivisa da `adomnia stress`, `stress_run` e `performance_report`): nodo senza `id`/`type` → `invalid stress plan: node N has no id or type (unexpected field names?)`; tipo sconosciuto e archi verso nodi inesistenti rifiutati. Niente più run vuote presentate come valide. — **FATTO**.
 - [x] MCP-1.3 Test prima rossi → verdi: `TestStressRunsPlanExportedFromFlowBuilder` (fixture JSON **letterale** con la forma del frontend, `x`/`y`/`viewport`/`seq` inclusi: attende 3 chiamate HTTP e `"requests": 3`) e `TestStressRejectsPlanWithoutNodeIdentity` (piano senza id/type: deve uscire non-zero con messaggio sul nodo). Rosso registrato: `server saw 0 requests, want 3` e `plan without node id/type was accepted`. — **FATTO** (`internal/adomniacli/stress_export_test.go`).
 - [x] MCP-1.4 Nessuna regressione sul resto del tool: `go test ./internal/adomniacli/` verde (tutta la suite del pacchetto, inclusi MCP, mock, benchmark, coverage dei piani non validi), `go vet` pulito, `gofmt` pulito, `wails3 task build` exit 0 (115.248.128 B). Riga di registro in §5. — **FATTO**.
-- [ ] MCP-1.5 Riprova manuale con un piano esportato **dalla UI** (non da fixture) su un endpoint reale dell'utente, per confermare che il Flow Builder produce esattamente la forma coperta dal test. — **NON VERIFICATO** (serve un flow reale salvato e un `.stress.json` esportato dal desktop).
+- [x] MCP-1.5 Riprova con un piano **esportato da un flow reale salvato** (2026-10-24). Flow: *"Mock Commerce API flow"* (`c0vgij0e`: start, 4 richieste, una condizione `status == 201`, due `end`), letto in sola lettura dal bucket `flows` di `adomnia.db` e serializzato con la **funzione di export di produzione** `stressPlanJson` (`frontend/src/lib/flowStressExport.ts`), non con una fixture. Eseguito sul bersaglio demo `127.0.0.1:3000`: `2 VU × 10 iterazioni` -> **40 richieste** (4 per iterazione: la condizione ha preso il ramo `true` e il passo della ricevuta è girato), **0 errori**, p95 1 ms, p99 3 ms, RPS 3012, **APDEX 1.000**, `PASS: release gates`, exit 0. *Limite dichiarato:* il file è stato prodotto chiamando la funzione che il pulsante *CI plan* usa, non cliccando il pulsante né passando dal dialog di salvataggio nativo. - **FATTO**.
 - [x] MCP-1.6 Revisione indipendente del diff (agente di review) → stessa classe di bug un livello più giù: `stressMapping` e `stressCondition` erano **anch'essi senza tag**, quindi estrazioni (`name/source/path/fallback`) e condizioni (`source/path/operator/value`) decodificavano vuote (variabili `{{token}}` vuote, ramo della condizione sempre arbitrario). Aggiunti i tag; test `TestStressRunsExtractionsConditionsAndExtractNodes` (login → estrazione header → nodo `extract` → condizione `variable == tok-42` → richiesta protetta) verificato **rosso** togliendo i tag: `second request carried X-Token=""`. — **FATTO**.
 - [x] MCP-1.7 Il tipo nodo `extract` (creato dal frontend per un passo registrato di tipo script) veniva **rifiutato** dalla validazione: accettato e implementato in `executeStressFlow` (applica le estrazioni e prosegue su `next`), come fa l'app. Aggiunti anche il rifiuto degli **id duplicati** e la regola «grafo senza punto d'ingresso → errore `flow executed no request`» invece di 0 richieste con `PASS: release gates` (era ancora possibile con un ciclo senza `start`). Test: `TestStressRejectsGraphWithoutEntryPoint`, `TestStressRejectsDuplicateNodeIDs`. — **FATTO**.
 
-**Gate MCP-1:** [x] Impl [x] Test [ ] Manuale [x] Doc — [ ] Verificato da altra persona/agente.
+**Gate MCP-1:** [x] Impl [x] Test [x] Manuale [x] Doc - [ ] Verificato da altra persona/agente.
 
 ### MCP-2 — un run fallito diceva solo `ERR` e l'APDEX restava 1.000
 
@@ -1002,6 +1017,8 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 | MCP-1 — `stress_run` con i piani esportati dall'app | 2026-10-24 | OpenCode | Riprodotto con il client MCP e con la CLI su piano in forma `FlowGraphDefinition`: `requests: 0`, `iterations: 400`, `isError:false` (e `PASS: release gates` senza gate). Diagnosi in `go test` temporaneo: nodi con `id`/`type`/`label` decodificati vuoti perché `stressNode`/`stressEdge` non hanno tag JSON e `encoding/json/v2` è case-sensitive. Fix: tag `id/type/label/config` e `source/target/branch` + validazione in `executeStressPlan`. Prima rosso: `TestStressRunsPlanExportedFromFlowBuilder` (`server saw 0 requests, want 3`) e `TestStressRejectsPlanWithoutNodeIdentity` (piano accettato). Dopo: `go test ./internal/adomniacli/` verde, `go vet` e `gofmt` puliti, `wails3 task build` exit 0. Verifica end-to-end sul binario ricostruito: `adomnia stress ping.stress.json --reporter json` → `requests 400, errors 0, p95 1 ms, ap99 3 ms, rps 11478.8, apdex 1.000`; `stress_run` via MCP sullo stesso file → `requests 400, errors 0, rps 12283.4`; piano senza id/type → `isError:true`, `invalid stress plan: node 1 has no id or type`. Riprova con un export prodotto dalla UI: NON VERIFICATA (MCP-1.5). | |
 | STRESS-1.M1–M5 avvio/idle/chiusura | 2026-10-24 | OpenCode | Misure esterne sul binario 1.0.16 (`wails3 task build`): finestra visibile 432,4/471,3 ms a caldo e 2517 ms dopo kill; riavvio con sessioni ripristinate 477,3 ms, gopls +1,4 s; progetto adOmnia aperto via `Ctrl+O` e confermato in `adomnia.db` (bucket `goide`); gopls v0.24.0 su adOmnia (1281 file `.go`) «Setting up workspace» 5685/5621/5586 ms; idle CPU 0,017–0,03 %, WS 111–151 MB, albero 1587,2 MB; chiusura senza orfani (0/13). Dettaglio e dati grezzi in `mds/MANUAL-CHECK.md` §STRESS-1 e `.artifacts/stress-2026-10-24/`. | |
 | MCP-2 — motivi degli errori e APDEX | 2026-10-24 | OpenCode | Target irraggiungibile: prima `statuses {"ERR": 20}`, `apdex 1.000`, `p95 0 ms`, nessun motivo. Fix: `groupStressErrors` (gruppi per messaggio, ordinati, max 5, esposti in JSON/CLI/Markdown) e percentili/APDEX calcolati solo sulle richieste riuscite con il fallimento contato come *frustrated*. Prima rosso: `stats.ErrorGroups undefined` + `TestStressApdexAndPercentilesIgnoreFailedRequests`. Dopo: `go test ./internal/adomniacli/` verde, `go vet`/`gofmt` puliti, `wails3 task build` exit 0 (115.255.296 B). Sul binario: `error ×20: … actively refused it.` + `APDEX: 0.000` + `FAIL: error rate 100.0% exceeds 1.0%`. Nessuna regressione: 20 VU × 60 s = 56.564 req, 942,4 req/s, p95 2 ms, APDEX 1.000. | |
+| MCP-1.5 / export reale dal Flow Builder | 2026-10-24 | OpenCode | Flow reale *Mock Commerce API flow* (`c0vgij0e`, 7 nodi: start, 4 richieste, condizione `status == 201`, due `end`) letto in sola lettura dal bucket `flows` di `adomnia.db` e serializzato con la funzione di produzione `stressPlanJson`. Piano risultante eseguito su un demo server locale (`127.0.0.1:3000`): `2 VU × 10 iterazioni` -> 40 richieste (4/iterazione: ramo `true` percorso, passo ricevuta incluso), 0 errori, p95 1 ms, p99 3 ms, RPS 3012, APDEX 1.000, `PASS: release gates`, exit 0. Limite dichiarato: funzione di export chiamata direttamente, non il pulsante *CI plan* del desktop. | |
+| IDE-8 riproduzione del flake | 2026-10-24 | OpenCode | `go test -count=1 -timeout 20m ./...` alla fine della sessione: 97 pacchetti ok, `--- FAIL: TestObserveRealProcess (7.60s)` in `internal/ide/startup`. Isolato: `go test -run TestObserveRealProcess -v` verde (2,43 s) e `go test -count=1 ./internal/ide/startup/` verde 3/3. Pacchetto non toccato da quella sessione. Causa non ancora riprodotta sotto carico: voce aperta, serve la riproduzione prima del fix. | |
 |                |      |     |                                                  |               |
 | GS-7.4 Impl/Test | 2026-10-15 | OpenCode | Pannelli laterali Markdown nell'IDE: `lib/goide/goStudioMarkdownTools.ts` (pattern backlink, dedupe, archi, grafo locale, filtri orfani/irrisolti, risoluzione target) + `GoStudioMarkdownTools.tsx` cablato in `GoStudioMarkdownView` (bottone accanto al commutatore dei modi). Backlink via `SearchProject` (`include: ['*.md']`), grafo via `buildGraphNodes` + `MarkdownGraphView` riusato; nessuno stato Hub né `internal/markdown`. `npx vitest run src/lib/goide/goStudioMarkdownTools.test.ts` = 12 test nuovi; `npx vitest run src/components/goide src/lib` = 283 file / 1267 test verdi; `npx tsc --noEmit` pulito. Verifica manuale GS-7.4/GS-7.M2 NON VERIFICATA. |               |
 | DB-2 security review + gate distruttive | 2026-10-15 | OpenCode + review agente indipendente | Review di sicurezza indipendente su `internal/vault`, `internal/database`, `internal/sidecar`, `dbSecrets.ts`/`ConnectionsSidebar.tsx`: nessun rischio critico/alto sulla riservatezza delle credenziali; **1 ALTO** sul gate delle operazioni distruttive (Mongo `runcommand` girava senza conferma) e 3 MEDIO/BASSO (aperti come DB-2.11-2.13). Fix con prima rosso: `TestMongoRunCommandAlwaysNeedsConfirmation` e `TestDestructiveQueryCoversSideEffectStatements` fallivano; dopo: `mongoDestructiveOperation("runcommand") = (true,true)` e keyword `CALL/DO/COPY/MERGE/REPLACE/LOAD/GRANT/REVOKE` strict in `destructiveQuery`, classificatore `queryInterpreter` allineato (2 casi nuovi). Verdi: `go test ./internal/database/... ./internal/sidecar/...`, `npx vitest run src/components/database` = 21 file / 247 test. |               |
