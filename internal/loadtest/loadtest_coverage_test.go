@@ -89,6 +89,7 @@ func TestConfigureWiresPersistenceAndSidecar(t *testing.T) {
 	}
 }
 
+//nolint:gocyclo // linear end-to-end scenario: one sequential walk through save/list/load/delete plus edge cases
 func TestLoadTestResultSaveListLoadDelete(t *testing.T) {
 	tempStore(t)
 

@@ -779,8 +779,7 @@ func TestStopSkipsTerminationForAnAlreadyExitedProcess(t *testing.T) {
 		t.Fatalf("Stop: %v", err)
 	}
 
-	var stopped *managedProcess
-	stopped = &managedProcess{stdin: nopWriteCloser{}, done: make(chan struct{})}
+	stopped := &managedProcess{stdin: nopWriteCloser{}, done: make(chan struct{})}
 	stopped.onStop = func() { stopped.exited.Store(true) }
 	manager.processes["run-stopped-during-hook"] = stopped
 	if err := manager.Stop("run-stopped-during-hook"); err != nil {

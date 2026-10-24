@@ -170,7 +170,7 @@ func TestCollectionBenchmarkClampsRuns(t *testing.T) {
 	s := &mcpServer{defaultFolder: exportTestCollection(t, server.URL, "200")}
 
 	cases := []struct {
-		name      string
+		name       string
 		runs, want int
 	}{
 		{"default", 0, 5},
