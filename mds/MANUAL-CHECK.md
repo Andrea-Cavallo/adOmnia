@@ -100,7 +100,8 @@ Conteggio rigenerato il 2026-10-21. **La tabella è un aggregato**: include le v
 | EDIT-MODE | 1 | 0 |
 | AG | 7 | 0 |
 | Varie (Z1.4, nuove verifiche 2026-10-18, verifica globale) | 15 | 0 |
-| **TOTALE** | **353** | **22** |
+| STRESS-1 | 6 | 5 |
+| **TOTALE** | **359** | **27** |
 
 ---
 
@@ -701,11 +702,27 @@ Conteggio rigenerato il 2026-10-21. **La tabella è un aggregato**: include le v
 
 ---
 
+## STRESS-1 — avvio, apertura progetto, idle, chiusura (misure 2026-10-24)
+
+**Prerequisito:** release `wails3 task build` (oppure `bin/adomnia.exe`), Windows, progetto = il repository adOmnia stesso. Misure prese da fuori processo (`Stopwatch` su `MainWindowHandle`/`Process.Responding`, `Win32_Process` per l'albero, LSP reale sulla stessa radice), non con i clock simulati dell'app. Dati grezzi e script in `.artifacts/stress-2026-10-24/` (`EVIDENCE.md`, `gui-startup.json`, `restart-with-project.json`, `startup-bench.mjs`, `gopls-bench.mjs`, `open-project.ps1`, `close-orphans.ps1`).
+
+- [x] **STRESS-1.M1** Finestra visibile dopo il lancio: 432,4 / 471,3 ms a caldo; **2517 ms** solo dopo kill forzato (cache fredde) — gate «< 3 s» rispettato in entrambi i casi. Riavvio con le sessioni ripristinate: finestra **477,3 ms**, `Responding` 462,4 ms, primo figlio `msedgewebview2` 424,2 ms. *(2026-10-24, `adomnia.exe` 1.0.16 build locale, 3 + 1 avvii)*
+- [x] **STRESS-1.M2** Progetto aperto senza click: `Ctrl+O` + path `...\adOmnia-workspace\adOmnia`. Prova letta in sola lettura da `adomnia.db` (bucket `goide`, chiave `state`): sessione `adOmnia` con `openedAt=2026-10-24T07:52:41.8115019Z`, `root=...\adOmnia`, unità = modulo adOmnia + moduli `docs/examples/readme-service` e `internal/**/testdata`, `recent[0]=adOmnia`. gopls parte a +1,4 s dal lancio. *(2026-10-24)*
+- [x] **STRESS-1.M3** Caricamento workspace grande su gopls reale (v0.24.0, radice adOmnia: 1281 file `.go`, 126 cartelle con package): `initialize` 53/60/75 ms, «Setting up workspace» → «Finished loading packages» **5685 / 5621 / 5586 ms**; totale ~5,7 s. Gate «≥80 package < 15 s» e «gopls < 10 s» rispettati. *(2026-10-24, 3 avvii)*
+- [x] **STRESS-1.M4** Idle: adOmnia + Code Studio con progetto aperto, 90 s di assestamento + 10 s di campione → CPU di `adomnia.exe` **0,017 %** (altro giro: 0,03 % su 2 s), working set 111,3–151,3 MB. Albero completo 1587,2 MB / 14 processi, di cui JDT LS 518,8 + 358,4 MB (due sessioni Java) e gopls 128 MB. *Limite noto:* non sono i 5/15/30 minuti di REF-11.M1 e la finestra non era necessariamente in primo piano, quindi IDE-6.M1 resta aperta. *(2026-10-24)*
+- [x] **STRESS-1.M5** Chiusura: `CloseMainWindow`, attesa 25 s → `adomnia.exe` terminato e **0 figli sopravvissuti su 13** (nessun gopls/JDT/WebView2 orfano). Controllato anche il falso positivo: i 6 `msedgewebview2` ancora vivi sulla macchina appartengono a `SearchHost.exe`, non ad adOmnia. *(2026-10-24)*
+- [ ] **STRESS-1.M6** Stesse misure su tema chiaro e scuro, su un display 1280×720 e con l'app in primo piano per l'intero campione di idle (chiude i limiti noti di STRESS-1.M4). **NON VERIFICATO.**
+
+**Gate manuale STRESS-1:** [ ] — si chiude con STRESS-1.M6.
+
+---
+
 ## Registro evidenze manuali
 
 | Voce | Data | Chi | Build / versione, passi, evidenza | Esito |
 |------|------|-----|-----------------------------------|-------|
 | REF-11.M1 (Hub vuota) | 2026-10-15 | Codex | Build Windows production Wails beta.28, Windows 11 Pro build 26300, profilo APPDATA isolato, working tree sporco; SHA256 `FED200A3A856603F9E646A03DF6BBBC6AB2C76066C3A8EB343AD3CF073825BDC`. Registrazione reale 1.840 s, 369 campioni ogni 5 s. Primo campione Idle a 305 s: CPU totale 0,0335%. Checkpoint sull'ultimo minuto: 5 min Active 0,06% medio / 0,10% max (prima della soglia del renderer); 15 min Idle 0,04% / 0,09%; 30 min Idle 0,04% / 0,07%. RAM totale a 15/30 min: 464,1/468,2 MiB; goroutine finali 20. Chiusura normale, nessun PID registrato ancora presente. Dati in `.artifacts/idle-native/`; nessuna prova di riduzione rispetto a una versione precedente. | Parziale: Hub vuota misurata; API/IDE e REF-11.M2/M3 aperte |
+| STRESS-1.M1–M5 | 2026-10-24 | OpenCode (automazione esterna) | `adomnia.exe` 1.0.16 build locale `wails3 task build` (115.248.128 B, ProductVersion 1.0.16). Finestra visibile 432,4/471,3 ms a caldo, 2517 ms dopo kill; riavvio con sessioni ripristinate 477,3 ms e gopls a +1,4 s. Progetto adOmnia aperto via `Ctrl+O` e verificato in `adomnia.db` (bucket `goide`): `openedAt=2026-10-24T07:52:41Z`, `recent[0]=adOmnia`. gopls v0.24.0 sulla radice adOmnia (1281 `.go`, 126 cartelle): «Setting up workspace» 5685/5621/5586 ms. Idle: CPU `adomnia.exe` 0,017–0,03 %, WS 111–151 MB, albero 1587,2 MB / 14 processi (JDT LS 519+358 MB). Chiusura: 0 orfani su 13 figli. M6 (temi, 1280×720, primo piano) resta aperta. Dati in `.artifacts/stress-2026-10-24/`. | Parziale: M1–M5 chiusi, M6 aperto |
 |      |      |     |                                   |       |
 
 ### Git — cronologia visiva (2026-10-16)
