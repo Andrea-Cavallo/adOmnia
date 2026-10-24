@@ -193,7 +193,12 @@ func (s *Service) debugJavaBuild(session Session, request JavaDebugRequest, work
 		_ = s.processes.Stop(execution.ID)
 		return DebugSessionInfo{}, err
 	}
-	return s.attachJava(session, "", port, module, &execution)
+	// Da una radice Gradle multi-modulo `:app:bootRun` deve valutare le espressioni nel solo modulo `app`.
+	scope := module
+	if kind == java.UnitGradle {
+		scope = java.GradleTaskModule(module, arguments)
+	}
+	return s.attachJava(session, "", port, scope, &execution)
 }
 
 // openJavaDebugAdapter collega il DebugManager generico all'endpoint DAP del Java Debug Server.

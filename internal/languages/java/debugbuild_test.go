@@ -3,6 +3,7 @@ package java
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -50,6 +51,35 @@ func TestResolveAttachProjectUsesJDTProjectIdentity(t *testing.T) {
 		})
 		if name != test.want || (err != nil) != test.bad {
 			t.Fatalf("%s: %s %v", test.raw, name, err)
+		}
+	}
+}
+
+func TestGradleTaskModuleNarrowsTheDebugScope(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{"app", "libs/core", "docs"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, file := range []string{"app/build.gradle", "libs/core/build.gradle.kts"} {
+		if err := os.WriteFile(filepath.Join(root, file), []byte("plugins {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, test := range []struct {
+		arguments []string
+		want      string
+	}{
+		{[]string{":app:bootRun", "--debug-jvm"}, filepath.Join(root, "app")},
+		{[]string{":libs:core:test"}, filepath.Join(root, "libs", "core")},
+		{[]string{"bootRun"}, root},
+		{[]string{":docs:run"}, root},
+		{[]string{":../outside:run"}, root},
+		{[]string{":run"}, root},
+	} {
+		if got := GradleTaskModule(root, test.arguments); got != test.want {
+			t.Fatalf("%v: got %s want %s", test.arguments, got, test.want)
 		}
 	}
 }

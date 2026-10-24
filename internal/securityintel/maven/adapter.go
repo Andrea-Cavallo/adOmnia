@@ -63,7 +63,7 @@ func (*Adapter) Discover(ctx context.Context, root string) ([]securityintel.Targ
 // Resolve implementa securityintel.EcosystemAdapter.
 func (a *Adapter) Resolve(ctx context.Context, target securityintel.Target, options securityintel.ResolveOptions) (securityintel.Resolution, error) {
 	if isGradleManifest(target.Manifest) {
-		return resolveGradle(ctx, target.Manifest)
+		return a.Resolver.resolveGradle(ctx, target.Manifest)
 	}
 	result, err := a.Resolver.Resolve(ctx, target.Manifest, options)
 	if err != nil {

@@ -69,6 +69,29 @@ func DebugArguments(unitKind string, arguments []string, port int) ([]string, in
 	return nil, 0, fmt.Errorf("Maven can debug test, spring-boot:run and quarkus:dev configurations; a plain main class is debugged directly with Debug")
 }
 
+// GradleTaskModule restringe l'ambito del debug al modulo di un task path (`:app:bootRun` → `<root>/app`).
+// Senza task path qualificato, o con una cartella che non è un modulo Gradle, resta la radice: il chiamante
+// non deve far fallire il debug per una cartella indovinata male.
+func GradleTaskModule(root string, arguments []string) string {
+	for _, argument := range arguments {
+		if !strings.HasPrefix(argument, ":") {
+			continue
+		}
+		path := strings.Split(strings.Trim(argument, ":"), ":")
+		if len(path) < 2 {
+			continue
+		}
+		module := containedDirectory(root, root, strings.Join(path[:len(path)-1], "/"))
+		if module == "" {
+			continue
+		}
+		if _, ok := unitIn(module); ok {
+			return module
+		}
+	}
+	return root
+}
+
 func hasGoal(arguments []string, goals ...string) bool {
 	return slices.ContainsFunc(arguments, func(argument string) bool {
 		return !strings.HasPrefix(argument, "-") && slices.Contains(goals, argument)

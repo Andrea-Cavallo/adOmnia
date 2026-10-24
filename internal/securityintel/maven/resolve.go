@@ -268,6 +268,13 @@ func (r *Resolver) mergeBOM(bomPath, repository string, properties map[string]st
 		if coordinate.GroupID == "" || coordinate.ArtifactID == "" || coordinate.Version == "" {
 			continue
 		}
+		if ScopeOf(dependency) == "import" && (coordinate.Type == "pom" || coordinate.Type == "") {
+			// spring-boot-dependencies importa jackson-bom, netty-bom...: le versioni stanno lì.
+			if nested := PomPath(repository, coordinate); nested != "" && isFile(nested) {
+				warnings = append(warnings, r.mergeBOM(nested, repository, bomProperties, managed, depth+1)...)
+			}
+			continue
+		}
 		if _, exists := managed[coordinate.Key()]; exists {
 			continue
 		}
