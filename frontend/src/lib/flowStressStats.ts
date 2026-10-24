@@ -143,6 +143,7 @@ export function createStressAccumulator(apdexThresholdMs = 500) {
   const steps = new Map<string, { step: string; values: number[]; errors: number; statuses: Record<string, number> }>()
   const timeline = new Map<number, { requests: number; errors: number; activeVus?: number }>()
   const values: number[] = []
+  const okValues: number[] = []
   const statuses: Record<string, number> = {}
   const errorGroups = new Map<string, { count: number; steps: Set<string>; statuses: Set<string> }>()
   let requests = 0
@@ -162,7 +163,10 @@ export function createStressAccumulator(apdexThresholdMs = 500) {
       requests += 1
       if (failed) errors += 1
       const latency = sample.latencyMs ?? sample.stepMs
-      values.push(latency)
+      // A transport failure carries no measurement (0 ms): keeping it would make a
+      // broken target look fast. Status/assertion failures do have a real latency.
+      if (!failed || latency > 0) values.push(latency)
+      if (!failed) okValues.push(latency)
       bytes += sample.bytes ?? 0
       const step = steps.get(sample.nodeId) ?? { step: sample.step, values: [], errors: 0, statuses: {} }
       step.values.push(latency)
@@ -212,9 +216,11 @@ export function createStressAccumulator(apdexThresholdMs = 500) {
       })
       const slowest = stepStats.reduce<StepStats | undefined>((worst, step) => (!worst || step.p95 > worst.p95 ? step : worst), undefined)
       const overall = latencyStats(values)
-      const satisfied = values.filter((value) => value <= apdexThresholdMs).length
-      const tolerated = values.filter((value) => value > apdexThresholdMs && value <= apdexThresholdMs * 4).length
-      const frustrated = Math.max(0, values.length - satisfied - tolerated)
+      const satisfied = okValues.filter((value) => value <= apdexThresholdMs).length
+      const tolerated = okValues.filter((value) => value > apdexThresholdMs && value <= apdexThresholdMs * 4).length
+      // Same rule as the Go stress runner: only a successful request can be
+      // satisfied, an error stays in the denominator and counts as frustrated.
+      const frustrated = Math.max(0, requests - satisfied - tolerated)
       return {
         totalRequests: requests,
         totalErrors: errors,
@@ -235,7 +241,7 @@ export function createStressAccumulator(apdexThresholdMs = 500) {
         steps: stepStats,
         timeline: seconds,
         distribution: latencyDistribution(values, overall.p99),
-        apdex: { thresholdMs: apdexThresholdMs, satisfied, tolerated, frustrated, score: values.length ? Math.round(((satisfied + tolerated / 2) / values.length) * 1000) / 1000 : 0 },
+        apdex: { thresholdMs: apdexThresholdMs, satisfied, tolerated, frustrated, score: requests ? Math.round(((satisfied + tolerated / 2) / requests) * 1000) / 1000 : 0 },
         slowestStep: slowest?.step,
       }
     },

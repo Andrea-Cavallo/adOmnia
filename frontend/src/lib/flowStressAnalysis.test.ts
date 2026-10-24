@@ -29,7 +29,9 @@ describe('stress run analysis', () => {
       minRps: 25,
     })
     expect(assessment.verdict).toBe('fail')
-    expect(assessment.checks.filter((check) => !check.passed).map((check) => check.id)).toEqual(['p95', 'errors', 'throughput'])
+    // 4 of 20 requests failed: they are frustrated in APDEX (0.725 < 0.85), so the
+    // apdex gate fails alongside p95, errors and throughput.
+    expect(assessment.checks.filter((check) => !check.passed).map((check) => check.id)).toEqual(['p95', 'errors', 'throughput', 'apdex'])
     expect(assessment.insights.map((item) => item.title)).toEqual(expect.arrayContaining(['Long latency tail', 'Errors concentrate in one step', 'Primary bottleneck']))
   })
 
