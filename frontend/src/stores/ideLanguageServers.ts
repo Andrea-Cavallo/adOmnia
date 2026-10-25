@@ -196,6 +196,15 @@ export function autoStartLanguagesFor(units: ReadonlyArray<{ language: string }>
   return [...languages]
 }
 
+/**
+ * Le sessioni per cui vale l'avvio all'apertura: solo quella attiva. I progetti ripristinati in
+ * background aspettano di essere selezionati (o un file aperto), altrimenti ogni progetto Java
+ * della lista costa un JDT LS (~400 MiB) a ogni avvio dell'app.
+ */
+export function autoStartSessions<T extends { id: string }>(sessions: ReadonlyArray<T>, activeSessionId: string | null): T[] {
+  return sessions.filter((session) => session.id === activeSessionId)
+}
+
 let watching = false
 export function watchServerDocuments(): void {
   if (watching) return
@@ -206,8 +215,9 @@ export function watchServerDocuments(): void {
       const languageId = serverLanguageForEditor(document.document.language)
       if (languageId) void useIdeLanguageServersStore.getState().ensureStarted(document.document.sessionId, languageId)
     }
-    // Progetti con unità Java: il server parte anche senza file aperti (vedi AUTO_START_ON_PROJECT_OPEN).
-    for (const session of useCodeStudioStore.getState().sessions) {
+    // Progetto attivo con unità Java: il server parte anche senza file aperti (vedi AUTO_START_ON_PROJECT_OPEN).
+    const { sessions, activeSessionId } = useCodeStudioStore.getState()
+    for (const session of autoStartSessions(sessions, activeSessionId)) {
       for (const languageId of autoStartLanguagesFor(session.project?.units)) {
         void useIdeLanguageServersStore.getState().ensureStarted(session.id, languageId)
       }
@@ -215,7 +225,7 @@ export function watchServerDocuments(): void {
   }
   reconcile(useCodeStudioStore.getState().documents)
   useCodeStudioStore.subscribe((state, previous) => {
-    // Nuovi file aperti, o un progetto appena fidato: i server mancanti all'appello partono ora.
-    if ((state.documents !== previous.documents && state.documents.length > previous.documents.length) || state.sessions !== previous.sessions) reconcile(state.documents)
+    // Nuovi file aperti, un progetto appena fidato o appena selezionato: i server mancanti all'appello partono ora.
+    if ((state.documents !== previous.documents && state.documents.length > previous.documents.length) || state.sessions !== previous.sessions || state.activeSessionId !== previous.activeSessionId) reconcile(state.documents)
   })
 }
