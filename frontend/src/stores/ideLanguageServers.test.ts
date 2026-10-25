@@ -26,7 +26,7 @@ vi.mock('@/stores/codeStudioToast', () => ({ studioToast: vi.fn() }))
 vi.mock('@/stores/codeStudioToolInstall', () => ({ beginToolInstall: mocks.beginToolInstall, endToolInstall: mocks.endToolInstall }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: Object.assign(() => undefined, { getState: () => mocks.state, subscribe: () => () => undefined }) }))
 
-import { isServerReady, useIdeLanguageServersStore, serverLanguageForEditor, serverEntry, autoStartLanguagesFor } from './ideLanguageServers'
+import { isServerReady, useIdeLanguageServersStore, serverLanguageForEditor, serverEntry, autoStartLanguagesFor, autoStartSessions } from './ideLanguageServers'
 
 const RUN = { runId: 'run-9', task: 'install-web-language-servers', languages: ['html'] }
 const entry = (language: string) => serverEntry(useIdeLanguageServersStore.getState(), 's1', language)
@@ -48,6 +48,17 @@ describe('autoStartLanguagesFor', () => {
     expect(autoStartLanguagesFor([{ language: 'go' }, { language: 'typescript' }])).toEqual([])
     expect(autoStartLanguagesFor(undefined)).toEqual([])
     expect(autoStartLanguagesFor([{ language: 'go' }, { language: 'java' }])).toEqual(['java'])
+  })
+})
+
+describe('autoStartSessions', () => {
+  it('pre-starts JDT LS only for the active session, not for restored background projects', () => {
+    // PERF-3.3: due progetti Java ripristinati ma non visibili costavano ~830 MiB di JDT LS all'avvio.
+    const sessions = [{ id: 'go' }, { id: 'java-a' }, { id: 'java-b' }]
+    expect(autoStartSessions(sessions, 'go')).toEqual([{ id: 'go' }])
+    expect(autoStartSessions(sessions, 'java-b')).toEqual([{ id: 'java-b' }])
+    expect(autoStartSessions(sessions, null)).toEqual([])
+    expect(autoStartSessions(sessions, 'gone')).toEqual([])
   })
 })
 

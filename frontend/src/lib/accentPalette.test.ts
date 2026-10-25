@@ -6,6 +6,8 @@ describe('custom accent palette', () => {
       const tokens = accentTokens(color, mode)
       expect(contrast(tokens.accent, mode === 'dark' ? '#11171D' : '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
       expect(contrast(tokens.accent, tokens['on-accent'])).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(tokens['accent-muted'], mode === 'dark' ? '#11171D' : '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
+      expect(tokens['accent-muted']).not.toBe(tokens.accent)
     }
   })
   it('ignores malformed persisted values', () => {

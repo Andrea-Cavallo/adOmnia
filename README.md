@@ -287,9 +287,10 @@ Measured on **2026-10-24** on the release build for Windows (`wails3 task build`
 | --- | --- |
 | App window visible | **432–477 ms** warm · 2.5 s cold (first run after a forced kill) |
 | First WebView2 child process | 332–424 ms |
-| `adomnia mcp` cold start (25 spawns) | p50 **65 ms** · p95 69 ms · max 72 ms · 0 failures |
-| gopls on a 1,281-file Go repo | `initialize` 53–84 ms · workspace ready **5.6 s** |
-| Idle with a project open (2 min) | CPU **0.02 %** of a 28-thread machine · 111–151 MB |
+| `adomnia mcp` cold start (25 spawns, 2026-10-25) | p50 **42 ms** · 39 ms with the desktop app open · 0 failures |
+| gopls on a 1,281-file Go repo | `initialize` 53–84 ms · workspace ready **5.1–5.6 s** |
+| Idle with a project open (2 min) | CPU **0.02 %** of a 28-thread machine · app process 111–151 MB |
+| Memory, whole process tree, Go project open (2026-10-25) | **≈1.1 GB** across 10 processes: gopls ≈570 MB, WebView2 ≈425 MB, app ≈100 MB. Projects restored in the background start no language server |
 | Load test, 20 virtual users × 30 s | **943 req/s** · 28,331 requests · 0 errors · p95 **2 ms** · APDEX 1.000 |
 | 5.6 MB response bodies | 20 downloads (112 MB) in 434 ms · p95 13 ms |
 | MCP server, 30 parallel `collection_run` calls | 91 ms total (**330 calls/s**), every reply matched to its call |
@@ -302,7 +303,7 @@ adomnia.exe stress checkout.stress.json --reporter json   # machine-readable res
 adomnia.exe stress checkout.stress.json                  # summary, APDEX and release-gate verdict
 ```
 
-Failed requests are grouped with their real reason (`error ×20: dial tcp … connection refused`) and count as *frustrated* in APDEX, so a run that fails every request reports **APDEX 0.000** instead of a misleading 1.000. Full method, artifacts and the raw transcripts: [startup, idle and stress results](docs/performance/stress-2026-10-24.md).
+Failed requests are grouped with their real reason (`error ×20: dial tcp … connection refused`) and count as *frustrated* in APDEX, so a run that fails every request reports **APDEX 0.000** instead of a misleading 1.000. Full method, artifacts and the raw transcripts: [startup, idle and stress results](docs/performance/stress-2026-10-24.md) · [runtime memory and CLI cold start](docs/performance/runtime-2026-10-25.md).
 
 ## Questions you'll have
 

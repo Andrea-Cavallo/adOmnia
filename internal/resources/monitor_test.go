@@ -57,3 +57,18 @@ func TestMain(m *testing.M) {
 	}
 	os.Exit(m.Run())
 }
+
+// The resource monitor names the costly children so the user can tell what to stop (PERF-5.1).
+func TestProcessRoleNamesKnownChildren(t *testing.T) {
+	for name, want := range map[string]string{
+		"copilot-language-server.exe": "Copilot language server",
+		"gopls.exe":                   "language-server",
+		"msedgewebview2.exe":          "WebView2 / browser",
+		"conhost.exe":                 "Windows console host",
+		"something.exe":               "child-process",
+	} {
+		if got := processRole(name); got != want {
+			t.Errorf("processRole(%q) = %q, want %q", name, got, want)
+		}
+	}
+}

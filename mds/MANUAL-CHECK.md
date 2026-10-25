@@ -134,7 +134,12 @@ Conteggio rigenerato il 2026-10-21. **La tabella è un aggregato**: include le v
 | Varie (Z1.4, nuove verifiche 2026-10-18, verifica globale) | 15 | 0 |
 | STRESS-1 | 6 | 5 |
 | PERF-1 | 1 | 0 |
-| **TOTALE** | **360** | **27** |
+| PERF-2 | 3 | 0 |
+| PERF-3 | 3 | 0 |
+| PERF-4 | 5 | 0 |
+| PERF-5 | 3 | 0 |
+| PERF-6 | 1 | 0 |
+| **TOTALE** | **375** | **27** |
 
 ---
 
@@ -440,6 +445,73 @@ Conteggio rigenerato il 2026-10-21. **La tabella è un aggregato**: include le v
 - [ ] **PERF-1.M1** Nel blocco `GOMEMLIMIT` compaiono i preset **Default (768 MiB)** e **Risparmio RAM (512 MiB)**: il primo riporta il campo a `0` (valore di avvio), il secondo a `512`; il testo sotto dichiara il costo misurato (512 MiB risparmiano ~220 MiB ma il completamento passa da ~114 ms a 444 ms e gopls usa ~7× la CPU). Salvare 512 e riavviare il progetto selezionato: gopls riparte con il limite, l'editor resta reattivo e il valore resta dopo riavvio dell'app. Ripristinare 0: torna a 768 MiB. Su progetto piccolo i due valori devono comportarsi allo stesso modo (nessuna differenza percepibile).
 
 **Gate manuale PERF-1:** [ ]
+
+---
+
+## PERF-2 — WebView2: cosa tiene vivo il renderer
+
+**Prerequisito:** build di produzione, script dell'albero processi (gruppo `webview2-renderer` separato); piano in `PERFORMANCE.md` P0-B.
+
+**Verifiche manuali**
+- [ ] **PERF-2.M1** (PERF-2.1) RAM del renderer per modulo: Hub vuoto → API workspace → Code Studio → Mock/Proxy/Kafka, ciascuno aperto/chiuso 10 volte (`open-close-10x`). Registrare primo e ultimo valore per modulo; un modulo che dopo la chiusura non torna entro ±10% del valore iniziale è un leak da aprire in `FIX.md`.
+- [ ] **PERF-2.M2** (PERF-2.2) Model Monaco vivi: aprire 20 file, chiudere tutte le tab e la sessione, contare `monaco.editor.getModels().length` dalla console del WebView (build dev): deve tornare al valore di partenza.
+- [ ] **PERF-2.M3** (PERF-2.4) Terminale (xterm), collaborazione (Yjs) e grafo (d3-force): aprire e chiudere il pannello 10 volte, la RAM del renderer non cresce in modo monotono.
+
+**Gate manuale PERF-2:** [ ]
+
+---
+
+## PERF-3 — Multi-workspace e progetti in background
+
+**Prerequisito:** almeno un progetto Go e due progetti Java (Maven/Gradle) aperti nel Code Studio, app riavviata con le sessioni ripristinate.
+
+**Implementate, da verificare**
+- [ ] **PERF-3.M1** (PERF-3.5) Avvio con un progetto Go attivo e due Java ripristinati in background: nessun `java.exe` (JDT LS) nell'albero dei processi nel primo minuto. Selezionare un progetto Java: JDT LS parte in quel momento e l'import prosegue come prima. Aprire un file `.java` di un progetto non attivo (es. da Ricerca): il server parte. Misura di riferimento: 2.084 → 1.115 MiB (`docs/performance/runtime-2026-10-25.md`).
+
+**Verifiche manuali**
+- [ ] **PERF-3.M2** (PERF-3.1, 3.2) `ADOMNIA_PERF_SCENARIO=workspaces-3-5` con 1, 3 e 5 progetti Go (10 min ciascuno), poi misti Go + Java + Python: RAM e CPU di tutti i figli, latenza di cambio progetto p50/p95 (`node scripts/perf-scenario-report.mjs`).
+- [ ] **PERF-3.M3** (PERF-3.3) Dopo 5 min di Idle i language server automatici dei progetti senza editor aperti risultano *Suspended* nel monitor risorse e la RAM scende; buffer sporchi, richieste pendenti e avvii espliciti non vengono sospesi.
+
+**Gate manuale PERF-3:** [ ]
+
+---
+
+## PERF-4 — Copertura benchmark
+
+**Prerequisito:** stessa macchina e build per ogni riga, condizioni dichiarate con `--conditions`; metodo in `PERFORMANCE.md` §4.
+
+**Verifiche manuali**
+- [ ] **PERF-4.M1** (PERF-4.1) Typing latency: 10 min di digitazione su un file Go grande, p50/p95 input-to-render da `inputLatency.ts` / `PerfPushFrontendMetrics`. Budget p95 < 50 ms.
+- [ ] **PERF-4.M2** (PERF-4.2) `ADOMNIA_PERF_SCENARIO=idle-30m` sull'Hub con l'albero completo: confermare o smentire i 468,2 MiB dell'analisi esterna, primo vs ultimo campione.
+- [ ] **PERF-4.M3** (PERF-4.3) Scenari `large-files-json`, `rapid-tabs`, `open-close-10x`, `gostudio-small/large`: una registrazione per riga.
+- [ ] **PERF-4.M4** (PERF-4.4) macOS e Linux: `scripts/measure-startup.ps1` (PowerShell 7) e lo stesso protocollo RAM.
+- [ ] **PERF-4.M5** (PERF-4.5) Uso prolungato ≥2 h (edit, run, debug, test): RAM, handle e goroutine primo vs ultimo campione, nessuna crescita monotona.
+
+**Gate manuale PERF-4:** [ ]
+
+---
+
+## PERF-5 — Processi accessori e chiusura
+
+**Prerequisito:** progetto Go aperto, AI companion configurato per PERF-5.M3.
+
+**Verifiche manuali**
+- [ ] **PERF-5.M1** (PERF-5.2) Chiudere il *singolo progetto* (non l'app): gopls, language server, debug adapter e i loro `conhost.exe` escono entro 5 s. Chiusura dell'app già verificata il 2026-10-25: 0 superstiti su 13–14.
+- [ ] **PERF-5.M2** (PERF-5.3) Chiudere l'app e rilanciarla subito, mentre si sta ancora chiudendo: la nuova istanza deve aprire una finestra (o uscire) e nessun `adomnia.exe` deve restare vivo senza finestra. Osservato una volta il 2026-10-25: due processi senza finestra per >60 s.
+- [ ] **PERF-5.M3** (PERF-5.1) Copilot LS: non parte finché l'AI companion non viene usato, e il monitor risorse ne mostra il costo RAM.
+
+**Gate manuale PERF-5:** [ ]
+
+---
+
+## PERF-6 — Avvio della CLI con l'app aperta
+
+**Prerequisito:** app desktop aperta su un progetto, un agente (Claude Code) con il server MCP `adomnia` configurato.
+
+**Implementate, da verificare**
+- [ ] **PERF-6.M1** (PERF-6.1) Con l'app aperta, l'agente avvia `adomnia mcp` e la lista dei tool arriva senza attese percepibili; `adomnia run <cartella>` da terminale stampa l'output normalmente (nessuna console vuota che compare o sparisce). Misura automatica: p50 278 → 39 ms ad app aperta (`docs/performance/runtime-2026-10-25.md`).
+
+**Gate manuale PERF-6:** [ ]
 
 ---
 
