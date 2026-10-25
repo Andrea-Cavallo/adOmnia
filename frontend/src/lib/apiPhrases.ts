@@ -26,7 +26,7 @@ export const API_PHRASES: readonly ApiPhrase[] = [
   { title: 'It works on my machine.', subtitle: 'Now prove it with a request.' },
 ]
 
-export const API_PHRASE_KEY = 'adomnia.apiPhrase.v1'
+export const API_PHRASE_KEY = 'adomnia.apiPhrase.v1' // gitleaks:allow -- localStorage key name, not a credential
 
 export function loadApiPhrase(random: number = Math.random()): ApiPhrase {
   return loadRotatingCopy(API_PHRASE_KEY, API_PHRASES, random)

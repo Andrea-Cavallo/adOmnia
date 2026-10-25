@@ -41,7 +41,7 @@ export const HUB_PHRASES: readonly HubPhrase[] = [
 ]
 
 /** Remembers the last phrase so the next visit cannot repeat it. */
-export const HUB_PHRASE_KEY = 'adomnia.hubPhrase.v1'
+export const HUB_PHRASE_KEY = 'adomnia.hubPhrase.v1' // gitleaks:allow -- localStorage key name, not a credential
 
 export function loadHubPhrase(random: number = Math.random()): HubPhrase {
   return loadRotatingCopy(HUB_PHRASE_KEY, HUB_PHRASES, random)
