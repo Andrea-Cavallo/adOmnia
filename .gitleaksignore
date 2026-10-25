@@ -8,3 +8,5 @@
 8cdaf4a35664d7f91369dbac14f02920a0759f75:internal/airedact/redact_test.go:private-key:24
 d2316de600d425d06b09873f9c2e235c761b6d37:frontend/src/lib/aiRedaction.test.ts:aws-access-token:8
 e92f13fdb318ec331fc577612a05e3f3237a6b52:docs/QUALITY.md:curl-auth-user:55
+afcd52e501832b95613de22cb2a254ddf22b05c0:frontend/src/components/layout/hubPhrases.ts:generic-api-key:44
+afcd52e501832b95613de22cb2a254ddf22b05c0:frontend/src/lib/apiPhrases.ts:generic-api-key:29
