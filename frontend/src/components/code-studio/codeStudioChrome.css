@@ -94,7 +94,7 @@ html.light .code-studio-root .code-studio-run-group,
  * batterebbero sempre le utility, così text-success o text-warning sui pulsanti non avrebbero effetto.
  */
 @layer components {
-  .code-studio-icon-button { color: var(--color-text-3); }
+  .code-studio-icon-button { color: var(--code-studio-icon-color, var(--color-text-3)); }
   .code-studio-widget { color: var(--color-text-2); }
   .code-studio-stripe-button { color: var(--color-text-3); }
 }
@@ -108,7 +108,7 @@ html.light .code-studio-root .code-studio-run-group,
 .code-studio-icon-button:hover:not(:disabled),
 .code-studio-icon-button.is-active {
   background: var(--color-surface-3);
-  color: var(--color-text-1);
+  color: var(--code-studio-icon-color-hover, var(--color-text-1));
 }
 .code-studio-icon-button:disabled {
   opacity: 0.35;

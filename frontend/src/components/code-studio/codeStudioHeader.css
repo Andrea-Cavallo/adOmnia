@@ -35,7 +35,19 @@
 /* Tab attiva: fondo accent tenue, testo pieno e barretta accent in basso; le altre restano piatte. */
 .code-studio-editor-tablist .code-studio-tab[aria-selected=true] { border-color: color-mix(in srgb, var(--color-accent) 35%, transparent); background: color-mix(in srgb, var(--color-accent) 12%, var(--gs-island)); color: var(--color-text-1); font-weight: 600; }
 .code-studio-editor-tablist .code-studio-tab::after { left: 6px; right: 6px; bottom: 0; border-radius: 2px; }
-.code-studio-open-files { color: var(--color-text-3); }
+.code-studio-open-files { color: var(--code-studio-icon-color, var(--color-text-3)); }
+/* Barra superiore e riga tab: ogni icona segue la palette primaria, a sinistra
+   (menu, pannelli) come a destra (ricerca, run, azioni, conteggio tab). Il colore
+   passa da una variabile, così gli stati semantici (text-danger, text-success)
+   restano leggibili. */
+.code-studio-toolbar,
+.code-studio-editor-tabbar {
+  --code-studio-icon-color: var(--color-accent);
+  --code-studio-icon-color-hover: var(--color-accent);
+}
+.code-studio-toolbar .code-studio-search-control,
+.code-studio-toolbar .code-studio-search-control:hover { color: var(--color-accent); }
+.code-studio-toolbar .code-studio-run-group:not(.is-running):not(.is-starting):not(.is-failed) .code-studio-run-action { color: var(--color-accent); }
 .code-studio-editor-tabbar--multiline { height: auto; max-height: 70px; }
 .code-studio-editor-tabbar--multiline .code-studio-editor-tablist { flex-wrap: wrap; overflow-y: auto; row-gap: 2px; }
 .code-studio-editor-actions { gap: 4px; border-left: 0; padding-inline: 6px; background: var(--gs-island); }

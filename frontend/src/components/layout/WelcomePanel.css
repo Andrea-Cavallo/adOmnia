@@ -1,8 +1,10 @@
 /* Hub colours follow the active application palette. */
 [data-hub-page] {
   --hub-bg: var(--color-surface-0);
-  --hub-ink: var(--color-text-1);
-  --hub-muted: var(--color-text-3);
+  /* Hub text follows the primary (accent) palette; the muted tone is the same
+     accent stepped towards the surface, still AA on custom bases. */
+  --hub-ink: var(--color-accent);
+  --hub-muted: var(--color-accent-muted, var(--color-text-3));
   --hub-line: var(--color-border-1);
   --hub-accent: var(--color-accent);
   --hub-mono: 'Geist Mono', var(--font-mono);
@@ -21,7 +23,7 @@
 
 .hub-workspace-label { display: flex; align-items: center; gap: 12px; min-height: 32px; }
 .hub-workspace-mark {
-  display: block; flex: 0 0 32px; width: 32px; height: 32px; background: var(--hub-ink);
+  display: block; flex: 0 0 32px; width: 32px; height: 32px; background: var(--hub-accent);
   mask: url('../../../../assets/images/icon-black.png') center / contain no-repeat;
   -webkit-mask: url('../../../../assets/images/icon-black.png') center / contain no-repeat;
 }
@@ -33,7 +35,7 @@
 .hub-nav > button svg { flex-shrink: 0; color: var(--hub-ink); }
 .hub-nav > button:hover { background: color-mix(in srgb, var(--hub-ink) 5%, transparent); }
 .hub-nav > button[aria-current='page'] { position: relative; background: color-mix(in srgb, var(--hub-ink) 7%, var(--hub-bg)); border-color: color-mix(in srgb, var(--hub-ink) 6%, transparent); }
-.hub-nav > button[aria-current='page']::before { content: ''; position: absolute; left: -1px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--hub-ink); }
+.hub-nav > button[aria-current='page']::before { content: ''; position: absolute; left: -1px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--hub-accent); }
 .hub-nav-foot { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--hub-line); }
 .hub-nav-foot > button { height: 52px; padding-left: 10px; }
 
@@ -44,9 +46,9 @@
 .hub-greeting h1 { margin: 48px 0 0; font-family: var(--hub-dots); font-size: clamp(32px, 3.5vw, 52px); font-weight: 800; line-height: 1; letter-spacing: 0.02em; text-wrap: balance; overflow-wrap: anywhere; }
 .hub-lede { margin: 24px 0 0; color: var(--hub-muted); font-size: clamp(17px, 1.6vw, 25px); letter-spacing: 0.04em; }
 .hub-clock { position: relative; z-index: 1; padding-top: 68px; text-align: right; }
-.hub-clock time { display: block; font-family: var(--hub-dots); font-size: clamp(36px, 3.6vw, 52px); font-weight: 800; line-height: 1; letter-spacing: 0.04em; }
-.hub-clock p { margin: 22px 0 0; color: var(--hub-muted); font-size: 17px; letter-spacing: 0.08em; }
-.hub-clock .hub-zone { margin-top: 10px; }
+.hub-clock time { display: block; color: var(--hub-accent); font-family: var(--hub-dots); font-size: clamp(36px, 3.6vw, 52px); font-weight: 800; line-height: 1; letter-spacing: 0.04em; }
+.hub-clock p { margin: 22px 0 0; color: var(--hub-accent); font-size: 17px; letter-spacing: 0.08em; }
+.hub-clock .hub-zone { margin-top: 10px; color: var(--hub-muted); }
 .hub-zone i { margin: 0 18px; font-style: normal; }
 
 .hub-threads { height: 180px; width: 100%; color: var(--hub-ink); overflow: hidden; }
@@ -62,8 +64,8 @@
 /* Recent files */
 .hub-recent { margin-top: 32px; }
 .hub-recent > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-.hub-recent > header button { display: flex; align-items: center; gap: 18px; font-size: 15px; letter-spacing: 0.06em; }
-.hub-recent > header button:hover { color: var(--hub-accent); }
+.hub-recent > header button { display: flex; align-items: center; gap: 18px; color: var(--hub-accent); font-size: 15px; letter-spacing: 0.06em; }
+.hub-recent > header button:hover { text-decoration: underline; }
 .hub-recent ul { margin: 0; padding: 0; list-style: none; }
 .hub-recent li + li { border-top: 1px solid var(--hub-line); }
 .hub-recent li:last-child { border-bottom: 1px solid var(--hub-line); }
@@ -75,11 +77,21 @@
 .hub-recent time { color: var(--hub-muted); font-size: 15px; }
 .hub-empty { margin: 0; padding: 26px 16px; border-block: 1px solid var(--hub-line); color: var(--hub-muted); font-size: 14px; }
 
+/* Recent API requests: same row rhythm as recent files, method in the palette
+   accent and status codes still semantic (green ok, red failed). */
+.hub-requests li > button { grid-template-columns: 72px minmax(140px, 240px) minmax(0, 1fr) auto; }
+.hub-request-method { overflow: hidden; color: var(--hub-ink); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-overflow: ellipsis; white-space: nowrap; }
+.hub-request-meta { display: flex; align-items: baseline; gap: 14px; }
+.hub-request-meta b { font-family: var(--hub-mono); font-size: 13px; font-weight: 600; }
+.hub-request-meta .is-ok { color: var(--color-success); }
+.hub-request-meta .is-error { color: var(--color-error); }
+
 @media (max-width: 1100px) {
   [data-hub-page] { grid-template-columns: 220px minmax(0, 1fr); }
   .hub-main { padding: 0 24px 32px 32px; }
   .hub-nav > button { gap: 14px; padding: 0 14px; }
   .hub-recent li > button { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  .hub-requests li > button { grid-template-columns: 72px minmax(0, 1fr) auto; }
   .hub-file-path { display: none; }
 }
 @media (max-width: 760px) {

@@ -1,0 +1,24 @@
+{
+  "format": "adomnia-run-configurations",
+  "version": 1,
+  "configurations": [
+    {
+      "language": "go",
+      "id": "cfg-1792846227862602200-1",
+      "sessionId": "",
+      "name": "Run adOmnia",
+      "kind": "package",
+      "target": ".",
+      "workingDirectory": "",
+      "goArguments": [],
+      "programArguments": [],
+      "buildTags": [],
+      "environment": [],
+      "docker": {},
+      "shared": true,
+      "order": 0,
+      "createdAt": "2026-10-24T12:50:27.8626022Z",
+      "updatedAt": "2026-10-24T12:50:27.8626022Z"
+    }
+  ]
+}

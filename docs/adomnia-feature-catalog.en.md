@@ -47,6 +47,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A1.6 | **Body Editor — GraphQL** | GraphQL query editor with a separate variables editor. |
 | A1.7 | **Pre/Post Request Scripts** | Pre-request and post-response script editor with `pm.*` Postman-compatible API. |
 | A1.8 | **Response Viewer** | Colored status badge, size/time metrics, JSON body with syntax highlighting and expandable tokens, raw view, headers view, copy to clipboard. |
+| A1.8b | **Idle Copy** | The empty response panel rotates 20 title/subtitle pairs, a different one on each mount, remembered in `adomnia.apiPhrase.v1` so two consecutive visits never repeat it. |
 | A1.9 | **Response History** | Navigate previous responses per tab, with a configurable maximum count. |
 | A1.10 | **Code Generation** | Equivalent snippets in 13 languages using resolved URL/body and effective auth headers, including AWS Signature v4 calculated when copying. |
 | A1.11 | **cURL Import** | cURL command parser: extracts method, URL, headers, body, and auth (Bearer, Basic). |
@@ -1162,7 +1163,7 @@ rail panel.
 
 ### Hub dot-matrix arcade
 
-The Home Hub (2026-10-24) has its own sidebar (Home, Code Studio, API Client, Database, Messaging, Tools, Settings, About) under the adOmnia wordmark with an animated electric outline (own SVG, no WebGL; static with reduced motion). The main column shows a time-of-day greeting, a dot-matrix clock, **Continue coding** (reopens the last file and its project in Code Studio) and the five most recent files. Recent files are recorded locally by Code Studio in `adomnia.recentFiles.v1` (max 20, newest first). The former tile grid, Customize mode, pixel-art logo and the `adomnia.hubLayout` record are no longer used; an old record is simply ignored.
+The Home Hub (2026-10-24) has its own sidebar (Home, Code Studio, API Client, Database, Messaging, Tools, Settings, About) under the adOmnia wordmark with an animated electric outline (own SVG, no WebGL; static with reduced motion). The main column shows a rotating title and subtitle from 30 built-in pairs (a different one on every visit, remembered in `adomnia.hubPhrase.v1` so it never repeats twice in a row), a dot-matrix clock, **Continue coding** (reopens the last file and its project in Code Studio) and the five most recent files. Recent files are recorded locally by Code Studio in `adomnia.recentFiles.v1` (max 20, newest first). Below them, **Recent requests** lists up to five saved request history entries (method, name, URL, status, age), one row per method + URL: clicking one reopens its captured response in an API tab, and **History** opens the full Request History panel. The section appears only after a response has been saved locally. The former tile grid, Customize mode, pixel-art logo and the `adomnia.hubLayout` record are no longer used; an old record is simply ignored.
 
 
 For the v1 release surface, the Home Hub no longer exposes Arcade. Its implementation is retained. LaTeX, standalone PDF, Kubernetes and Plugins remain implemented but are omitted from primary discovery; Live Collaboration is opt-in beta. PDF imports and opening a PDF from a Code Studio project retain the complete editor, forms, annotations and signing. See `mds/V1-RELEASE-SCOPE-TODO.md` for the stable scope and acceptance gates.

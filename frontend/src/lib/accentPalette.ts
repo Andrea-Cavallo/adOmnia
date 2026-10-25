@@ -20,7 +20,18 @@ export function accentTokens(selected: string, mode: 'dark' | 'light', surface?:
   for (let i = 0; contrast(accent, background) < 4.5 && i < 100; i++) accent = toHex(rgb(accent).map(v => toward === 255 ? Math.ceil(v + (toward - v) * .07) : Math.floor(v + (toward - v) * .07)))
   const foreground = contrast(accent, '#FFFFFF') >= contrast(accent, '#000000') ? '#FFFFFF' : '#000000'
   const shift = (amount: number) => toHex(rgb(accent).map(v => v + (toward - v) * amount))
-  return { accent, 'accent-hover': accent, 'accent-light': accent, 'accent-dark': shift(-.08), 'accent-glow': accent + '26', 'on-accent': foreground }
+  // Secondary/muted text in the accent family: the accent blended toward the
+  // neutral mid tone of the mode, so the Hub hierarchy stays visible instead of
+  // collapsing to one colour, and never under AA on a custom base.
+  const mid = rgb(mode === 'dark' ? '#A8A8A8' : '#555555')
+  const mute = (amount: number) => toHex(rgb(accent).map((v, i) => Math.round(v + (mid[i] - v) * amount)))
+  let mutedAmount = 0.35
+  let muted = mute(mutedAmount)
+  for (let i = 0; i < 60 && contrast(muted, background) < 4.5; i++) {
+    mutedAmount *= 0.5
+    muted = mute(mutedAmount)
+  }
+  return { accent, 'accent-hover': accent, 'accent-light': accent, 'accent-muted': muted, 'accent-dark': shift(-.08), 'accent-glow': accent + '26', 'on-accent': foreground }
 }
 
 export function accentHue(color: string): number {

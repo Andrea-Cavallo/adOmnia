@@ -16,7 +16,8 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { bodyContextItems } from '@/components/ui/bodyContextActions'
 import { uid } from '@/lib/types'
-import { useUiTranslation } from '@/lib/uiI18n'
+import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
+import { loadApiPhrase } from '@/lib/apiPhrases'
 import '@/styles/apiNothing.css'
 
 interface ResponsePanelProps {
@@ -58,6 +59,9 @@ function ResponseHeaderBar({ state, headerActions, children }: {
 
 function ResponseWaitingState({ loading, headerActions }: { loading: boolean; headerActions?: ReactNode }) {
   const tr = useUiTranslation()
+  // Copy changes on every mount of the empty state; already-translated pairs
+  // keep their dictionary entry, the rest fall back to the English original.
+  const [phrase] = useState(loadApiPhrase)
   if (loading) {
     return (
       <div data-api-response className="flex min-h-0 flex-1 flex-col">
@@ -92,8 +96,8 @@ function ResponseWaitingState({ loading, headerActions }: { loading: boolean; he
             return ring || arrow ? <circle key={index} cx={4+x*8} cy={4+y*8} r={arrow?2.1:1.6} className={arrow?'api-nothing-glyph-core':'api-nothing-glyph-ring'} /> : null
           })}
         </svg>
-        <p className="api-nothing-headline text-text-1">{tr('Every request starts a conversation.')}</p>
-        <p className="mt-4 max-w-xs text-xs leading-relaxed text-text-3">{tr('Send your request. The response appears here.')}</p>
+        <p className="api-nothing-headline text-text-1">{tr(phrase.title as UiMessage)}</p>
+        <p className="mt-4 max-w-xs text-xs leading-relaxed text-text-3">{tr(phrase.subtitle as UiMessage)}</p>
         <div className="mt-6 inline-flex items-center gap-2 text-[11px] text-text-3">
           <kbd className="api-nothing-shortcut rounded border border-border-2 bg-surface-1 px-2 py-1 font-mono text-[10px]">Ctrl / Cmd + Enter</kbd><span>{tr('to send')}</span>
         </div>

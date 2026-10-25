@@ -1,12 +1,14 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { ArrowRight, Code2, Database, FileText, Hexagon, House, Info, Radio, Send, Settings, type LucideIcon } from 'lucide-react'
 import { isFeatureVisible } from '@/lib/featureRegistry'
 import { minuteAlignedTimeout } from '@/lib/visiblePolling'
 import { loadRecentFiles, recentFileFolder, timeAgo, type RecentFile } from '@/lib/recentFiles'
+import { recentRequests, type RecentRequest } from '@/lib/recentRequests'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
+import { useTabsStore } from '@/stores/tabs'
 import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
-import { greeting } from './hubGreeting'
+import { loadHubPhrase } from './hubPhrases'
 import '@fontsource/doto/latin-800.css'
 import '@fontsource/geist-mono/latin-400.css'
 import './WelcomePanel.css'
@@ -58,6 +60,12 @@ async function openRecentFile(file: RecentFile) {
   await useCodeStudioStore.getState().openDocument(file.relativePath)
 }
 
+/** Riapre una richiesta salvata dalla history e porta all'API client. */
+function openRecentRequest(entry: RecentRequest) {
+  useTabsStore.getState().openHistoryEntry(entry.id)
+  useAppStore.getState().setActiveRail('collections')
+}
+
 function HubSidebar() {
   const tr = useUiTranslation()
   const t = (text: string) => tr(text as UiMessage) || text
@@ -86,7 +94,9 @@ export function WelcomePanel() {
   const now = useNow()
   const animationPaused = useActivityStore((state) => state.phase !== 'Active')
   const [recent] = useState(loadRecentFiles)
-  const [greetingVariant] = useState(() => Math.floor(Math.random() * 3))
+  const history = useTabsStore((state) => state.responseHistory)
+  const requests = useMemo(() => recentRequests(history, RECENT_ROWS), [history])
+  const [phrase] = useState(loadHubPhrase)
   const flags = useSettingsStore((state) => state.settings.features)
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   const date = now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(/[.,]/g, '').toUpperCase()
@@ -111,8 +121,8 @@ export function WelcomePanel() {
         <header className="hub-hero">
           <div className="hub-greeting">
             <p className="hub-eyebrow hub-workspace-label"><span className="hub-workspace-mark" aria-hidden="true" />{t('Workspace')}</p>
-            <h1>{t(greeting(now.getHours(), greetingVariant))}</h1>
-            <p className="hub-lede">{t(recent.length ? 'Pick up where you left off.' : 'Choose where to start.')}</p>
+            <h1>{phrase.title}</h1>
+            <p className="hub-lede">{phrase.subtitle}</p>
           </div>
           <div className="hub-clock">
             <time dateTime={now.toISOString()}>{clock}</time>
@@ -159,6 +169,30 @@ export function WelcomePanel() {
               ))}</ul>
             : <p className="hub-empty">{t('Files you open in Code Studio appear here.')}</p>}
         </section>
+
+        {requests.length > 0 && (
+          <section className="hub-recent hub-requests" aria-labelledby="hub-requests-title">
+            <header>
+              <p id="hub-requests-title" className="hub-eyebrow">{t('Recent requests')}</p>
+              <button type="button" onClick={() => open('history')}>{t('History')}<ArrowRight size={16} strokeWidth={1.5} /></button>
+            </header>
+            <ul>
+              {requests.map((entry) => (
+                <li key={entry.id}>
+                  <button type="button" onClick={() => openRecentRequest(entry)} title={`${entry.method} ${entry.url}`}>
+                    <span className="hub-request-method">{entry.method}</span>
+                    <span className="hub-file-name">{entry.name}</span>
+                    <span className="hub-file-path">{entry.url}</span>
+                    <span className="hub-request-meta">
+                      <b className={entry.failed ? 'is-error' : 'is-ok'}>{entry.status || 'ERR'}</b>
+                      <time dateTime={entry.recordedAt ? new Date(entry.recordedAt).toISOString() : undefined}>{entry.recordedAt ? timeAgo(entry.recordedAt, now.getTime()) : '—'}</time>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
     </div>
   )
