@@ -62,12 +62,28 @@ function menuItems(menu: CodeStudioMenuId, state: CodeStudioCommandState): Conte
   })
 }
 
+export function compactFileMenu(items: ContextMenuItem[]): ContextMenuItem[] {
+  const groups = [
+    {id:'file.saveOptions',label:'Save options',ids:['file.autoSave','file.trimWhitespace'],icon:CODE_STUDIO_COMMAND_ICONS['file.save']?.icon},
+    {id:'file.editorTabs',label:'Editor tabs',ids:['file.closeOthers','file.closeAll','file.pinTab','file.reopenClosed'],icon:CODE_STUDIO_COMMAND_ICONS['file.pinTab']?.icon},
+    {id:'file.windows',label:'Project windows',ids:items.filter(item=>item.id.startsWith('window.')).map(item=>item.id),icon:CODE_STUDIO_COMMAND_ICONS['window.openInNewWindow']?.icon},
+  ]
+  const included = new Set<string>()
+  return items.flatMap(item=>{
+    const group = groups.find(candidate=>candidate.ids.includes(item.id))
+    if(!group) return [item]
+    if(included.has(group.id)) return []
+    included.add(group.id)
+    return [{id:group.id,label:group.label,icon:group.icon,separatorBefore:item.separatorBefore,submenu:items.filter(child=>group.ids.includes(child.id)).map(child=>({...child,separatorBefore:false}))}]
+  })
+}
+
 const MENU_PREFIX = 'menu:'
 
 /** Menu principale compresso nel pulsante ☰: ogni menu è un sottomenu. */
 function mainMenuItems(state: CodeStudioCommandState, recentProjects: GoIDERecentProject[], openProjectPaths: string[]): ContextMenuItem[] {
   return CODE_STUDIO_MENUS.map((menu) => {
-    const base = menuItems(menu.id, state)
+    const base = menu.id === 'file' ? compactFileMenu(menuItems(menu.id, state)) : menuItems(menu.id, state)
     const header = { id: `${MENU_PREFIX}${menu.id}`, label: menu.label, icon: CODE_STUDIO_MENU_ICONS[menu.id].icon, iconClassName: CODE_STUDIO_MENU_ICONS[menu.id].tone }
     if (menu.id !== 'file') return { ...header, submenu: base }
     const insertAt = base.findIndex((item) => item.id === 'file.save')
@@ -106,7 +122,7 @@ export function CodeStudioMenuBar({ state, recentProjects, openProjectPaths, onC
       >
         <Menu size={17} strokeWidth={1.8} />
       </button>
-      {open && <ContextMenu appearance="studio" x={open.x} y={open.y} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={() => setOpen(null)} />}
+      {open && <ContextMenu appearance="studio" compact x={open.x} y={open.y} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={() => setOpen(null)} />}
     </>
   )
 }

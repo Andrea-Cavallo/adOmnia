@@ -84,7 +84,7 @@ A step-by-step version is in [Getting started](docs/GETTING-STARTED.md).
 
 ### Workspace Hub
 
-Start here. The hub shows your recent activity and opens every area: Code Studio, API & Protocols, Data & Messaging, Docs & Payloads and Power Tools.
+Start here. A time-of-day greeting and a dot-matrix clock sit above **Continue coding**, which reopens your last file together with its project. The recent list keeps the files you worked on most recently, and the sidebar opens Code Studio, the API Client, Database, Messaging, Tools, Settings and About.
 
 <p align="center">
   <img src="assets/screenshots/hub.png" alt="adOmnia Workspace Hub with module shortcuts and recent activity" width="100%">
@@ -92,7 +92,7 @@ Start here. The hub shows your recent activity and opens every area: Code Studio
 
 ### Custom Hub: your own colors
 
-Pick one accent color and a dark base: the whole app follows, from the rail to the hub and every studio. Shades adapt so text stays readable in Dark and White.
+Pick one accent color and a dark base from **Settings → Appearance**, or start from a preset (**Anthracite**, Black/White, White/Black). The whole app follows, from the rail to the hub and every studio. Shades adapt so text stays readable in Dark and White.
 
 <p align="center">
   <img src="assets/screenshots/hub-custom-theme.png" alt="Workspace Hub recolored with a custom yellow accent" width="100%">
@@ -100,7 +100,7 @@ Pick one accent color and a dark base: the whole app follows, from the rail to t
 
 ### Code Studio with Go
 
-Project tree, gopls completion and usage counts, Build/Test/Vet lenses, run configurations, Git branch and the toolchain status in the footer.
+Project tree with Git markers and hover actions, gopls completion and usage counts, Build/Test/Vet lenses, run configurations with running/starting/retry states, and a compact chrome: project and branch centered in the top bar, a searchable list of open files beside the tabs, collapsible tool windows, and the file name with its enclosing symbols in the status bar, next to line:column and the Go SDK.
 
 <p align="center">
   <img src="assets/screenshots/code-studio-go.png" alt="Code Studio editing a Go file with gopls, run configuration and project tree" width="100%">
@@ -278,6 +278,31 @@ The **MCP** panel connects adOmnia to any other MCP server, over **stdio** (a co
 
 Everything runs on your machine: adOmnia only talks to the servers you configure.
 
+
+## Performance
+
+Measured on **2026-10-24** on the release build for Windows (`wails3 task build`, 115 MB, Go 1.27.3) with **adOmnia's own repository as the project**: 1,281 `.go` files in 126 package folders. Figures come from outside the process (`Stopwatch` on the window handle, `Win32_Process` for the tree, a real gopls over LSP), not from in-app clocks.
+
+| What | Result |
+| --- | --- |
+| App window visible | **432–477 ms** warm · 2.5 s cold (first run after a forced kill) |
+| First WebView2 child process | 332–424 ms |
+| `adomnia mcp` cold start (25 spawns) | p50 **65 ms** · p95 69 ms · max 72 ms · 0 failures |
+| gopls on a 1,281-file Go repo | `initialize` 53–84 ms · workspace ready **5.6 s** |
+| Idle with a project open (2 min) | CPU **0.02 %** of a 28-thread machine · 111–151 MB |
+| Load test, 20 virtual users × 30 s | **943 req/s** · 28,331 requests · 0 errors · p95 **2 ms** · APDEX 1.000 |
+| 5.6 MB response bodies | 20 downloads (112 MB) in 434 ms · p95 13 ms |
+| MCP server, 30 parallel `collection_run` calls | 91 ms total (**330 calls/s**), every reply matched to its call |
+| Shutdown | 0 orphan processes out of 13 |
+
+Reproduce the CLI side with any `.stress.json` exported from **Flow Builder**:
+
+```bash
+adomnia.exe stress checkout.stress.json --reporter json   # machine-readable result
+adomnia.exe stress checkout.stress.json                  # summary, APDEX and release-gate verdict
+```
+
+Failed requests are grouped with their real reason (`error ×20: dial tcp … connection refused`) and count as *frustrated* in APDEX, so a run that fails every request reports **APDEX 0.000** instead of a misleading 1.000. Full method, artifacts and the raw transcripts: [startup, idle and stress results](docs/performance/stress-2026-10-24.md).
 
 ## Questions you'll have
 

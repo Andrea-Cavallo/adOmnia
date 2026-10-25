@@ -1,38 +1,27 @@
 import type { BrandIconSlug } from '@/lib/brandIcons.generated'
+import { IDE_LANGUAGES } from '@/components/ide/languages'
+import type { IdeFileIcon } from '@/lib/code-studio/fileIconTypes'
 
 /** Come mostrare l'icona di un file: logo di un marchio, gopher Go o icona generica. */
-export type CodeStudioFileIconKind =
-  | { kind: 'gopher'; test: boolean }
-  /** go.mod / go.work con il logo Go; go.sum (generato) attenuato. */
-  | { kind: 'goModule'; generated: boolean }
-  | { kind: 'brand'; slug: BrandIconSlug }
-  /** Jenkinsfile: l'emblema Jenkins (Simple Icons non è incluso nel set generato). */
-  | { kind: 'jenkins' }
-  /** File .java: la tazza Java (Simple Icons ha solo OpenJDK). */
-  | { kind: 'java' }
-  | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'key' | 'sql' | 'terminal' | 'schema' | 'file' }
+export type CodeStudioFileIconKind = IdeFileIcon
 
 const EXACT_NAMES: Record<string, BrandIconSlug> = {
   'claude.md': 'claude',
   dockerfile: 'docker', '.dockerignore': 'docker', 'compose.yaml': 'docker', 'compose.yml': 'docker',
   '.gitignore': 'git', '.gitattributes': 'git', '.gitmodules': 'git', '.gitkeep': 'git', '.mailmap': 'git',
   makefile: 'make', gnumakefile: 'make',
-  'package.json': 'npm', 'package-lock.json': 'npm', '.npmrc': 'npm',
-  '.editorconfig': 'editorconfig', '.prettierrc': 'prettier', '.prettierignore': 'prettier',
-  '.eslintrc': 'eslint', 'eslint.config.js': 'eslint', 'eslint.config.mjs': 'eslint',
+  '.editorconfig': 'editorconfig',
   'chart.yaml': 'helm', 'values.yaml': 'helm', 'nginx.conf': 'nginx',
   'renovate.json': 'renovate', 'dependabot.yml': 'dependabot', 'dependabot.yaml': 'dependabot',
   'prometheus.yml': 'prometheus', 'prometheus.yaml': 'prometheus',
   '.gitlab-ci.yml': 'gitlab', 'codeowners': 'github',
-  'pom.xml': 'apachemaven', 'build.gradle': 'gradle', 'build.gradle.kts': 'gradle', 'settings.gradle': 'gradle', 'settings.gradle.kts': 'gradle', gradlew: 'gradle',
   'composer.json': 'php', gemfile: 'ruby', 'pubspec.yaml': 'dart', 'build.zig': 'zig', 'mix.exs': 'elixir', 'package.swift': 'swift',
 }
 
 const EXTENSIONS: Record<string, BrandIconSlug> = {
-  md: 'markdown', markdown: 'markdown', yaml: 'yaml', yml: 'yaml', json: 'json', jsonc: 'json',
-  xml: 'xml', toml: 'toml', html: 'html5', htm: 'html5', css: 'css', graphql: 'graphql', gql: 'graphql',
-  js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
-  py: 'python', rs: 'rust', sh: 'gnubash', bash: 'gnubash', mk: 'make', tf: 'terraform', tfvars: 'terraform',
+  md: 'markdown', markdown: 'markdown', yaml: 'yaml', yml: 'yaml',
+  xml: 'xml', toml: 'toml', graphql: 'graphql', gql: 'graphql',
+  sh: 'gnubash', bash: 'gnubash', mk: 'make', tf: 'terraform', tfvars: 'terraform',
   sqlite: 'sqlite', db: 'sqlite', dockerfile: 'docker',
   kt: 'kotlin', kts: 'kotlin', php: 'php', rb: 'ruby', cs: 'dotnet', csproj: 'dotnet', fs: 'dotnet', sln: 'dotnet',
   cpp: 'cplusplus', cc: 'cplusplus', cxx: 'cplusplus', hpp: 'cplusplus', c: 'c', h: 'c', swift: 'swift', dart: 'dart', scala: 'scala',
@@ -64,10 +53,10 @@ function isKubernetesManifest(lower: string, path: string): boolean {
 export function resolveCodeStudioFileIcon(name: string, relativePath = ''): CodeStudioFileIconKind {
   const lower = name.toLowerCase()
   const path = relativePath.replace(/\\/g, '/').toLowerCase()
-  if (lower.endsWith('.go')) return { kind: 'gopher', test: lower.endsWith('_test.go') }
-  if (lower.endsWith('.java')) return { kind: 'java' }
-  if (lower === 'go.mod' || lower === 'go.work') return { kind: 'goModule', generated: false }
-  if (lower === 'go.sum' || lower === 'go.work.sum') return { kind: 'goModule', generated: true }
+  for (const language of IDE_LANGUAGES) {
+    const contributed = language.fileIcon?.(lower)
+    if (contributed) return contributed
+  }
   if (lower === 'jenkinsfile' || lower.startsWith('jenkinsfile.') || lower.endsWith('.jenkinsfile')) return { kind: 'jenkins' }
   if (path.startsWith('.github/workflows/') && /\.ya?ml$/.test(lower)) return { kind: 'brand', slug: 'githubactions' }
   if (/^(docker-)?compose(\.[\w-]+)?\.ya?ml$/.test(lower) || lower.endsWith('.dockerfile') || lower.startsWith('dockerfile.')) return { kind: 'brand', slug: 'docker' }

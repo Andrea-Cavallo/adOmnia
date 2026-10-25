@@ -4,6 +4,7 @@ import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
+import { CodeStudioOpenFilesSwitcher } from './CodeStudioOpenFilesSwitcher'
 
 interface CodeStudioEditorTabsProps {
   documents: GoIDEEditorDocument[]
@@ -35,6 +36,19 @@ export function tabQualifiers(documents: GoIDEEditorDocument[]): Record<string, 
     qualifiers[item.document.id] = parts.length > 1 ? parts[parts.length - 2] : '/'
   }
   return qualifiers
+}
+
+const TAB_NAME_MAX = 24
+
+/** Nome breve della tab: i nomi lunghi perdono il centro, mai l'estensione (`CodeStudioEdi…Tabs.tsx`). */
+export function shortTabName(name: string, max = TAB_NAME_MAX): string {
+  if (name.length <= max) return name
+  const dot = name.lastIndexOf('.')
+  const ext = dot > 0 && name.length - dot <= 8 ? name.slice(dot) : ''
+  const stem = name.slice(0, name.length - ext.length)
+  const keep = max - ext.length - 1
+  const head = Math.ceil(keep * 0.6)
+  return `${stem.slice(0, head)}…${stem.slice(stem.length - (keep - head))}${ext}`
 }
 
 /** Documenti interessati da un'azione di chiusura multipla: le tab fissate restano aperte. */
@@ -125,16 +139,19 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
             aria-selected={active && !previewTab?.active}
             tabIndex={active ? 0 : -1}
             onClick={() => { selectDocument(item.document.id); onSelectDocument?.() }}
-            // Doppio clic sulla tab massimizza l'editor, un altro lo ripristina.
-            onDoubleClick={() => useCodeStudioStore.getState().toggleEditorMaximized()}
+            onDoubleClick={() => {
+              if (item.document.id === previewId) {
+                useCodeStudioStore.setState((state) => ({ previewDocumentBySession: { ...state.previewDocumentBySession, [item.document.sessionId]: null } }))
+              } else useCodeStudioStore.getState().toggleEditorMaximized()
+            }}
             onAuxClick={(event) => { if (event.button === 1 && !isPinned) onRequestClose([item]) }}
             onContextMenu={(event) => { event.preventDefault(); setMenu({ x: event.clientX, y: event.clientY, document: item }) }}
             className="code-studio-tab group"
-            title={item.document.relativePath}
+            title={`${item.document.relativePath}${item.document.id === previewId ? ' · Preview: double-click this tab to keep it open' : ' · Double-click to maximize editor'}`}
           >
             <CodeStudioFileIcon name={item.document.name} relativePath={item.document.relativePath} size={13} />
             {item.document.readOnly && <Lock size={11} className="shrink-0 text-text-4" />}
-            <span className={`truncate ${item.document.id === previewId ? 'italic' : ''}`} title={item.document.id === previewId ? 'Preview tab: edit it or double-click the file to keep it open' : undefined}>{item.document.name}</span>
+            <span className={`whitespace-nowrap ${item.document.id === previewId ? 'italic' : ''}`}>{shortTabName(item.document.name)}</span>
             {qualifiers[item.document.id] && <span className="shrink-0 text-[11px] text-text-4">{qualifiers[item.document.id]}</span>}
             {isPinned
               ? <span className="code-studio-tab-close" aria-label="Pinned">{item.dirty ? <span className="code-studio-tab-dirty" title="Unsaved changes" /> : <Pin size={11} className="rotate-45 text-text-3" />}</span>
@@ -151,6 +168,7 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
       )}
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items(menu.document)} onSelect={(id) => run(id as TabAction, menu.document)} onClose={() => setMenu(null)} />}
     </div>
+    <CodeStudioOpenFilesSwitcher documents={ordered} activeId={previewTab?.active ? '' : activeId} onSelect={(id) => { selectDocument(id); onSelectDocument?.() }} />
     {actions}
     </div>
   )

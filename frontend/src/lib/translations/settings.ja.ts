@@ -326,6 +326,7 @@ export const JA_PERSONAL_APPEARANCE_MESSAGES: Record<string, string> = {
   "Choose your colors. Preview first, then apply or save a profile.": "カラーを選択します。まずプレビューしてから、適用するかプロファイルに保存します。",
   "Style applied": "スタイルを適用しました",
   "Profile limit reached": "プロファイルの上限に達しました",
+  "Anthracite": "アンスラサイト",
   "Black / White": "黒 / 白",
   "White / Black": "白 / 黒",
   "Use theme colors": "テーマのカラーを使用",

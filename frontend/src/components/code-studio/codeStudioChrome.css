@@ -1,13 +1,14 @@
 /*
- * Stile "Islands": fondo scuro (ground) e pannelli flottanti arrotondati (island).
- * Tema chiaro: fondo grigio e isole bianche.
+ * Superfici compatte senza elevazione. In scuro fondo e pannelli usano il nero
+ * scelto nell'hub (--color-surface-0 = baseColor), separati solo dai bordi.
+ * Il tema chiaro mantiene le superfici chiare del tema.
  */
 .code-studio-root {
   --gs-ground: var(--color-surface-0);
-  --gs-island: var(--color-surface-1);
-  --gs-raised: var(--color-surface-3);
-  --gs-island-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 10px 30px -12px rgb(0 0 0 / 0.6);
-  --gs-radius: 12px;
+  --gs-island: var(--color-surface-0);
+  --gs-raised: var(--color-surface-2);
+  --gs-island-shadow: none;
+  --gs-radius: 6px;
   /* UI in sans, codice in mono. Una skin con la propria tipografia vince comunque.
      Ridefinire --font-ui qui porta le utility font-sans di tutto il sottoalbero sullo stesso font. */
   --gs-font-ui: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -21,22 +22,19 @@ html.light .code-studio-root,
   --gs-ground: var(--color-surface-0);
   --gs-island: var(--color-surface-1);
   --gs-raised: var(--color-surface-3);
-  --gs-island-shadow: 0 0 0 1px rgb(75 94 128 / 0.10), 0 10px 28px -18px rgb(32 52 88 / 0.34);
-  --gs-radius: 14px;
-  background:
-    radial-gradient(circle at 50% -20%, rgb(255 255 255 / 0.95), transparent 44%),
-    var(--gs-ground);
+  --gs-island-shadow: none;
+  --gs-radius: 6px;
+  background: var(--gs-ground);
 }
-html.light .code-studio-root .code-studio-island,
-.light .code-studio-root .code-studio-island {
-  border: 1px solid rgb(116 135 168 / 0.12);
-  /* Il light ha già il bordo 1px: niente alone, che doppierebbe la linea. */
+.code-studio-root .code-studio-island {
+  /* Isole e fondo hanno lo stesso colore: il bordo 1px le separa. */
+  border: 1px solid var(--color-border-1);
   box-shadow: var(--gs-island-shadow);
 }
 html.light .code-studio-root .code-studio-run-group,
 .light .code-studio-root .code-studio-run-group {
-  border: 1px solid rgb(116 135 168 / 0.12);
-  box-shadow: 0 3px 12px -8px rgb(32 52 88 / 0.3);
+  border: 0;
+  box-shadow: none;
 }
 .code-studio-island {
   display: flex;
@@ -46,9 +44,7 @@ html.light .code-studio-root .code-studio-run-group,
   overflow: hidden;
   border-radius: var(--gs-radius);
   background: var(--gs-island);
-  /* Alone da 1px oltre all'ombra: in dark surface-0/surface-1 hanno contrasto
-     1.05 e le isole si scioglierebbero nel fondo. */
-  box-shadow: var(--gs-island-shadow), 0 0 0 1px color-mix(in srgb, var(--color-text-1) 12%, transparent);
+  box-shadow: var(--gs-island-shadow);
 }
 
 /*
@@ -322,6 +318,7 @@ html.light .code-studio-root .code-studio-run-group,
 .code-studio-tab:not([aria-selected='true']) > :first-child { opacity: 0.7; }
 /* Slot di chiusura: X solo al passaggio del mouse o col focus; il punto di modifica ne prende il posto a riposo. */
 .code-studio-tab-close {
+  position: relative;
   display: grid;
   place-items: center;
   width: 18px;
@@ -333,10 +330,30 @@ html.light .code-studio-root .code-studio-run-group,
 .code-studio-tab-close:hover { background: var(--color-surface-3); color: var(--color-text-1); }
 .code-studio-tab-close > .code-studio-tab-x { display: none; }
 .code-studio-tab:hover .code-studio-tab-close > .code-studio-tab-x,
+.code-studio-tab[aria-selected='true'] .code-studio-tab-close > .code-studio-tab-x,
+.code-studio-tab:focus-within .code-studio-tab-close > .code-studio-tab-x,
 .code-studio-tab:focus-visible .code-studio-tab-close > .code-studio-tab-x { display: block; }
 .code-studio-tab:hover .code-studio-tab-close > .code-studio-tab-dirty,
+.code-studio-tab[aria-selected='true'] .code-studio-tab-close > .code-studio-tab-dirty,
+.code-studio-tab:focus-within .code-studio-tab-close > .code-studio-tab-dirty,
 .code-studio-tab:focus-visible .code-studio-tab-close > .code-studio-tab-dirty { display: none; }
 .code-studio-tab-dirty { width: 7px; height: 7px; border-radius: 999px; background: var(--color-text-2); }
+.code-studio-tab[aria-selected='true'] .code-studio-tab-close > .code-studio-tab-dirty {
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 4px;
+}
+
+.code-studio-explorer { container-type: inline-size; }
+@container (max-width: 280px) {
+  .code-studio-explorer .code-studio-tool-title { display: none; }
+}
+@container (max-width: 240px) {
+  .code-studio-explorer .code-studio-create-direct { display: none; }
+}
 
 /* Code Vision (usi, autore): piccolo e neutro, non deve competere con il codice. */
 .code-studio-root .monaco-editor .codelens-decoration,
@@ -501,7 +518,8 @@ html.dark .code-studio-root {
 .code-studio-editor-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: 0 7px; border-left: 1px solid var(--color-border-2); background: var(--color-surface-0); }
 .code-studio-editor-actions > button { flex-shrink: 0; }
 .code-studio-editor-action-divider { height: 14px; width: 1px; background: var(--color-border-1); margin-inline: 2px; }
-.code-studio-editor-save { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 27px; min-width: 62px; padding-inline: 9px; border: 1px solid var(--color-border-2); border-radius: 3px; background: var(--color-surface-1); color: var(--color-text-1); font: 500 11px var(--font-mono); }
-.code-studio-editor-save:hover:not(:disabled) { background: var(--color-surface-2); }
-.code-studio-editor-save:disabled { color: var(--color-text-3); cursor: default; }
-.code-studio-editor-save:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+/* Save è un pulsante icona come +, … e Massimizza: un punto accent segnala le modifiche, rosso l'errore. */
+.code-studio-editor-save { position: relative; }
+.code-studio-editor-save[data-save-state='dirty'], .code-studio-editor-save[data-save-state='error'] { color: var(--color-text-1); }
+.code-studio-editor-save[data-save-state='dirty']::after, .code-studio-editor-save[data-save-state='error']::after { content: ''; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 999px; background: var(--color-accent); box-shadow: 0 0 0 2px var(--gs-island); }
+.code-studio-editor-save[data-save-state='error']::after { background: var(--color-danger); }

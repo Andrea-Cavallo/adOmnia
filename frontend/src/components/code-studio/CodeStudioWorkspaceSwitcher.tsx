@@ -107,7 +107,7 @@ function WorkspaceSwitcher() {
 
   return (
     <>
-      <button type="button" aria-haspopup="menu" title={`Code Studio workspace: ${active.name} (${projectCount(activeCount)}) · separate from adOmnia API workspaces`}
+      <button type="button" aria-label={`Code Studio workspace: ${active.name}`} aria-haspopup="menu" title={`Code Studio workspace: ${active.name} (${projectCount(activeCount)}) · separate from adOmnia API workspaces`}
         onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.left, y: rect.bottom + 2 }) }}
         className={`code-studio-widget max-w-48 ${menu ? 'is-active' : ''}`}>
         <Layers size={15} className="shrink-0 text-text-2" />

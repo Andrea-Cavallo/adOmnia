@@ -13,6 +13,7 @@ export const PYTHON_LANGUAGE: IdeLanguageContribution = {
   id: PYTHON_LANGUAGE_ID,
   name: 'Python',
   icon: 'python',
+  fileIcon: name => /^(pyproject\.toml|poetry\.lock|uv\.lock|requirements([.-].+)?\.txt|pipfile(\.lock)?)$/.test(name) || /\.(py|pyi|pyw)$/.test(name) ? { kind: 'brand', slug: 'python' } : undefined,
   runTemplates: [
     { language: 'python', kind: 'script', label: 'Python script', group: 'Python' },
     { language: 'python', kind: 'module', label: 'Python module', group: 'Python' },

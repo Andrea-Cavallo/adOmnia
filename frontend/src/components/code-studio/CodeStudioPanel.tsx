@@ -5,6 +5,7 @@ import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import { startStudioToolOwner } from './studioToolBridge'
 import { restartRunsOnSave } from './codeStudioRunOnSave'
 import { pinnedFirst } from '@/lib/code-studio/codeStudioRunHistory'
+import { selectDocumentSummary } from './codeStudioDocumentSummary'
 import { devServerPreviewRequest, hasWebAppToPreview } from '@/lib/code-studio/runPreview'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { useLivePreviewStore } from '@/stores/livePreview'
@@ -184,33 +185,6 @@ type PanelState = Pick<GoIDEState, (typeof PANEL_STATE_KEYS)[number]>
 /** Solo i campi usati dal pannello: buffer, console e ricerche non devono ridisegnare l'intero IDE. */
 function selectPanelState(state: GoIDEState): PanelState {
   return Object.fromEntries(PANEL_STATE_KEYS.map((key) => [key, state[key]])) as PanelState
-}
-
-/** Riassunto primitivo dei documenti: cambia solo quando cambia il file attivo o lo stato dirty, non a ogni tasto. */
-/** Separatore di riga mostrato in status bar. */
-function lineEndingOf(buffer: string): 'LF' | 'CRLF' {
-  return buffer.includes('\r\n') ? 'CRLF' : 'LF'
-}
-
-function selectDocumentSummary(state: GoIDEState) {
-  const active = activeGoIDEDocument(state)
-  let documentCount = 0
-  let sessionDirty = false
-  for (const item of state.documents) {
-    if (item.document.sessionId !== state.activeSessionId) continue
-    documentCount++
-    sessionDirty = sessionDirty || item.dirty
-  }
-  return {
-    activeId: active?.document.id ?? null,
-    activePath: active?.document.relativePath ?? null,
-    activeLanguage: active?.document.language ?? null,
-    activeReadOnly: !!active?.document.readOnly,
-    activeLineEnding: active ? lineEndingOf(active.buffer) : null,
-    activeDirty: !!active?.dirty,
-    documentCount,
-    sessionDirty,
-  }
 }
 
 function currentSessionDocuments(sessionId: string | undefined) {
@@ -1079,7 +1053,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioStartupAnalyzer sessionId={activeSession.id} />
       <CodeStudioRecoveryBanner sessionId={activeSession.id} />
       <CodeStudioCrashRecoveryDialog sessionId={activeSession.id} />
-      <CodeStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth')} onStructureResize={beginResize('structureWidth', -1)} onBottomResize={beginResize('bottomHeight', -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onCommit={() => setVcsDialog('commit')} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
+      <CodeStudioWorkspace session={activeSession} {...store.layout} zen={zen} onProjectResize={beginResize('projectWidth')} onStructureResize={beginResize('structureWidth', -1)} onBottomResize={beginResize('bottomHeight', -1)} onCursor={setCursor} onRequestCloseDocument={closeFlow.requestCloseDocuments} onRunTarget={(target, anchor) => setRunTargetMenu({ target, ...anchor })} onBookmarks={() => setBookmarksOpen(true)} onDependencies={() => setDependenciesOpen(true)} onCommand={runCommandStable} />
       {runTargetMenu && <CodeStudioRunTargetMenu {...runTargetMenu} onAction={runTarget} onClose={() => setRunTargetMenu(null)} />}
       <CodeStudioRunTargetPicker
         open={!!runTargetChoice}

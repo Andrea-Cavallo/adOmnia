@@ -337,6 +337,14 @@ func writeStressSection(sb *strings.Builder, sr stressCLIResult) {
 	fmt.Fprintf(sb, "| Requests | %d |\n", sr.Stats.Requests)
 	fmt.Fprintf(sb, "| Errors | %d |\n\n", sr.Stats.Errors)
 
+	if len(sr.Stats.ErrorGroups) > 0 {
+		sb.WriteString("**Failure reasons**\n\n| Count | Reason | Step |\n|------:|--------|------|\n")
+		for _, group := range sr.Stats.ErrorGroups {
+			fmt.Fprintf(sb, "| %d | %s | %s |\n", group.Count, markdownCell(group.Message), markdownCell(strings.Join(group.Steps, ", ")))
+		}
+		sb.WriteByte('\n')
+	}
+
 	if len(sr.Stats.GateFailures) == 0 {
 		sb.WriteString("**Release gates:** ✅ All passed\n\n")
 	} else {
@@ -346,6 +354,12 @@ func writeStressSection(sb *strings.Builder, sr stressCLIResult) {
 		}
 		sb.WriteByte('\n')
 	}
+}
+
+// markdownCell keeps a free-form message inside one table cell.
+func markdownCell(value string) string {
+	replacer := strings.NewReplacer("|", "\\|", "\r", " ", "\n", " ")
+	return strings.TrimSpace(replacer.Replace(value))
 }
 
 // writeIDESection generates the Code Studio checklist table that a human fills in

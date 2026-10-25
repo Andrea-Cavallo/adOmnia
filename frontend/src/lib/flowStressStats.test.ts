@@ -17,6 +17,20 @@ describe('percentile', () => {
 })
 
 describe('stress accumulator diagnostics', () => {
+  it('counts errors as frustrated in APDEX and keeps them out of the measured latencies', () => {
+    const acc = createStressAccumulator(100)
+    acc.add(sample({ latencyMs: 10 }))                                     // ok, satisfied
+    acc.add(sample({ latencyMs: 20 }))                                     // ok, satisfied
+    acc.add(sample({ status: 'failed', httpStatus: undefined, latencyMs: 0, stepMs: 0 })) // transport failure: no measurement
+    acc.add(sample({ status: 'failed', httpStatus: 500, latencyMs: 90 }))  // status failure: real latency, frustrated
+    const stats = acc.snapshot(1000)
+
+    // 2 satisfied / 4 requests: failures are never satisfied.
+    expect(stats.apdex).toEqual({ thresholdMs: 100, satisfied: 2, tolerated: 0, frustrated: 2, score: 0.5 })
+    // The 0 ms transport failure must not drag the percentiles down; the slow 500 stays visible.
+    expect(stats.overall).toMatchObject({ min: 10, p50: 20, p95: 90, max: 90 })
+  })
+
   it('keeps overall latency, data rate, status and normalized error groups', () => {
     const acc = createStressAccumulator()
     acc.add({ t: 100, vu: 0, iteration: 0, nodeId: 'a', step: 'Checkout', status: 'success', httpStatus: 200, latencyMs: 10, stepMs: 12, bytes: 100 })

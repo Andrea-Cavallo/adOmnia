@@ -120,3 +120,8 @@ apiflownuovo/
 # Python bytecode (pytest plugin verification)
 __pycache__/
 *.pyc
+
+# Piani di lavoro locali (mai pushati): performance e fix UI Code Studio + riferimenti visivi
+/mds/PERFORMANCE.md
+/mds/REFACTOR-FIX-CODE-UI.md
+/mds/assets/code-ui/

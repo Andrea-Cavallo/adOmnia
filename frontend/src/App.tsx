@@ -137,7 +137,8 @@ function App() {
           {/* Nessuna barra del titolo separata: con "Titlebar app" l'header del pannello (o la toolbar di Code Studio massimizzato) fa da barra della finestra. */}
           <StorageQuotaBanner />
           <div className="flex flex-1 min-h-0">
-            {!codeStudioMaximized && <Rail />}
+            {/* La Hub ha la sua barra laterale con logo e sezioni principali. */}
+            {!codeStudioMaximized && activeRail !== 'welcome' && <Rail />}
             {/* Resizable collections sidebar — hidden on welcome hub */}
             {showSidebar && <WorkspaceSidebarColumn />}
             <ErrorBoundary><MainAreaRouter /></ErrorBoundary>

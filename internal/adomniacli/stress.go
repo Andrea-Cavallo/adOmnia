@@ -11,6 +11,8 @@ import (
 	"io"
 	"math"
 	"os"
+	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -48,8 +50,18 @@ type stressConfig struct {
 	MinRPS      float64       `json:"minRps"`
 }
 
-type stressMapping struct{ Name, Source, Path, Fallback string }
-type stressCondition struct{ Source, Path, Operator, Value string }
+type stressMapping struct {
+	Name     string `json:"name"`
+	Source   string `json:"source"`
+	Path     string `json:"path"`
+	Fallback string `json:"fallback"`
+}
+type stressCondition struct {
+	Source   string `json:"source"`
+	Path     string `json:"path"`
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+}
 type stressNodeConfig struct {
 	Request        *requestcontract.Request `json:"request"`
 	ExpectedStatus string                   `json:"expectedStatus"`
@@ -61,10 +73,16 @@ type stressNodeConfig struct {
 	EndState       string                   `json:"endState"`
 }
 type stressNode struct {
-	ID, Type, Label string
-	Config          stressNodeConfig `json:"config"`
+	ID     string           `json:"id"`
+	Type   string           `json:"type"`
+	Label  string           `json:"label"`
+	Config stressNodeConfig `json:"config"`
 }
-type stressEdge struct{ Source, Target, Branch string }
+type stressEdge struct {
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Branch string `json:"branch"`
+}
 type stressGraph struct {
 	Nodes    []stressNode `json:"nodes"`
 	Edges    []stressEdge `json:"edges"`
@@ -88,21 +106,29 @@ type stressObservation struct {
 	Failed    bool
 	Error     string
 }
+type stressErrorGroup struct {
+	Message string   `json:"message"`
+	Count   int      `json:"count"`
+	Status  int      `json:"status,omitempty"`
+	Steps   []string `json:"steps,omitempty"`
+}
+
 type stressStats struct {
-	Requests         int            `json:"requests"`
-	Errors           int            `json:"errors"`
-	Excluded         int            `json:"excludedRequests"`
-	Iterations       int64          `json:"iterations"`
-	FailedIterations int64          `json:"failedIterations"`
-	ElapsedMs        int64          `json:"elapsedMs"`
-	RPS              float64        `json:"rps"`
-	P50              int64          `json:"p50"`
-	P95              int64          `json:"p95"`
-	P99              int64          `json:"p99"`
-	Apdex            float64        `json:"apdex"`
-	ApdexTMs         float64        `json:"apdexTMs"`
-	Statuses         map[string]int `json:"statuses"`
-	GateFailures     []string       `json:"gateFailures,omitempty"`
+	Requests         int                `json:"requests"`
+	Errors           int                `json:"errors"`
+	Excluded         int                `json:"excludedRequests"`
+	Iterations       int64              `json:"iterations"`
+	FailedIterations int64              `json:"failedIterations"`
+	ElapsedMs        int64              `json:"elapsedMs"`
+	RPS              float64            `json:"rps"`
+	P50              int64              `json:"p50"`
+	P95              int64              `json:"p95"`
+	P99              int64              `json:"p99"`
+	Apdex            float64            `json:"apdex"`
+	ApdexTMs         float64            `json:"apdexTMs"`
+	Statuses         map[string]int     `json:"statuses"`
+	ErrorGroups      []stressErrorGroup `json:"errorGroups,omitempty"`
+	GateFailures     []string           `json:"gateFailures,omitempty"`
 }
 type stressCLIResult struct {
 	Format     string      `json:"format"`
@@ -220,9 +246,40 @@ func readStressDataset(path string) ([]map[string]string, error) {
 	return rows, nil
 }
 
-func executeStressPlan(plan stressPlan, baseVars map[string]string, dataset []map[string]string) (stressCLIResult, error) {
+// validateStressPlan rejects graphs that cannot be executed. A node is only
+// usable when it carries an id and a type: when the field names do not match
+// (a plan written by another version of the exporter) every node decodes empty
+// and the run would walk nothing while still reporting a result.
+func validateStressPlan(plan stressPlan) error {
 	if len(plan.Graph.Nodes) == 0 {
-		return stressCLIResult{}, fmt.Errorf("flow has no nodes")
+		return fmt.Errorf("flow has no nodes")
+	}
+	known := make(map[string]bool, len(plan.Graph.Nodes))
+	for index, node := range plan.Graph.Nodes {
+		if strings.TrimSpace(node.ID) == "" || strings.TrimSpace(node.Type) == "" {
+			return fmt.Errorf("invalid stress plan: node %d has no id or type (unexpected field names?)", index+1)
+		}
+		if known[node.ID] {
+			return fmt.Errorf("invalid stress plan: duplicate node id %q", node.ID)
+		}
+		switch node.Type {
+		case "start", "request", "condition", "extract", "end":
+		default:
+			return fmt.Errorf("invalid stress plan: node %q has unsupported type %q", node.ID, node.Type)
+		}
+		known[node.ID] = true
+	}
+	for _, edge := range plan.Graph.Edges {
+		if !known[edge.Source] || !known[edge.Target] {
+			return fmt.Errorf("invalid stress plan: edge %q -> %q references an unknown node", edge.Source, edge.Target)
+		}
+	}
+	return nil
+}
+
+func executeStressPlan(plan stressPlan, baseVars map[string]string, dataset []map[string]string) (stressCLIResult, error) {
+	if err := validateStressPlan(plan); err != nil {
+		return stressCLIResult{}, err
 	}
 	cfg := plan.Config
 	if cfg.VUs < 1 || cfg.VUs > 200 {
@@ -324,6 +381,11 @@ func executeStressPlan(plan stressPlan, baseVars map[string]string, dataset []ma
 	finished := time.Now()
 	measuredMs := measuredDuration(cfg, finished.Sub(started).Seconds()) * 1000
 	stats := summarizeStress(observations, excluded, iterationCount.Load(), failedIterations.Load(), finished.Sub(started).Milliseconds(), measuredMs, cfg)
+	if stats.Requests == 0 {
+		// A shaped plan can still have no entry point (a cycle with no start node, or
+		// an end-only graph). Reporting gates over zero requests would be a silent pass.
+		return stressCLIResult{}, fmt.Errorf("flow executed no request: no reachable start node or request step")
+	}
 	return stressCLIResult{Format: "adomnia-flow-stress-result", Version: 1, FlowName: plan.FlowName, StartedAt: started.UTC().Format(time.RFC3339Nano), FinishedAt: finished.UTC().Format(time.RFC3339Nano), Stats: stats}, nil
 }
 
@@ -444,6 +506,11 @@ func executeStressFlow(graph stressGraph, vars map[string]string, jarID string) 
 			} else {
 				branch = "false"
 			}
+		case "extract":
+			// A recorded script step: it only materialises variables. The app gives
+			// it the same role, so the runner must not skip it.
+			applyStressMappings(node.Config.Extractions, last, vars)
+			branch = "next"
 		}
 		current = stressNext(graph.Edges, current, branch)
 	}
@@ -644,10 +711,20 @@ func evaluateStressCondition(condition *stressCondition, response httpexec.HTTPE
 
 func summarizeStress(items []stressObservation, excluded int, iterations, failedIterations, elapsedMs int64, measuredMs float64, cfg stressConfig) stressStats {
 	latencies := make([]int64, 0, len(items))
+	okLatencies := make([]int64, 0, len(items))
 	statuses := map[string]int{}
 	errors := 0
 	for _, item := range items {
-		latencies = append(latencies, item.LatencyMs)
+		// A transport failure never produced an HTTP response, so it has no server
+		// latency to report (its few ms are the connect attempt): keeping it would
+		// make a broken target look fast. A status or assertion failure does have a
+		// real latency, and a slow 5xx must stay visible in the percentiles.
+		if !item.Failed || item.Status > 0 {
+			latencies = append(latencies, item.LatencyMs)
+		}
+		if !item.Failed {
+			okLatencies = append(okLatencies, item.LatencyMs)
+		}
 		key := strconv.Itoa(item.Status)
 		if item.Status == 0 {
 			key = "ERR"
@@ -669,18 +746,20 @@ func summarizeStress(items []stressObservation, excluded int, iterations, failed
 		return latencies[index]
 	}
 	satisfied, tolerated := 0, 0
-	for _, latency := range latencies {
+	for _, latency := range okLatencies {
 		if float64(latency) <= cfg.ApdexTMs {
 			satisfied++
 		} else if float64(latency) <= cfg.ApdexTMs*4 {
 			tolerated++
 		}
 	}
+	// APDEX is measured over every request, but only successful ones can be
+	// "satisfied": errors stay in the denominator and land in "frustrated".
 	apdex := 0.0
 	if len(items) > 0 {
 		apdex = math.Round(((float64(satisfied)+float64(tolerated)/2)/float64(len(items)))*1000) / 1000
 	}
-	stats := stressStats{Requests: len(items), Errors: errors, Excluded: excluded, Iterations: iterations, FailedIterations: failedIterations, ElapsedMs: elapsedMs, P50: percentile(.50), P95: percentile(.95), P99: percentile(.99), Apdex: apdex, ApdexTMs: cfg.ApdexTMs, Statuses: statuses}
+	stats := stressStats{Requests: len(items), Errors: errors, Excluded: excluded, Iterations: iterations, FailedIterations: failedIterations, ElapsedMs: elapsedMs, P50: percentile(.50), P95: percentile(.95), P99: percentile(.99), Apdex: apdex, ApdexTMs: cfg.ApdexTMs, Statuses: statuses, ErrorGroups: groupStressErrors(items)}
 	if measuredMs > 0 {
 		stats.RPS = math.Round((float64(len(items))/(measuredMs/1000))*10) / 10
 	}
@@ -690,6 +769,9 @@ func summarizeStress(items []stressObservation, excluded int, iterations, failed
 	}
 	if cfg.MaxP95Ms > 0 && float64(stats.P95) > cfg.MaxP95Ms {
 		stats.GateFailures = append(stats.GateFailures, fmt.Sprintf("p95 %dms exceeds %.0fms", stats.P95, cfg.MaxP95Ms))
+	}
+	if cfg.MaxP95Ms > 0 && len(latencies) == 0 {
+		stats.GateFailures = append(stats.GateFailures, "no measured request to evaluate the p95 gate")
 	}
 	if errorPct > cfg.MaxErrorPct {
 		stats.GateFailures = append(stats.GateFailures, fmt.Sprintf("error rate %.1f%% exceeds %.1f%%", errorPct, cfg.MaxErrorPct))
@@ -703,6 +785,92 @@ func summarizeStress(items []stressObservation, excluded int, iterations, failed
 	return stats
 }
 
+// stressErrorFingerprint normalises a message so that per-request ids and numbers
+// do not create one group per request. Mirrors errorFingerprint in
+// frontend/src/lib/flowStressStats.ts so CLI and desktop group failures alike.
+func stressErrorFingerprint(message string) string {
+	trimmed := strings.TrimSpace(message)
+	if trimmed == "" {
+		return "request failed without a message"
+	}
+	if idPattern.MatchString(trimmed) {
+		trimmed = idPattern.ReplaceAllString(trimmed, "<id>")
+	}
+	if numberPattern.MatchString(trimmed) {
+		trimmed = numberPattern.ReplaceAllString(trimmed, "<n>")
+	}
+	trimmed = strings.Join(strings.Fields(trimmed), " ")
+	runes := []rune(trimmed)
+	if len(runes) > 160 {
+		trimmed = string(runes[:160])
+	}
+	return trimmed
+}
+
+var (
+	idPattern     = regexp.MustCompile(`(?i)[0-9a-f]{8}-[0-9a-f-]{27,}`)
+	numberPattern = regexp.MustCompile(`\b\d{3,}\b`)
+)
+
+// firstLine keeps a readable, single-line excerpt of a message for the report.
+func firstLine(message string, limit int) string {
+	trimmed := strings.Join(strings.Fields(message), " ")
+	if trimmed == "" {
+		return "request failed without a message"
+	}
+	runes := []rune(trimmed)
+	if len(runes) > limit {
+		return string(runes[:limit]) + "…"
+	}
+	return trimmed
+}
+
+// groupStressErrors turns failed observations into a short, ordered list of
+// reasons. Without it a run reports only `ERR` and the operator cannot tell a
+// refused connection from a TLS failure or a timeout.
+func groupStressErrors(items []stressObservation) []stressErrorGroup {
+	const maxGroups = 200
+	const reported = 5
+	index := map[string]*stressErrorGroup{}
+	order := []*stressErrorGroup{}
+	for _, item := range items {
+		if !item.Failed {
+			continue
+		}
+		key := stressErrorFingerprint(item.Error)
+		if key == "request failed without a message" && item.Status > 0 {
+			key = fmt.Sprintf("HTTP %d", item.Status)
+		}
+		group, ok := index[key]
+		if !ok {
+			if len(index) >= maxGroups {
+				key = "other failures"
+				group, ok = index[key]
+			}
+			if !ok {
+				// Group by fingerprint, but show a real message: masking makes the
+				// key stable, it should not make the report unreadable.
+				group = &stressErrorGroup{Message: firstLine(item.Error, 240), Status: item.Status}
+				index[key] = group
+				order = append(order, group)
+			}
+		}
+		group.Count++
+		if item.Step != "" && len(group.Steps) < 3 && !slices.Contains(group.Steps, item.Step) {
+			group.Steps = append(group.Steps, item.Step)
+		}
+	}
+	sort.SliceStable(order, func(i, j int) bool { return order[i].Count > order[j].Count })
+	groups := make([]stressErrorGroup, 0, reported)
+	for _, group := range order {
+		if len(groups) >= reported {
+			break
+		}
+		groups = append(groups, *group)
+	}
+	return groups
+}
+
 func renderStressResult(result stressCLIResult, reporter string) ([]byte, error) {
 	switch reporter {
 	case "json":
@@ -714,6 +882,9 @@ func renderStressResult(result stressCLIResult, reporter string) ([]byte, error)
 		var b strings.Builder
 		fmt.Fprintf(&b, "adOmnia stress: %s\n", result.FlowName)
 		fmt.Fprintf(&b, "requests: %d, errors: %d, p95: %dms, p99: %dms, rps: %.1f, APDEX: %.3f\n", result.Stats.Requests, result.Stats.Errors, result.Stats.P95, result.Stats.P99, result.Stats.RPS, result.Stats.Apdex)
+		for _, group := range result.Stats.ErrorGroups {
+			fmt.Fprintf(&b, "error ×%d: %s\n", group.Count, group.Message)
+		}
 		for _, failure := range result.Stats.GateFailures {
 			fmt.Fprintf(&b, "FAIL: %s\n", failure)
 		}

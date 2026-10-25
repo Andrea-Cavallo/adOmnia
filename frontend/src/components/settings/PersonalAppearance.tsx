@@ -127,6 +127,19 @@ export function PersonalAppearance() {
           type="button"
           onClick={() =>
             setDraft({
+              themeId: 'builtin-dark',
+              // Antracite neutro: superfici grafite morbide e accento argento, per tutta l'app.
+              accentColor: '#D4D8DE',
+              baseColor: '#1E2024',
+            })
+          }
+        >
+          {t('Anthracite')}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setDraft({
               themeId: 'builtin-light',
               accentColor: '#000000',
               baseColor: '#FFFFFF',

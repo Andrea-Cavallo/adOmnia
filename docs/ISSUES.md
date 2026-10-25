@@ -121,6 +121,18 @@ Desktop verification (production executable driven over CDP): Mock Commerce demo
 live KPIs and per-step table; baseline Δ p95 and throughput change; light and dark
 themes; right-click Edit / Copy value / Copy reference on body and URL variables.
 
+Exported plans (2026-10-24). Fixed: a `.stress.json` written by the Flow Builder
+decoded to empty nodes in the headless runner (the Go structs had no JSON tags and
+the package decodes case-sensitively), so `adomnia stress` and MCP `stress_run` ran
+zero requests while still returning a result; extractions and conditions were
+ignored for the same reason and the `extract` node was refused. Plans now decode
+what the UI writes, an unrunnable plan is rejected instead of reporting zero
+requests, failures carry `errorGroups` and count as frustrated in APDEX. Verified
+end-to-end on a real saved flow ("Mock Commerce API flow", 4 requests + condition +
+both end nodes): `2 VU × 10 iterations` → 40 requests, 0 errors, p95 1 ms, APDEX
+1.000, gate passed, with the condition taking the `true` branch (40 requests prove
+the receipt step ran).
+
 | Priority | Item |
 |---|---|
 | P3 | Export files were not opened from the native save dialog during the desktop pass; builders are covered by unit tests. |

@@ -1,53 +1,103 @@
-/* Reference header treatment; scope intentionally excludes editor and side panels. */
-.code-studio-toolbar { --header-control-height: 32px; --header-radius: 999px; --gs-vcs: var(--color-accent); height: 44px; min-width: 0; gap: 6px; background: var(--color-surface-0); }
-.code-studio-header-logo { width: 30px; height: 30px; flex: 0 0 30px; margin-inline: 6px; }
-.code-studio-toolbar .code-studio-widget { height: var(--header-control-height); border-radius: var(--header-radius); font-size: 12px; background: var(--color-surface-1); box-shadow: inset 0 0 0 1px var(--color-border-1); }
-.code-studio-toolbar > .code-studio-widget { max-width: 180px; }
-.code-studio-toolbar .code-studio-project-tile { background: transparent; padding: 0; width: 19px; height: 19px; }
-.code-studio-header-search { min-width: 120px; }
-.code-studio-search-control { display: flex; align-items: center; width: 100%; max-width: 560px; min-width: 0; height: var(--header-control-height); gap: 10px; padding: 0 12px; border: 1px solid var(--color-border-1); border-radius: var(--header-radius); background: var(--color-surface-1); color: var(--color-text-3); }
-.code-studio-search-control:hover { border-color: var(--color-border-2); color: var(--color-text-1); }
-.code-studio-search-control:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-.code-studio-toolbar .code-studio-run-group { height: 34px; flex-shrink: 0; padding: 0; gap: 4px; background: transparent; border: 0; box-shadow: none; }
-.code-studio-toolbar .code-studio-run-group .code-studio-widget { height: var(--header-control-height); max-width: 170px; background: var(--color-surface-1); padding-inline: 12px; }
-.code-studio-toolbar .code-studio-run-group > button[aria-label] { width: 30px; height: 30px; border-radius: 50%; }
-.code-studio-toolbar .code-studio-run-action { background: var(--color-accent); color: var(--color-on-accent, var(--color-surface-0)); }
-.code-studio-toolbar .code-studio-run-action:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 85%, var(--color-text-1)); color: var(--color-on-accent, var(--color-surface-0)); }
-.code-studio-toolbar .code-studio-debug-action { color: var(--color-accent); border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent); }
-.code-studio-toolbar .code-studio-icon-button:disabled { background: transparent; color: var(--color-text-3); opacity: .4; }
-.code-studio-toolbar .code-studio-key { height: 19px; min-width: 19px; border-radius: 5px; font-size: 10px; }
-.code-studio-toolbar .code-studio-titlebar-controls { height: 44px; }
-.code-studio-editor-tabbar { height: 38px; background: var(--color-surface-0); }
-/* Tab su più righe: fino a due righe visibili, poi si scorre in verticale senza rubare l'editor. */
+.code-studio-toolbar { --gs-vcs: var(--color-text-3); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); height: 40px; min-width: 0; gap: 12px; background: var(--gs-ground); }
+.code-studio-header-start, .code-studio-header-center, .code-studio-header-end { display: flex; min-width: 0; align-items: center; gap: 4px; }
+.code-studio-header-center { justify-content: center; max-width: 400px; }
+.code-studio-header-end { justify-content: flex-end; }
+.code-studio-header-center .code-studio-count { display: none; }
+.code-studio-workspace-picker > .code-studio-widget { width: 28px; padding: 0; justify-content: center; }
+.code-studio-workspace-picker > button > span, .code-studio-workspace-picker > button > svg:last-child { display: none; }
+.code-studio-toolbar .code-studio-widget { height: 28px; max-width: 180px; padding-inline: 6px; border-radius: 3px; background: transparent; box-shadow: none; font-size: 13px; white-space: nowrap; }
+.code-studio-toolbar .code-studio-widget:hover:not(:disabled), .code-studio-toolbar .code-studio-widget.is-active { background: var(--color-surface-3); box-shadow: none; }
+.code-studio-header-center > span[aria-hidden], .code-studio-header-center .code-studio-project-tile, .code-studio-header-center button > svg:last-child { display: none; }
+.code-studio-header-center .code-studio-widget { min-width: 0; }
+.code-studio-header-center .code-studio-widget span { font-size: 13px; font-weight: 500; }
+.code-studio-header-search { order: -1; flex: 0 0 28px; }
+.code-studio-search-control { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 3px; color: var(--color-text-3); }
+.code-studio-search-control > span { display: none; }
+.code-studio-search-control:hover { background: var(--color-surface-3); color: var(--color-text-1); }
+.code-studio-search-control:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.code-studio-toolbar .code-studio-run-group { order: -2; height: 30px; flex-shrink: 0; gap: 2px; padding: 0; background: transparent; border: 0; border-radius: 3px; box-shadow: none; }
+.code-studio-toolbar .code-studio-run-group .code-studio-widget { max-width: 130px; font-size: 12px; }
+.code-studio-toolbar .code-studio-run-group > button[aria-label] { width: 28px; height: 28px; border-radius: 3px; }
+.code-studio-toolbar .code-studio-run-group > button.code-studio-run-action { display: inline-flex; align-items: center; justify-content: center; width: auto; min-width: 28px; gap: 5px; padding-inline: 6px; color: var(--color-text-1); }
+.code-studio-run-group:not(.is-running):not(.is-starting):not(.is-failed) .code-studio-run-label { display: none; }
+.code-studio-toolbar .code-studio-run-group.is-running .code-studio-run-action { color: var(--color-success); opacity: 1; }
+.code-studio-toolbar .code-studio-run-group.is-failed .code-studio-run-action { color: var(--color-danger); }
+.code-studio-toolbar .code-studio-icon-button:disabled { opacity: .4; }
+.code-studio-toolbar .code-studio-brand-button { width: 28px; height: 28px; margin-right: 4px; }
+.code-studio-toolbar .code-studio-brand-button > * { width: 22px; height: 22px; }
+.code-studio-toolbar .code-studio-titlebar-controls { height: 40px; }
+.code-studio-toolbar .code-studio-titlebar-controls button { width: 36px; }
+.code-studio-header-end > span[aria-hidden], .code-studio-run-group > span[aria-hidden] { display: none; }
+.code-studio-editor-tabbar { height: 36px; background: var(--gs-island); }
+.code-studio-editor-tablist { align-items: center; gap: 2px; padding: 4px 6px; overflow-y: hidden; }
+.code-studio-editor-tablist .code-studio-tab { height: 28px; align-self: center; padding-inline: 8px 4px; border: 1px solid transparent; border-radius: 3px; font-size: 14px; }
+.code-studio-editor-tablist .code-studio-tab { color: var(--color-text-3); }
+/* Tab attiva: fondo accent tenue, testo pieno e barretta accent in basso; le altre restano piatte. */
+.code-studio-editor-tablist .code-studio-tab[aria-selected=true] { border-color: color-mix(in srgb, var(--color-accent) 35%, transparent); background: color-mix(in srgb, var(--color-accent) 12%, var(--gs-island)); color: var(--color-text-1); font-weight: 600; }
+.code-studio-editor-tablist .code-studio-tab::after { left: 6px; right: 6px; bottom: 0; border-radius: 2px; }
+.code-studio-open-files { color: var(--color-text-3); }
 .code-studio-editor-tabbar--multiline { height: auto; max-height: 70px; }
-.code-studio-editor-tabbar--multiline .code-studio-editor-tablist { flex-wrap: wrap; align-content: flex-start; overflow-y: auto; row-gap: 3px; }
-.code-studio-editor-tabbar--multiline .code-studio-tab { align-self: stretch; }
-.code-studio-editor-tablist { align-items: center; gap: 3px; padding-block: 3px; }
-.code-studio-editor-tablist .code-studio-tab { height: 30px; align-self: center; padding-inline: 10px 6px; border: 1px solid transparent; border-radius: 999px; font-size: 12px; }
-.code-studio-editor-tablist .code-studio-tab[aria-selected=true] { border-color: var(--color-border-2); background: var(--color-surface-2); }
-.code-studio-editor-tablist .code-studio-tab::after { display: none; }
-.code-studio-editor-actions { gap: 5px; border-left: 0; padding-inline: 7px; }
-.code-studio-editor-save { border-radius: 999px; height: 29px; padding-inline: 12px; }
-.code-studio-editor-save[data-save-state=dirty], .code-studio-editor-save[data-save-state=error] { background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface-0)); border-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-border-1)); color: var(--color-accent); }
-.code-studio-editor-save[data-save-state=saving] { color: var(--color-accent); border-color: var(--color-border-2); }
-.code-studio-editor-save[data-save-state=error] { border-color: var(--color-danger); }
-.code-studio-editor-tablist .code-studio-tab-dirty { background: var(--color-accent); }
-@media(max-width: 1100px) { .code-studio-toolbar > .code-studio-widget { max-width: 140px; } .code-studio-header-search { min-width: 90px; padding-inline: 0; } .code-studio-search-control > span:first-of-type { font-size: 11px; } }
-@media(max-width: 900px) { .code-studio-search-control > span:last-child { display: none; } .code-studio-toolbar .code-studio-run-group .code-studio-widget { max-width: 120px; } .code-studio-toolbar { gap: 3px; } .code-studio-toolbar > span[aria-hidden=true] { margin-inline: 1px; } }
-
-.code-studio-toolbar .code-studio-brand-button { width: 34px; height: 34px; flex-shrink: 0; }
-.code-studio-toolbar .code-studio-brand-button > [data-brand-mark] { width: 28px; height: 28px; }
-
-.code-studio-toolbar .code-studio-widget { white-space: nowrap; }
-.code-studio-editor-tablist { overflow-y: hidden; }
-@media(max-width: 1050px) {
- .code-studio-toolbar > button[aria-label=Build], .code-studio-toolbar .code-studio-run-group > button[aria-label=Test], .code-studio-toolbar .code-studio-run-group > button[aria-label="Edit run configurations"] { display: none; }
- .code-studio-toolbar > span[aria-hidden=true], .code-studio-toolbar .code-studio-run-group > span[aria-hidden=true] { display: none; }
+.code-studio-editor-tabbar--multiline .code-studio-editor-tablist { flex-wrap: wrap; overflow-y: auto; row-gap: 2px; }
+.code-studio-editor-actions { gap: 4px; border-left: 0; padding-inline: 6px; background: var(--gs-island); }
+.code-studio-menu { font-family: 'Inter', 'Segoe UI', sans-serif; }
+.code-studio-menu button { border-radius: 3px; font-size: 14px; }
+.code-studio-explorer { position: relative; }
+.code-studio-explorer [role=tree] { font-family: var(--gs-font-ui); }
+.code-studio-explorer .code-studio-tree-row, .code-studio-explorer .code-studio-tree-root { font-size: 14px; }
+.code-studio-explorer .code-studio-tree-row-selected { background: color-mix(in srgb, var(--color-text-1) 12%, var(--gs-island)); box-shadow: none; border-radius: 3px; }
+.code-studio-project-navigation { display: flex; height: 38px; flex-shrink: 0; align-items: center; gap: 2px; padding: 4px 6px; font-size: 14px; }
+.code-studio-project-navigation > button, .code-studio-project-navigation > span { display: flex; height: 28px; flex-shrink: 0; align-items: center; gap: 4px; padding: 0 6px; border-radius: 3px; }
+.code-studio-project-navigation > [aria-current] { color: var(--color-text-1); font-weight: 600; }
+.code-studio-project-navigation > button:hover { background: var(--color-surface-4); }
+.code-studio-project-navigation > button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.code-studio-project-navigation > [role=toolbar] { margin-left: auto; }
+.code-studio-project-navigation .code-studio-navigation-icon { display: none; }
+.code-studio-explorer-actions { position: absolute; top: 42px; right: 4px; z-index: 1; height: 28px; padding: 0 4px; background: var(--gs-island); opacity: 0; pointer-events: none; }
+.code-studio-explorer:hover .code-studio-explorer-actions, .code-studio-explorer:focus-within .code-studio-explorer-actions { opacity: 1; pointer-events: auto; }
+.code-studio-explorer-actions .code-studio-tool-title, .code-studio-explorer-actions > span, .code-studio-explorer-actions [role=toolbar] button:not([aria-label='Collapse all folders']) { display: none; }
+.code-studio-tool-drawer { position: absolute; z-index: 30; top: 0; width: 16px; }
+.code-studio-tool-drawer-left { left: 0; }
+.code-studio-tool-drawer-right { right: 0; }
+.code-studio-tool-drawer > summary { display: grid; height: 32px; place-items: center; cursor: pointer; list-style: none; opacity: 0; color: var(--color-text-3); background: var(--gs-island); border-radius: 3px; }
+.code-studio-tool-drawer > summary::-webkit-details-marker, .code-studio-status-details > summary::-webkit-details-marker { display: none; }
+.code-studio-tool-drawer:hover > summary, .code-studio-tool-drawer[open] > summary, .code-studio-tool-drawer:focus-within > summary { opacity: 1; }
+.code-studio-tool-drawer-content { position: absolute; top: 32px; max-height: calc(100vh - 160px); overflow-y: auto; background: var(--gs-island); border: 1px solid var(--color-border-1); border-radius: 3px; }
+.code-studio-tool-drawer-right .code-studio-tool-drawer-content { right: 0; }
+.code-studio-tool-drawer-content .code-studio-stripe { width: 36px; padding: 4px 0; }
+.code-studio-tool-drawer > summary:focus-visible, .code-studio-status-details > summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.code-studio-status-details > summary { display: grid; width: 24px; height: 20px; place-items: center; cursor: pointer; list-style: none; border-radius: 3px; }
+.code-studio-status-details > summary:hover { background: var(--color-surface-3); }
+.code-studio-status-popover { position: fixed; bottom: 34px; right: 8px; z-index: 100; display: flex; width: min(320px, calc(100vw - 16px)); max-height: min(520px, calc(100vh - 80px)); flex-direction: column; overflow-y: auto; padding: 6px; border: 1px solid var(--color-border-2); border-radius: 6px; background: var(--gs-island); box-shadow: 0 12px 28px -12px rgb(0 0 0 / 0.45); font-size: 12.5px; }
+.code-studio-status-search { display: flex; height: 30px; flex-shrink: 0; align-items: center; gap: 6px; margin-bottom: 4px; padding: 0 8px; border: 1px solid var(--color-border-1); border-radius: 4px; background: var(--color-surface-1); color: var(--color-text-3); }
+.code-studio-status-search:focus-within { border-color: var(--color-accent); }
+.code-studio-status-search > input { min-width: 0; flex: 1; border: 0; background: transparent; color: var(--color-text-1); outline: none; }
+.code-studio-status-section { display: flex; flex-direction: column; padding: 2px 0; }
+.code-studio-status-section + .code-studio-status-section { border-top: 1px solid var(--color-border-1); margin-top: 2px; padding-top: 4px; }
+.code-studio-status-section > h4 { padding: 4px 8px 2px; color: var(--color-text-4); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.code-studio-status-section > [data-status-item] { display: flex; min-height: 28px; align-items: center; }
+.code-studio-status-section > [data-status-item] > button, .code-studio-status-section > [data-status-item] > [role=group] { height: 28px; width: 100%; justify-content: flex-start; padding-inline: 8px; }
+.code-studio-status-section[hidden], [data-status-item][hidden] { display: none; }
+.code-studio-tool-drawer:not([open]) > .code-studio-tool-drawer-content, .code-studio-status-details:not([open]) > .code-studio-status-popover { display: none; }
+@container (max-width: 260px) {
+  .code-studio-project-navigation > button .code-studio-navigation-label { display: none; }
+  .code-studio-project-navigation .code-studio-navigation-icon { display: block; }
+}
+@media(max-width: 1500px) {
+  .code-studio-run-group .code-studio-widget > span, .code-studio-run-group > button[aria-label=Test] { display: none; }
+}
+@media(max-width: 1100px) {
+  .code-studio-header-end > button[aria-label=Build], .code-studio-run-group > button[aria-label=Debug] { display: none; }
+  .code-studio-header-center { max-width: 280px; }
 }
 @media(max-width: 760px) {
- .code-studio-toolbar .code-studio-header-search { min-width: 32px; max-width: 32px; flex: 0 0 32px; }
- .code-studio-search-control { padding: 0; justify-content: center; }
- .code-studio-search-control > span { display: none; }
- .code-studio-toolbar > .code-studio-widget { max-width: 110px; }
- .code-studio-toolbar .code-studio-run-group .code-studio-widget { max-width: 110px; }
+  .code-studio-header-start > button { display: none; }
+  .code-studio-header-center { max-width: 180px; }
+  .code-studio-toolbar { gap: 4px; }
 }
+
+.code-studio-tool-switcher { display: inline-flex; flex-shrink: 0; align-items: center; gap: 7px; height: 28px; padding: 0 7px; border-radius: 3px; color: var(--color-text-1); font-size: 12px; font-weight: 600; }
+.code-studio-tool-switcher:hover, .code-studio-tool-switcher[aria-expanded='true'] { background: var(--color-surface-3); }
+.code-studio-tool-switcher:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.code-studio-tool-status { display: inline-block; width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; }
+.code-studio-tool-menu-icon { position: relative; display: inline-flex; }
+.code-studio-tool-menu-icon .code-studio-tool-status { position: absolute; right: -3px; bottom: -2px; }

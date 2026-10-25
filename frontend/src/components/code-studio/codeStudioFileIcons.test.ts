@@ -3,6 +3,13 @@ import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 import { brandColors, contrastRatio, resolveCodeStudioFileIcon } from './codeStudioFileIcons'
 
 describe('Code Studio file icons', () => {
+  it('gets manifests and generated lockfiles from language contributions', () => {
+    for (const name of ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'main.rs']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'brand', slug: 'rust' })
+    for (const name of ['pyproject.toml', 'uv.lock', 'poetry.lock', 'requirements-dev.txt', 'typing.pyi']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'brand', slug: 'python' })
+    expect(resolveCodeStudioFileIcon('gradlew.bat')).toEqual({ kind: 'brand', slug: 'gradle' })
+    expect(resolveCodeStudioFileIcon('.prettierignore')).toEqual({ kind: 'brand', slug: 'prettier' })
+    expect(resolveCodeStudioFileIcon('app.scss')).toEqual({ kind: 'brand', slug: 'css' })
+  })
   it('uses the gopher for Go sources and marks tests', () => {
     expect(resolveCodeStudioFileIcon('main.go')).toEqual({ kind: 'gopher', test: false })
     expect(resolveCodeStudioFileIcon('main_stress_test.go')).toEqual({ kind: 'gopher', test: true })

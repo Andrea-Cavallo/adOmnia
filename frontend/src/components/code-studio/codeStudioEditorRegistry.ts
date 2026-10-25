@@ -50,6 +50,7 @@ const MONACO_ACTIONS = {
 export type CodeStudioEditorCommand = keyof typeof MONACO_ACTIONS
 
 let activeEditor: monaco.editor.IStandaloneCodeEditor | null = null
+const mountedEditors = new Set<monaco.editor.IStandaloneCodeEditor>()
 
 /** Registra l'editor Monaco montato; restituisce la funzione di deregistrazione. */
 const editorListeners = new Set<() => void>()
@@ -67,8 +68,12 @@ function setActiveEditor(editor: monaco.editor.IStandaloneCodeEditor | null): vo
 }
 
 export function registerCodeStudioEditor(editor: monaco.editor.IStandaloneCodeEditor): () => void {
+  mountedEditors.add(editor)
   setActiveEditor(editor)
-  return () => { if (activeEditor === editor) setActiveEditor(null) }
+  return () => {
+    mountedEditors.delete(editor)
+    if (activeEditor === editor) setActiveEditor(null)
+  }
 }
 
 export function activeCodeStudioEditor(): monaco.editor.IStandaloneCodeEditor | null {
@@ -80,15 +85,16 @@ export function hasCodeStudioEditor(): boolean {
 }
 
 /** Esegue sull'editor attivo l'azione Monaco reale associata al comando Edit. */
-export function runCodeStudioEditorCommand(command: CodeStudioEditorCommand): boolean {
-  if (!activeEditor) return false
-  activeEditor.focus()
+export function runCodeStudioEditorCommand(command: CodeStudioEditorCommand, modelUri?: string): boolean {
+  const editor = modelUri ? [...mountedEditors].find((item) => item.getModel()?.uri.toString() === modelUri) : activeEditor
+  if (!editor) return false
+  editor.focus()
   const id = MONACO_ACTIONS[command]
   // Le azioni Code Studio sono registrate sull'editor; quelle native passano dal registro comandi,
   // perché in Monaco 0.56 getAction(...).run() su alcune (es. quickFix) non apre nulla.
-  const action = id.startsWith('codeStudio.') ? activeEditor.getAction(id) : null
+  const action = id.startsWith('codeStudio.') ? editor.getAction(id) : null
   if (action) void action.run()
-  else activeEditor.trigger('code-studio-menu', id, null)
+  else editor.trigger('code-studio-menu', id, null)
   return true
 }
 

@@ -14,6 +14,7 @@ export const RUST_LANGUAGE: IdeLanguageContribution = {
   id: RUST_LANGUAGE_ID,
   name: 'Rust',
   icon: 'rust',
+  fileIcon: name => /^(cargo\.(toml|lock)|rust-toolchain(\.toml)?)$/.test(name) || name.endsWith('.rs') ? { kind: 'brand', slug: 'rust' } : undefined,
   runTemplates: [
     { language: 'rust', kind: 'bin', label: 'Rust binary', group: 'Rust' },
     { language: 'rust', kind: 'example', label: 'Rust example', group: 'Rust' },

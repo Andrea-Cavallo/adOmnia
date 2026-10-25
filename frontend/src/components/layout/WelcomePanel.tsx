@@ -1,165 +1,165 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { ArrowRight, ArrowUpRight, Plus, CircleDot, X, SlidersHorizontal, ArrowLeftRight, RotateCcw, Check } from 'lucide-react'
-import { FEATURE_REGISTRY, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
+import { ArrowRight, Code2, Database, FileText, Hexagon, House, Info, Radio, Send, Settings, type LucideIcon } from 'lucide-react'
+import { isFeatureVisible } from '@/lib/featureRegistry'
 import { minuteAlignedTimeout } from '@/lib/visiblePolling'
-import { DEFAULT_HUB_LAYOUT, HUB_EXCLUDED, loadHubLayout, moveTile, saveHubLayout, type HubLayout, type HubLogoStyle } from './hubLayout'
+import { loadRecentFiles, recentFileFolder, timeAgo, type RecentFile } from '@/lib/recentFiles'
 import { useAppStore, type RailItem } from '@/stores/app'
-import { useTabsStore } from '@/stores/tabs'
-import { HubLogo } from './HubLogo'
-import { openEnvironmentManager } from '@/components/environment/EnvironmentManagerHost'
 import { useSettingsStore } from '@/stores/settings'
-import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
+import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
+import { greeting } from './hubGreeting'
 import '@fontsource/doto/latin-800.css'
+import '@fontsource/geist-mono/latin-400.css'
 import './WelcomePanel.css'
+import { useActivityStore } from '@/stores/activity'
 
+const Threads = lazy(() => import('./react-bits/Threads'))
 
-const TileIcon = lazy(() => import('./HubStudioIcon').then(module => ({ default: module.TileIcon })))
+// Code Studio stays lazy: the file icon set loads only when the Hub shows a recent file.
+const FileIcon = lazy(() => import('@/components/code-studio/CodeStudioFileIcon').then((module) => ({ default: module.CodeStudioFileIcon })))
 
-
-// Curated copy for the default studios; any other rail falls back to the feature registry.
-const CARD_COPY: Partial<Record<RailItem, { title: string; description: string }>> = {
-  codestudio: { title: 'Code Studio', description: 'Build. Run. Debug.' },
-  collections: { title: 'API & Protocols', description: 'Requests and flows' },
-  database: { title: 'Data & Messaging', description: 'Connections and streams' },
-  jsonviewer: { title: 'Docs & Payloads', description: 'Schemas and specifications' },
-  powertools: { title: 'Power Tools', description: 'Inspect and transform' },
-}
-const HUB_CANDIDATES = FEATURE_REGISTRY.filter(f => f.maturity !== 'deprecated' && !HUB_EXCLUDED.has(f.id))
-
-function cardCopy(id: RailItem) {
-  const feature = HUB_CANDIDATES.find(f => f.id === id)
-  return CARD_COPY[id] ?? { title: getFeatureLabel(id), description: feature?.description ?? feature?.group ?? '' }
-}
+const NAV: ReadonlyArray<{ id: RailItem; label: string; icon: LucideIcon }> = [
+  { id: 'codestudio', label: 'Code Studio', icon: Code2 },
+  { id: 'collections', label: 'API Client', icon: Send },
+  { id: 'database', label: 'Database', icon: Database },
+  { id: 'broker', label: 'Messaging', icon: Radio },
+  { id: 'powertools', label: 'Tools', icon: Hexagon },
+]
+const RECENT_ROWS = 5
 
 function useNow() {
   const [now, setNow] = useState(() => new Date())
-  // La Hub mostra solo ore e minuti: il tick è allineato al cambio di minuto,
-  // non al secondo (REFACTOR.md voce 3).
+  // Solo ore e minuti: il tick è allineato al cambio di minuto.
   useEffect(() => minuteAlignedTimeout(() => setNow(new Date())), [])
   return now
 }
 
-function timeZoneLabel(now: Date) {
+function zoneLabel(now: Date) {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? ''
   const city = zone.split('/').pop()?.replace(/_/g, ' ') ?? ''
-  const short = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value ?? ''
-  return [city, short].filter(Boolean).join(' • ')
+  const short = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(now).find((part) => part.type === 'timeZoneName')?.value ?? ''
+  return [city, short].filter(Boolean)
 }
 
-function TodayPanel({ logo }: { logo: HubLogoStyle }) {
+function openSettings(section?: 'about') {
+  // La sezione richiesta sopravvive al montaggio lazy del pannello Settings.
+  if (section) try { sessionStorage.setItem('adomnia.settings.requested-section', section) } catch { /* solo navigazione */ }
+  useAppStore.getState().setActiveRail('settings')
+  if (section) window.requestAnimationFrame(() => document.dispatchEvent(new CustomEvent('adomnia:open-settings-section', { detail: section })))
+}
+
+/** Riapre il progetto del file (se serve) e il file stesso in Code Studio. */
+async function openRecentFile(file: RecentFile) {
+  useAppStore.getState().setActiveRail('codestudio')
+  const { useCodeStudioStore } = await import('@/stores/codeStudio')
+  const studio = useCodeStudioStore.getState()
+  const session = studio.sessions.find((item) => item.project.rootPath === file.projectRoot)
+  if (session) await studio.selectSession(session.id)
+  else await studio.openProject(file.projectRoot)
+  await useCodeStudioStore.getState().openDocument(file.relativePath)
+}
+
+function HubSidebar() {
   const tr = useUiTranslation()
   const t = (text: string) => tr(text as UiMessage) || text
-  const open = useAppStore(s => s.setActiveRail)
-  const newTab = useTabsStore(s => s.newTab)
-  const now = useNow()
-  const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-  const date = now.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '').toUpperCase()
-  const actions: { title: string; detail: string; run: () => void }[] = [
-    { title: 'Open project', detail: 'Open a project from your machine', run: () => open('codestudio') },
-    { title: 'New request', detail: 'Create and send an API request', run: () => { newTab(); open('collections') } },
-    { title: 'Add connection', detail: 'Open Database Studio', run: () => open('database') },
-    { title: 'Manage environments', detail: 'Variables for every module, per stage', run: openEnvironmentManager },
-  ]
-  return <aside className="hub-today">
-    <p className="hub-eyebrow hub-today-eyebrow"><i/>{t('Today')}</p>
-    <div className="hub-clock-wrap"><HubLogo variant={logo} /></div>
-    <p className="hub-date"><time dateTime={now.toISOString()}>{clock}</time><span>{date}</span></p>
-    <p className="hub-zone">{timeZoneLabel(now)}</p>
-    <div className="hub-start"><p className="hub-eyebrow">{t('Start something new')}</p>{actions.map(action => <button key={action.title} onClick={action.run}><Plus size={23} strokeWidth={1.3}/><span><strong>{t(action.title)}</strong><small>{t(action.detail)}</small></span><ArrowUpRight size={17}/></button>)}</div>
-  </aside>
+  const open = useAppStore((state) => state.setActiveRail)
+  const flags = useSettingsStore((state) => state.settings.features)
+  return (
+    <aside className="hub-side">
+      <nav className="hub-nav" aria-label={t('Primary navigation')}>
+        <button type="button" aria-current="page"><House size={20} strokeWidth={1.6} />{t('Home')}</button>
+        {NAV.filter((item) => isFeatureVisible(item.id, flags)).map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => open(id)}><Icon size={20} strokeWidth={1.6} />{t(label)}</button>
+        ))}
+      </nav>
+      <nav className="hub-nav hub-nav-foot" aria-label={t('Settings')}>
+        <button type="button" onClick={() => openSettings()}><Settings size={20} strokeWidth={1.6} />{t('Settings')}</button>
+        <button type="button" onClick={() => openSettings('about')}><Info size={20} strokeWidth={1.6} />{t('About')}</button>
+      </nav>
+    </aside>
+  )
 }
 
 export function WelcomePanel() {
   const tr = useUiTranslation()
-  const nav = useNavigationTranslation()
   const t = (text: string) => tr(text as UiMessage) || text
-  const open = useAppStore(s => s.setActiveRail)
-  const history = useTabsStore(s => s.responseHistory)
-  const openHistory = useTabsStore(s => s.openHistoryEntry)
-  const [filter, setFilter] = useState<'all' | 'success' | 'errors'>('all')
-  const [layout, setLayout] = useState<HubLayout>(loadHubLayout)
-  const [editing, setEditing] = useState(false)
-  const [dragFrom, setDragFrom] = useState<number | null>(null)
-  const [dropAt, setDropAt] = useState<number | null>(null)
-  const update = (next: HubLayout) => { setLayout(next); saveHubLayout(next) }
-  const setTiles = (tiles: RailItem[]) => update({ ...layout, tiles })
-  const flags = useSettingsStore(s => s.settings.features)
-  const addable = HUB_CANDIDATES.filter(f => isFeatureVisible(f.id, flags) && !layout.tiles.includes(f.id))
-  const recent = history.filter(h => filter === 'all' || (filter === 'errors' ? !!h.response.error || h.response.status >= 400 : !h.response.error && h.response.status < 400)).slice(0, 4)
+  const open = useAppStore((state) => state.setActiveRail)
+  const now = useNow()
+  const animationPaused = useActivityStore((state) => state.phase !== 'Active')
+  const [recent] = useState(loadRecentFiles)
+  const [greetingVariant] = useState(() => Math.floor(Math.random() * 3))
+  const flags = useSettingsStore((state) => state.settings.features)
+  const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const date = now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(/[.,]/g, '').toUpperCase()
+  const zone = zoneLabel(now)
+
   useEffect(() => {
-    // Hub has no visible search bar: Ctrl/Cmd+F opens the command palette.
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault()
+    // La Hub non ha una barra di ricerca visibile: Ctrl/Cmd+F apre la command palette.
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
         document.dispatchEvent(new CustomEvent('adomnia:open-palette'))
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  return <div data-hub-page>
-    <main className="hub-content" data-today-side={layout.todaySide}>
-      <section className="hub-left">
-        <div className="hub-studios">
-          <div className="hub-studios-head"><p className="hub-eyebrow">{t('Workspace')}</p>
-            <div className="hub-customize">{editing && <>
-              <label className="hub-logo-choice">{t('Hub logo')}
-                <select aria-label={t('Hub logo')} value={layout.logo} onChange={event => update({ ...layout, logo: event.target.value === 'pixel' ? 'pixel' : 'classic' })}>
-                  <option value="classic">{t('Classic')}</option><option value="pixel">{t('Pixel art')}</option>
-                </select>
-              </label>
-              <button type="button" onClick={() => update({ ...layout, todaySide: layout.todaySide === 'right' ? 'left' : 'right' })}><ArrowLeftRight size={13}/>{t('Swap sides')}</button>
-              <button type="button" onClick={() => update(DEFAULT_HUB_LAYOUT)}><RotateCcw size={13}/>{t('Reset')}</button>
-            </>}
-              <button type="button" aria-pressed={editing} onClick={() => setEditing(v => !v)}>{editing ? <><Check size={13}/>{t('Done')}</> : <><SlidersHorizontal size={13}/>{t('Customize')}</>}</button>
-            </div>
+
+  return (
+    <div data-hub-page>
+      <HubSidebar />
+      <main className="hub-main">
+        <header className="hub-hero">
+          <div className="hub-greeting">
+            <p className="hub-eyebrow hub-workspace-label"><span className="hub-workspace-mark" aria-hidden="true" />{t('Workspace')}</p>
+            <h1>{t(greeting(now.getHours(), greetingVariant))}</h1>
+            <p className="hub-lede">{t(recent.length ? 'Pick up where you left off.' : 'Choose where to start.')}</p>
           </div>
-          <h1>{t('Make your next move.')}</h1>
-          <p className="hub-lede">{t('Code. Connect. Build.')}</p>
-          <div className="hub-grid" data-editing={editing || undefined}>{layout.tiles.map((target, index) => {
-            if (!isFeatureVisible(target, flags)) return null
-            const { title, description } = cardCopy(target)
-            return <button key={target} className="hub-studio" data-drop={dropAt === index || undefined}
-              draggable={editing}
-              onClick={() => { if (!editing) open(target) }}
-              onKeyDown={e => {
-                if (!editing) return
-                const delta = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -2, ArrowDown: 2 } as Record<string, number>)[e.key]
-                if (delta) { e.preventDefault(); setTiles(moveTile(layout.tiles, index, index + delta)) }
-                if (e.key === 'Delete' || e.key === 'Backspace') setTiles(layout.tiles.filter(id => id !== target))
-              }}
-              onDragStart={e => { setDragFrom(index); e.dataTransfer.effectAllowed = 'move' }}
-              onDragOver={e => { if (dragFrom === null) return; e.preventDefault(); setDropAt(index) }}
-              onDragLeave={() => setDropAt(null)}
-              onDrop={e => { e.preventDefault(); if (dragFrom !== null) setTiles(moveTile(layout.tiles, dragFrom, index)); setDragFrom(null); setDropAt(null) }}
-              onDragEnd={() => { setDragFrom(null); setDropAt(null) }}>
-              <span className="hub-studio-icon" aria-hidden="true"><Suspense fallback={null}><TileIcon target={target}/></Suspense></span>
-              <span><strong>{nav(title)}</strong><small>{t(description)}</small></span>
-              {editing
-                ? <span className="hub-tile-remove" role="button" tabIndex={0} aria-label={`${t('Remove')} ${nav(title)}`} onClick={e => { e.stopPropagation(); setTiles(layout.tiles.filter(id => id !== target)) }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setTiles(layout.tiles.filter(id => id !== target)) } }}><X size={16}/></span>
-                : <ArrowUpRight size={21}/>}
-            </button>
-          })}
-          {editing && <div className="hub-studio hub-tile-add">{addable.length
-            ? <><Plus size={22} strokeWidth={1.3}/><select aria-label={t('Add module')} value="" onChange={e => { const id = e.target.value as RailItem; if (id) setTiles([...layout.tiles, id]) }}>
-                <option value="">{t('Add module')}…</option>
-                {addable.map(f => <option key={f.id} value={f.id}>{nav(getFeatureLabel(f.id))}</option>)}
-              </select></>
-            : <small>{t('All modules added')}</small>}</div>}
+          <div className="hub-clock">
+            <time dateTime={now.toISOString()}>{clock}</time>
+            <p>{date}</p>
+            <p className="hub-zone">{zone.map((part, index) => <span key={part}>{index > 0 && <i>•</i>}{part}</span>)}</p>
           </div>
+        </header>
+
+        <div className="hub-threads" aria-hidden="true">
+          <Suspense fallback={null}>
+            <Threads color="currentColor" lineCount={24} thickness={1.6} softness={1}
+              amplitude={1.2} distance={0.12} waves={1.3} speed={0.45} split={0.3}
+              fray={0.15} angle={0} taper={0.4} brightness={1.5} enableMouseInteraction paused={animationPaused} />
+          </Suspense>
         </div>
-        <div className="hub-activity">
-          <p className="hub-eyebrow">{t('Recent activity')}</p>
-          <div className="hub-filters" role="group" aria-label={t('Recent activity')}>{(['all', 'success', 'errors'] as const).map(f => <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>{t(f === 'all' ? 'All' : f === 'success' ? 'Successful' : 'Errors')}</button>)}</div>
-          {recent.length ? recent.map(entry => <button className="hub-history-row" key={entry.id} onClick={() => { openHistory(entry.id); open('collections') }}>
-            <span className="hub-method">{entry.request?.method ?? 'HTTP'}</span><span className="hub-history-url">{entry.request?.url || entry.request?.name || t('Request')}</span>
-            <span className="hub-status" data-error={!!entry.response.error || entry.response.status >= 400}><i/>{entry.response.error ? t('Error') : entry.response.status}</span>
-            <time>{entry.recordedAt ? new Date(entry.recordedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</time>
-          </button>) : <div className="hub-empty"><CircleDot size={24}/><strong>{t('No recent requests')}</strong><span>{t('Send a request to see your activity here.')}</span></div>}
-          {history.length > 0 && <button className="hub-history-more" onClick={() => open('history')}>{t('View all history')}<ArrowRight size={14}/></button>}
-        </div>
-      </section>
-      <TodayPanel logo={layout.logo}/>
-    </main>
-  </div>
+
+        {recent.length === 0 && <section className="hub-start" aria-labelledby="hub-start-title">
+          <h2 id="hub-start-title" className="hub-eyebrow">{t('Start here')}</h2>
+          <div className="hub-start-actions">
+            {NAV.filter((item) => ['codestudio', 'collections', 'database'].includes(item.id) && isFeatureVisible(item.id, flags)).map(({ id, label, icon: Icon }) => (
+              <button type="button" key={id} onClick={() => open(id)}>
+                <Icon size={22} strokeWidth={1.5} />
+                <span><strong>{t(label)}</strong><small>{t(id === 'codestudio' ? 'Open a folder or create a project.' : id === 'collections' ? 'Send a request or import a collection.' : 'Connect to a database.')}</small></span>
+              </button>
+            ))}
+          </div>
+        </section>}
+
+        <section className="hub-recent" aria-labelledby="hub-recent-title">
+          <header>
+            <p id="hub-recent-title" className="hub-eyebrow">{t('Recent')}</p>
+            {recent.length > 0 && <button type="button" onClick={() => open('codestudio')}>{t('View all')}<ArrowRight size={16} strokeWidth={1.5} /></button>}
+          </header>
+          {recent.length > 0
+            ? <ul>{recent.slice(0, RECENT_ROWS).map((file) => (
+                <li key={`${file.projectRoot}:${file.relativePath}`}>
+                  <button type="button" onClick={() => void openRecentFile(file)} title={`${file.projectRoot}/${file.relativePath}`}>
+                    <span className="hub-file-icon"><Suspense fallback={<FileText size={22} strokeWidth={1.4} />}><FileIcon name={file.name} relativePath={file.relativePath} size={28} /></Suspense></span>
+                    <span className="hub-file-name">{file.name}</span>
+                    <span className="hub-file-path">{recentFileFolder(file)}</span>
+                    <time dateTime={new Date(file.openedAt).toISOString()}>{timeAgo(file.openedAt, now.getTime())}</time>
+                  </button>
+                </li>
+              ))}</ul>
+            : <p className="hub-empty">{t('Files you open in Code Studio appear here.')}</p>}
+        </section>
+      </main>
+    </div>
+  )
 }

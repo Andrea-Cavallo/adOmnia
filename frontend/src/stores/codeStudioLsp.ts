@@ -84,7 +84,7 @@ export interface GoIDEEditorPreferences {
   editorMode: CodeStudioEditorMode
 }
 
-export const EDITOR_FONT_SIZE = { min: 9, max: 28, default: 12 } as const
+export const EDITOR_FONT_SIZE = { min: 9, max: 28, default: 14 } as const
 
 /** Tipo su cui generare i metodi di un'interfaccia scelta dall'utente. */
 export interface GoIDEImplementRequest {

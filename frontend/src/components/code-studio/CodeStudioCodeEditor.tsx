@@ -405,7 +405,8 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
         // Go, assembly e Makefile vogliono tab veri: una ricetta indentata a spazi rompe make.
         // Per gli altri file vale .editorconfig, e `.adomnia/settings.json` è il livello più esplicito.
         ...indentationFor(document.document.language, editorConfigWithProject(editorConfig, projectEditor)),
-        padding: { top: 6, bottom: 6 },
+        padding: { top: 36, bottom: 8 },
+        scrollBeyondLastColumn: 4,
       }}
     />
     </div>

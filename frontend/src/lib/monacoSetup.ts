@@ -92,7 +92,8 @@ function cssToken(name: string): string | undefined {
 function liveSurface(mode: 'dark' | 'light', island: boolean): monaco.editor.IColors {
   const active = document.documentElement.classList.contains('light') ? 'light' : 'dark'
   if (mode !== active) return {}
-  const bg = cssToken(island ? '--color-surface-1' : '--color-surface-0')
+  // In scuro l'isola usa il nero scelto nell'hub (surface-0), come il chrome di Code Studio.
+  const bg = cssToken(island && mode === 'light' ? '--color-surface-1' : '--color-surface-0')
   const raised = cssToken('--color-surface-2')
   const colors: monaco.editor.IColors = {}
   const set = (key: string, value: string | undefined) => { if (value) colors[key] = value }

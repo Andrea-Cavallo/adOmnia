@@ -353,6 +353,11 @@ low CPU alone never supplies an inferred idle state.
 
 The resource monitor now controls the backend Go GC budget live and saves/restarts gopls per selected Go project. It records CPU/RSS over time, shows observed parent PIDs and registered ownership, and exports JSON, per-process CSV, Markdown or standalone HTML with charts. Backend default: 512 MiB unless an explicit startup GOMEMLIMIT exists; gopls retains 768 MiB or its inherited value. These are soft GC budgets, not process RSS caps. Methodology, measured results and persistence compatibility: [resource diagnostics report](performance/resources-2026-10-19.md).
 
+## gopls memory budget under continuous typing (2026-10-24)
+
+The gopls budget stays at 768 MiB. Ten 10-minute typing runs (five per budget, large repository and a four-file module) measured both limits through the real `LSPManager`: 512 MiB saved 218 MiB of RSS but made completion four times slower (p50 444 ms versus 114 ms, p95 571 ms versus 173 ms) and used 7.6 times the CPU (3.50 versus 0.46 cores). On a small module the two budgets were indistinguishable and 512 MiB saved nothing, so the budget is not sized automatically per project. The resource monitor now offers both values as presets and states the measured cost. Data and method: [typing campaign](performance/typing-2026-10-24.md). What the ~7 s workspace load is made of: [gopls load profile](performance/gopls-load-2026-10-24.md).
+
+
 ## Native cold-start measurement (2026-10-22)
 
 Method: `scripts/measure-startup.ps1` launches the built desktop executable with

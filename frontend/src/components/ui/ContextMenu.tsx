@@ -32,6 +32,7 @@ interface ContextMenuProps {
   onSelect: (id: string) => void
   onClose: () => void
   appearance?: ContextMenuAppearance
+  compact?: boolean
 }
 
 const MENU_WIDTH = 232
@@ -47,6 +48,7 @@ interface MenuPositionInput {
   depth: number
   viewportWidth: number
   viewportHeight: number
+  parentLeft?: number
 }
 
 export function resolveContextMenuPosition(input: MenuPositionInput): { left: number; top: number } {
@@ -56,7 +58,7 @@ export function resolveContextMenuPosition(input: MenuPositionInput): { left: nu
 
   if (left + width > viewportWidth - VIEWPORT_GUTTER) {
     left = depth > 0
-      ? x - width - MENU_WIDTH + SUBMENU_OVERLAP
+      ? (input.parentLeft ?? x - MENU_WIDTH) - width + SUBMENU_OVERLAP
       : viewportWidth - width - VIEWPORT_GUTTER
   }
   left = Math.max(VIEWPORT_GUTTER, left)
@@ -79,7 +81,11 @@ export function isContextMenuBackdrop(target: EventTarget | null, currentTarget:
  * Keyboard: ↑/↓ move, → open submenu, ← close submenu, Enter activate,
  * Escape close, and disabled items are skipped.
  */
-export function ContextMenu({ x, y, items, onSelect, onClose, appearance = 'default' }: ContextMenuProps) {
+export function ContextMenu({ x, y, items, onSelect, onClose, appearance = 'default', compact = false }: ContextMenuProps) {
+  useEffect(() => {
+    const opener = document.activeElement
+    return () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true }) }
+  }, [])
   // Close when focus leaves the app or the viewport changes. Backdrop clicks
   // are handled by the portal overlay because it covers the full viewport.
   useEffect(() => {
@@ -110,6 +116,7 @@ export function ContextMenu({ x, y, items, onSelect, onClose, appearance = 'defa
         depth={0}
         autoFocus
         appearance={appearance}
+        compact={compact}
         onSelect={onSelect}
         onClose={onClose}
       />
@@ -125,11 +132,13 @@ interface MenuLevelProps {
   depth: number
   autoFocus?: boolean
   appearance: ContextMenuAppearance
+  compact?: boolean
+  parentLeft?: number
   onSelect: (id: string) => void
   onClose: () => void
 }
 
-function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClose }: MenuLevelProps) {
+function MenuLevel({ items, x, y, depth, autoFocus, appearance, compact, parentLeft, onSelect, onClose }: MenuLevelProps) {
   const studio = appearance === 'studio'
   const hasIcons = items.some((item) => Boolean(item.icon || item.iconElement))
   const ref = useRef<HTMLDivElement>(null)
@@ -150,12 +159,14 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClos
       depth,
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
+      parentLeft,
     }))
-  }, [x, y, depth, items])
+  }, [x, y, depth, items, parentLeft])
 
+  const positioned = pos !== null
   useEffect(() => {
-    if (autoFocus) ref.current?.focus()
-  }, [autoFocus])
+    if (autoFocus && positioned) ref.current?.focus()
+  }, [autoFocus, positioned])
 
   const move = useCallback((dir: 1 | -1) => {
     setActive((current) => {
@@ -220,9 +231,9 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClos
         data-menu-depth={depth}
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        style={{ left: pos?.left ?? x, top: pos?.top ?? y, minWidth: MENU_WIDTH, maxWidth: MENU_MAX_WIDTH, visibility: pos ? 'visible' : 'hidden' }}
+        style={{ left: pos?.left ?? x, top: pos?.top ?? y, minWidth: compact ? 168 : MENU_WIDTH, maxWidth: MENU_MAX_WIDTH, visibility: pos ? 'visible' : 'hidden' }}
         className={studio
-          ? 'fixed max-h-[80vh] overflow-y-auto rounded-xl border border-border-2 bg-surface-1 p-1 shadow-[0_18px_48px_-12px_rgb(0_0_0/0.65)] outline-none'
+          ? 'code-studio-menu fixed max-h-[80vh] overflow-y-auto rounded border border-border-2 bg-surface-4 p-1 shadow-lg outline-none'
           : 'fixed max-h-[78vh] overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-2xl outline-none'}
       >
         {items.map((it, index) => (
@@ -231,7 +242,7 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClos
             <button
               role="menuitem"
               type="button"
-              title={it.disabled ? it.disabledReason : undefined}
+              title={it.disabled ? it.disabledReason : it.label}
               disabled={it.disabled}
               aria-haspopup={it.submenu?.length ? 'menu' : undefined}
               aria-expanded={it.submenu?.length ? openIndex === index : undefined}
@@ -249,7 +260,10 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClos
               )}
             >
               {hasIcons && <MenuIcon item={it} studio={studio} />}
-              <span className="min-w-0 flex-1 truncate">{it.label}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{it.label}</span>
+                {studio && it.disabled && <span className="block whitespace-normal text-[11px] leading-4 text-text-3">{it.disabledReason || 'Already selected or unavailable in the current state'}</span>}
+              </span>
               {it.checked && <Check size={studio ? 14 : 12} className="shrink-0 text-accent" aria-hidden="true" />}
               {it.shortcut && (studio
                 ? <kbd className={cn('shrink-0 rounded-[5px] border border-border-2 bg-surface-0/60 px-1.5 py-px font-mono text-[10.5px] leading-4 text-text-3', it.disabled && 'opacity-40')}>{it.shortcut}</kbd>
@@ -263,12 +277,14 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClos
       {openItem?.submenu && (
         <MenuLevel
           items={openItem.submenu}
+          parentLeft={pos?.left ?? x}
           x={openRect().x}
           y={openRect().y}
           depth={depth + 1}
           appearance={appearance}
           onSelect={onSelect}
-          onClose={() => setOpenIndex(-1)}
+          autoFocus
+          onClose={() => { setOpenIndex(-1); ref.current?.focus() }}
         />
       )}
     </>
@@ -276,7 +292,7 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, onSelect, onClos
 }
 
 function studioItemClass(item: ContextMenuItem, highlighted: boolean): string {
-  if (item.disabled) return 'flex h-8 w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] text-text-4/70'
+  if (item.disabled) return 'flex min-h-8 w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 py-1 text-left text-[12.5px] text-text-3'
   return cn(
     'flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] transition-colors',
     item.danger ? 'text-error' : 'text-text-2',

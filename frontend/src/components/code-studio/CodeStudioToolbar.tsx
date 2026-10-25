@@ -3,7 +3,7 @@ import { configurationTestTarget } from '@/lib/code-studio/runToolbarActions'
 import { useEffect, useMemo, useState } from 'react'
 import { useCodeStudioWindowsStore } from '@/stores/codeStudioWindows'
 import { FolderGit2, GitBranch, FolderOpen, FolderPlus, FolderX, History, PackageCheck, PackageSearch, RefreshCw, Settings2, Terminal } from 'lucide-react'
-import { Bug, Check, ChevronDown, Hammer, Maximize2, MoreVertical, Play, Plus, Search, Square, X } from 'lucide-react'
+import { AlertCircle, Bug, Check, ChevronDown, Hammer, Loader2, Maximize2, PanelLeft, PanelBottom, PanelRight, Play, Plus, Search, Square } from 'lucide-react'
 import { Container, Database, LayoutGrid, LayoutList, Send, Server, ServerCog } from 'lucide-react'
 import type { RailItem } from '@/lib/navigation'
 import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindows'
@@ -91,12 +91,13 @@ function goVersion(toolchain: GoIDEToolchainInfo | null): string {
 export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
   const { sessions, activeSession, mainMenu, extra, trailing, activeExecution, toolchain, loading, runConfigurations, activeConfigId } = props
   const [menu, setMenu] = useState<OpenMenu | null>(null)
-  const detected = useDetectedRunItems(activeSession.id, menu?.kind === 'config' && runConfigurations.length === 0)
+  const detected = useDetectedRunItems(activeSession.id, (menu?.kind === 'config' || menu?.kind === 'more') && runConfigurations.length === 0)
   const detachedStudios = usePanelWindowsStore((state) => state.detached)
   const startPanelWindows = usePanelWindowsStore((state) => state.start)
   useEffect(() => { startPanelWindows() }, [startPanelWindows])
   const authorized = activeSession.project.authorization === 'tooling-permitted'
   const running = activeExecution?.status === 'running'
+  const failed = activeExecution?.status === 'failed'
   const profile = useMemo(() => projectProfile(activeSession.project, IDE_LANGUAGE_NAMES), [activeSession.project])
   // Il toolchain Go serve solo ai progetti con unità Go: un'app Node si avvia con Node, non con `go`.
   const activeConfig = runConfigurations.find((config) => config.id === activeConfigId) ?? null
@@ -158,13 +159,18 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
       { id: 'configure', label: 'Edit Configurations…', icon: Settings2, separatorBefore: true },
     ]
     return [
-      { id: 'build', label: 'Build', icon: Hammer, disabled: !toolsReady || loading },
-      { id: 'test', label: 'Test project unit', icon: Check, disabled: !!testReason || loading },
-      { id: 'configure', label: 'Edit Configurations…', icon: Settings2 },
-      { id: 'detect', label: `Detect Go Toolchain · ${goVersion(toolchain)}`, icon: RefreshCw, disabled: !authorized, disabledReason: 'Trust the project first' },
-      { id: 'toolchain', label: 'Go Binary and Environment…', icon: Settings2, disabled: !authorized, disabledReason: 'Trust the project first' },
-      { id: 'dependencies', label: 'Module Dependencies…', icon: PackageSearch },
-      { id: 'tidy', label: 'go mod tidy…', icon: PackageCheck, disabled: !toolsReady || running, disabledReason: running ? 'A process is running' : 'Go tools are not ready' },
+      { id: 'active-configuration', label: `Configuration: ${activeConfig?.name ?? (profile.hasGo ? 'go run .' : 'Choose…')}`, icon: Terminal, submenu: menuItems('config') },
+      { id: 'debug', label: 'Debug', icon: Bug, disabled: !!debugReason || loading, disabledReason: debugReason || 'An operation is in progress', separatorBefore: true },
+      { id: 'build', label: 'Build', icon: Hammer, disabled: !toolsReady || loading, disabledReason: !authorized ? 'Trust the project first' : loading ? 'An operation is in progress' : 'Configure the toolchain first' },
+      { id: 'test', label: 'Test project unit', icon: Check, disabled: !!testReason || loading, disabledReason: testReason || 'An operation is in progress' },
+      { id: 'studios', label: 'Open studio in a window', icon: LayoutGrid, submenu: menuItems('studios'), separatorBefore: true },
+      ...(profile.hasGo ? [{ id: 'go-tools', label: 'Go tools', icon: Settings2, submenu: [
+        { id: 'detect', label: `Detect Go Toolchain · ${goVersion(toolchain)}`, icon: RefreshCw, disabled: !authorized, disabledReason: 'Trust the project first' },
+        { id: 'toolchain', label: 'Go Binary and Environment…', icon: Settings2, disabled: !authorized, disabledReason: 'Trust the project first' },
+        { id: 'dependencies', label: 'Module Dependencies…', icon: PackageSearch },
+        { id: 'tidy', label: 'go mod tidy…', icon: PackageCheck, disabled: !toolsReady || running, disabledReason: running ? 'A process is running' : 'Go tools are not ready' },
+      ] }] : []),
+      { id: 'close', label: 'Close Project', icon: FolderX, separatorBefore: true, disabled: loading, disabledReason: 'An operation is in progress' },
     ]
   }
 
@@ -180,6 +186,7 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
     if (id.startsWith(CONFIG_PREFIX)) return props.onSelectConfiguration(id.slice(CONFIG_PREFIX.length) || null)
     switch (id) {
       case 'build': return props.onBuild()
+      case 'debug': return props.onDebug()
       case 'test': return props.onTest()
       case 'open': return props.onOpenProject()
       case 'new': return props.onCreateProject()
@@ -197,48 +204,46 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
   const titlebar = useCodeStudioTitlebar()
   return (
     <div role="toolbar" aria-label="Code Studio toolbar" {...titlebar.props} className={`code-studio-toolbar flex h-11 shrink-0 items-center gap-1.5 pl-2 ${titlebar.active ? 'code-studio-titlebar' : 'pr-2'}`}>
+      <div className="code-studio-header-start">
       {mainMenu}
+      {([{ key: 'projectOpen', label: 'Toggle project pane', icon: PanelLeft }, { key: 'bottomOpen', label: 'Toggle bottom pane', icon: PanelBottom }, { key: 'structureOpen', label: 'Toggle structure pane', icon: PanelRight }] as const).map(({ key, label, icon: Icon }) => (
+        <button key={key} type="button" aria-label={label} title={label} className="code-studio-icon-button h-8 w-8" onClick={() => { const state = useCodeStudioStore.getState(); state.updateLayout({ [key]: !state.layout[key] }) }}><Icon size={16} /></button>
+      ))}
+      </div>
+      <div className="code-studio-header-center">
       <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
       <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'project'} disabled={loading} onClick={(event) => openMenu('project', event.currentTarget)} title={activeSession.project.rootPath} className={`code-studio-widget max-w-60 pl-1.5 ${menu?.kind === 'project' ? 'is-active' : ''}`}>
         <span aria-hidden="true" className="code-studio-project-tile"><CodeStudioFolderIcon open size={16} /></span>
         <span className="truncate text-[13.5px] font-semibold tracking-[-0.01em] text-text-1">{activeSession.project.name}</span>
         <ChevronDown size={12} className="shrink-0 text-text-4" />
       </button>
-
-      <div className="code-studio-header-search flex min-w-0 flex-1 px-1.5">
-        <button type="button" onClick={props.onSearchEverywhere} title="Search Everywhere · Ctrl/Cmd+K" className="code-studio-search-control">
+      {extra}
+      </div>
+      <div className="code-studio-header-end">
+      <div className="code-studio-header-search">
+        <button type="button" aria-label="Search Everywhere" onClick={props.onSearchEverywhere} title="Search Everywhere · Ctrl/Cmd+K" className="code-studio-search-control">
           <Search size={15} className="shrink-0" />
           <span className="flex-1 truncate text-left text-[13px]">Search files, symbols, actions…</span>
           <span className="flex shrink-0 items-center gap-1"><kbd className="code-studio-key">Ctrl</kbd><kbd className="code-studio-key">K</kbd></span>
         </button>
       </div>
 
-      <div className="code-studio-run-group" role="group" aria-label="Run">
-        <button type="button" aria-haspopup="menu" aria-expanded={menu?.kind === 'config'} onClick={(event) => openMenu('config', event.currentTarget)} title="Active run configuration" className={`code-studio-widget h-6 max-w-48 px-2 ${menu?.kind === 'config' ? 'is-active' : ''}`}>
-          <Terminal size={14} aria-hidden="true" />
-          <span className="truncate text-text-1">{activeConfig?.name ?? (profile.hasGo ? 'go run .' : 'Add configuration')}</span>
-          <ChevronDown size={11} className="shrink-0 text-text-4" />
-        </button>
+      <div className={`code-studio-run-group ${running ? 'is-running' : loading ? 'is-starting' : failed ? 'is-failed' : ''}`} role="group" aria-label="Run">
         <span className="mx-0.5 h-4 w-px bg-border-1" aria-hidden="true" />
-        <button type="button" onClick={props.onRun} disabled={!toolsReady || loading || (!!activeConfig && templateFor(activeConfig).run === false)} aria-label="Run" title={(!!activeConfig && templateFor(activeConfig).run === false) ? 'Attach configurations use Debug' : 'Run · Ctrl/Cmd+F5'} className="code-studio-icon-button code-studio-run-action h-[28px] w-[32px]"><Play size={15} fill="currentColor" /></button>
-        <button type="button" onClick={props.onDebug} disabled={!!debugReason || loading} aria-label="Debug" title={debugReason || 'Debug · Shift+F9'} className="code-studio-icon-button code-studio-debug-action h-[28px] w-[32px]"><Bug size={15} /></button>
-        <button type="button" onClick={props.onTest} disabled={!!testReason || loading} aria-label="Test" title={testReason || 'Test project unit'} className="code-studio-icon-button h-[28px] w-[32px]"><Check size={15} /></button>
-        <button type="button" onClick={props.onConfigure} aria-label="Edit run configurations" title="Edit run configurations" className="code-studio-icon-button h-[28px] w-[32px]"><Settings2 size={14} /></button>
-        <button type="button" onClick={props.onStop} disabled={!running} aria-label="Stop" title="Stop process tree · Shift+F5" className="code-studio-icon-button h-[28px] w-[32px] bg-danger/15 text-danger"><Square size={12} fill="currentColor" /></button>
+        <button type="button" onClick={props.onRun} disabled={!toolsReady || loading || running || (!!activeConfig && templateFor(activeConfig).run === false)} aria-label="Run" title={(!!activeConfig && templateFor(activeConfig).run === false) ? 'Attach configurations use Debug' : `Run ${activeConfig?.name ?? 'project'} · Ctrl/Cmd+F5`} className="code-studio-icon-button code-studio-run-action h-[28px] px-2">
+          {running || loading ? <Loader2 size={15} className="animate-spin" /> : failed ? <AlertCircle size={15} /> : <Play size={15} fill="currentColor" />}
+          <span className="code-studio-run-label">{running ? 'Running' : loading ? 'Starting' : failed ? 'Retry' : 'Run'}</span>
+        </button>
+        <span role="status" aria-live="polite" className="sr-only">{activeExecution ? `${activeExecution.kind}: ${activeExecution.status}` : 'Ready to run'}</span>
+        {running && <button type="button" onClick={props.onStop} aria-label="Stop" title="Stop process tree · Shift+F5" className="code-studio-icon-button h-[28px] w-[32px] bg-danger/15 text-danger"><Square size={12} fill="currentColor" /></button>}
       </div>
       <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
-      <button type="button" onClick={props.onBuild} disabled={!toolsReady || loading} aria-label="Build" title="Build · Ctrl/Cmd+Shift+B" className="code-studio-icon-button h-8 w-8"><Hammer size={16} /></button>
-      <button type="button" aria-label="More Go actions" aria-haspopup="menu" aria-expanded={menu?.kind === 'more'} onClick={(event) => openMenu('more', event.currentTarget)} title="Toolchain, dependencies, go mod tidy" className={`code-studio-icon-button h-8 w-8 ${menu?.kind === 'more' ? 'is-active' : ''}`}><MoreVertical size={15} /></button>
+      <button type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={menu?.kind === 'more'} onClick={(event) => openMenu('more', event.currentTarget)} title={`Run configuration: ${activeConfig?.name ?? (profile.hasGo ? 'go run .' : 'Choose a configuration')} · Build, debug and tools`} className={`code-studio-icon-button h-8 w-8 ${menu?.kind === 'more' ? 'is-active' : ''}`}><Settings2 size={16} /></button>
       <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
-      <button type="button" aria-label="Open an adOmnia studio in its own window" aria-haspopup="menu" aria-expanded={menu?.kind === 'studios'} onClick={(event) => openMenu('studios', event.currentTarget)} title="Studios: API, Database, Broker, Mock… each in its own window beside the code" className={`code-studio-icon-button relative h-8 w-8 ${menu?.kind === 'studios' ? 'is-active' : ''}`}>
-        <LayoutGrid size={15} />
-        {detachedStudios.length > 0 && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />}
-      </button>
-      {extra}
-      {trailing && <><span className="mx-1 h-5 w-px bg-border-1" aria-hidden="true" />{trailing}</>}
+      {trailing && <div className="code-studio-workspace-picker">{trailing}</div>}
       {/* Nella barra della finestra la X è quella della finestra: Close Project resta nel menu File. */}
-      {!titlebar.active && <button type="button" onClick={props.onClose} disabled={loading} aria-label="Close project" title="Close project session" className="code-studio-icon-button h-8 w-8"><X size={14} /></button>}
       <CodeStudioWindowControls />
+      </div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={menuItems(menu.kind)} onSelect={select} onClose={() => setMenu(null)} />}
     </div>
   )

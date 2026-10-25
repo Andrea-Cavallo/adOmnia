@@ -12,7 +12,6 @@ import { ResponsePanel } from '@/components/response/ResponsePanel'
 import { TabBar } from '@/components/layout/TabBar'
 import { REQUEST_DRAG_TYPE } from '@/lib/collectionMoves'
 import { openDroppedRequests } from '@/components/collections/useTreeInteraction'
-import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { LoadTestDrawer } from '@/components/loadtest/LoadTestDrawer'
 import { executeRequest } from '@/lib/executeRequest'
 import { blankRequest, uid, type EnvVariable, type HttpMethod, type RequestItem, type Tab, type ToolTabId } from '@/lib/types'
@@ -47,7 +46,7 @@ import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpPanel, CodeStudioPanel } from './lazyPanels'
+import { WelcomePanel, WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpPanel, CodeStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -503,6 +502,11 @@ function ToolTabPane({ tool }: { tool: ToolTabId }) {
       </Suspense>
     </div>
   )
+}
+
+/** Segnaposto della Hub col fondo della finestra, finché il suo chunk non arriva. */
+function HubPanel() {
+  return <Suspense fallback={<div className="h-full bg-surface-0" />}><WelcomePanel /></Suspense>
 }
 
 export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWorkspaceProps) {
@@ -1277,7 +1281,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'loginspector': return { component: <LogInspectorPanel />,   titleKey: 'Log Inspector', overflow: true }
     case 'security': return { component: <SecurityCenterPanel />,   titleKey: 'Security Center', overflow: true }
     case 'xmltools':    return { component: <UtilsPanel initialTool="xmlstudio" />, titleKey: 'Power Tools', overflow: true }
-    case 'welcome':     return { component: <WelcomePanel /> }
+    case 'welcome':     return { component: <HubPanel /> }
     case 'vault':       return { component: <VaultPanel />,           titleKey: 'vault',     overflow: true }
     case 'workspace':   return { component: <SettingsPanel initialSection="workspace" />, titleKey: 'settings', overflow: true }
     case 'apidocs':     return { component: <ApiDocsPanel />,          titleKey: 'apidocs', overflow: true }
@@ -1288,7 +1292,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'mcp':         return { component: <McpPanel />,             titleKey: 'MCP Client', overflow: true }
     case 'codestudio':       return { component: <CodeStudioPanel />,        titleKey: 'codestudio', overflow: true }
     case 'settings':    return { component: <SettingsPanel />,        titleKey: 'settings' }
-    default:            return { component: <WelcomePanel /> }
+    default:            return { component: <HubPanel /> }
   }
 }
 

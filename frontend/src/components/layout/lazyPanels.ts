@@ -1,6 +1,8 @@
 import { lazy } from 'react'
 
 // Shared identities for router, workspace tabs and detached consumers.
+// La Hub resta fuori dal bundle iniziale (budget di avvio): da disco locale arriva in pochi ms.
+export const WelcomePanel         = lazy(() => import('@/components/layout/WelcomePanel').then(m => ({ default: m.WelcomePanel })))
 export const WebSocketPanel       = lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
 export const RequestHistoryPanel  = lazy(() => import('@/components/history/RequestHistoryPanel').then(m => ({ default: m.RequestHistoryPanel })))
 export const DailyScenariosPanel  = lazy(() => import('@/components/scenarios/DailyScenariosPanel').then(m => ({ default: m.DailyScenariosPanel })))
