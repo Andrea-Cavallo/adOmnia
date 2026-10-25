@@ -10,7 +10,7 @@ export type HubPhrase = CopyPair
 export const HUB_PHRASES: readonly HubPhrase[] = [
   { title: 'A little time to create.', subtitle: 'Pick up where you left off.' },
   { title: 'Your toolbox.', subtitle: 'On your machine.' },
-  { title: 'No cloud.', subtitle: 'Just you and your code.' },
+  { title: 'No account. No cloud sync.', subtitle: 'Just you and your code.' },
   { title: 'Build something small today.', subtitle: 'It gets big tomorrow.' },
   { title: 'Every great tool', subtitle: 'starts as a small script.' },
   { title: 'All local.', subtitle: 'All under control.' },
@@ -21,7 +21,7 @@ export const HUB_PHRASES: readonly HubPhrase[] = [
   { title: 'It worked five minutes ago.', subtitle: 'I swear.' },
   { title: 'Not a bug.', subtitle: 'An undocumented feature.' },
   { title: 'Tried turning it off and on again?', subtitle: 'Classic. Still works.' },
-  { title: 'No data sent to the cloud.', subtitle: 'The cloud is disappointed.' },
+  { title: 'No data sent unless you ask.', subtitle: 'The cloud is disappointed.' },
   { title: 'Compiled on the first try?', subtitle: 'Suspicious.' },
   { title: 'One commit a day', subtitle: 'keeps the panic away.' },
   { title: 'Fewer meetings.', subtitle: 'More code.' },

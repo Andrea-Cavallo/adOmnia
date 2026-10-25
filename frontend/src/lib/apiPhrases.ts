@@ -18,7 +18,7 @@ export const API_PHRASES: readonly ApiPhrase[] = [
   { title: 'Curl is great.', subtitle: 'This is faster.' },
   { title: 'Ping. Pong.', subtitle: 'Your API is alive.' },
   { title: 'Request in.', subtitle: 'Response out.' },
-  { title: 'No Postman needed.', subtitle: 'Everything stays local.' },
+  { title: 'No Postman needed.', subtitle: 'Your collections stay on your machine.' },
   { title: 'Authenticate.', subtitle: 'Then talk.' },
   { title: 'JSON in. JSON out.', subtitle: 'Pretty printed, of course.' },
   { title: 'Latency is a feeling.', subtitle: 'Here it’s a number.' },

@@ -121,8 +121,8 @@ export function WelcomePanel() {
         <header className="hub-hero">
           <div className="hub-greeting">
             <p className="hub-eyebrow hub-workspace-label"><span className="hub-workspace-mark" aria-hidden="true" />{t('Workspace')}</p>
-            <h1>{phrase.title}</h1>
-            <p className="hub-lede">{phrase.subtitle}</p>
+            <h1>{t(phrase.title)}</h1>
+            <p className="hub-lede">{t(phrase.subtitle)}</p>
           </div>
           <div className="hub-clock">
             <time dateTime={now.toISOString()}>{clock}</time>
