@@ -84,7 +84,7 @@ A step-by-step version is in [Getting started](docs/GETTING-STARTED.md).
 
 ### Workspace Hub
 
-Start here. The hub shows your recent activity and opens every area: Code Studio, API & Protocols, Data & Messaging, Docs & Payloads and Power Tools.
+Start here. A time-of-day greeting and a dot-matrix clock sit above **Continue coding**, which reopens your last file together with its project. The recent list keeps the files you worked on most recently, and the sidebar opens Code Studio, the API Client, Database, Messaging, Tools, Settings and About.
 
 <p align="center">
   <img src="assets/screenshots/hub.png" alt="adOmnia Workspace Hub with module shortcuts and recent activity" width="100%">
@@ -92,7 +92,7 @@ Start here. The hub shows your recent activity and opens every area: Code Studio
 
 ### Custom Hub: your own colors
 
-Pick one accent color and a dark base: the whole app follows, from the rail to the hub and every studio. Shades adapt so text stays readable in Dark and White.
+Pick one accent color and a dark base from **Settings → Appearance**, or start from a preset (**Anthracite**, Black/White, White/Black). The whole app follows, from the rail to the hub and every studio. Shades adapt so text stays readable in Dark and White.
 
 <p align="center">
   <img src="assets/screenshots/hub-custom-theme.png" alt="Workspace Hub recolored with a custom yellow accent" width="100%">
@@ -100,7 +100,7 @@ Pick one accent color and a dark base: the whole app follows, from the rail to t
 
 ### Code Studio with Go
 
-Project tree, gopls completion and usage counts, Build/Test/Vet lenses, run configurations, Git branch and the toolchain status in the footer.
+Project tree with Git markers and hover actions, gopls completion and usage counts, Build/Test/Vet lenses, run configurations with running/starting/retry states, and a compact chrome: project and branch centered in the top bar, a searchable list of open files beside the tabs, collapsible tool windows, and the file name with its enclosing symbols in the status bar, next to line:column and the Go SDK.
 
 <p align="center">
   <img src="assets/screenshots/code-studio-go.png" alt="Code Studio editing a Go file with gopls, run configuration and project tree" width="100%">

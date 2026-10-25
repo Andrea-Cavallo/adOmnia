@@ -18,6 +18,38 @@ Nessuna voce di questo file richiede di scrivere codice: richiede di usare il pr
 
 ## Prerequisiti comuni
 
+### UI — rifinitura Code Studio (2026-10-24)
+
+Allineamento visivo successivo: verificare la nuova barra centrata anche nella finestra frameless e in quella separata, inclusi controlli finestra e workspace selector; confrontare superfici antracite, raggi compatti e tipografia con A/B. Sidebar Files/Search/Git/History: provare i collegamenti a Search/Git/Recent Locations, il `+` e le azioni radice su hover e focus. Le 24 catture Chromium sono evidenza frontend, non accettazione desktop.
+
+Prosecuzione del 2026-10-24: build Windows production compilata. L'avvio isolato con porta debug WebView2 è stato respinto dalla revisione automatica (`blocked by policy`); non è una verifica desktop eseguita. La regressione frontend sul targeting documento nello split è corretta e verificata con Monaco in Chromium; test backend sul round-trip LF/CRLF passati. **UI-9.M1 resta aperta** per l'uso nell'app nativa.
+
+Implementazione in `REFACTOR-FIX-CODE-UI.md` (locale, escluso da Git). Le fixture browser e gli screenshot locali verificano rendering e interazioni frontend; non chiudono le seguenti prove nell'app desktop. Provare 1280×720 e 1920×1080, chiaro/scuro, sidebar 220/280/360 px. Registrare screenshot prima/dopo e build.
+
+- [ ] **UI-1.M1** Header Project: nessun controllo fuori bordo, `+` accessibile e creazione file/cartelle disponibile a tutte le larghezze.
+- [ ] **UI-2.M1** Menu: icone, apertura laterale, flip vicino al bordo, frecce/Invio/Esc e ripristino del focus al parent.
+- [ ] **UI-3.M1** Menu File: ogni azione disabilitata mostra una spiegazione visibile; provarla anche con file dirty e senza file aperto.
+- [ ] **UI-4.M1** Configurazione attiva, avvio reale, processo in corso, build fallita e Stop: feedback riconoscibile e nessun doppio avvio.
+- [ ] **UI-5.M1** Monorepo reale: gerarchia cartelle, dipendenze attenuate, nuove risorse nel target selezionato, Collapse all.
+- [ ] **UI-6.M1** Git: modificato/aggiunto/nuovo/eliminato/conflitto/ignorato, colonna e tooltip senza glifi tagliati.
+- [ ] **UI-7.M1** Go/Java/Python/Rust/web: sorgenti, manifest e lockfile con icone leggibili in entrambi i temi.
+- [ ] **UI-8.M1** Anteprima: doppio clic sulla tab la mantiene aperta, apertura successiva non la sostituisce; X, dirty marker e chiusura funzionano.
+- [ ] **UI-9.M1** Breadcrumb file/simboli, LF↔CRLF con Undo e salvataggio/riapertura, cambio linguaggio e split tra documenti/sessioni senza modificare il modello sbagliato. UTF-8 rimane l'unica codifica supportata. Provare select native su Windows e almeno macOS/Linux.
+  Includere il mantenimento del linguaggio scelto dopo Save e durante un Save pendente: regressione automatica corretta, prova nativa ancora aperta. Il tentativo WebKit Playwright locale non ha completato l'avvio e non costituisce accettazione cross-piattaforma.
+- [ ] **UI-10.M1** File con riga lunga e diagnostiche: widget fuori dal testo, marcatori/scrollbar utilizzabili con editor stretto; includere split e Markdown/HTML.
+- [ ] **UI-11.M1** Dopo estrazione: cambio sessione, chiusura ultimo documento, tab preview/dirty e stato LF/CRLF aggiornati senza perdere buffer.
+
+### HUB — nuova Home (2026-10-24)
+
+Hub ridisegnato sul riferimento `Futuristic Dark IDE Workspace Dashboard.png`. Evidenza solo frontend: render Chromium con file recenti fixture a 1596×985 e 1280×720, zero pageerror. Lo screenshot `assets/screenshots/hub.png` del README va rifatto dall'app.
+
+- [ ] **HUB.M1** Logo elettrico: animazione fluida, CPU a riposo trascurabile, fermo con "riduci animazioni" del sistema; leggibile con Nero/Bianco, Antracite e un accento colorato.
+- [ ] **HUB.M2** Continue coding e Recent: aprire file in Code Studio, tornare alla Home, riaprirli (anche dopo riavvio e con progetto chiuso); senza storico compare "Open a project".
+- [ ] **HUB.M3** Sidebar: ogni voce apre il modulo giusto, About apre la sezione About; nessuna barra a icone sulla Home, che riappare negli altri moduli.
+- [ ] **HUB.M4** Larghezze 1280/1920 e finestra stretta: nessun testo sovrapposto a lune/orologio; tema chiaro coerente.
+
+### Prerequisiti delle altre verifiche
+
 | Serve | Per |
 |---|---|
 | coppia di release firmate 1.0.0 → 1.0.1 (+ pacchetto corrotto) | IDE-1 |
@@ -101,7 +133,8 @@ Conteggio rigenerato il 2026-10-21. **La tabella è un aggregato**: include le v
 | AG | 7 | 0 |
 | Varie (Z1.4, nuove verifiche 2026-10-18, verifica globale) | 15 | 0 |
 | STRESS-1 | 6 | 5 |
-| **TOTALE** | **359** | **27** |
+| PERF-1 | 1 | 0 |
+| **TOTALE** | **360** | **27** |
 
 ---
 
@@ -396,6 +429,17 @@ Conteggio rigenerato il 2026-10-21. **La tabella è un aggregato**: include le v
 - [ ] **Runtime macOS e Linux** (`todo-ide.md:129,186`) — WebKitGTK incluso.
 
 **Gate manuale GS-10:** [ ]
+
+---
+
+## PERF-1 — Memoria di gopls: preset e costo dichiarato
+
+**Prerequisito:** app avviata con un progetto Go grande (repo adOmnia) e uno piccolo; pannello risorse aperto dalla status bar.
+
+**Implementate, da verificare**
+- [ ] **PERF-1.M1** Nel blocco `GOMEMLIMIT` compaiono i preset **Default (768 MiB)** e **Risparmio RAM (512 MiB)**: il primo riporta il campo a `0` (valore di avvio), il secondo a `512`; il testo sotto dichiara il costo misurato (512 MiB risparmiano ~220 MiB ma il completamento passa da ~114 ms a 444 ms e gopls usa ~7× la CPU). Salvare 512 e riavviare il progetto selezionato: gopls riparte con il limite, l'editor resta reattivo e il valore resta dopo riavvio dell'app. Ripristinare 0: torna a 768 MiB. Su progetto piccolo i due valori devono comportarsi allo stesso modo (nessuna differenza percepibile).
+
+**Gate manuale PERF-1:** [ ]
 
 ---
 

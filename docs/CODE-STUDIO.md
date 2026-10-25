@@ -67,7 +67,15 @@ measurements after local fonts load. Global font smoothing follows the platform
 instead of forcing grayscale. Rendering can still differ between WebKitGTK and
 Chromium; compare on the same monitor and display scale.
 
-The status bar starts with the breadcrumb (file path › enclosing symbol; click a symbol to jump to its siblings) and shows line:column, the line separator (LF/CRLF), the language and the Go SDK. Save and Maximize editor sit at the right of the tab row. The top-right corner of the editor shows the problems of the open file: a green check when it is clean, otherwise error and warning counts with arrows for the previous and next problem (Shift+F8 / F8).
+The status bar starts with the file name (full path in its tooltip; click to open file symbols) and enclosing symbols (click to jump to siblings). Document controls convert LF/CRLF with undo support and select the editor language mode. Text files are read and saved as UTF-8 only; no encoding conversion is offered. Line:column and the Go SDK remain visible. Save and Maximize editor sit at the right of the tab row. Double-click an italic preview tab to keep it open; double-click a regular tab to maximize the editor. The close button is visible on the active tab and on hover. The top-right corner shows problems for the open file, above the first code line: a green check when clean, otherwise counts and arrows for the previous and next problem (Shift+F8 / F8).
+
+The main menu uses a compact first column, aligned command icons and visible reasons for disabled items. The project header keeps its actions inside narrow panes; at 220 px the New menu contains file/folder creation. Git markers use a fixed column (`M`, `A`, `?`, `D`, `!`, `I`), with their meaning in tooltips. Language contributions provide source/manifest icons, including Cargo manifests and lockfiles. Run shows running/starting/retry states beside the active configuration; Stop remains a separate action.
+
+The chrome follows the compact reference layout: anthracite surfaces in the dark theme, small corner radii, project and branch centered in the top bar, and an icon for Search Everywhere. The Files header also links to Find in Files, Project Git and Recent Locations (History); narrow panes show action icons with accessible names. The `+` opens resource creation; root actions appear on hover or keyboard focus. The editor's default size is 14 px; saved font preferences take precedence.
+
+Document controls target the displayed file and session even when a secondary split owns keyboard focus. LF/CRLF conversion preserves undo history; Go to line and file-symbol navigation target the mounted editor for that document.
+
+The selected editor language remains in effect for the open tab after saving, including changes made while a save is pending. This does not change the persisted document format.
 
 *View → Maximize Code Studio* (Ctrl+Shift+F11, or the ⤢ button at the right of the toolbar) hides adOmnia's rail, the Code Studio header and adOmnia's status bar, so the IDE fills the window. Press it again to restore them; leaving Code Studio restores them too.
 

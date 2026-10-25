@@ -1162,7 +1162,7 @@ rail panel.
 
 ### Hub dot-matrix arcade
 
-Hub **Customize → Hub logo** switches between the classic wordmark and the optional pixel-art wordmark. Both follow the selected palette. The choice is stored locally in the existing `adomnia.hubLayout` record as `logo: classic | pixel`; older records without this optional field keep the classic logo. Reset restores the classic logo along with the default layout.
+The Home Hub (2026-10-24) has its own sidebar (Home, Code Studio, API Client, Database, Messaging, Tools, Settings, About) under the adOmnia wordmark with an animated electric outline (own SVG, no WebGL; static with reduced motion). The main column shows a time-of-day greeting, a dot-matrix clock, **Continue coding** (reopens the last file and its project in Code Studio) and the five most recent files. Recent files are recorded locally by Code Studio in `adomnia.recentFiles.v1` (max 20, newest first). The former tile grid, Customize mode, pixel-art logo and the `adomnia.hubLayout` record are no longer used; an old record is simply ignored.
 
 
 For the v1 release surface, the Home Hub no longer exposes Arcade. Its implementation is retained. LaTeX, standalone PDF, Kubernetes and Plugins remain implemented but are omitted from primary discovery; Live Collaboration is opt-in beta. PDF imports and opening a PDF from a Code Studio project retain the complete editor, forms, annotations and signing. See `mds/V1-RELEASE-SCOPE-TODO.md` for the stable scope and acceptance gates.
