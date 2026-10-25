@@ -1,6 +1,7 @@
 import { CodeStudioModal } from './CodeStudioModal'
 import { CodeStudioFindInFiles } from './CodeStudioFindInFiles'
 import { useMemo } from 'react'
+import { Minus } from 'lucide-react'
 import { studioToolLayout } from './studioToolLayout'
 import { ResizeHandle, type ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
 import { CodeStudioEditor } from './CodeStudioEditor'
@@ -8,7 +9,8 @@ import { CodeStudioSidePane } from './CodeStudioSidePane'
 import { CodeStudioProjectTree } from './CodeStudioProjectTree'
 import { CodeStudioRunPanel } from './CodeStudioRunPanel'
 import { CodeStudioDebugPanel } from './CodeStudioDebugPanel'
-import { CodeStudioLeftStripe, CodeStudioRightStripe } from './CodeStudioToolStripes'
+import { CodeStudioToolWindowMenu, CodeStudioRightStripe } from './CodeStudioToolStripes'
+import { CodeStudioToolDrawer } from './CodeStudioToolDrawer'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { CodeStudioRunTargetHandler } from './codeStudioRunTargets'
@@ -32,7 +34,6 @@ interface CodeStudioWorkspaceProps {
   onCursor: (line: number, column: number) => void
   onRequestCloseDocument: (documents: GoIDEEditorDocument[]) => void
   onRunTarget: CodeStudioRunTargetHandler
-  onCommit: () => void
   onBookmarks: () => void
   onDependencies: () => void
   onCommand: (id: CodeStudioCommandId) => void
@@ -40,7 +41,7 @@ interface CodeStudioWorkspaceProps {
   zen?: boolean
 }
 
-export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bottomHeight, projectOpen, structureOpen, bottomOpen, onProjectResize, onStructureResize, onBottomResize, onCursor, onRequestCloseDocument, onRunTarget, onCommit, onBookmarks, onDependencies, onCommand, zen = false }: CodeStudioWorkspaceProps) {
+export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bottomHeight, projectOpen, structureOpen, bottomOpen, onProjectResize, onStructureResize, onBottomResize, onCursor, onRequestCloseDocument, onRunTarget, onBookmarks, onDependencies, onCommand, zen = false }: CodeStudioWorkspaceProps) {
   const allDocuments = useCodeStudioStore((state) => state.documents)
   const documents = useMemo(() => allDocuments.filter((item) => item.document.sessionId === session.id), [allDocuments, session.id])
   const activeDocumentId = useCodeStudioStore((state) => state.activeDocumentBySession[session.id] ?? null)
@@ -69,11 +70,10 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
   const editor = <CodeStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} />
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="code-studio-workspace relative flex min-h-0 flex-1">
       <CodeStudioModal open={bottomOpen && view === 'find'} onClose={() => useCodeStudioStore.getState().updateLayout({ bottomOpen: false })} title="Search project" size="xl" tall top flush>
         <CodeStudioFindInFiles sessionId={session.id} />
       </CodeStudioModal>
-      {!zen && <CodeStudioLeftStripe session={session} onCommit={onCommit} onBookmarks={onBookmarks} />}
       {/* Stile Islands: ogni pannello è un'isola; i separatori ridimensionabili sono lo spazio tra le isole. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {error && <div role="alert" className="mb-1.5 flex shrink-0 items-center gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-[11px] text-danger"><span className="flex-1 whitespace-pre-wrap">{error}</span><button type="button" onClick={() => useStudioTools.setState({ error: null })} className="rounded px-1.5 hover:bg-danger/15">Dismiss</button></div>}
@@ -83,12 +83,18 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
               sconfinare nel gap senza essere tagliata da overflow: hidden. */}
           <div className="relative" style={styleFor('project')}>
             <div className="code-studio-island absolute inset-0">
-              <CodeStudioProjectTree session={session} activePath={active?.document.external ? null : active?.document.relativePath ?? null} onCommand={onCommand} />
+              <CodeStudioProjectTree session={session} activePath={active?.document.external ? null : active?.document.relativePath ?? null} onCommand={onCommand} onBookmarks={onBookmarks} />
             </div>
             {!focused && <ResizeHandle variant="splitter" label="Resize project pane" className="absolute inset-y-0 -right-2" {...onProjectResize} />}
           </div>
           <div className="relative" style={focused ? { display: 'none' } : { gridColumn: `${left.length + 1} / span ${centerColumns}`, gridRow: 1 }}>
-            <div className="code-studio-island absolute inset-0">{debugging ? <CodeStudioDebugPanel session={session} editor={editor} /> : editor}</div>
+            <div className="code-studio-island absolute inset-0">{debugging ? <div className="flex h-full min-h-0 flex-col">
+                <div className="code-studio-tool-header">
+                  <CodeStudioToolWindowMenu session={session} title="Debug" />
+                  <button type="button" aria-label="Hide tool window" title="Hide · Alt+4" className="code-studio-icon-button ml-auto h-7 w-7" onClick={() => useCodeStudioStore.getState().updateLayout({ bottomOpen: false })}><Minus size={14} /></button>
+                </div>
+                <CodeStudioDebugPanel session={session} editor={editor} />
+              </div> : editor}</div>
           </div>
           <div className="relative" style={styleFor('side')}>
             <div className="code-studio-island absolute inset-0">
@@ -104,7 +110,7 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
           </div>
         </div>
       </div>
-      {!zen && <CodeStudioRightStripe onDependencies={onDependencies} />}
+      {!zen && <CodeStudioToolDrawer side="right"><CodeStudioRightStripe onDependencies={onDependencies} /></CodeStudioToolDrawer>}
     </div>
   )
 }

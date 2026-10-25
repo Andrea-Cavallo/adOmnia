@@ -326,6 +326,7 @@ export const ZH_PERSONAL_APPEARANCE_MESSAGES: Record<string, string> = {
   "Choose your colors. Preview first, then apply or save a profile.": "选择你的颜色。先预览，然后应用或保存方案。",
   "Style applied": "样式已应用",
   "Profile limit reached": "已达方案数量上限",
+  "Anthracite": "炭灰",
   "Black / White": "黑 / 白",
   "White / Black": "白 / 黑",
   "Use theme colors": "使用主题颜色",

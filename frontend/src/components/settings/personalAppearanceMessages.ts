@@ -11,6 +11,7 @@ const messages = {
   'Style applied': 'Stile applicato',
   'Profile limit reached': 'Hai raggiunto il limite di 50 profili',
   'Black / White': 'Nero / Bianco',
+  Anthracite: 'Antracite',
   'White / Black': 'Bianco / Nero',
   'Use theme colors': 'Usa i colori del tema',
   'Primary color': 'Colore primario',

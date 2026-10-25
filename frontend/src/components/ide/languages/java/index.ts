@@ -16,6 +16,9 @@ export const JAVA_LANGUAGE: IdeLanguageContribution = {
   id: JAVA_LANGUAGE_ID,
   name: 'Java',
   icon: 'openjdk',
+  fileIcon: name => name.endsWith('.java') ? { kind: 'java' }
+    : name === 'pom.xml' ? { kind: 'brand', slug: 'apachemaven' }
+    : /^(build|settings)\.gradle(\.kts)?$/.test(name) || /^gradlew(\.bat)?$/.test(name) ? { kind: 'brand', slug: 'gradle' } : undefined,
   runTemplates: javaRunTemplates,
   canDebugRun: config => javaDebugTargetOf(config) !== null,
   editorLanguages: ['java'],

@@ -28,14 +28,14 @@ export function CodeStudioEditorTabActions({ document, onSave }: CodeStudioEdito
         disabled={!canSave}
         onMouseDown={(event) => event.preventDefault()}
         onClick={onSave}
-        title="Save · Ctrl/Cmd+S"
-        aria-label="Save"
-        className="code-studio-editor-save"
+        title={document.saveError ? `Save failed: ${document.saveError} · Ctrl/Cmd+S` : document.saving ? 'Saving…' : document.dirty ? 'Save · Ctrl/Cmd+S' : 'All changes saved'}
+        aria-label={document.saving ? 'Saving' : 'Save'}
+        className="code-studio-icon-button code-studio-editor-save h-7 w-7"
         data-save-state={document.saving ? 'saving' : document.saveError ? 'error' : document.dirty ? 'dirty' : 'clean'}
         aria-busy={document.saving}
         aria-description={document.saveError || undefined}
       >
-        {document.saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}<span>{document.saving ? 'Saving' : 'Save'}</span>
+        {document.saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
       </button>
       <button type="button" aria-label="More editor actions" aria-haspopup="menu" aria-expanded={!!menu} title="More editor actions" className="code-studio-icon-button h-7 w-7"
         onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu(menu ? null : { x: rect.right - 232, y: rect.bottom + 5 }) }}><Ellipsis size={16} /></button>

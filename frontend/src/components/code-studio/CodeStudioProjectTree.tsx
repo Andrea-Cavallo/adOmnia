@@ -4,6 +4,7 @@ import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { ChevronRight, Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
 import { CodeStudioExplorerToolbar } from './CodeStudioExplorerToolbar'
+import { CodeStudioProjectNavigation } from './CodeStudioProjectNavigation'
 import { CodeStudioFolderIcon } from './CodeStudioFolderIcon'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -64,6 +65,7 @@ function useTreeMarks(sessionId: string): TreeMarks {
 }
 
 interface CodeStudioProjectTreeProps {
+  onBookmarks?: () => void
   session: GoIDESession
   /** Percorso relativo del file attivo nell'editor, evidenziato nell'albero. */
   activePath: string | null
@@ -164,7 +166,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           if (action) { event.preventDefault(); event.stopPropagation(); onKey(entry, action) }
         }}
         aria-current={selected ? 'true' : undefined}
-        className={`code-studio-tree-row flex h-7 w-full items-center gap-1.5 overflow-hidden rounded pr-2 text-left text-xs transition-colors ${isCut ? 'opacity-50' : ''} ${dropTarget === entry.relativePath ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''} ${selected ? 'code-studio-tree-row-selected' : `hover:bg-surface-2/60 hover:text-text-1 ${entry.ignored ? 'text-text-4' : 'text-text-2'}`}`}
+        className={`code-studio-tree-row flex h-7 w-full items-center gap-1.5 overflow-hidden rounded pr-2 text-left text-xs transition-colors ${isCut ? 'opacity-50' : ''} ${dropTarget === entry.relativePath ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''} ${selected ? 'code-studio-tree-row-selected' : `hover:bg-surface-2/60 hover:text-text-1 ${entry.ignored || (entry.directory && /^(node_modules|target|vendor|dist|build|\.git|__pycache__)$/.test(entry.name)) ? 'text-text-3' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
         title={`${entry.relativePath}${entry.ignored ? ' (ignored by default)' : ''}${directoryMark ? ` · ${directoryMarkLabel(directoryMark)}` : ''}${markTitle(mark)}`}
       >
@@ -176,6 +178,9 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           : <CodeStudioFileIcon name={entry.name} relativePath={entry.relativePath} size={TREE_ICON_PX} />}
         <span className={`min-w-0 flex-1 truncate ${mark?.vcs && !selected ? VCS_CLASS[mark.vcs] : ''} ${mark?.problem ? `underline decoration-wavy underline-offset-[3px] ${mark.problem === 'error' ? 'decoration-danger' : 'decoration-warning'}` : ''}`}>{entry.name}</span>
         {directoryMark && <span className={`shrink-0 text-[10px] ${directoryMark === 'excluded' ? 'text-warning' : 'text-text-4'}`}>{directoryMarkLabel(directoryMark)}</span>}
+        <span className={`grid h-5 w-5 shrink-0 place-items-center font-mono text-[11px] leading-none ${mark?.vcs ? VCS_CLASS[mark.vcs] : 'text-text-3'}`} title={mark?.vcs ? `Git: ${mark.vcs}` : entry.ignored ? 'Git: ignored' : undefined} aria-label={mark?.vcs ? `Git: ${mark.vcs}` : entry.ignored ? 'Git: ignored' : undefined}>
+          {mark?.vcs ? ({ modified: 'M', added: 'A', untracked: '?', deleted: 'D', conflicted: '!' } as const)[mark.vcs] : entry.ignored ? 'I' : ''}
+        </span>
         {mark?.testFailed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-label="failed tests" />}
       </button>
       {entry.directory && open && <div role="group" className="code-studio-tree-branch" style={{ '--tree-guide-x': `${ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX + 6}px` } as React.CSSProperties}>{entries?.slice(0, limit).map((child) => (
@@ -187,7 +192,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
 })
 
 /** Memoizzato: il pannello genitore si ridisegna a ogni tasto, questo solo quando cambia la sessione. */
-export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ session, activePath, onCommand }: CodeStudioProjectTreeProps) {
+export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ session, activePath, onCommand, onBookmarks }: CodeStudioProjectTreeProps) {
   const entries = useCodeStudioStore((state) => state.directoryEntries[session.id]?.[''] ?? emptyEntries)
   const loadDirectory = useCodeStudioStore((state) => state.loadDirectory)
   const showIgnored = useCodeStudioStore((state) => state.showIgnoredBySession[session.id] ?? false)
@@ -328,7 +333,10 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
 
   return (
     <aside aria-label="Project files" className="code-studio-explorer flex h-full min-w-0 flex-col">
-      <div className="code-studio-tool-header">
+      <CodeStudioProjectNavigation onCommand={onCommand} onBookmarks={onBookmarks}>
+        <CodeStudioExplorerToolbar compact folder={creationFolder} hasJava={hasJava} onCreate={(action) => { setRootOpen(true); setPathRequest({ action, target: creationFolder }) }} onCollapse={() => { setCollapseEpoch((value) => value + 1); setRootOpen(false) }} />
+      </CodeStudioProjectNavigation>
+      <div className="code-studio-tool-header code-studio-explorer-actions">
         <span className="code-studio-tool-title min-w-0 truncate">Project</span>
         <span className="flex-1" />
         <CodeStudioExplorerToolbar folder={creationFolder} hasJava={hasJava} onCreate={(action) => { setRootOpen(true); setPathRequest({ action, target: creationFolder }) }} onCollapse={() => { setCollapseEpoch((value) => value + 1); setRootOpen(false); setSelectedPath(''); setCreationFolder('') }} />

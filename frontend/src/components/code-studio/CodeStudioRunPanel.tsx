@@ -1,3 +1,4 @@
+import { CodeStudioToolWindowMenu } from './CodeStudioToolStripes'
 import { CodeStudioToolbarSelect } from './CodeStudioToolbarSelect'
 import { useEffect, useMemo, useRef, useState, memo } from 'react'
 import type { CodeStudioCommandId } from './codeStudioCommands'
@@ -252,7 +253,9 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   return (
     <section aria-label="Code Studio tool window" className="flex h-full min-h-0 flex-col">
       <div className="code-studio-tool-header">
-        <span className="code-studio-tool-title pr-2">{logsOnly ? 'Service logs' : TOOL_WINDOW_TITLES[view]}</span>
+        {!standalone && !fixedView && !logsOnly
+          ? <CodeStudioToolWindowMenu session={session} title={TOOL_WINDOW_TITLES[view]} />
+          : <span className="code-studio-tool-title pr-2">{logsOnly ? 'Service logs' : TOOL_WINDOW_TITLES[view]}</span>}
         {view === 'problems' && <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${counts.errors || buildProblems.length ? 'bg-danger/15 text-danger' : counts.warnings ? 'bg-warning/15 text-warning' : 'bg-surface-3 text-text-3'}`}>{problemCount}</span>}
         {view === 'tests' && failedTests > 0 && <span className="rounded-full bg-danger/15 px-1.5 text-[10.5px] font-semibold text-danger">{failedTests} failed</span>}
         {view === 'debug' && debugState !== 'none' && <span className={`flex items-center gap-1.5 text-[11px] ${debugState === 'stopped' ? 'text-warning' : 'text-success'}`}><span className={`h-1.5 w-1.5 rounded-full ${debugState === 'stopped' ? 'bg-warning' : 'bg-success'}`} />{debugState === 'stopped' ? 'Paused' : 'Debugging'}</span>}

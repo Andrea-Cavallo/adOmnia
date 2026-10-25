@@ -70,6 +70,7 @@ import { useCodeStudioLspStore } from './codeStudioLsp'
 import { cancelBufferRecovery, scheduleBufferRecovery } from '@/lib/code-studio/codeStudioRecovery'
 import { scheduleAutoSave } from '@/lib/code-studio/codeStudioAutoSave'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/lib/code-studio/codeStudioDiskChanges'
+import { recordRecentFile } from '@/lib/recentFiles'
 
 const LAYOUT_KEY = 'adomnia.codestudio.layout.v1'
 const MAX_CLOSED_HISTORY = 20
@@ -380,6 +381,12 @@ const sessionViewExtensions: GoIDESessionViewExtension[] = []
 
 export function registerSessionViewExtension(extension: GoIDESessionViewExtension): void {
   sessionViewExtensions.push(extension)
+}
+
+/** Lets the Hub offer "Continue coding" and the recent files list. */
+function rememberRecentFile(sessions: GoIDESession[], document: { sessionId: string; name: string; relativePath: string }) {
+  const project = sessions.find((session) => session.id === document.sessionId)?.project
+  if (project) recordRecentFile({ name: document.name, relativePath: document.relativePath, projectName: project.name, projectRoot: project.rootPath })
 }
 
 export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
@@ -834,6 +841,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     }
     const existing = findSessionDocument(get().documents, sessionId, path)
     if (existing) {
+      rememberRecentFile(get().sessions, existing.document)
       activate(existing.document.id, false)
       return existing.document.id
     }
@@ -847,6 +855,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
         return opened.document.id
       }
       set((state) => ({ documents: [...state.documents, toEditorDocument(opened)], loading: false }))
+      rememberRecentFile(get().sessions, opened.document)
       activate(opened.document.id, true)
       void get().checkPathConflicts(sessionId, opened.document.relativePath)
       void get().persistSessionView(sessionId)
@@ -901,6 +910,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
   selectDocument: (documentId) => {
     const document = get().documents.find((item) => item.document.id === documentId)
     if (!document) return
+    rememberRecentFile(get().sessions, document.document)
     set((state) => ({ activeDocumentBySession: { ...state.activeDocumentBySession, [document.document.sessionId]: documentId } }))
   },
 
@@ -942,6 +952,8 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
       set((state) => ({ documents: state.documents.map((item) => {
         if (item.document.id !== current.document.id) return item
         const next = toEditorDocument(saved)
+        // Saving acknowledges file bytes; the editor language may have changed while it was pending.
+        next.document = { ...next.document, language: item.document.language }
         // The disk acknowledges the submitted snapshot, not subsequent typing.
         if (item.buffer !== current.buffer) return { ...next, buffer: item.buffer, dirty: item.buffer !== next.savedContent }
         return next

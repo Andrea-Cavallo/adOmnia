@@ -1,13 +1,13 @@
-import { useState, type ComponentType } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
+import { ContextMenu } from '@/components/ui/ContextMenu'
 import { ResourceDetails, useResourceSample } from '@/components/layout/ResourceStatus'
-import { Bookmark, Braces, Bug, FlaskConical, Globe, FolderTree, GitCommitHorizontal, GitBranch, ListChecks, Gauge, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { Braces, Bug, ChevronDown, FlaskConical, Globe, GitBranch, ListChecks, Gauge, PackageSearch, TriangleAlert, Play, ScanSearch, Sparkles, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { diagnosticCounts, mergedReports, useCodeStudioLspStore, type GoIDEToolWindow } from '@/stores/codeStudioLsp'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { selectDebugState } from './codeStudioDebugCommands'
 import { isChatPane, useCodeStudioAssistantStore, type CodeStudioAssistantPane } from '@/stores/codeStudioAssistant'
-import { useStudioTools } from './studioToolState'
 import { aiProviderBadge, aiProviderTooltip, providerLabel } from './codeStudioAiHub'
 import { useAiProviders } from './useAiProviders'
 import type { GoIDESession } from '@/lib/code-studio-api'
@@ -84,43 +84,35 @@ function useToolWindowBadges(sessionId: string): Partial<Record<GoIDEToolWindow,
   }
 }
 
-interface CodeStudioLeftStripeProps {
-  session: GoIDESession
-  onCommit: () => void
-  onBookmarks: () => void
-}
-
-/** Barra sinistra: Project, Commit e Bookmarks in alto, le tool window del pannello inferiore in basso. */
-export function CodeStudioLeftStripe({ session, onCommit, onBookmarks }: CodeStudioLeftStripeProps) {
-  const sessionId = session.id
-  const projectOpen = useCodeStudioStore((state) => state.layout.projectOpen)
+/** The tool selector belongs to the open panel and follows its selected view. */
+export function CodeStudioToolWindowMenu({ session, title }: { session: GoIDESession; title: string }) {
   const bottomOpen = useCodeStudioStore((state) => state.layout.bottomOpen)
-  const updateLayout = useCodeStudioStore((state) => state.updateLayout)
   const toolWindow = useCodeStudioLspStore((state) => state.toolWindow)
-  const showToolWindow = useCodeStudioLspStore((state) => state.showToolWindow)
-  const badges = useToolWindowBadges(sessionId)
-
-  // Project e tool window inferiori sono indipendenti: aprire Run non deve chiudere il progetto.
-  const restoreLayout = () => useStudioTools.setState({ maximized: null })
-  const toggleToolWindow = (id: GoIDEToolWindow) => {
-    const close = bottomOpen && toolWindow === id
-    restoreLayout()
-    if (close) updateLayout({ bottomOpen: false })
-    else if (id === 'preview') useLivePreviewStore.getState().show(sessionId, 'panel')
-    else showToolWindow(id)
-  }
-
-  return (
-    <nav aria-label="Code Studio tool windows" className="code-studio-stripe">
-      <StripeButton label="Project" icon={FolderTree} pressed={projectOpen} onClick={() => { restoreLayout(); updateLayout({ projectOpen: !projectOpen }) }} />
-      <StripeButton label="Commit · Ctrl+Shift+K" icon={GitCommitHorizontal} pressed={false} onClick={() => { restoreLayout(); onCommit() }} />
-      <StripeButton label="Bookmarks · Shift+F11" icon={Bookmark} pressed={false} onClick={() => { restoreLayout(); onBookmarks() }} />
-      <div className="flex-1" />
-      {TOOL_WINDOWS.map((entry) => (
-        <StripeButton key={entry.id} label={entry.label} icon={entry.icon} pressed={bottomOpen && toolWindow === entry.id} badge={badges[entry.id]} onClick={() => toggleToolWindow(entry.id)} />
-      ))}
-    </nav>
-  )
+  const badges = useToolWindowBadges(session.id)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  useEffect(() => setMenu(null), [session.id, toolWindow, bottomOpen])
+  if (!bottomOpen) return null
+  const entry = TOOL_WINDOWS.find((item) => item.id === toolWindow)
+  const Icon = entry?.icon
+  return <>
+    <button type="button" className="code-studio-tool-switcher" aria-label={`Tool window: ${title}`} title="Switch tool window" aria-haspopup="menu" aria-expanded={!!menu} onClick={(event) => {
+      const rect = event.currentTarget.getBoundingClientRect()
+      setMenu(menu ? null : { x: rect.left, y: rect.bottom + 4 })
+    }}>
+      {Icon && <Icon size={14} aria-hidden="true" />}
+      <span>{title}</span>
+      {badges[toolWindow] && <span className={`code-studio-tool-status ${BADGE_CLASS[badges[toolWindow]!]}`} aria-hidden="true" />}
+      <ChevronDown size={12} aria-hidden="true" />
+    </button>
+    {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={TOOL_WINDOWS.map(({ id, label, icon: ToolIcon }) => ({
+      id, label, checked: id === toolWindow,
+      iconElement: <span className="code-studio-tool-menu-icon"><ToolIcon size={15} />{badges[id] && <span className={`code-studio-tool-status ${BADGE_CLASS[badges[id]!]}`} />}</span>,
+    }))} onClose={() => setMenu(null)} onSelect={(id) => {
+      setMenu(null)
+      if (id === 'preview') useLivePreviewStore.getState().show(session.id, 'panel')
+      else useCodeStudioLspStore.getState().showToolWindow(id as GoIDEToolWindow)
+    }} />}
+  </>
 }
 
 /** Risorse dell'app sotto la stripe destra: campiona solo mentre il pannello è aperto. */

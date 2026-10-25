@@ -5,17 +5,18 @@ import { goModules, goProjectLayout } from '@/lib/code-studio/goProject'
 import { isLowResource, watchBattery } from './codeStudioResourceMode'
 import { useEffect, useMemo, useState } from 'react'
 import { recordLintSample } from './codeStudioQualityHistory'
-import { Activity, AlertCircle, AlertTriangle, BatteryLow, EyeOff, Flame, Gauge, GitBranch, Loader2, LockKeyhole, Moon, ScanSearch, ShieldAlert, ShieldCheck, Sun } from 'lucide-react'
+import { Activity, AlertCircle, AlertTriangle, BatteryLow, EyeOff, Flame, Gauge, GitBranch, Loader2, LockKeyhole, Moon, MoreHorizontal, ScanSearch, ShieldAlert, ShieldCheck, Sun } from 'lucide-react'
 import { getGoIDEWatcherStatus, type GoIDEExecution, type GoIDESession, type GoIDEToolchainInfo, type GoIDEWatcherStatus } from '@/lib/code-studio-api'
 import { useShallow } from 'zustand/react/shallow'
 import { useCodeStudioCursorStore } from './codeStudioCursor'
 import { CodeStudioToolchainSwitcher } from './CodeStudioToolchainSwitcher'
 import { CodeStudioBreadcrumb } from './CodeStudioBreadcrumb'
-import { BrandIcon } from './CodeStudioFileIcon'
+import { CodeStudioDocumentStatus } from './CodeStudioDocumentStatus'
+import { CodeStudioChromeDisclosure } from './CodeStudioChromeDisclosure'
 import { IDE_LANGUAGES, IDE_LANGUAGE_NAMES, ideLanguage, ideLanguageForEditor } from '@/components/ide/languages'
 import { WEB_LANGUAGE_IDS } from '@/components/ide/languages/web'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
-import { CodeStudioStatusMenu } from './CodeStudioStatusMenu'
+import { CodeStudioStatusPopover } from './CodeStudioStatusPopover'
 import { CodeStudioCopilotStatus } from './CodeStudioCopilotStatus'
 import { diagnosticCounts, mergedReports, useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useThemesStore } from '@/stores/themes'
@@ -167,52 +168,55 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
           </button>
         )}
       </div>
-      {/* Centro: può scorrere in orizzontale su finestre strette; tema e fiducia restano sempre visibili a destra. */}
-      <div className="flex min-w-0 shrink items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {showLsp && <button type="button" onClick={webLanguage ? () => void useIdeLanguageServersStore.getState().restart(session.id, webLanguage) : onLanguageServer} title={webServer ? (webServer.error || 'Language server: click to restart') : status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
+      <CodeStudioChromeDisclosure className="code-studio-status-details" label="Editor status and tools" title="Language servers, problems, tools, appearance and project trust" icon={<MoreHorizontal size={14}/> }>
+      <CodeStudioStatusPopover>
+      <section className="code-studio-status-section" aria-label="Language">
+      <h4>Language</h4>
+      {showLsp && <div data-status-item data-search="language server lsp restart log"><button type="button" onClick={webLanguage ? () => void useIdeLanguageServersStore.getState().restart(session.id, webLanguage) : onLanguageServer} title={webServer ? (webServer.error || 'Language server: click to restart') : status?.error || 'Language server: click for start, restart or log'} className={`${ITEM} ${lspTone}`}>
         {lspState === 'starting' || progress ? <Loader2 size={12} className="animate-spin" /> : <span className={`h-1.5 w-1.5 rounded-full ${lspState === 'ready' ? 'bg-success' : lspState === 'crashed' ? 'bg-danger' : 'bg-text-4'}`} aria-hidden="true" />}
         <span className="max-w-56 truncate">{progress ? `${progress.title ?? serverName}${progress.message ? `: ${progress.message}` : ''}${progress.percentage !== undefined ? ` ${progress.percentage}%` : ''}` : localAnalysisLabel(webLanguage, lspState, languageServerLabel(lspState, serverName, webServer ? webServer.version : status?.version))}</span>
-      </button>}
-      {showGo && <button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
+      </button></div>}
+      {showGo && <div data-status-item data-search="lint linter golangci"><button type="button" onClick={onLinter} title={lint?.error || linter?.error || (linter?.available ? `Run ${linter.kind}${linter.configPath ? ` with ${linter.configPath}` : ''} · Ctrl/Cmd+Alt+Shift+L` : 'Install a linter from the Go menu')} className={`${ITEM} ${lint?.error ? 'text-danger' : linter?.available ? '' : 'text-text-4'}`}>
         {lint?.running ? <Loader2 size={12} className="animate-spin" /> : <ScanSearch size={12} />}
         {lint?.running ? `${linter?.kind ?? 'lint'}…` : linter?.available ? `${linter.kind}${lint?.result ? ` · ${lint.result.issueCount}${lint.result.changedOnly ? ' in changed files' : ''}${lint.result.baselined ? ` (+${lint.result.baselined} in baseline)` : ''}` : ''}` : 'No linter'}
-      </button>}
-      <button type="button" aria-label={`Problems: ${counts.errors} errors, ${counts.warnings} warnings`} onClick={() => showToolWindow('problems')} title="Problems · Alt+6" className={`${ITEM} gap-2`}>
+      </button></div>}
+      <div data-status-item data-search="problems errors warnings diagnostics"><button type="button" aria-label={`Problems: ${counts.errors} errors, ${counts.warnings} warnings`} onClick={() => showToolWindow('problems')} title="Problems · Alt+6" className={`${ITEM} gap-2`}>
         <span className={`flex items-center gap-1 ${counts.errors ? 'text-danger' : ''}`}><AlertCircle size={12} />{counts.errors}</span>
         <span className={`flex items-center gap-1 ${counts.warnings ? 'text-warning' : ''}`}><AlertTriangle size={12} />{counts.warnings}</span>
-      </button>
-      <CodeStudioPreviewStatus sessionId={session.id} className={`${ITEM} gap-1`} />
-      <button type="button" aria-label="Git" onClick={() => showToolWindow('git')} title="Git" className={`${ITEM} gap-1`}>
-        <GitBranch size={12} />Git
-      </button>
+        <span className="text-text-3">Problems</span>
+      </button></div>
+      {showGo && <div data-status-item data-search="go version toolchain sdk"><CodeStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} /></div>}
+      </section>
+      <section className="code-studio-status-section" aria-label="Tools">
+      <h4>Tools</h4>
+      <div data-status-item data-search="live preview server"><CodeStudioPreviewStatus sessionId={session.id} className={`${ITEM} gap-1`} /></div>
+      <div data-status-item data-search="git version control"><button type="button" aria-label="Git" onClick={() => showToolWindow('git')} title="Git" className={`${ITEM} gap-1`}><GitBranch size={12} />Git</button></div>
       {goModules(session.project).length > 0 && (
-        <button type="button" aria-label="Go optimization" onClick={() => showToolWindow('go')} title="Go optimization · profiling, escape analysis, struct layout and tools · Alt+0" className={`${ITEM} gap-1`}>
-          <Flame size={12} />Go
-        </button>
+        <div data-status-item data-search="go optimization profiling escape analysis struct layout"><button type="button" aria-label="Go optimization" onClick={() => showToolWindow('go')} title="Go optimization · profiling, escape analysis, struct layout and tools · Alt+0" className={`${ITEM} gap-1`}>
+          <Flame size={12} />Go optimization
+        </button></div>
       )}
-      <CodeStudioStatusMenu
-        label="Tools"
-        title="Trace, SonarQube and security scans"
-        className={`${ITEM} gap-1`}
-        items={[
-          { id: 'trace', label: 'Trace', title: 'Go trace (trace.out)', icon: <Activity size={12} />, onSelect: () => showToolWindow('trace') },
-          { id: 'sonar', label: 'Sonar', title: 'SonarQube (optional)', icon: <ShieldCheck size={12} />, onSelect: () => showToolWindow('sonar') },
-          { id: 'vulns', label: 'Security', title: 'Security: code scan and known vulnerabilities', icon: <ShieldAlert size={12} />, onSelect: () => showToolWindow('vulns') },
-        ]}
-      />
-      {documentInfo && <span className={`${LABEL} tabular-nums`} title="Line:Column">{cursor.line}:{cursor.column}</span>}
-      {documentInfo && <span className={LABEL} title={documentInfo.lineEnding === 'CRLF' ? 'Line separator: Windows (\\r\\n)' : 'Line separator: Unix (\\n)'}>{documentInfo.lineEnding}</span>}
-      <span className={`${LABEL} flex items-center gap-1`}>{documentInfo && ideLanguageForEditor(documentInfo.language) && <BrandIcon slug={ideLanguageForEditor(documentInfo.language)!.icon} size={12} />}{documentInfo?.language || (!profile.hasGo ? (profile.primaryLanguage ? IDE_LANGUAGE_NAMES[profile.primaryLanguage] ?? profile.primaryLanguage : 'Folder') : goProjectLayout(session.project).goWorkPath ? 'go.work' : goProjectLayout(session.project).goModPath ? 'go.mod' : 'Go folder')}{documentInfo?.readOnly ? ' · read-only' : ''}</span>
-      {showGo && <CodeStudioToolchainSwitcher sessionId={session.id} toolchain={toolchain} className={ITEM} onManage={onManageToolchains} />}
-      <CodeStudioCopilotStatus className={ITEM} />
-      </div>
-      <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border-1 bg-surface-1 p-0.5" role="group" aria-label="Code Studio appearance">
-        <button type="button" onClick={() => applyThemeMode('light')} aria-label="Light theme" aria-pressed={themeMode === 'light'} title="Light theme" className={`${ITEM} h-5 px-1 ${themeMode === 'light' ? 'bg-surface-3 text-accent' : ''}`}><Sun size={11} /></button>
-        <button type="button" onClick={() => applyThemeMode('dark')} aria-label="Dark theme" aria-pressed={themeMode === 'dark'} title="Dark theme" className={`${ITEM} h-5 px-1 ${themeMode === 'dark' ? 'bg-surface-3 text-accent' : ''}`}><Moon size={11} /></button>
-      </div>
-      <button type="button" onClick={() => onSetAuthorization(!authorized)} aria-pressed={authorized} title={authorized ? 'Local Go tools are permitted. Click to revoke.' : 'Permit local Go tools; nothing starts automatically'} className={`${ITEM} ${authorized ? 'text-success' : 'text-warning'}`}>
+      <div data-status-item data-search="trace go trace.out"><button type="button" onClick={() => showToolWindow('trace')} title="Go trace (trace.out)" className={`${ITEM} gap-1`}><Activity size={12} />Trace</button></div>
+      <div data-status-item data-search="sonar sonarqube quality"><button type="button" onClick={() => showToolWindow('sonar')} title="SonarQube (optional)" className={`${ITEM} gap-1`}><ShieldCheck size={12} />SonarQube</button></div>
+      <div data-status-item data-search="security vulnerabilities scan govulncheck"><button type="button" onClick={() => showToolWindow('vulns')} title="Security: code scan and known vulnerabilities" className={`${ITEM} gap-1`}><ShieldAlert size={12} />Security</button></div>
+      <div data-status-item data-search="copilot ai"><CodeStudioCopilotStatus className={ITEM} /></div>
+      </section>
+      <section className="code-studio-status-section" aria-label="Project">
+      <h4>Project</h4>
+      <div data-status-item data-search="theme appearance light dark"><div className="flex items-center gap-1" role="group" aria-label="Code Studio appearance">
+        <span className="mr-auto text-text-3">Theme</span>
+        <button type="button" onClick={() => applyThemeMode('light')} aria-label="Light theme" aria-pressed={themeMode === 'light'} title="Light theme" className={`${ITEM} h-6 px-1.5 ${themeMode === 'light' ? 'bg-surface-3 text-accent' : ''}`}><Sun size={12} /></button>
+        <button type="button" onClick={() => applyThemeMode('dark')} aria-label="Dark theme" aria-pressed={themeMode === 'dark'} title="Dark theme" className={`${ITEM} h-6 px-1.5 ${themeMode === 'dark' ? 'bg-surface-3 text-accent' : ''}`}><Moon size={12} /></button>
+      </div></div>
+      <div data-status-item data-search="trust trusted restricted authorization permit tools"><button type="button" onClick={() => onSetAuthorization(!authorized)} aria-pressed={authorized} title={authorized ? 'Local Go tools are permitted. Click to revoke.' : 'Permit local Go tools; nothing starts automatically'} className={`${ITEM} ${authorized ? 'text-success' : 'text-warning'}`}>
         {authorized ? <ShieldCheck size={12} /> : <LockKeyhole size={12} />}{authorized ? 'Trusted' : 'Restricted'}
-      </button>
+      </button></div>
+      </section>
+      </CodeStudioStatusPopover>
+      </CodeStudioChromeDisclosure>
+      {!authorized && <span title="Project tools are restricted; open Editor status and tools to manage trust" className="text-warning"><LockKeyhole size={12} aria-label="Restricted project"/></span>}
+      <CodeStudioDocumentStatus />
+      {!documentInfo && <span className={LABEL}>{!profile.hasGo ? (profile.primaryLanguage ? IDE_LANGUAGE_NAMES[profile.primaryLanguage] ?? profile.primaryLanguage : 'Folder') : goProjectLayout(session.project).goWorkPath ? 'go.work' : goProjectLayout(session.project).goModPath ? 'go.mod' : 'Go folder'}</span>}
     </div>
   )
 }

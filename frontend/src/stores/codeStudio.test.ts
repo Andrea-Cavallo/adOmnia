@@ -233,6 +233,18 @@ describe('Code Studio editor state', () => {
 
 
 describe('Save snapshot isolation', () => {
+ it('retains the editor language chosen while a save is pending', async () => {
+  let acknowledge!: (value: unknown) => void
+  mocks.saveDocument.mockReturnValue(new Promise(resolve => { acknowledge = resolve }))
+  const store = useCodeStudioStore.getState()
+  store.updateDocument('document-one', 'saved')
+  const pending = store.saveDocument('document-one')
+  useCodeStudioStore.setState(state => ({ documents: state.documents.map(item => ({ ...item, document: { ...item.document, language: 'rust' } })) }))
+  acknowledge({ ...document, content: 'saved' })
+  expect(await pending).toBe(true)
+  expect(useCodeStudioStore.getState().documents[0].document.language).toBe('rust')
+  expect(useCodeStudioStore.getState().documents[0].dirty).toBe(false)
+ })
  it('retains typing during an asynchronous save and prevents duplicate writes', async () => {
   let acknowledge!: (value: unknown) => void
   mocks.saveDocument.mockReturnValue(new Promise((resolve) => { acknowledge = resolve }))

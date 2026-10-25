@@ -326,6 +326,7 @@ export const RU_PERSONAL_APPEARANCE_MESSAGES: Record<string, string> = {
   "Choose your colors. Preview first, then apply or save a profile.": "Выберите свои цвета. Сначала посмотрите предпросмотр, затем примените или сохраните профиль.",
   "Style applied": "Стиль применён",
   "Profile limit reached": "Достигнут лимит профилей",
+  "Anthracite": "Антрацит",
   "Black / White": "Чёрный / Белый",
   "White / Black": "Белый / Чёрный",
   "Use theme colors": "Использовать цвета темы",

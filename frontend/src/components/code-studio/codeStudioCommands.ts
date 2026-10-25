@@ -93,7 +93,7 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'file.closeAll', menu: 'file', label: 'Close All Tabs' },
   { id: 'file.pinTab', menu: 'file', label: 'Pin Tab' },
   { id: 'file.reopenClosed', menu: 'file', label: 'Reopen Closed Tab', binding: { key: 't', mod: true, shift: true } },
-  { id: 'file.localHistory', menu: 'file', label: 'Local History…', separatorBefore: true },
+  { id: 'file.localHistory', menu: 'file', label: 'Local File History…', separatorBefore: true },
   { id: 'file.closeProject', menu: 'file', label: 'Close Project' },
   { id: 'file.settings', menu: 'file', label: 'Settings…', binding: { key: 's', mod: true, alt: true }, separatorBefore: true },
   { id: 'window.openInNewWindow', menu: 'file', label: 'Open Project in New Window', separatorBefore: true },

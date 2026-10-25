@@ -26,7 +26,9 @@ export function useCodeStudioTitlebar(): CodeStudioTitlebar {
     props: {
       style: DRAG,
       // Doppio clic sugli spazi vuoti: ingrandisci / ripristina, come la barra di sistema.
-      onDoubleClick: (event) => { if (event.target === event.currentTarget) void toggleMaximise() },
+      onDoubleClick: (event) => {
+        if (event.target instanceof Element && !event.target.closest('button, a, input, select, textarea, [role="button"]')) void toggleMaximise()
+      },
     },
   }
 }

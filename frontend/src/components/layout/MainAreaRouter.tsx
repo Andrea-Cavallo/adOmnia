@@ -6,7 +6,6 @@ import { useAppStore, type RailItem } from '@/stores/app'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
 import { WorkspaceContextPickers } from '@/components/layout/WorkspaceContextPickers'
 import { WorkspaceMainSkeleton, WorkspacePanelHeaderSkeleton } from '@/components/layout/WorkspaceHydrationShell'
-import { WelcomePanel } from '@/components/layout/WelcomePanel'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { initialRailFromMemento } from '@/lib/uiSessionMemento'
 import { markStartup } from '@/lib/startupPerformance'
@@ -17,7 +16,7 @@ import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 
-import { WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, McpPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
+import { WelcomePanel, WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, McpPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
 
 let workspaceModulePromise: ReturnType<typeof importWorkspaceModule> | undefined
 
@@ -27,6 +26,11 @@ function importWorkspaceModule() {
     markStartup('startup:workspace-bundle-loaded')
     return module
   })
+}
+
+/** Segnaposto della Hub col fondo della finestra, finché il suo chunk non arriva. */
+function HubPanel() {
+  return <Suspense fallback={<div className="h-full bg-surface-0" />}><WelcomePanel /></Suspense>
 }
 
 export function preloadWorkspaceBundle(): void {
@@ -132,7 +136,7 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'loginspector': return { component: <LogInspectorPanel />, titleKey: 'Log Inspector', overflow: true }
     case 'security': return { component: <SecurityCenterPanel />, titleKey: 'Security Center', overflow: true }
     case 'xmltools': return { component: <UtilsPanel initialTool="xmlstudio" />, titleKey: 'Power Tools', overflow: true }
-    case 'welcome': return { component: <WelcomePanel /> }
+    case 'welcome': return { component: <HubPanel /> }
     case 'vault': return { component: <VaultPanel />, titleKey: 'vault', overflow: true }
     case 'workspace': return { component: <SettingsPanel initialSection="workspace" />, titleKey: 'settings', overflow: true }
     case 'apidocs': return { component: <ApiDocsPanel />, titleKey: 'apidocs', overflow: true }
@@ -145,7 +149,7 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'codestudio': return { component: <CodeStudioPanel />, titleKey: 'codestudio', overflow: true }
     case 'kube': return { component: <KubePanel />, titleKey: 'Kubernetes', overflow: true }
     case 'settings': return { component: <SettingsPanel />, titleKey: 'settings' }
-    default: return { component: <WelcomePanel /> }
+    default: return { component: <HubPanel /> }
   }
 }
 
