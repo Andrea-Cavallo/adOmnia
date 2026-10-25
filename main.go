@@ -38,7 +38,9 @@ const (
 	settingsKey    = "settings"
 )
 
-var startupWindowChrome = windowchrome.ReadStartup(filepath.Join(dataDir(), "adomnia", "adomnia.db"), settingsBucket, settingsKey, runtime.GOOS)
+// startupWindowChrome is read in main, after the CLI dispatch: reading it at package init made every
+// `adomnia mcp|run|stress` wait the 250 ms bbolt lock timeout while the desktop app held the database.
+var startupWindowChrome string
 
 // singleInstanceKey only protects the local hand-off payload between two
 // launches. It is not used for application or user data encryption.
@@ -49,6 +51,18 @@ var singleInstanceKey = [32]byte{
 	0x46, 0x95, 0x1f, 0x7a, 0xce, 0x30, 0x5d, 0xe4,
 }
 
+// isCLICommand reports whether the process runs a headless subcommand instead of the desktop app.
+func isCLICommand(args []string) bool {
+	if len(args) < 2 {
+		return false
+	}
+	switch args[1] {
+	case "run", "lint", "stress", "mcp":
+		return true
+	}
+	return false
+}
+
 func main() {
 	if len(os.Args) == 3 && os.Args[1] == "--adomnia-update-helper" {
 		if err := update.RunHelper(os.Args[2], Version); err != nil {
@@ -57,7 +71,7 @@ func main() {
 		}
 		return
 	}
-	if len(os.Args) > 1 && (os.Args[1] == "run" || os.Args[1] == "lint" || os.Args[1] == "stress" || os.Args[1] == "mcp") {
+	if isCLICommand(os.Args) {
 		os.Exit(adomniacli.Run(os.Args[1:], os.Stdout, os.Stderr))
 	}
 
@@ -65,6 +79,7 @@ func main() {
 	if err := resources.ConfigureRuntime(filepath.Join(dataDir(), "resource-settings.json")); err != nil {
 		log.Printf("[resources] memory settings: %v", err)
 	}
+	startupWindowChrome = windowchrome.ReadStartup(filepath.Join(dataDir(), "adomnia", "adomnia.db"), settingsBucket, settingsKey, runtime.GOOS)
 	windowchrome.ConfigureBackend(startupWindowChrome)
 
 	app := NewApp()
