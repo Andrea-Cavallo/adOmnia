@@ -56,3 +56,15 @@ func TestDisabledManagerDoesNotStart(t *testing.T) {
 		t.Fatalf("unexpected state: %s", manager.Status().State)
 	}
 }
+
+// Enabled Copilot still waits for a Code Studio project: no workspace, no process (PERF-5.1).
+func TestEnabledManagerWaitsForWorkspace(t *testing.T) {
+	manager := NewManager(NewSettingsStore(t.TempDir()), NewInstaller(t.TempDir()))
+	manager.settings.Enabled = true
+	if err := manager.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if manager.current != nil || manager.launching {
+		t.Fatal("Copilot started without an active workspace")
+	}
+}

@@ -357,6 +357,12 @@ The resource monitor now controls the backend Go GC budget live and saves/restar
 
 The gopls budget stays at 768 MiB. Ten 10-minute typing runs (five per budget, large repository and a four-file module) measured both limits through the real `LSPManager`: 512 MiB saved 218 MiB of RSS but made completion four times slower (p50 444 ms versus 114 ms, p95 571 ms versus 173 ms) and used 7.6 times the CPU (3.50 versus 0.46 cores). On a small module the two budgets were indistinguishable and 512 MiB saved nothing, so the budget is not sized automatically per project. The resource monitor now offers both values as presets and states the measured cost. Data and method: [typing campaign](performance/typing-2026-10-24.md). What the ~7 s workspace load is made of: [gopls load profile](performance/gopls-load-2026-10-24.md).
 
+## Background projects and CLI cold start (2026-10-25)
+
+With three restored Code Studio sessions (one active Go project, two Java projects in the list but not visible), Eclipse JDT LS was pre-started for every Java session: two instances, 830 MiB of working set (1.55 GiB private), 40% of a 2,084 MiB process tree, for projects nobody was looking at. The pre-start now applies to the active session only and runs again on session switch; opening a Java file still starts the server. Same restore after the fix: 1,115 MiB across 10 processes.
+
+`adomnia mcp` took p50 278 ms while the desktop app was open, against 65 ms published with the app closed: a package-level variable opened `adomnia.db` with a 250 ms lock timeout before the CLI dispatch, and a package `init` allocated a hidden console (50–190 ms, one extra `conhost.exe`) for the CLI too. Both now run only for the desktop app: p50 42 ms with the app closed, 39 ms with it open. Data: [runtime memory and CLI cold start](performance/runtime-2026-10-25.md).
+
 
 ## Native cold-start measurement (2026-10-22)
 
