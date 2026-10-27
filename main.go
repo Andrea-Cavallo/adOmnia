@@ -98,7 +98,6 @@ func main() {
 	aiEngine := NewAIEngine()
 	globalAIEngine = aiEngine
 	gitSync := NewGitSync(dataDir())
-	mcpClient := NewMCPClient()
 	mcpServerGenerator := NewMCPServerGenerator()
 	collectionFS := NewCollectionFS()
 	oasLint := NewOASLint()
@@ -130,7 +129,6 @@ func main() {
 			application.NewService(dockerLab),
 			application.NewService(aiEngine),
 			application.NewService(gitSync),
-			application.NewService(mcpClient),
 			application.NewService(mcpServerGenerator),
 			application.NewService(collectionFS),
 			application.NewService(oasLint),

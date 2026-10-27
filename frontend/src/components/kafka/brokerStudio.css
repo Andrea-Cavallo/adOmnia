@@ -1,0 +1,20 @@
+/* Match the app's Nothing headings; protocol data uses the UI font. */
+.broker-studio .broker-title {
+  font-family: var(--skin-font-ui, Doto, var(--font-ui));
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.broker-studio :is(button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--color-text-1);
+  outline-offset: 3px;
+}
+.broker-studio .broker-sidebar button { min-height: 32px; }
+.broker-studio .broker-sidebar button[aria-current="page"] {
+  box-shadow: inset 2px 0 var(--color-text-1);
+}
+@media (max-width: 760px) {
+  .broker-studio { flex-direction: column; overflow: auto; }
+  .broker-studio .broker-sidebar { width: 100%; max-height: 220px; border-right: 0; border-bottom: 1px solid var(--color-border-1); }
+  .broker-studio .broker-content { overflow: visible; }
+}

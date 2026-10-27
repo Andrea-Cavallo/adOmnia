@@ -27,3 +27,35 @@ describe('header value generation', () => {
     expect(generateHeaderValue('http-date', 'seconds', now)).toBe('Fri, 25 Sep 2026 12:00:00 GMT')
   })
 })
+
+describe('recorded dynamic headers', () => {
+  it('turns generated header values into tokens a flow regenerates', async () => {
+    const { recordedHeaderToken } = await import('./headerValues')
+    expect(recordedHeaderToken('Request-Id', uuid7())).toBe('{{$uuid7}}')
+    expect(recordedHeaderToken('X-Correlation-ID', '1b4e28ba-2fa1-11d2-883f-0016d3cca427')).toBe('{{$uuid7}}')
+    expect(recordedHeaderToken('X-Timestamp', '1761580800')).toBe('{{$timestamp}}')
+    expect(recordedHeaderToken('X-Timestamp', '1761580800000')).toBe('{{$timestampMs}}')
+    expect(recordedHeaderToken('Timestamp', '2026-10-27T10:00:00.000Z')).toBe('{{$isoTimestamp}}')
+    expect(recordedHeaderToken('Date', new Date().toUTCString())).toBe('{{$httpDate}}')
+    expect(recordedHeaderToken('Request-Id', '{{request_id}}')).toBeNull()
+    expect(recordedHeaderToken('Accept', '1b4e28ba-2fa1-11d2-883f-0016d3cca427')).toBeNull()
+  })
+
+  it('substitutes a fresh value on every send, environment variables first', async () => {
+    const { substVars } = await import('./substVars')
+    const a = substVars('{{$uuid7}}', {})
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7/)
+    expect(substVars('{{$uuid7}}', {})).not.toBe(a)
+    expect(substVars('{{$uuid7}}', { $uuid7: 'pinned' })).toBe('pinned')
+    expect(substVars('{{$unknown}}', {})).toBe('{{$unknown}}')
+  })
+
+  it('records the Request-Id header as a dynamic token', async () => {
+    const { sanitizeRecordedRequest } = await import('@/stores/flowRecorder')
+    const recorded = sanitizeRecordedRequest({
+      id: 'r', name: 'r', method: 'GET', url: 'https://x', params: [], bodies: [], auth: { type: 'none' },
+      headers: [{ id: 'h', key: 'Request-Id', value: uuid7(), enabled: true }],
+    } as never)
+    expect(recorded.headers[0].value).toBe('{{$uuid7}}')
+  })
+})

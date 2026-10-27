@@ -597,8 +597,8 @@ Code Studio follows the GoLand keymap. The table below is generated from the com
 | Show Usages | Ctrl+Alt+F7 | ⌘⌥F7 |
 | Quick Definition | Ctrl+Shift+I | ⌘⇧I |
 | File Structure | Ctrl+F12 | ⌘F12 |
-| Back | Ctrl+Alt+ArrowLeft | ⌘⌥ArrowLeft |
-| Forward | Ctrl+Alt+ArrowRight | ⌘⌥ArrowRight |
+| Back | Alt+ArrowLeft | ⌥ArrowLeft |
+| Forward | Alt+ArrowRight | ⌥ArrowRight |
 | Toggle Bookmark | F11 | F11 |
 | Bookmarks | Shift+F11 | ⇧F11 |
 | Symbol in Workspace | Ctrl+T | ⌘T |
@@ -965,3 +965,25 @@ Run configurations provide project-aware creation, searchable saved entries and 
 ## AI chat context and attachments
 
 Claude Code and milk chat share filtered live project context and support explicit text and image attachments. Model selectors follow agent capabilities. milk's own slash commands are read from the agent (`/workflow`, `/bg`, `/tasks`, `/usage`, `/memory`, `/escalate`, `/primary`, …) and offered in a keyboard palette in the composer, so workflows, background agents and plans are usable without guessing syntax; background-agent follow-up turns appear as a marked assistant response instead of being dropped. Images use native ACP blocks when the agent advertises them, otherwise a private temporary `@<path>` reference deleted at the end of the turn — the same convention milk's TUI uses — so Claude Code can read them while a text-only local model cannot. Milk 0.7 exposes configured-agent selection, routing/reasoning controls and task plans; native provider acceptance remains pending.
+
+
+## Function Explorer and Symbol Origin Lens
+
+Call Hierarchy (`Ctrl+Alt+H`, or the editor context menu) now opens Function Explorer. With Code Vision enabled, the **callers · callees** lens opens it directly from a declaration.
+
+- **Quick popup** shows callers and callees together, with a source preview.
+- **Function Explorer** keeps the expandable hierarchy beside the editor. Search filters loaded functions; it does not launch a workspace scan.
+- **Visual Graph** uses the same LSP hierarchy and the shared graph renderer. Callers are above the current function, callees below. Depth is 1–3, bounded to 120 functions, 240 edges and 120 expansion requests. Recursive edges retain symbol identity.
+
+A single click previews source, a double click or Enter opens it. **Alt+Left** returns to the previous editor position; explicit function jumps preserve nearby positions instead of merging them. Alt+Right goes forward. Preview reads synchronized unsaved text where available, without opening editor tabs or sending `didOpen`.
+
+The origin lens shares Code Vision's preference and resource policy. It shows the actual Go module import path plus package directory (including nested modules), the declared Java package, or the TypeScript/JavaScript module path relative to the project. It is a virtual CodeLens, never source text. Click it to reveal the source in Project Explorer; right-click the lens to copy the origin. The editor context menu also offers **Copy Symbol Origin**. No OSGi bundle or Java module name is inferred without metadata.
+
+This static call graph does not establish runtime execution, dynamic dispatch completeness, or exhaustive change impact. The profiler Call Graph and Semantic Workspace Graph retain their existing purposes.
+
+### Verification for this change
+
+- Automated: origin resolution, graph direction/recursion/budgets, nearby navigation jumps, existing Code Vision and command tests.
+- Backend: preview reads synchronized buffers and disk without opening documents; invalid preview tokens are rejected.
+- Browser fixture: popup, sidebar and visual graph rendered and inspected using illustrative call data.
+- Pending native acceptance: real Go/Java/TypeScript language servers, lens placement/copy/reveal, actual double-click plus Alt+Left/Right, and dependency-source navigation. The real-gopls integration test is skipped when gopls is unavailable.

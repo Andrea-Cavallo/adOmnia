@@ -244,7 +244,7 @@ func TestMCPResourcesWithoutCollectionStillListSummary(t *testing.T) {
 
 func TestMCPPrompts(t *testing.T) {
 	list := rpc(t, "", `{"jsonrpc":"2.0","id":1,"method":"prompts/list"}`)["result"].(map[string]any)["prompts"].([]any)
-	if len(list) != 3 {
+	if len(list) != 5 {
 		t.Fatalf("prompts = %d", len(list))
 	}
 	get := func(name, args string) string {
@@ -268,6 +268,12 @@ func TestMCPPrompts(t *testing.T) {
 	}
 	if text := get("mock_dependency", `{"method":"get","path":"/x","status":"404"}`); !strings.Contains(text, "answering 404") {
 		t.Fatalf("mock_dependency status = %s", text)
+	}
+	if text := get("create_collection_from_code", `{"project":"C:\\src\\api","collection":"C:\\collections\\api"}`); !strings.Contains(text, "project_list_routes") || !strings.Contains(text, "collection_create_from_code") || !strings.Contains(text, "{{baseUrl}}") {
+		t.Fatalf("create_collection_from_code = %s", text)
+	}
+	if text := get("configure_environment", `{"name":"dev","variables":"baseUrl=http://localhost:8080"}`); !strings.Contains(text, "collection_upsert_environment") || !strings.Contains(text, "merge") || !strings.Contains(text, "collection_run") {
+		t.Fatalf("configure_environment = %s", text)
 	}
 }
 

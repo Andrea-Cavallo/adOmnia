@@ -314,7 +314,7 @@ export async function showHierarchy(editor: monaco.editor.ICodeEditor, kind: 'ca
   try {
     const roots = await requestPrepareHierarchy(context.prepared.sessionId, context.prepared.documentId, kind, context.position.lineNumber, context.position.column)
     if (roots.length === 0) return report(`${label}: put the caret on a ${kind === 'call' ? 'function or method' : 'type or interface'}.`)
-    useCodeStudioLspStore.setState({ hierarchy: { sessionId: context.prepared.sessionId, kind, root: roots[0] } })
+    useCodeStudioLspStore.setState({ hierarchy: { sessionId: context.prepared.sessionId, kind, root: roots[0], anchor: caretAnchor(editor) ?? undefined } })
   } catch (error) {
     report(`${label}: ${error instanceof Error ? error.message : String(error)}`)
   }

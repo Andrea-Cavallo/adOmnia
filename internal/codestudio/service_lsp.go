@@ -2,6 +2,7 @@ package codestudio
 
 import (
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -244,4 +245,27 @@ func (s *Service) RestartLanguageServerFromUser(sessionID string, settings Langu
 		return LanguageServerStatus{}, err
 	}
 	return s.RestartLanguageServer(sessionID, settings)
+}
+
+func (s *Service) HierarchyPreview(sessionID, token string) (QuickDefinitionResult, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return QuickDefinitionResult{}, err
+	}
+	var item hierarchyItem
+	if err := json.Unmarshal([]byte(token), &item); err != nil || item.URI == "" {
+		return QuickDefinitionResult{}, fmt.Errorf("invalid hierarchy node")
+	}
+	path, err := filepath.EvalSymlinks(pathFromURI(item.URI))
+	if err != nil {
+		return QuickDefinitionResult{}, fmt.Errorf("could not resolve hierarchy source: %w", err)
+	}
+	roots := append([]string{session.Project.RootPath, virtualDocumentsRoot()}, localDependencyRoots(session.Project)...)
+	if info, ok := s.toolchain.LastDetected(session.ID); ok {
+		roots = append(roots, info.GOROOT, info.GOMODCACHE)
+	}
+	if !withinAnyRoot(path, roots) {
+		return QuickDefinitionResult{}, fmt.Errorf("hierarchy source is outside the permitted source roots")
+	}
+	return s.lsp.HierarchyPreview(SessionID(sessionID), token)
 }

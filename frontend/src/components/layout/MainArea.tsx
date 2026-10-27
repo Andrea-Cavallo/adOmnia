@@ -46,7 +46,7 @@ import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WelcomePanel, WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpPanel, CodeStudioPanel } from './lazyPanels'
+import { WelcomePanel, WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, McpServerGenPanel, CodeStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -1289,7 +1289,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'templates':   return { component: <SettingsPanel initialSection="templates" />, titleKey: 'settings', overflow: true }
     case 'plugins':     return { component: <SettingsPanel initialSection="plugins" />, titleKey: 'settings', overflow: true }
     case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
-    case 'mcp':         return { component: <McpPanel />,             titleKey: 'MCP Client', overflow: true }
+    case 'mcp':         return { component: <McpServerGenPanel />,             titleKey: 'MCP Server Generator', overflow: true }
     case 'codestudio':       return { component: <CodeStudioPanel />,        titleKey: 'codestudio', overflow: true }
     case 'settings':    return { component: <SettingsPanel />,        titleKey: 'settings' }
     default:            return { component: <HubPanel /> }

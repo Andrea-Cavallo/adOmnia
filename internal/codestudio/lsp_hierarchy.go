@@ -149,3 +149,32 @@ func (m *LSPManager) hierarchyItems(state *lspSession, items []hierarchyItem, ca
 	}
 	return result
 }
+
+// HierarchyPreview reads an existing hierarchy target without opening a tab or notifying didOpen.
+func (m *LSPManager) HierarchyPreview(sessionID SessionID, token string) (QuickDefinitionResult, error) {
+	var item hierarchyItem
+	if err := json.Unmarshal([]byte(token), &item); err != nil || item.URI == "" {
+		return QuickDefinitionResult{}, fmt.Errorf("invalid hierarchy node")
+	}
+	state, ok := m.forPath(sessionID, pathFromURI(item.URI))
+	if !ok {
+		return QuickDefinitionResult{}, fmt.Errorf("no language server for hierarchy target")
+	}
+	items := m.hierarchyItems(state, []hierarchyItem{item}, nil)
+	if len(items) == 0 {
+		return QuickDefinitionResult{}, fmt.Errorf("hierarchy source unavailable")
+	}
+	location := items[0].Location
+	text := m.documentText(state, location.URI, location.Path)
+	code, start, truncated := declarationSource(m.languages, location.Path, text, location.Range)
+	if code == "" {
+		lines := strings.Split(text, "\n")
+		start = max(1, location.Range.StartLine-3)
+		end := min(len(lines), max(location.Range.EndLine+8, start+16))
+		if start <= end {
+			code, start, truncated = clipLines(strings.Join(lines[start-1:end], "\n"), start)
+			truncated = truncated || end < len(lines)
+		}
+	}
+	return QuickDefinitionResult{Found: code != "", Location: location, Code: code, StartLine: start, Truncated: truncated}, nil
+}

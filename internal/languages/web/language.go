@@ -69,7 +69,7 @@ func Languages() []language.Language {
 		base := adapter{k}
 		switch k.id {
 		case ScriptID:
-			adapters = append(adapters, scriptAdapter{base})
+			adapters = append(adapters, scriptDebugger{scriptAdapter{base}})
 		case HTMLID:
 			adapters = append(adapters, htmlAdapter{base})
 		default:

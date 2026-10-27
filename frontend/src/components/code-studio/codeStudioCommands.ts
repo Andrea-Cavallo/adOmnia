@@ -160,15 +160,15 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'nav.recentLocations', menu: 'navigate', label: 'Recent Locations…', binding: { key: 'e', mod: true, shift: true } },
   { id: 'nav.lastEdit', menu: 'navigate', label: 'Last Edit Location', binding: { key: 'Backspace', mod: true, shift: true } },
   { id: 'nav.gotoTest', menu: 'navigate', label: 'Test', binding: { key: 't', alt: true, shift: true }, editorOwned: true },
-  { id: 'nav.callHierarchy', menu: 'navigate', label: 'Call Hierarchy', binding: { key: 'h', mod: true, alt: true }, editorOwned: true },
+  { id: 'nav.callHierarchy', menu: 'navigate', label: 'Function Explorer (Call Hierarchy)', binding: { key: 'h', mod: true, alt: true }, editorOwned: true },
   { id: 'nav.typeHierarchy', menu: 'navigate', label: 'Type Hierarchy' },
   { id: 'nav.nextProblem', menu: 'navigate', label: 'Next Problem', binding: { key: 'F8' }, editorOwned: true, separatorBefore: true },
   { id: 'nav.previousProblem', menu: 'navigate', label: 'Previous Problem', binding: { key: 'F8', shift: true }, editorOwned: true },
   { id: 'nav.showUsages', menu: 'navigate', label: 'Show Usages', binding: { key: 'F7', mod: true, alt: true }, editorOwned: true },
   { id: 'nav.quickDefinition', menu: 'navigate', label: 'Quick Definition', binding: { key: 'i', mod: true, shift: true }, editorOwned: true },
   { id: 'nav.fileStructure', menu: 'navigate', label: 'File Structure', binding: { key: 'F12', mod: true }, editorOwned: true, separatorBefore: true },
-  { id: 'nav.back', menu: 'navigate', label: 'Back', binding: { key: 'ArrowLeft', mod: true, alt: true }, separatorBefore: true },
-  { id: 'nav.forward', menu: 'navigate', label: 'Forward', binding: { key: 'ArrowRight', mod: true, alt: true } },
+  { id: 'nav.back', menu: 'navigate', label: 'Back', binding: { key: 'ArrowLeft', alt: true }, separatorBefore: true },
+  { id: 'nav.forward', menu: 'navigate', label: 'Forward', binding: { key: 'ArrowRight', alt: true } },
   { id: 'nav.toggleBookmark', menu: 'navigate', label: 'Toggle Bookmark', binding: { key: 'F11' } },
   { id: 'nav.bookmarks', menu: 'navigate', label: 'Bookmarks…', binding: { key: 'F11', shift: true } },
   { id: 'nav.symbol', menu: 'navigate', label: 'Symbol in Workspace…', binding: { key: 't', mod: true } },
@@ -472,6 +472,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   if (id === 'python.selectInterpreter') return true
   if (id === 'python.installDebugpy') return context.authorized ? true : 'Trust this project to install Python tools'
   if (id === 'rust.installDebugger') return context.authorized ? true : 'Trust this project to install the Rust debugger'
+  if (id === 'web.installDebugger') return context.authorized ? true : 'Trust this project to install the JavaScript debugger'
   if (id === 'rust.selectToolchain' || id === 'rust.dependencyTree') return true
   if (id === 'python.attach') return context.authorized ? true : 'Trust this project to attach the debugger'
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'

@@ -4,6 +4,8 @@
 // Local $ref targets (#/components/schemas/* for OAS3, #/definitions/* for
 // Swagger 2.0) are kept as named references and resolved on demand by the
 // SchemaView component against `schemaRegistry`, with a depth guard for cycles.
+// Every other local $ref (responses, parameters, request bodies, headers,
+// examples) is followed eagerly with `deref` while the model is built.
 
 import { parseYamlLenient as parseYaml } from '@/lib/yamlParse'
 
@@ -36,11 +38,19 @@ export interface ApiDocBody {
   example?: unknown
 }
 
+export interface ApiDocHeader {
+  name: string
+  required: boolean
+  description?: string
+  schema?: ApiDocSchema
+}
+
 export interface ApiDocResponse {
   status: string
   description?: string
   contentTypes: string[]
   contents: ApiDocContent[]
+  headers: ApiDocHeader[]
   schema?: ApiDocSchema
   example?: unknown
 }
@@ -83,6 +93,10 @@ export interface ApiDocModel {
 
 const HTTP_METHODS = ['get', 'query', 'put', 'post', 'delete', 'patch', 'options', 'head', 'trace']
 const MAX_EXAMPLE_DEPTH = 8
+const MAX_REF_HOPS = 16
+
+/** Follows a non-schema object through local `#/...` refs; {} when unresolvable. */
+type Deref = (value: unknown) => Record<string, unknown>
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -109,9 +123,36 @@ export function parseSpecText(raw: string): unknown {
   }
 }
 
+/** Resolve a local JSON pointer (`#/components/responses/BadRequest`) against the document root. */
+function resolvePointer(root: Record<string, unknown>, ref: string): unknown {
+  if (!ref.startsWith('#/')) return undefined
+  let node: unknown = root
+  for (const raw of ref.slice(2).split('/')) {
+    let key = raw
+    try { key = decodeURIComponent(raw) } catch { /* keep the raw token */ }
+    key = key.replace(/~1/g, '/').replace(/~0/g, '~')
+    const rec = asRecord(node)
+    if (!Object.prototype.hasOwnProperty.call(rec, key)) return undefined
+    node = rec[key]
+  }
+  return node
+}
+
+function makeDeref(root: Record<string, unknown>): Deref {
+  return (value) => {
+    let node = asRecord(value)
+    // Hop limit guards against ref cycles (A -> B -> A).
+    for (let hops = 0; typeof node.$ref === 'string' && hops < MAX_REF_HOPS; hops++) {
+      node = asRecord(resolvePointer(root, node.$ref))
+    }
+    return typeof node.$ref === 'string' ? {} : node
+  }
+}
+
 /** Build the viewer model from a parsed spec object (OAS3 or Swagger 2.0). */
 export function buildApiDocModel(spec: unknown): ApiDocModel {
   const root = asRecord(spec)
+  const deref = makeDeref(root)
   const isSwagger2 = asString(root.swagger).startsWith('2')
   const info = asRecord(root.info)
 
@@ -146,7 +187,7 @@ export function buildApiDocModel(spec: unknown): ApiDocModel {
   let operationCount = 0
 
   for (const [path, pathItemRaw] of Object.entries(paths)) {
-    const pathItem = asRecord(pathItemRaw)
+    const pathItem = deref(pathItemRaw)
     const sharedParams = Array.isArray(pathItem.parameters) ? pathItem.parameters : []
     for (const method of HTTP_METHODS) {
       const opRaw = pathItem[method]
@@ -155,7 +196,7 @@ export function buildApiDocModel(spec: unknown): ApiDocModel {
       const tags = Array.isArray(op.tags) && op.tags.length > 0
         ? op.tags.map((t) => asString(t)).filter(Boolean)
         : ['default']
-      const operation = buildOperation(method.toUpperCase(), path, op, sharedParams, isSwagger2, schemaRegistry)
+      const operation = buildOperation(method.toUpperCase(), path, op, sharedParams, isSwagger2, schemaRegistry, deref)
       operationCount += 1
       for (const tag of tags) {
         if (!groups.has(tag)) groups.set(tag, [])
@@ -209,13 +250,14 @@ function buildOperation(
   sharedParams: unknown[],
   isSwagger2: boolean,
   schemaRegistry: Record<string, ApiDocSchema>,
+  deref: Deref,
 ): ApiDocOperation {
   const allParams = [...sharedParams, ...(Array.isArray(op.parameters) ? op.parameters : [])]
   const parameters: ApiDocParam[] = []
   let bodyFromParam: ApiDocBody | undefined
 
   for (const raw of allParams) {
-    const p = asRecord(raw)
+    const p = deref(raw)
     const location = asString(p.in)
     if (isSwagger2 && location === 'body') {
       const schema = asRecord(p.schema) as ApiDocSchema
@@ -240,8 +282,8 @@ function buildOperation(
     })
   }
 
-  const requestBody = isSwagger2 ? bodyFromParam : buildRequestBody(asRecord(op.requestBody), schemaRegistry)
-  const responses = buildResponses(asRecord(op.responses), isSwagger2, schemaRegistry)
+  const requestBody = isSwagger2 ? bodyFromParam : buildRequestBody(deref(op.requestBody), schemaRegistry, deref)
+  const responses = buildResponses(asRecord(op.responses), isSwagger2, schemaRegistry, deref)
 
   return {
     id: `${method} ${path}`,
@@ -256,11 +298,15 @@ function buildOperation(
   }
 }
 
-function buildRequestBody(rb: Record<string, unknown>, schemaRegistry: Record<string, ApiDocSchema>): ApiDocBody | undefined {
+function buildRequestBody(
+  rb: Record<string, unknown>,
+  schemaRegistry: Record<string, ApiDocSchema>,
+  deref: Deref,
+): ApiDocBody | undefined {
   const content = asRecord(rb.content)
   const contentTypes = Object.keys(content)
   if (contentTypes.length === 0) return undefined
-  const contents = buildContents(content, contentTypes, schemaRegistry)
+  const contents = buildContents(content, contentTypes, schemaRegistry, deref)
   const first = contents[0]
   return {
     required: Boolean(rb.required),
@@ -276,6 +322,7 @@ function buildContents(
   content: Record<string, unknown>,
   contentTypes: string[],
   schemaRegistry: Record<string, ApiDocSchema>,
+  deref: Deref,
 ): ApiDocContent[] {
   return contentTypes.map((contentType) => {
     const entry = asRecord(content[contentType])
@@ -283,7 +330,7 @@ function buildContents(
     return {
       contentType,
       schema,
-      example: entry.example ?? exampleFromExamples(entry.examples) ?? exampleFromSchema(schema, schemaRegistry),
+      example: entry.example ?? exampleFromExamples(entry.examples, deref) ?? exampleFromSchema(schema, schemaRegistry),
     }
   })
 }
@@ -292,10 +339,12 @@ function buildResponses(
   responses: Record<string, unknown>,
   isSwagger2: boolean,
   schemaRegistry: Record<string, ApiDocSchema>,
+  deref: Deref,
 ): ApiDocResponse[] {
   const out: ApiDocResponse[] = []
   for (const [status, raw] of Object.entries(responses)) {
-    const r = asRecord(raw)
+    const r = deref(raw)
+    const headers = buildHeaders(asRecord(r.headers), isSwagger2, deref)
     if (isSwagger2) {
       const schema = r.schema ? (asRecord(r.schema) as ApiDocSchema) : undefined
       const example = exampleFromSchema(schema, schemaRegistry)
@@ -304,6 +353,7 @@ function buildResponses(
         description: asString(r.description) || undefined,
         contentTypes: [],
         contents: schema ? [{ contentType: 'application/json', schema, example }] : [],
+        headers,
         schema,
         example,
       })
@@ -311,13 +361,14 @@ function buildResponses(
     }
     const content = asRecord(r.content)
     const contentTypes = Object.keys(content)
-    const contents = buildContents(content, contentTypes, schemaRegistry)
+    const contents = buildContents(content, contentTypes, schemaRegistry, deref)
     const first = contents[0]
     out.push({
       status,
       description: asString(r.description) || undefined,
       contentTypes,
       contents,
+      headers,
       schema: first?.schema,
       example: first?.example,
     })
@@ -325,10 +376,18 @@ function buildResponses(
   return out.sort((a, b) => a.status.localeCompare(b.status))
 }
 
-function exampleFromExamples(examples: unknown): unknown {
-  const rec = asRecord(examples)
-  const first = Object.values(rec)[0]
-  return first !== undefined ? asRecord(first).value : undefined
+function buildHeaders(headers: Record<string, unknown>, isSwagger2: boolean, deref: Deref): ApiDocHeader[] {
+  return Object.entries(headers).map(([name, raw]) => {
+    const h = deref(raw)
+    // Swagger 2.0 headers carry the schema keywords inline (type, format…).
+    const schema = isSwagger2 ? (h as ApiDocSchema) : h.schema ? (asRecord(h.schema) as ApiDocSchema) : undefined
+    return { name, required: Boolean(h.required), description: asString(h.description) || undefined, schema }
+  })
+}
+
+function exampleFromExamples(examples: unknown, deref: Deref): unknown {
+  const first = Object.values(asRecord(examples))[0]
+  return first !== undefined ? deref(first).value : undefined
 }
 
 export function exampleFromSchema(

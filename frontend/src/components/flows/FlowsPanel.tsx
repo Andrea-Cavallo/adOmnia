@@ -1,3 +1,4 @@
+import '@/styles/studioNothing.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
@@ -128,7 +129,7 @@ function methodTone(method?: string) {
 function statusTheme(status?: FlowRunStatus) {
   if (status === 'success') return 'border-success/45 bg-success/10 text-success'
   if (status === 'failed') return 'border-error/45 bg-error/10 text-error'
-  if (status === 'running') return 'border-accent/60 bg-accent/12 text-accent ring-2 ring-accent/15'
+  if (status === 'running') return 'border-accent/60 bg-surface-2 text-text-2 ring-2 ring-accent/15'
   if (status === 'skipped') return 'border-warning/45 bg-warning/10 text-warning opacity-70'
   if (status === 'missing-binding') return 'border-warning/45 bg-warning/10 text-warning'
   if (status === 'broken') return 'border-error/45 bg-error/10 text-error'
@@ -174,16 +175,16 @@ function FlowSwitcher({
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         title="Switch or rename flow"
-        className={cn('flex h-[34px] min-w-0 max-w-[340px] items-center gap-2.5 rounded-lg border px-2.5 transition-colors', open ? 'border-accent/55 bg-accent/10' : 'border-border-1 bg-surface-0 hover:border-border-3 hover:bg-surface-2')}
+        className={cn('flex h-[34px] min-w-0 max-w-[340px] items-center gap-2.5 rounded border px-2.5 transition-colors', open ? 'border-border-2 bg-surface-2' : 'border-border-1 bg-surface-0 hover:border-border-3 hover:bg-surface-2')}
       >
         <GitBranch size={13} className="shrink-0 text-accent" />
-        <span className="truncate text-[13px] font-medium text-text-1">{flowName || 'Untitled API flow'}</span>
+        <span className="nothing-studio-title truncate text-text-1">{flowName || 'Untitled API flow'}</span>
         <span className="shrink-0 text-[11px] text-text-3">{savedFlows.length} saved</span>
         <ChevronDown size={12} className={cn('shrink-0 text-text-3 transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[340px] overflow-hidden rounded-xl border border-border-1 bg-surface-1 shadow-[0_24px_48px_rgba(0,0,0,0.28)]">
+        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[340px] overflow-hidden rounded-md border border-border-1 bg-surface-1 shadow-[0_24px_48px_rgba(0,0,0,0.28)]">
           <div className="border-b border-border-1 p-3">
             <label htmlFor="flow-name" className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-4">Flow name</label>
             <input
@@ -191,7 +192,7 @@ function FlowSwitcher({
               value={flowName}
               onChange={(event) => setFlowName(event.target.value)}
               placeholder="Untitled API flow"
-              className="mt-1.5 h-8 w-full rounded-lg border border-border-2 bg-surface-0 px-2.5 text-xs font-medium text-text-1 outline-none focus:border-accent"
+              className="mt-1.5 h-8 w-full rounded border border-border-2 bg-surface-0 px-2.5 text-xs font-medium text-text-1 outline-none focus:border-accent"
             />
           </div>
 
@@ -202,7 +203,7 @@ function FlowSwitcher({
 
           <div className="max-h-[280px] overflow-y-auto p-1.5">
             {filtered.map((flow) => (
-              <div key={flow.id} className={cn('group flex items-center gap-2 rounded-lg px-2 py-1.5', flow.id === activeFlowId ? 'bg-accent/10' : 'hover:bg-surface-2')}>
+              <div key={flow.id} className={cn('group flex items-center gap-2 rounded px-2 py-1.5', flow.id === activeFlowId ? 'bg-accent/10' : 'hover:bg-surface-2')}>
                 <button onClick={() => { onLoad(flow); setOpen(false) }} className="min-w-0 flex-1 text-left">
                   <div className="truncate text-xs font-medium text-text-1">{flow.name}</div>
                   <div className="truncate text-[10px] text-text-3">{flow.graph.nodes.length} nodes · {new Date(flow.updatedAt).toLocaleDateString()}</div>
@@ -216,8 +217,8 @@ function FlowSwitcher({
           </div>
 
           <div className="grid grid-cols-2 gap-1.5 border-t border-border-1 p-2">
-            <button onClick={() => { onNew(); setOpen(false) }} className="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-accent text-[11px] font-semibold text-white hover:bg-accent-hover"><Plus size={13} /> New flow</button>
-            <button onClick={() => { onCreateMockDemo(); setOpen(false) }} className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border-2 bg-surface-0 text-[11px] font-semibold text-text-2 hover:border-border-3 hover:text-text-1"><Server size={13} /> Mock demo</button>
+            <button onClick={() => { onNew(); setOpen(false) }} className="flex h-8 items-center justify-center gap-1.5 rounded bg-accent text-[11px] font-semibold text-white hover:bg-accent-hover"><Plus size={13} /> New flow</button>
+            <button onClick={() => { onCreateMockDemo(); setOpen(false) }} className="flex h-8 items-center justify-center gap-1.5 rounded border border-border-2 bg-surface-0 text-[11px] font-semibold text-text-2 hover:border-border-3 hover:text-text-1"><Server size={13} /> Mock demo</button>
           </div>
         </div>
       )}
@@ -240,17 +241,17 @@ function FlowToolbarMenu({ items }: { items: { label: string; icon: typeof Save;
 
   return (
     <div ref={rootRef} className="relative">
-      <button onClick={() => setOpen((value) => !value)} aria-label="More flow actions" aria-expanded={open} className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors', open ? 'border-accent/55 bg-accent/10 text-accent' : 'border-border-1 bg-surface-0 text-text-3 hover:border-border-3 hover:text-text-1')}>
+      <button onClick={() => setOpen((value) => !value)} aria-label="More flow actions" aria-expanded={open} className={cn('grid h-8 w-8 shrink-0 place-items-center rounded border transition-colors', open ? 'border-border-2 bg-surface-2 text-accent' : 'border-border-1 bg-surface-0 text-text-3 hover:border-border-3 hover:text-text-1')}>
         <MoreVertical size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-[240px] overflow-hidden rounded-xl border border-border-1 bg-surface-1 p-1.5 shadow-[0_24px_48px_rgba(0,0,0,0.28)]">
+        <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-[240px] overflow-hidden rounded-md border border-border-1 bg-surface-1 p-1.5 shadow-[0_24px_48px_rgba(0,0,0,0.28)]">
           {items.map((item) => (
             <button
               key={item.label}
               disabled={item.disabled}
               onClick={() => { setOpen(false); item.onClick() }}
-              className="flex h-8 w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-2.5 text-left text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-full items-center gap-2.5 whitespace-nowrap rounded px-2.5 text-left text-xs text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <item.icon size={13} className="text-text-3" />
               {item.label}
@@ -354,7 +355,7 @@ function FlowCanvas({
                   d={path.d}
                   fill="none"
                   stroke={stroke}
-                  strokeWidth="2.5"
+                  strokeWidth="1.5"
                   vectorEffect="non-scaling-stroke"
                   strokeDasharray={runtime[edge.target]?.status === 'running' ? '6 5' : undefined}
                   markerEnd={`url(#${active ? (errorEdge ? 'flow-arrow-error' : 'flow-arrow-ok') : 'flow-arrow'})`}
@@ -392,7 +393,7 @@ function FlowCanvas({
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-20 flex h-[34px] items-center gap-0.5 rounded-lg border border-border-1 bg-surface-1/95 px-1 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur">
+      <div className="absolute bottom-4 left-4 z-20 flex h-[34px] items-center gap-0.5 rounded border border-border-1 bg-surface-1 px-1">
         <button title="Zoom out" onClick={() => changeZoom(zoom - 0.1)} className="grid h-[26px] w-[26px] place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1"><ZoomOut size={13} /></button>
         <button title="Reset zoom" onClick={() => changeZoom(1)} className="min-w-[42px] rounded-md px-1 text-center text-[12px] text-text-2 hover:bg-surface-2 hover:text-text-1">{Math.round(zoom * 100)}%</button>
         <button title="Zoom in" onClick={() => changeZoom(zoom + 0.1)} className="grid h-[26px] w-[26px] place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1"><ZoomIn size={13} /></button>
@@ -408,13 +409,13 @@ function FlowCanvas({
 function nodeStatusDot(status?: FlowRunStatus) {
   if (status === 'success') return 'bg-success'
   if (status === 'failed' || status === 'broken') return 'bg-error'
-  if (status === 'running') return 'animate-pulse bg-accent'
+  if (status === 'running') return 'bg-accent'
   if (status === 'missing-binding') return 'bg-warning'
   return 'bg-border-3'
 }
 
 function nodeFrame(status: FlowRunStatus | undefined, selected: boolean) {
-  if (selected) return 'border border-accent bg-surface-1 shadow-[0_0_0_3px_var(--color-accent-glow)]'
+  if (selected) return 'border-2 border-text-1 bg-surface-1'
   if (status === 'success') return 'border border-success/45 bg-surface-1'
   if (status === 'failed' || status === 'broken') return 'border border-error/45 bg-surface-1'
   if (status === 'running') return 'border border-accent/60 bg-surface-1'
@@ -452,7 +453,7 @@ function FlowBoardNode({
 
   if (node.type === 'start') {
     return (
-      <button {...common} style={{ left: node.x, top: node.y, width: size.w, height: size.h }} className={cn('group absolute touch-none z-[1] flex select-none items-center gap-2.5 rounded-[10px] px-3.5 transition-colors hover:bg-surface-2', nodeFrame(status, selected))}>
+      <button {...common} style={{ left: node.x, top: node.y, width: size.w, height: size.h }} className={cn('group absolute touch-none z-[1] flex select-none items-center gap-2.5 rounded-md px-3.5 transition-colors hover:bg-surface-2', nodeFrame(status, selected))}>
         <span className="h-[7px] w-[7px] rounded-full bg-success" />
         <span className="truncate text-[13px] font-medium text-text-1">{node.label}</span>
       </button>
@@ -466,7 +467,7 @@ function FlowBoardNode({
         {...common}
         style={{ left: node.x, top: node.y, width: size.w, height: size.h }}
         className={cn(
-          'group absolute touch-none z-[1] flex select-none items-center gap-2.5 rounded-[10px] px-3.5 transition-colors hover:bg-surface-2',
+          'group absolute touch-none z-[1] flex select-none items-center gap-2.5 rounded-md px-3.5 transition-colors hover:bg-surface-2',
           selected ? nodeFrame(status, true) : failed ? 'border border-error/40 bg-surface-1' : 'border border-border-2 bg-surface-1 hover:border-border-3',
         )}
       >
@@ -479,7 +480,7 @@ function FlowBoardNode({
   if (node.type === 'condition') {
     const condition = node.config.condition
     return (
-      <button {...common} style={{ left: node.x, top: node.y, width: size.w }} className={cn('group absolute touch-none z-[1] select-none rounded-xl px-3.5 py-3 text-left transition-colors hover:z-20 hover:bg-surface-2', nodeFrame(status, selected))}>
+      <button {...common} style={{ left: node.x, top: node.y, width: size.w }} className={cn('group absolute touch-none z-[1] select-none rounded-md px-3.5 py-3 text-left transition-colors hover:z-20 hover:bg-surface-2', nodeFrame(status, selected))}>
         <div className="flex items-center gap-2.5">
           <GitFork size={13} className="shrink-0 text-warning" />
           <span className="truncate text-[13px] font-medium text-text-1">{node.label}</span>
@@ -496,7 +497,7 @@ function FlowBoardNode({
   }
 
   return (
-    <button {...common} style={{ left: node.x, top: node.y, width: size.w }} className={cn('group absolute touch-none z-[1] select-none rounded-xl px-3.5 py-3 text-left transition-colors hover:z-20 hover:bg-surface-2', nodeFrame(status, selected))}>
+    <button {...common} style={{ left: node.x, top: node.y, width: size.w }} className={cn('group absolute touch-none z-[1] select-none rounded-md px-3.5 py-3 text-left transition-colors hover:z-20 hover:bg-surface-2', nodeFrame(status, selected))}>
       <div className="flex items-center gap-2.5">
         <span className={cn('min-w-[52px] shrink-0 font-mono text-[11px] font-medium', methodTone(request?.method))}>{request?.method ?? 'REQ'}</span>
         <span className="truncate text-[13px] font-medium text-text-1">{node.label}</span>
@@ -591,7 +592,7 @@ function FlowInspectorDrawer({
             </div>
             <div className="truncate pt-0.5 text-[11px] text-text-3">{graphStepLabel(node)} · {activeEnvName}</div>
           </div>
-          <button onClick={() => onRunStep(node.id)} className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg border border-border-2 bg-surface-0 px-2.5 text-xs text-text-2 hover:border-border-3 hover:text-text-1">
+          <button onClick={() => onRunStep(node.id)} className="flex h-[30px] shrink-0 items-center gap-1.5 rounded border border-border-2 bg-surface-0 px-2.5 text-xs text-text-2 hover:border-border-3 hover:text-text-1">
             <Play size={11} /> Run step
           </button>
         </header>
@@ -632,11 +633,11 @@ function FlowInspectorDrawer({
                 <div className="grid grid-cols-2 gap-3 border-t border-border-1 p-4">
                   <label className="space-y-1.5">
                     <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Delay (ms)</span>
-                    <input type="number" min="0" value={node.config.delayMs ?? 0} onChange={(event) => onPatchNodeConfig(node.id, { delayMs: Math.max(0, Number(event.target.value) || 0) })} className="h-8 w-full rounded-lg border border-border-2 bg-surface-0 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" />
+                    <input type="number" min="0" value={node.config.delayMs ?? 0} onChange={(event) => onPatchNodeConfig(node.id, { delayMs: Math.max(0, Number(event.target.value) || 0) })} className="h-8 w-full rounded border border-border-2 bg-surface-0 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" />
                   </label>
                   <label className="space-y-1.5">
                     <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Retry attempts</span>
-                    <input type="number" min="0" max="9" value={node.config.retryCount ?? 0} onChange={(event) => onPatchNodeConfig(node.id, { retryCount: Math.min(9, Math.max(0, Number(event.target.value) || 0)) })} className="h-8 w-full rounded-lg border border-border-2 bg-surface-0 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" />
+                    <input type="number" min="0" max="9" value={node.config.retryCount ?? 0} onChange={(event) => onPatchNodeConfig(node.id, { retryCount: Math.min(9, Math.max(0, Number(event.target.value) || 0)) })} className="h-8 w-full rounded border border-border-2 bg-surface-0 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" />
                   </label>
                   <label className="col-span-2 flex items-center gap-2 text-xs text-text-2">
                     <input type="checkbox" checked={node.config.stopOnFailure ?? graph.settings.failOnHttpError} onChange={(event) => onPatchNodeConfig(node.id, { stopOnFailure: event.target.checked })} />
@@ -649,13 +650,13 @@ function FlowInspectorDrawer({
                     <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Bind from API catalog</span>
                     <span className="text-[10px] text-text-4">{catalog.length}</span>
                   </div>
-                  <div className="mb-2 flex h-8 items-center gap-2 rounded-lg border border-border-2 bg-surface-0 px-2.5">
+                  <div className="mb-2 flex h-8 items-center gap-2 rounded border border-border-2 bg-surface-0 px-2.5">
                     <Search size={12} className="text-text-4" />
                     <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find request..." className="min-w-0 flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4" />
                   </div>
                   <div className="space-y-1.5">
                     {filteredCatalog.map((item) => (
-                      <button key={item.id} onClick={() => onBindRequest(node.id, item.request)} className="w-full rounded-lg border border-border-1 bg-surface-0 px-2.5 py-2 text-left hover:border-accent/50 hover:bg-accent/5">
+                      <button key={item.id} onClick={() => onBindRequest(node.id, item.request)} className="w-full rounded border border-border-1 bg-surface-0 px-2.5 py-2 text-left hover:border-accent/50 hover:bg-accent/5">
                         <div className="flex items-center gap-2.5">
                           <span className={cn('w-12 shrink-0 font-mono text-[10px] font-medium', methodTone(item.request.method))}>{item.request.method}</span>
                           <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-text-1">{item.label}</span>
@@ -663,7 +664,7 @@ function FlowInspectorDrawer({
                         <div className="mt-1 truncate font-mono text-[10px] text-text-3">{item.request.url || 'Missing URL'}</div>
                       </button>
                     ))}
-                    {filteredCatalog.length === 0 && <div className="rounded-lg border border-dashed border-border-2 px-3 py-5 text-center text-[11px] text-text-3">No catalog request matches this search.</div>}
+                    {filteredCatalog.length === 0 && <div className="rounded border border-dashed border-border-2 px-3 py-5 text-center text-[11px] text-text-3">No catalog request matches this search.</div>}
                   </div>
                 </div>
               </div>
@@ -675,19 +676,19 @@ function FlowInspectorDrawer({
           {tab === 'response' && (
             <div className="flex flex-col gap-3 p-4">
               {!lastEntry ? (
-                <div className="rounded-xl border border-dashed border-border-2 py-12 text-center text-xs text-text-3">Run this flow to capture a response for this step.</div>
+                <div className="rounded-md border border-dashed border-border-2 py-12 text-center text-xs text-text-3">Run this flow to capture a response for this step.</div>
               ) : (
                 <>
                   <div className="flex items-center gap-3.5">
-                    <span className={cn('inline-flex h-7 items-center rounded-lg px-2.5 font-mono text-xs', lastEntry.status === 'success' ? 'bg-success/10 text-success' : 'bg-error/10 text-error')}>
+                    <span className={cn('inline-flex h-7 items-center rounded px-2.5 font-mono text-xs', lastEntry.status === 'success' ? 'bg-success/10 text-success' : 'bg-error/10 text-error')}>
                       {lastEntry.httpStatus ?? lastEntry.status}
                     </span>
                     <span className="text-xs text-text-2">{Math.round(lastEntry.durationMs)} ms</span>
                     <span className="flex-1" />
                     <span className="text-[11px] text-text-3">{lastEntry.nodeLabel}</span>
                   </div>
-                  {lastEntry.response?.body && <pre className="max-h-[420px] overflow-auto rounded-xl border border-border-2 bg-surface-0 p-3.5 font-mono text-[12px] leading-6 text-text-2">{lastEntry.response.body}</pre>}
-                  {lastEntry.error && <div className="rounded-xl border border-error/30 bg-error/10 p-3 text-xs text-error">{lastEntry.error}</div>}
+                  {lastEntry.response?.body && <pre className="max-h-[420px] overflow-auto rounded-md border border-border-2 bg-surface-0 p-3.5 font-mono text-[12px] leading-6 text-text-2">{lastEntry.response.body}</pre>}
+                  {lastEntry.error && <div className="rounded-md border border-error/30 bg-error/10 p-3 text-xs text-error">{lastEntry.error}</div>}
                 </>
               )}
             </div>
@@ -695,9 +696,9 @@ function FlowInspectorDrawer({
 
           {tab === 'tests' && (
             <div className="space-y-2 p-4">
-              {(request?.assertions ?? []).length === 0 && <div className="rounded-xl border border-dashed border-border-2 px-4 py-10 text-center text-xs text-text-3">No assertions configured for this request.</div>}
+              {(request?.assertions ?? []).length === 0 && <div className="rounded-md border border-dashed border-border-2 px-4 py-10 text-center text-xs text-text-3">No assertions configured for this request.</div>}
               {(lastEntry?.assertions ?? []).map((assertion) => (
-                <div key={assertion.assertionId} className="flex items-center gap-2.5 rounded-xl border border-border-1 bg-surface-0 p-3">
+                <div key={assertion.assertionId} className="flex items-center gap-2.5 rounded-md border border-border-1 bg-surface-0 p-3">
                   {assertion.passed ? <CheckCircle2 size={14} className="shrink-0 text-success" /> : <XCircle size={14} className="shrink-0 text-error" />}
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-xs font-medium text-text-1">{assertion.label}</div>
@@ -715,21 +716,21 @@ function FlowInspectorDrawer({
                 {node.type === 'request' && (
                   <button
                     onClick={() => onPatchNodeConfig(node.id, { extractions: [...(node.config.extractions ?? []), { id: uid(), name: `var${(node.config.extractions?.length ?? 0) + 1}`, source: 'body', path: '' }] })}
-                    className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-border-2 px-2.5 text-[11px] text-text-2 hover:border-border-3 hover:text-text-1"
+                    className="inline-flex h-7 items-center gap-1.5 rounded border border-dashed border-border-2 px-2.5 text-[11px] text-text-2 hover:border-border-3 hover:text-text-1"
                   >
                     <Plus size={11} /> Extract variable
                   </button>
                 )}
               </div>
-              {(node.config.extractions ?? []).length === 0 && <div className="mt-3 rounded-xl border border-dashed border-border-2 px-4 py-8 text-center text-xs text-text-3">This step extracts no variables.</div>}
+              {(node.config.extractions ?? []).length === 0 && <div className="mt-3 rounded-md border border-dashed border-border-2 px-4 py-8 text-center text-xs text-text-3">This step extracts no variables.</div>}
               {(node.config.extractions ?? []).map((mapping, index) => (
                 <div key={mapping.id} className="mt-2 grid grid-cols-[1fr_92px_28px] gap-2">
-                  <input value={mapping.name} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) })} className="h-8 min-w-0 rounded-lg border border-border-2 bg-surface-0 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" placeholder="variable" />
-                  <select value={mapping.source} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, source: event.target.value as typeof item.source } : item) })} className="h-8 rounded-lg border border-border-2 bg-surface-0 px-2 text-[11px] text-text-1">
+                  <input value={mapping.name} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) })} className="h-8 min-w-0 rounded border border-border-2 bg-surface-0 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" placeholder="variable" />
+                  <select value={mapping.source} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, source: event.target.value as typeof item.source } : item) })} className="h-8 rounded border border-border-2 bg-surface-0 px-2 text-[11px] text-text-1">
                     <option value="body">body</option><option value="header">header</option><option value="status">status</option><option value="expression">expr</option>
                   </select>
-                  <button onClick={() => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).filter((_, itemIndex) => itemIndex !== index) })} className="grid h-8 w-7 place-items-center rounded-lg text-text-4 hover:bg-error/10 hover:text-error"><X size={13} /></button>
-                  <input value={mapping.path} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, path: event.target.value } : item) })} className="col-span-3 h-8 rounded-lg border border-border-2 bg-surface-0 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" placeholder="access_token or response.body.token" />
+                  <button onClick={() => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).filter((_, itemIndex) => itemIndex !== index) })} className="grid h-8 w-7 place-items-center rounded text-text-4 hover:bg-error/10 hover:text-error"><X size={13} /></button>
+                  <input value={mapping.path} onChange={(event) => onPatchNodeConfig(node.id, { extractions: (node.config.extractions ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, path: event.target.value } : item) })} className="col-span-3 h-8 rounded border border-border-2 bg-surface-0 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" placeholder="access_token or response.body.token" />
                 </div>
               ))}
             </div>
@@ -738,11 +739,11 @@ function FlowInspectorDrawer({
           {tab === 'conditions' && (
             <div className="space-y-3.5 p-4">
               {node.type === 'condition' && condition ? (
-                <div className="rounded-xl border border-border-2 bg-surface-0 p-3.5">
+                <div className="rounded-md border border-border-2 bg-surface-0 p-3.5">
                   <div className="grid grid-cols-2 gap-2.5">
                     <label className="space-y-1.5">
                       <span className="block text-[11px] text-text-3">Source</span>
-                      <select value={condition.source} onChange={(event) => onPatchCondition(node.id, { source: event.target.value as FlowCondition['source'] })} className="h-8 w-full rounded-lg border border-border-2 bg-surface-1 px-2 text-xs text-text-1">
+                      <select value={condition.source} onChange={(event) => onPatchCondition(node.id, { source: event.target.value as FlowCondition['source'] })} className="h-8 w-full rounded border border-border-2 bg-surface-1 px-2 text-xs text-text-1">
                         <option value="body">response body</option>
                         <option value="status">status</option>
                         <option value="header">header</option>
@@ -752,31 +753,31 @@ function FlowInspectorDrawer({
                     </label>
                     <label className="space-y-1.5">
                       <span className="block text-[11px] text-text-3">Field</span>
-                      <input value={condition.path} onChange={(event) => onPatchCondition(node.id, { path: event.target.value })} className="h-8 w-full rounded-lg border border-border-2 bg-surface-1 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" placeholder="user.active" />
+                      <input value={condition.path} onChange={(event) => onPatchCondition(node.id, { path: event.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-1 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" placeholder="user.active" />
                     </label>
                     <label className="space-y-1.5">
                       <span className="block text-[11px] text-text-3">Operator</span>
-                      <select value={condition.operator} onChange={(event) => onPatchCondition(node.id, { operator: event.target.value as FlowCondition['operator'] })} className="h-8 w-full rounded-lg border border-border-2 bg-surface-1 px-2 font-mono text-xs text-text-1">
+                      <select value={condition.operator} onChange={(event) => onPatchCondition(node.id, { operator: event.target.value as FlowCondition['operator'] })} className="h-8 w-full rounded border border-border-2 bg-surface-1 px-2 font-mono text-xs text-text-1">
                         <option value="exists">exists</option><option value="not_exists">not exists</option><option value="eq">equals</option><option value="neq">not equals</option><option value="contains">contains</option><option value="gt">greater than</option><option value="lt">less than</option><option value="gte">at least</option><option value="lte">at most</option>
                       </select>
                     </label>
                     <label className="space-y-1.5">
                       <span className="block text-[11px] text-text-3">Value</span>
-                      <input value={condition.value} onChange={(event) => onPatchCondition(node.id, { value: event.target.value })} className="h-8 w-full rounded-lg border border-border-2 bg-surface-1 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" placeholder="true" />
+                      <input value={condition.value} onChange={(event) => onPatchCondition(node.id, { value: event.target.value })} className="h-8 w-full rounded border border-border-2 bg-surface-1 px-2.5 font-mono text-xs text-text-1 outline-none focus:border-accent" placeholder="true" />
                     </label>
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-border-1 bg-surface-0 p-4 text-xs text-text-3">Outgoing edges from this node define the next execution path.</div>
+                <div className="rounded-md border border-border-1 bg-surface-0 p-4 text-xs text-text-3">Outgoing edges from this node define the next execution path.</div>
               )}
 
-              <div className="rounded-xl border border-border-1 bg-surface-0 p-3.5">
+              <div className="rounded-md border border-border-1 bg-surface-0 p-3.5">
                 <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Branches</div>
                 <div className="mt-2 space-y-1.5">
                   {graph.edges.filter((edge) => edge.source === node.id).map((edge) => {
                     const errorEdge = edge.branch === 'false' || edge.branch === 'else' || edge.branch === 'error'
                     return (
-                      <div key={edge.id} className="flex items-center gap-2.5 rounded-lg border border-border-1 bg-surface-1 px-2.5 py-2 text-xs">
+                      <div key={edge.id} className="flex items-center gap-2.5 rounded border border-border-1 bg-surface-1 px-2.5 py-2 text-xs">
                         <span className={cn('h-[5px] w-[5px] shrink-0 rounded-full', errorEdge ? 'bg-error' : 'bg-success')} />
                         <span className="shrink-0 text-text-2">{edge.label || edge.branch || 'next'}</span>
                         <span className="min-w-0 flex-1 truncate text-right text-text-3">{graph.nodes.find((item) => item.id === edge.target)?.label ?? edge.target}</span>
@@ -877,17 +878,17 @@ function MermaidModal({ value, onChange, onClose, onImport, catalog, graph }: {
     <FlowDockPanel title="Import Mermaid" side="right" open initialFloating initialWidth={860} onClose={onClose}>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-1">
         <div className="flex items-center gap-3 border-b border-border-1 px-5 py-4">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent/12 text-accent"><GitBranch size={18} /></span>
+          <span className="grid h-10 w-10 place-items-center rounded-md bg-surface-2 text-text-2"><GitBranch size={18} /></span>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-text-1">Import Mermaid Flow</div>
             <div className="text-xs text-text-4">Preview matching against the API catalog before importing.</div>
           </div>
-          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg text-text-3 hover:bg-surface-2 hover:text-text-1"><X size={16} /></button>
+          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1"><X size={16} /></button>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-2 gap-4 overflow-auto p-5">
           <div className="min-h-0">
             <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Mermaid source</div>
-            <textarea value={value} onChange={(event) => onChange(event.target.value)} spellCheck={false} className="h-[360px] w-full resize-none rounded-xl border border-border-2 bg-surface-0 p-4 font-mono text-xs leading-6 text-text-1 outline-none focus:border-accent" />
+            <textarea value={value} onChange={(event) => onChange(event.target.value)} spellCheck={false} className="h-[360px] w-full resize-none rounded-md border border-border-2 bg-surface-0 p-4 font-mono text-xs leading-6 text-text-1 outline-none focus:border-accent" />
           </div>
           <div className="min-h-0">
             <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Catalog match preview</div>
@@ -895,8 +896,8 @@ function MermaidModal({ value, onChange, onClose, onImport, catalog, graph }: {
               {graph.nodes.map((node) => {
                 const match = node.type === 'request' ? matchCatalogRequest(node.label, catalog) : null
                 return (
-                  <div key={node.id} className="flex items-center gap-3 rounded-xl border border-border-1 bg-surface-0 p-3">
-                    <span className={cn('grid h-8 w-8 place-items-center rounded-lg', node.type === 'condition' ? 'bg-warning/10 text-warning' : match ? 'bg-accent/10 text-accent' : 'bg-surface-2 text-text-4')}>{node.type === 'condition' ? <GitFork size={15} /> : match ? <Check size={15} /> : <AlertTriangle size={15} />}</span>
+                  <div key={node.id} className="flex items-center gap-3 rounded-md border border-border-1 bg-surface-0 p-3">
+                    <span className={cn('grid h-8 w-8 place-items-center rounded', node.type === 'condition' ? 'bg-warning/10 text-warning' : match ? 'bg-accent/10 text-accent' : 'bg-surface-2 text-text-4')}>{node.type === 'condition' ? <GitFork size={15} /> : match ? <Check size={15} /> : <AlertTriangle size={15} />}</span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-semibold text-text-1">{node.label}</div>
                       <div className={cn('truncate text-[10px]', match ? 'text-text-4' : 'text-warning')}>{match ? match.label : node.type === 'request' ? 'No catalog match yet' : node.type}</div>
@@ -910,8 +911,8 @@ function MermaidModal({ value, onChange, onClose, onImport, catalog, graph }: {
         <div className="flex items-center gap-3 border-t border-border-1 px-5 py-4">
           <span className="text-xs text-text-4">{graph.nodes.length} nodes generated</span>
           <span className="flex-1" />
-          <button onClick={onClose} className="h-9 rounded-lg border border-border-2 px-4 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1">Cancel</button>
-          <button onClick={onImport} className="flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-xs font-semibold text-white hover:bg-accent-hover"><Check size={14} /> Import Flow</button>
+          <button onClick={onClose} className="h-9 rounded border border-border-2 px-4 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1">Cancel</button>
+          <button onClick={onImport} className="flex h-9 items-center gap-2 rounded bg-accent px-4 text-xs font-semibold text-white hover:bg-accent-hover"><Check size={14} /> Import Flow</button>
         </div>
       </div>
     </FlowDockPanel>
@@ -945,12 +946,12 @@ function AiFlowDrawer({
   return (
     <aside className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-1">
       <div className="flex h-14 items-center gap-3 border-b border-border-1 px-4">
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent/12 text-accent"><Sparkles size={17} /></span>
+        <span className="grid h-9 w-9 place-items-center rounded bg-surface-2 text-text-2"><Sparkles size={17} /></span>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-text-1">AI Flow Generator</div>
           <div className="text-[10px] text-text-4">Preview before adding to the board</div>
         </div>
-        <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg text-text-3 hover:bg-surface-2 hover:text-text-1"><X size={15} /></button>
+        <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text-1"><X size={15} /></button>
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
@@ -961,7 +962,7 @@ function AiFlowDrawer({
             onChange={(event) => setInstructions(event.target.value)}
             spellCheck={false}
             placeholder="Call A, extract customer.id as customerId, then call B with {{customerId}}. If B times out or returns 500, call D..."
-            className="h-44 w-full resize-none rounded-lg border border-border-2 bg-surface-0 p-3 text-xs leading-5 text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
+            className="h-44 w-full resize-none rounded border border-border-2 bg-surface-0 p-3 text-xs leading-5 text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {examples.map((example, index) => (
@@ -972,18 +973,18 @@ function AiFlowDrawer({
           </div>
         </div>
 
-        {error && <div className="rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error">{error}</div>}
+        {error && <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error">{error}</div>}
 
         {preview && (
-          <div className="space-y-3 rounded-xl border border-border-1 bg-surface-0 p-3">
+          <div className="space-y-3 rounded-md border border-border-1 bg-surface-0 p-3">
             <div>
               <div className="text-xs font-bold text-text-1">{preview.summary.name}</div>
               {preview.summary.description && <div className="mt-1 text-[11px] leading-4 text-text-3">{preview.summary.description}</div>}
             </div>
             <div className="grid grid-cols-3 gap-1.5 text-center">
-              <div className="rounded-lg bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.stepCount}</div><div className="text-[9px] uppercase text-text-4">steps</div></div>
-              <div className="rounded-lg bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.variables.length}</div><div className="text-[9px] uppercase text-text-4">vars</div></div>
-              <div className="rounded-lg bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.conditions.length}</div><div className="text-[9px] uppercase text-text-4">checks</div></div>
+              <div className="rounded bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.stepCount}</div><div className="text-[9px] uppercase text-text-4">steps</div></div>
+              <div className="rounded bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.variables.length}</div><div className="text-[9px] uppercase text-text-4">vars</div></div>
+              <div className="rounded bg-surface-2 px-2 py-2"><div className="text-sm font-bold text-text-1">{preview.summary.conditions.length}</div><div className="text-[9px] uppercase text-text-4">checks</div></div>
             </div>
             <PreviewList title="API calls" items={preview.summary.apiCalls} />
             <PreviewList title="Variables" items={preview.summary.variables} />
@@ -1000,13 +1001,13 @@ function AiFlowDrawer({
       </div>
 
       <div className="flex items-center gap-2 border-t border-border-1 p-3">
-        <button onClick={onClose} className="h-9 rounded-lg border border-border-2 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1">Cancel</button>
-        {preview && <button onClick={onGeneratePreview} disabled={loading} className="h-9 rounded-lg border border-border-2 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-50">Regenerate</button>}
+        <button onClick={onClose} className="h-9 rounded border border-border-2 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1">Cancel</button>
+        {preview && <button onClick={onGeneratePreview} disabled={loading} className="h-9 rounded border border-border-2 px-3 text-xs font-semibold text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-50">Regenerate</button>}
         <span className="flex-1" />
         {preview ? (
-          <button onClick={onApply} className="flex h-9 items-center gap-2 rounded-lg bg-accent px-3 text-xs font-bold text-white hover:bg-accent-hover"><Check size={14} /> Generate Flow</button>
+          <button onClick={onApply} className="flex h-9 items-center gap-2 rounded bg-accent px-3 text-xs font-bold text-white hover:bg-accent-hover"><Check size={14} /> Generate Flow</button>
         ) : (
-          <button onClick={onGeneratePreview} disabled={loading || !instructions.trim()} className="flex h-9 items-center gap-2 rounded-lg bg-accent px-3 text-xs font-bold text-white hover:bg-accent-hover disabled:opacity-45">
+          <button onClick={onGeneratePreview} disabled={loading || !instructions.trim()} className="flex h-9 items-center gap-2 rounded bg-accent px-3 text-xs font-bold text-white hover:bg-accent-hover disabled:opacity-45">
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Preview
           </button>
         )}
@@ -1439,10 +1440,10 @@ export function FlowsPanel() {
   const canOrderSteps = !!directGraph && requestCount > 0 && !graph.nodes.some((node) => node.type === 'condition' || node.type === 'extract')
 
   return (
-    <div data-flow-workspace className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
+    <div data-flow-workspace className="nothing-studio flow-studio relative flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
       <input ref={fileRef} type="file" accept=".mmd,.mermaid,.txt,.json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleImportFile(file); event.currentTarget.value = '' }} />
 
-      <header className="relative z-30 flex h-[52px] flex-shrink-0 items-center gap-2 border-b border-border-1 bg-surface-1 px-4">
+      <header className="relative z-30 flex min-h-[60px] flex-wrap flex-shrink-0 items-center gap-2 border-b border-border-1 bg-surface-0 px-4 py-3">
         <FlowSwitcher
           flowName={flowName}
           setFlowName={setFlowName}
@@ -1453,7 +1454,6 @@ export function FlowsPanel() {
           onLoad={loadFlow}
           onDelete={deleteFlow}
         />
-        <span className="hidden h-5 shrink-0 items-center rounded-md bg-surface-3 px-2 text-[11px] text-text-2 sm:inline-flex">Draft</span>
         <span className="hidden shrink truncate text-[11px] text-text-3 xl:inline">
           {requestCount} steps · {conditionCount} conditions · saved locally
         </span>
@@ -1467,7 +1467,7 @@ export function FlowsPanel() {
 
         <span className="flex-1" />
 
-        <div className="flex h-8 shrink-0 items-center gap-2 rounded-lg border border-border-1 bg-surface-0 pl-2.5 text-text-2 hover:border-border-3">
+        <div className="flex h-8 shrink-0 items-center gap-2 rounded border border-border-1 bg-surface-0 pl-2.5 text-text-2 hover:border-border-3">
           <span className={cn('h-[6px] w-[6px] shrink-0 rounded-full', activeEnv ? 'bg-accent' : 'bg-text-4')} />
           <select
             aria-label="Flow environment"
@@ -1480,18 +1480,15 @@ export function FlowsPanel() {
           </select>
         </div>
 
-        <button onClick={() => addNode('request')} className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border-1 bg-surface-0 px-2.5 text-xs text-text-2 hover:border-border-3 hover:text-text-1">
+        <button onClick={() => addNode('request')} className="flex h-8 shrink-0 items-center gap-1.5 rounded border border-border-1 bg-surface-0 px-2.5 text-xs text-text-2 hover:border-border-3 hover:text-text-1">
           <Plus size={12} /> Step
         </button>
-        <button onClick={() => addNode('condition')} className="hidden h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border-1 bg-surface-0 px-2.5 text-xs text-text-2 hover:border-border-3 hover:text-text-1 lg:flex">
-          <GitFork size={12} /> Condition
-        </button>
-
-        <button title={inspectorOpen && !focusMode ? 'Hide inspector' : 'Show inspector'} aria-pressed={inspectorOpen && !focusMode} onClick={() => { setInspectorOpen(!inspectorOpen || focusMode); setFocusMode(false) }} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border-1 text-text-3 hover:text-accent"><PanelRight size={14} /></button>
-        <button title={timelineOpen && !focusMode ? 'Hide timeline' : 'Show timeline'} aria-pressed={timelineOpen && !focusMode} onClick={() => { setTimelineOpen(!timelineOpen || focusMode); setFocusMode(false) }} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border-1 text-text-3 hover:text-accent"><List size={14} /></button>
-        <button title={focusMode ? 'Restore panels' : 'Focus canvas'} aria-pressed={focusMode} onClick={() => setFocusMode(value => !value)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border-1 text-text-3 hover:text-accent"><Focus size={14} /></button>
         <FlowToolbarMenu
           items={[
+            { label: 'Add condition', icon: GitFork, onClick: () => addNode('condition') },
+            { label: inspectorOpen && !focusMode ? 'Hide inspector' : 'Show inspector', icon: PanelRight, onClick: () => { setInspectorOpen(!inspectorOpen || focusMode); setFocusMode(false) } },
+            { label: timelineOpen && !focusMode ? 'Hide timeline' : 'Show timeline', icon: List, onClick: () => { setTimelineOpen(!timelineOpen || focusMode); setFocusMode(false) } },
+            { label: focusMode ? 'Restore panels' : 'Focus canvas', icon: Focus, onClick: () => setFocusMode(value => !value) },
             { label: 'Save flow', icon: Save, onClick: saveFlow },
             { label: 'Generate with AI', icon: Sparkles, onClick: () => { setFocusMode(false); setAiOpen(true) } },
             { label: 'Arrange layout', icon: Grid3X3, onClick: arrangeNodes },
@@ -1507,14 +1504,14 @@ export function FlowsPanel() {
           title="Stress test: run this flow with concurrent virtual users"
           aria-pressed={stressOpen && !focusMode}
           onClick={() => { setStressOpen(true); setFocusMode(false) }}
-          className={cn('flex h-8 shrink-0 items-center gap-1.5 rounded-lg border bg-surface-0 px-2.5 text-xs transition-colors hover:text-text-1', stressRunning ? 'border-accent/60 text-accent' : 'border-border-1 text-text-2 hover:border-border-3')}
+          className={cn('flex h-8 shrink-0 items-center gap-1.5 rounded border bg-surface-0 px-2.5 text-xs transition-colors hover:text-text-1', stressRunning ? 'border-accent/60 text-accent' : 'border-border-1 text-text-2 hover:border-border-3')}
         >
           {stressRunning ? <Loader2 size={12} className="animate-spin" /> : <Gauge size={12} />} Stress
         </button>
         <button
           onClick={() => running ? runAbortRef.current?.abort() : void runFlow()}
           disabled={(!running && validationErrors.length > 0) || stressRunning}
-          className={cn('flex h-8 shrink-0 items-center gap-2 rounded-lg px-3.5 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-45', running ? 'bg-error hover:bg-error/85' : 'bg-accent hover:bg-accent-hover')}
+          className={cn('flex h-8 shrink-0 items-center gap-2 rounded px-3.5 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-45', running ? 'bg-error hover:bg-error/85' : 'bg-accent hover:bg-accent-hover')}
         >
           {running ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
           {running ? 'Stop' : 'Run'}

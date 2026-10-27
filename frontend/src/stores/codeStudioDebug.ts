@@ -4,9 +4,9 @@ import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 import {
   detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugGoroutines, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
   listGoIDEBreakpoints, listGoIDEDebugThreads, listGoIDEExceptionBreakpoints, listGoIDEFunctionBreakpoints, runGoIDEDebugToCursor, setGoIDEBreakpoints,
-  setGoIDEExceptionBreakpoints, setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, startPythonDebug, startRustDebug, stepGoIDEDebug, stopGoIDEDebug,
+  setGoIDEExceptionBreakpoints, setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, startPythonDebug, startRustDebug, startWebDebug, stepGoIDEDebug, stopGoIDEDebug,
   type GoIDEBreakpoint, type GoIDEBreakpointState, type GoIDEExceptionBreakpoints, type GoIDEExceptionBreakpointSettings, type GoIDEFunctionBreakpoints, type GoIDEFunctionBreakpointSettings, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
-  type GoIDEDebugSession, type GoIDEJavaDebugRequest, type GoIDEPythonDebugRequest, type GoIDERustDebugRequest, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
+  type GoIDEDebugSession, type GoIDEJavaDebugRequest, type GoIDEPythonDebugRequest, type GoIDERustDebugRequest, type GoIDEWebDebugRequest, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
 } from '@/lib/code-studio-debug-api'
 import { useCodeStudioStore } from './codeStudio'
 import { useCodeStudioLspStore } from './codeStudioLsp'
@@ -63,6 +63,8 @@ export interface GoIDEDebugView {
   /** Richiesta di una sessione Python (debugpy): serve al riavvio, che non passa da Delve. */
   pythonRequest?: GoIDEPythonDebugRequest | null
   rustRequest?: GoIDERustDebugRequest | null
+  /** Richiesta di una sessione JS/TS (js-debug): serve al riavvio, che non passa da Delve. */
+  webRequest?: GoIDEWebDebugRequest | null
 }
 
 export interface GoIDEGoroutineSample {
@@ -103,6 +105,7 @@ interface GoIDEDebugState {
   startJava: (request: GoIDEJavaDebugRequest) => Promise<void>
   startRust: (request: GoIDERustDebugRequest) => Promise<void>
   startPython: (request: GoIDEPythonDebugRequest) => Promise<void>
+  startWeb: (request: GoIDEWebDebugRequest) => Promise<void>
   stop: (debugId: string) => Promise<void>
   restart: (debugId: string) => Promise<void>
   step: (debugId: string, action: GoIDEDebugStepAction) => Promise<void>
@@ -441,15 +444,35 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
       }
     },
 
+    startWeb: async (request) => {
+      ensureSubscribed((event) => get().handleEvent(event))
+      set({ error: null })
+      const sessionId = request.sessionId
+      try {
+        if (!await useCodeStudioStore.getState().saveAllDocuments(sessionId)) return
+        const info = await startWebDebug(request)
+        set((state) => ({
+          debuggers: { ...pruneFinished(state.debuggers, sessionId), [info.id]: { ...(state.debuggers[info.id] ?? emptyView(info)), webRequest: request } },
+          activeBySession: { ...state.activeBySession, [sessionId]: info.id },
+        }))
+        useCodeStudioStore.getState().updateLayout({ bottomOpen: true })
+        useCodeStudioLspStore.getState().showToolWindow('debug')
+      } catch (error) {
+        set({ error: errorMessage(error) })
+        useCodeStudioStore.setState({ error: errorMessage(error) })
+      }
+    },
+
     stop: async (debugId) => {
       try { await stopGoIDEDebug(debugId) } catch (error) { set({ error: errorMessage(error) }) }
     },
 
     restart: async (debugId) => {
       const view = get().debuggers[debugId]
-      if (!view?.request && !view?.javaRequest && !view?.pythonRequest && !view?.rustRequest) return
+      if (!view?.request && !view?.javaRequest && !view?.pythonRequest && !view?.rustRequest && !view?.webRequest) return
       if (view.info.state !== 'terminated') await get().stop(debugId)
-      if (view.rustRequest) await get().startRust(view.rustRequest)
+      if (view.webRequest) await get().startWeb(view.webRequest)
+      else if (view.rustRequest) await get().startRust(view.rustRequest)
       else if (view.pythonRequest) await get().startPython(view.pythonRequest)
       else if (view.javaRequest) await get().startJava(view.javaRequest)
       else if (view.request) await get().start(view.request)

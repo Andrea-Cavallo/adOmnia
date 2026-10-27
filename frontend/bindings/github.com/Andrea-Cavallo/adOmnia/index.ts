@@ -13,7 +13,6 @@ import * as DevSession from "./devsession.js";
 import * as DockerLab from "./dockerlab.js";
 import * as GitSync from "./gitsync.js";
 import * as GoIDE from "./goide.js";
-import * as MCPClient from "./mcpclient.js";
 import * as MCPServerGenerator from "./mcpservergenerator.js";
 import * as Milk from "./milk.js";
 import * as OASLint from "./oaslint.js";
@@ -35,7 +34,6 @@ export {
     DockerLab,
     GitSync,
     GoIDE,
-    MCPClient,
     MCPServerGenerator,
     Milk,
     OASLint,

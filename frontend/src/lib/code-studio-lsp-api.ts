@@ -1,3 +1,4 @@
+import { Call } from '@wailsio/runtime'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
 import type {
@@ -252,4 +253,8 @@ export function requestPrepareHierarchy(sessionId: string, documentId: string, k
 /** Figli di un nodo: incoming/outgoing per le chiamate, supertypes/subtypes per i tipi. */
 export function requestExpandHierarchy(sessionId: string, direction: string, token: string): CancellablePromise<HierarchyItem[]> {
   return GoIDEBindings.ExpandHierarchy(sessionId, direction, token)
+}
+
+export function requestHierarchyPreview(sessionId: string, token: string): Promise<GoIDEQuickDefinition> {
+ return Call.ByName('main.GoIDE.HierarchyPreview', sessionId, token)
 }

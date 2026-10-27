@@ -45,7 +45,7 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
   { id: 'broker', title: 'Broker Studio', group: 'Protocols', keywords: 'kafka topic producer consumer mqtt amqp redis nats messaging', maturity: 'core' },
   { id: 'grpc', title: 'gRPC Client', group: 'Protocols', keywords: 'protobuf rpc reflection streaming tls metadata', maturity: 'core' },
   { id: 'soap', title: 'SOAP Studio', group: 'Protocols', keywords: 'wsdl xml legacy enterprise ws-security', maturity: 'core' },
-  { id: 'mcp', title: 'MCP Client', group: 'Protocols', keywords: 'model context protocol ai tools resources prompts debugger server generator stdio', maturity: 'advanced' },
+  { id: 'mcp', title: 'MCP Server Generator', group: 'Protocols', keywords: 'model context protocol collection server generator', maturity: 'advanced' },
 
   { id: 'mock', title: 'Mock Server', group: 'API Core', keywords: 'stub simulate response replay local server', maturity: 'core' },
   { id: 'proxy', title: 'Proxy Interceptor', group: 'API Core', keywords: 'traffic intercept breakpoint ca certificate rewrite capture', maturity: 'core' },

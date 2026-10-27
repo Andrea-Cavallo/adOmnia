@@ -90,6 +90,9 @@ func (n Node) MarshalJSON() ([]byte, error) {
 type ExportOptions struct {
 	Now          time.Time
 	Environments []Environment
+	// PreserveSecretValues is limited to local folder editing. Normal exports
+	// keep the default behavior and blank secret values before sharing.
+	PreserveSecretValues bool
 }
 
 type Environment struct {
@@ -159,7 +162,7 @@ func ExportCollection(root string, collection Collection, opts ExportOptions) er
 	if err := writeText(filepath.Join(root, ".gitignore"), ".env\n*.tmp\n.adomnia-sync.local.json\n"); err != nil {
 		return err
 	}
-	if err := writeEnvironments(filepath.Join(root, "environments"), opts.Environments); err != nil {
+	if err := writeEnvironments(filepath.Join(root, "environments"), opts.Environments, opts.PreserveSecretValues); err != nil {
 		return err
 	}
 	if err := writeJSON(filepath.Join(root, ".adomnia-sync.json"), map[string]any{
@@ -170,7 +173,11 @@ func ExportCollection(root string, collection Collection, opts ExportOptions) er
 	}); err != nil {
 		return err
 	}
-	return writeNodes(filepath.Join(root, "folders"), collection.Children)
+	folders := filepath.Join(root, "folders")
+	if err := os.RemoveAll(folders); err != nil {
+		return fmt.Errorf("reset node export: %w", err)
+	}
+	return writeNodes(folders, collection.Children)
 }
 
 func ExportRequest(root string, request requestcontract.Request) (string, error) {
@@ -229,7 +236,7 @@ func findRequestFile(root, requestID string) (string, int, error) {
 	return found, foundSeq, nil
 }
 
-func writeEnvironments(dir string, environments []Environment) error {
+func writeEnvironments(dir string, environments []Environment, preserveSecrets bool) error {
 	// Rebuild the projection so an environment switched to private cannot leave
 	// a stale tracked file behind.
 	if err := os.RemoveAll(dir); err != nil {
@@ -254,7 +261,9 @@ func writeEnvironments(dir string, environments []Environment) error {
 		}
 		name := uniqueName(used, slug(environment.Name)+".json")
 		environment.Private = false
-		environment.Variables = exportableVariables(environment.Variables)
+		if !preserveSecrets {
+			environment.Variables = exportableVariables(environment.Variables)
+		}
 		if err := writeJSON(filepath.Join(dir, name), environment); err != nil {
 			return err
 		}

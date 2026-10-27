@@ -44,6 +44,13 @@ describe('IDE language contributions', () => {
     expect(heavyFeatureEditorLanguages()).not.toContain('java')
   })
 
+  it('enables JS/TS debug for package-manager runs (js-debug)', () => {
+    const web = IDE_LANGUAGES.find(language => language.id === 'typescript')!
+    expect(web.canDebugRun?.({ kind: 'command', language: 'typescript', target: 'npm', programArguments: ['run', 'dev'] } as never)).toBe(true)
+    expect(web.canDebugRun?.({ kind: 'command', language: 'typescript' } as never)).toBe(false)
+    expect(web.canDebugRun?.({ kind: 'build', language: 'typescript', target: 'npm' } as never)).toBe(false)
+  })
+
   it('declares Rust with run templates and rust-analyzer, debug with CodeLLDB (RS-2/3/4/6)', () => {
     const rust = IDE_LANGUAGES.find(language => language.id === 'rust')!
     expect(rust.name).toBe('Rust')

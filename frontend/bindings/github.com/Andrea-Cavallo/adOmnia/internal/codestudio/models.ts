@@ -8020,6 +8020,67 @@ export class WatcherStatus {
 }
 
 /**
+ * WebDebugRequest chiede il debug di un file JavaScript/TypeScript oppure di un comando del package
+ * manager (lo stesso della Run, es. `npm run dev`). js-debug deve essere installato in modo esplicito
+ * dalla cartella strumenti di adOmnia: nessun download automatico, nessuna modifica del progetto.
+ */
+export class WebDebugRequest {
+    "sessionId": SessionID;
+
+    /**
+     * Kind è "script" (file del progetto) o "command" (script del package manager).
+     */
+    "kind": string;
+
+    /**
+     * Program è il file da eseguire, relativo alla working directory (solo kind "script").
+     */
+    "program"?: string;
+
+    /**
+     * RuntimeExecutable e RuntimeArgs sono il comando della Run (solo kind "command").
+     */
+    "runtimeExecutable"?: string;
+    "runtimeArgs"?: string[];
+    "programArguments"?: string[];
+    "workingDirectory"?: string;
+    "environment"?: { [_ in string]?: string };
+    "node"?: string;
+
+    /** Creates a new WebDebugRequest instance. */
+    constructor($$source: Partial<WebDebugRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WebDebugRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WebDebugRequest {
+        const $$createField4_0 = $$createType4;
+        const $$createField5_0 = $$createType4;
+        const $$createField7_0 = $$createType88;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("runtimeArgs" in $$parsedSource) {
+            $$parsedSource["runtimeArgs"] = $$createField4_0($$parsedSource["runtimeArgs"]);
+        }
+        if ("programArguments" in $$parsedSource) {
+            $$parsedSource["programArguments"] = $$createField5_0($$parsedSource["programArguments"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField7_0($$parsedSource["environment"]);
+        }
+        return new WebDebugRequest($$parsedSource as Partial<WebDebugRequest>);
+    }
+}
+
+/**
  * WebProjectReport è ciò che la UI mostra prima di avviare un'anteprima: progetti rilevati,
  * runtime, language server e stato delle anteprime. Rilevare non esegue nulla.
  */

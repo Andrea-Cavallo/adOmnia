@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { uid, type RequestAuth, type RequestItem, type ResponseData } from '@/lib/types'
 import { linkRecordedRequest, recordingSource, type RecordingSource } from '@/lib/flowRecordingLinks'
 import type { FlowVariableMapping } from '@/lib/flowStorage'
+import { recordedHeaderToken } from '@/lib/headerValues'
 
 export interface RecordedApiCall {
   id: string
@@ -77,7 +78,7 @@ export function sanitizeRecordedRequest(request: RequestItem): RequestItem {
     ...request,
     headers: request.headers.map((header) => secretField.test(header.key)
       ? { ...header, value: keepReference(header.value) }
-      : { ...header }),
+      : { ...header, value: recordedHeaderToken(header.key, header.value) ?? header.value }),
     cookies: request.cookies?.map((cookie) => ({ ...cookie, value: keepReference(cookie.value) })),
     auth,
     // Snapshot nested structures so subsequent composer edits cannot mutate a recording.

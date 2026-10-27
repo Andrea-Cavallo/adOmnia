@@ -3,6 +3,7 @@ package dap
 import (
 	"bufio"
 	"context"
+	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -127,6 +128,10 @@ type debugger struct {
 	spec    AdapterSpec
 	client  *Client
 	closed  bool
+	// children sono le connessioni figlie aperte su richiesta dell'adapter (startDebugging) e active
+	// è quella che controlla il programma fermo: i comandi vanno lì, gli eventi arrivano da lì.
+	children []*childSession
+	active   *childSession
 	// runTo è il breakpoint temporaneo di Run to Cursor: si rimuove alla prima fermata.
 	runTo *runToCursor
 }
@@ -328,11 +333,121 @@ func (m *DebugManager) connectClient(session *debugger, launch Launch, client *C
 	}
 	session.conn, session.client = conn, client
 	session.mu.Unlock()
+	// js-debug (e gli adapter con target in sessioni figlie) chiede al client di aprire un'altra
+	// connessione allo stesso server: la gestisce il manager, non il linguaggio.
+	client.SetReverseHandler(func(command string, arguments jsonv1.RawMessage) bool {
+		return m.handleReverseRequest(session, command, arguments)
+	})
 	initialized := make(chan struct{})
 	go m.readEvents(session, client, initialized)
 	if err := m.handshake(session, launch, client, initialized); err != nil {
 		m.terminate(session, err.Error())
 	}
+}
+
+// handleReverseRequest gestisce le richieste inverse dell'adapter. Per ora solo startDebugging:
+// una connessione figlia verso lo stesso server, che l'adapter usa per il processo controllato.
+func (m *DebugManager) handleReverseRequest(session *debugger, command string, arguments jsonv1.RawMessage) bool {
+	if command != "startDebugging" || session.spec.ChildSession == nil {
+		return false
+	}
+	var request struct {
+		Request       string         `json:"request"`
+		Configuration map[string]any `json:"configuration"`
+	}
+	if json.Unmarshal(arguments, &request) != nil {
+		return false
+	}
+	if request.Request == "" {
+		request.Request = "launch"
+	}
+	spec, err := session.spec.ChildSession(request.Request, request.Configuration)
+	if err != nil || spec.Address == "" {
+		if err != nil {
+			m.output(session, "console", "debug child session refused: "+err.Error()+"\n")
+		}
+		return false
+	}
+	// La risposta success parte subito: l'adapter aspetta l'ok prima di far partire il target, e la
+	// connessione figlia si apre in parallelo (come fanno gli altri client DAP con js-debug).
+	go m.startChildSession(session, spec, request.Request, request.Configuration)
+	return true
+}
+
+// startChildSession apre la connessione della sessione figlia, esegue initialize → launch →
+// setBreakpoints del progetto → configurationDone e la aggancia alla sessione locale: la UI vede un
+// solo debug, il target vero vive sulla connessione figlia.
+func (m *DebugManager) startChildSession(session *debugger, spec AdapterSpec, request string, configuration map[string]any) {
+	var conn net.Conn
+	var err error
+	for attempt := 0; attempt < 40; attempt++ {
+		conn, err = net.DialTimeout("tcp", spec.Address, 2*time.Second)
+		if err == nil {
+			break
+		}
+		if m.isClosed(session) {
+			return
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	if err != nil {
+		m.output(session, "console", fmt.Sprintf("debug child session connection failed: %v\n", err))
+		return
+	}
+	child := &childSession{client: NewClient(conn), conn: conn}
+	session.mu.Lock()
+	if session.closed {
+		session.mu.Unlock()
+		_ = conn.Close()
+		return
+	}
+	session.children = append(session.children, child)
+	session.mu.Unlock()
+	initialized := make(chan struct{})
+	go m.readConnectionEvents(session, child.client, initialized, child)
+	if err := m.childHandshake(session, child, spec, request, configuration, initialized); err != nil && !m.isClosed(session) {
+		m.output(session, "console", "debug child session failed: "+err.Error()+"\n")
+		m.dropChild(session, child)
+	}
+}
+
+// childHandshake è l'handshake di una sessione figlia: stessa sequenza della principale, con i
+// breakpoint del progetto applicati prima di configurationDone.
+func (m *DebugManager) childHandshake(session *debugger, child *childSession, spec AdapterSpec, request string, configuration map[string]any, initialized <-chan struct{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), debugRequestTimeout)
+	defer cancel()
+	if err := child.client.Call(ctx, "initialize", map[string]any{
+		"clientID": "adomnia", "clientName": "adOmnia IDE", "adapterID": spec.AdapterID, "pathFormat": "path",
+		"linesStartAt1": true, "columnsStartAt1": true, "supportsVariableType": true, "locale": "en",
+	}, nil); err != nil {
+		return fmt.Errorf("initialize: %w", err)
+	}
+	launchCtx, cancelLaunch := context.WithTimeout(context.Background(), debugLaunchTimeout)
+	defer cancelLaunch()
+	launchResult := make(chan error, 1)
+	go func() { launchResult <- child.client.Call(launchCtx, request, configuration, nil) }()
+	select {
+	case <-initialized:
+	case err := <-launchResult:
+		if err != nil {
+			return fmt.Errorf("%s: %w", request, err)
+		}
+		if err := awaitInitialized(initialized); err != nil {
+			return err
+		}
+	case <-time.After(debugRequestTimeout):
+		return errors.New("the child debug session did not finish initializing")
+	}
+	_, projectID := session.identity()
+	for path, breakpoints := range m.breakpointsFor(projectID) {
+		m.sendBreakpointsTo(child.client, path, breakpoints, 0)
+	}
+	configurationCtx, cancelConfiguration := context.WithTimeout(context.Background(), debugRequestTimeout)
+	defer cancelConfiguration()
+	if err := child.client.Call(configurationCtx, "configurationDone", map[string]any{}, nil); err != nil {
+		return fmt.Errorf("configurationDone: %w", err)
+	}
+	return nil
 }
 
 // handshake esegue initialize → launch → (initialized) setBreakpoints → configurationDone.
@@ -434,6 +549,13 @@ func (m *DebugManager) readProcessOutput(session *debugger, stdout io.Reader, ad
 }
 
 func (m *DebugManager) readEvents(session *debugger, client *Client, initialized chan<- struct{}) {
+	m.readConnectionEvents(session, client, initialized, nil)
+}
+
+// readConnectionEvents legge gli eventi di una connessione (principale o figlia). Una figlia che si
+// ferma diventa la connessione attiva e i suoi comandi dell'adapter restano quelli della figlia; la
+// sua fine non chiude la sessione locale, che ha ancora la connessione principale.
+func (m *DebugManager) readConnectionEvents(session *debugger, client *Client, initialized chan<- struct{}, child *childSession) {
 	signalled := false
 	for event := range client.Events() {
 		if m.isClosed(session) {
@@ -451,6 +573,11 @@ func (m *DebugManager) readEvents(session *debugger, client *Client, initialized
 				ThreadID int    `json:"threadId"`
 			}
 			_ = json.Unmarshal(event.Body, &body)
+			if child != nil {
+				session.mu.Lock()
+				session.active = child
+				session.mu.Unlock()
+			}
 			// Il Java Debug Server riporta "function breakpoint" anche per i breakpoint di riga: senza funzioni impostate è una riga.
 			if _, projectID := session.identity(); body.Reason == "function breakpoint" && len(m.functionsFor(projectID).Functions) == 0 {
 				body.Reason = "breakpoint"
@@ -466,6 +593,9 @@ func (m *DebugManager) readEvents(session *debugger, client *Client, initialized
 				go m.resendFile(session, finished.path)
 			}
 		case "continued":
+			if child != nil && !m.isActiveChild(session, child) {
+				continue
+			}
 			session.mu.Lock()
 			session.info.State, session.info.StopReason = DebugRunning, ""
 			session.mu.Unlock()
@@ -481,11 +611,43 @@ func (m *DebugManager) readEvents(session *debugger, client *Client, initialized
 			}
 			m.output(session, body.Category, body.Output)
 		case "terminated", "exited":
+			if child != nil {
+				m.dropChild(session, child)
+				return
+			}
 			go m.terminate(session, "")
 		}
 	}
+	if child != nil {
+		m.dropChild(session, child)
+		return
+	}
 	// Connessione chiusa dall'altra parte (es. server remoto fermato): la sessione finisce.
 	go m.terminate(session, "")
+}
+
+// isActiveChild dice se la connessione indicata è quella che controlla il programma fermo.
+func (m *DebugManager) isActiveChild(session *debugger, child *childSession) bool {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.active == child
+}
+
+// dropChild toglie una connessione figlia conclusa: la sessione resta viva sulla connessione
+// principale (js-debug manda lì "terminated" quando il programma finisce davvero).
+func (m *DebugManager) dropChild(session *debugger, child *childSession) {
+	session.mu.Lock()
+	for index, candidate := range session.children {
+		if candidate == child {
+			session.children = append(session.children[:index], session.children[index+1:]...)
+			break
+		}
+	}
+	if session.active == child {
+		session.active = nil
+	}
+	session.mu.Unlock()
+	_ = child.conn.Close()
 }
 
 func (m *DebugManager) output(session *debugger, category, text string) {
@@ -529,13 +691,23 @@ func (m *DebugManager) terminate(session *debugger, reason string) {
 		session.info.Error = reason
 	}
 	client, conn, command, info, detach := session.client, session.conn, session.command, session.info, session.detach
+	children := session.children
+	session.children, session.active = nil, nil
+	active := client
+	if len(children) > 0 && children[0].client != nil {
+		// Il target vive sulla connessione figlia: è lei che deve chiudere il programma.
+		active = children[0].client
+	}
 	session.mu.Unlock()
 	// debug adapter termina il programma debuggato solo se gli si lascia completare disconnect: prima la
 	// richiesta, poi l'attesa della sua uscita, e solo alla fine la chiusura forzata dell'albero.
-	if client != nil {
+	if active != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), debugDisconnectTimeout)
-		_ = client.Call(ctx, "disconnect", map[string]any{"terminateDebuggee": !detach}, nil)
+		_ = active.Call(ctx, "disconnect", map[string]any{"terminateDebuggee": !detach}, nil)
 		cancel()
+	}
+	for _, child := range children {
+		_ = child.conn.Close()
 	}
 	if conn != nil {
 		_ = conn.Close()
@@ -608,21 +780,52 @@ func (m *DebugManager) Shutdown() {
 	}
 }
 
-// call esegue una richiesta DAP su una sessione ancora aperta.
+// call esegue una richiesta DAP su una sessione ancora aperta. Con una sessione figlia attiva
+// (startDebugging) la richiesta va alla connessione che controlla il programma: il target reale non
+// è quello della connessione principale.
 func (m *DebugManager) call(id DebugSessionID, command string, arguments, result any) error {
 	session, err := m.get(id)
 	if err != nil {
 		return err
 	}
-	session.mu.Lock()
-	client := session.client
-	session.mu.Unlock()
+	client := session.activeClient()
 	if client == nil {
 		return fmt.Errorf("the debugger is still starting")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), debugRequestTimeout)
 	defer cancel()
 	return client.Call(ctx, command, arguments, result)
+}
+
+// activeClient è la connessione che controlla il programma: la figlia attiva, altrimenti quella
+// principale dell'adapter.
+func (session *debugger) activeClient() *Client {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	if session.active != nil && session.active.client != nil {
+		return session.active.client
+	}
+	return session.client
+}
+
+// connections elenca le connessioni vive, la figlia attiva per prima: i breakpoint vanno inviate a
+// tutte, perché il target può vivere in una figlia e l'adapter principale risponde "provvisorio".
+func (session *debugger) connections() []*Client {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	clients := make([]*Client, 0, 1+len(session.children))
+	if session.active != nil && session.active.client != nil {
+		clients = append(clients, session.active.client)
+	}
+	for _, child := range session.children {
+		if child.client != nil && child != session.active {
+			clients = append(clients, child.client)
+		}
+	}
+	if session.client != nil {
+		clients = append(clients, session.client)
+	}
+	return clients
 }
 
 // Step esegue continue, pause, next, stepIn o stepOut sul thread indicato.
@@ -772,15 +975,16 @@ func (m *DebugManager) Evaluate(id DebugSessionID, expression string, frameID in
 		context = "watch"
 	}
 	arguments := map[string]any{"expression": expression, "context": context}
-	if frameID > 0 {
-		arguments["frameId"] = frameID
-	}
-	var response EvaluateResult
-	err := m.call(id, "evaluate", arguments, &response)
 	session, lookupErr := m.get(id)
 	if lookupErr != nil {
 		return EvaluateResult{}, lookupErr
 	}
+	// Con js-debug il primo frame ha id 0: va incluso, o l'espressione viene valutata nello scope globale.
+	if frameID > 0 || (frameID == 0 && session.spec.ZeroFrameIDs) {
+		arguments["frameId"] = frameID
+	}
+	var response EvaluateResult
+	err := m.call(id, "evaluate", arguments, &response)
 	if err != nil && session.spec.RetryEvaluate != nil {
 		if replacement, retry := session.spec.RetryEvaluate(expression, context, err); retry {
 			arguments["expression"] = replacement

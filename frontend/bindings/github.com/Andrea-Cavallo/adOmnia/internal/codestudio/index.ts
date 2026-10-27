@@ -224,6 +224,7 @@ export {
     VCSWorkingDiff,
     VulnReport,
     WatcherStatus,
+    WebDebugRequest,
     WebProjectReport,
     WorkspaceChange,
     WorkspaceModule,

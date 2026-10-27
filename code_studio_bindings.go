@@ -1717,6 +1717,21 @@ func (g *GoIDE) InstallRustDebugger(sessionID string, confirmed bool) (codestudi
 	return g.service.InstallRustDebugger(sessionID, confirmed)
 }
 
+// StartWebDebug avvia il debug JS/TS con js-debug: un file del progetto o lo script del package manager.
+func (g *GoIDE) StartWebDebug(request codestudio.WebDebugRequest) (codestudio.DebugSessionInfo, error) {
+	return g.service.StartWebDebug(request)
+}
+
+// PreviewWebDebuggerInstall mostra il comando esatto che installerebbe js-debug.
+func (g *GoIDE) PreviewWebDebuggerInstall(sessionID string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewWebDebuggerInstall(sessionID)
+}
+
+// InstallWebDebugger installa js-debug (release pinnata, checksum verificato) dopo conferma.
+func (g *GoIDE) InstallWebDebugger(sessionID string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallWebDebugger(sessionID, confirmed)
+}
+
 // RustToolchains elenca le toolchain Rust candidate del progetto (RS-2.4).
 func (g *GoIDE) RustToolchains(sessionID string) (codestudio.RustToolchainReport, error) {
 	return g.service.RustToolchains(sessionID)
@@ -1798,4 +1813,8 @@ func (g *GoIDE) SpringEndpoints(sessionID string) ([]java.SpringEndpoint, error)
 // Maven locale. Lavoro pesante, solo su azione esplicita: riprende dalla cache.
 func (g *GoIDE) SpringMetadataRefresh(sessionID string, limit int) (java.SpringMetadataReport, error) {
 	return g.service.SpringMetadataRefresh(sessionID, limit)
+}
+
+func (g *GoIDE) HierarchyPreview(sessionID, token string) (codestudio.QuickDefinitionResult, error) {
+	return g.service.HierarchyPreview(sessionID, token)
 }

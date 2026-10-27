@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ApiDocContent, ApiDocOperation, ApiDocParam, ApiDocSchema } from '@/lib/apidocs/parseSpec'
+import type { ApiDocContent, ApiDocHeader, ApiDocOperation, ApiDocParam, ApiDocSchema } from '@/lib/apidocs/parseSpec'
 import { SchemaView } from './SchemaView'
 import { InlineMarkdown, MiniMarkdown } from './MiniMarkdown'
 
@@ -100,6 +100,7 @@ export function OperationCard({ operation, registry, defaultOpen = false, onTryO
                   <div className="min-w-0">
                     {response.description && <div className="mb-2 text-[12px] text-text-3"><InlineMarkdown text={response.description} /></div>}
                     <ContentBlock contents={response.contents} registry={registry} compact />
+                    <HeadersBlock headers={response.headers} registry={registry} />
                   </div>
                 </div>
               ))}
@@ -144,6 +145,27 @@ function ContentBlock({
         )
       )}
       <PayloadTabs example={active.example} schema={active.schema} registry={registry} compact={compact} />
+    </div>
+  )
+}
+
+function HeadersBlock({ headers, registry }: { headers: ApiDocHeader[]; registry: Record<string, ApiDocSchema> }) {
+  if (headers.length === 0) return null
+  return (
+    <div className="mt-2">
+      <h5 className="mb-1.5 text-[11px] font-semibold uppercase text-text-4">Headers</h5>
+      <div className="overflow-hidden rounded border border-border-1">
+        {headers.map((header) => (
+          <div key={header.name} className="grid grid-cols-[minmax(120px,0.7fr)_minmax(120px,0.8fr)_minmax(0,1.5fr)] gap-2 border-b border-border-1 px-2.5 py-2 text-[11px] last:border-b-0">
+            <div className="min-w-0">
+              <span className="block truncate font-mono font-semibold text-text-1">{header.name}</span>
+              {header.required && <span className="mt-0.5 inline-block text-[10px] font-semibold text-error">required</span>}
+            </div>
+            <div className="min-w-0">{header.schema && <SchemaView schema={header.schema} registry={registry} depth={5} />}</div>
+            <div className="min-w-0 text-text-3">{header.description ? <InlineMarkdown text={header.description} /> : '-'}</div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
