@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -23,7 +24,25 @@ func TestMain(m *testing.M) {
 		runFakeGopls()
 		return
 	}
-	os.Exit(m.Run())
+	os.Exit(runIsolatedFromUserGit(m))
+}
+
+// runIsolatedFromUserGit runs the tests with an empty global and system git config: hooks, signing or
+// fsmonitor set up by the developer must not slow down or change the many tests that commit (a global
+// core.hooksPath once cost 60 s per commit). The identity lives in that config, so repo-level settings win.
+func runIsolatedFromUserGit(m *testing.M) int {
+	dir, err := os.MkdirTemp("", "adomnia-codestudio-git-*")
+	if err != nil {
+		return m.Run()
+	}
+	defer os.RemoveAll(dir)
+	config := filepath.Join(dir, "gitconfig")
+	if err := os.WriteFile(config, []byte("[user]\n\tname = adOmnia tests\n\temail = tests@adomnia.invalid\n"), 0o600); err == nil {
+		os.Setenv("GIT_CONFIG_GLOBAL", config)
+		os.Setenv("GIT_CONFIG_SYSTEM", config)
+		os.Setenv("GIT_TERMINAL_PROMPT", "0")
+	}
+	return m.Run()
 }
 
 // fakeGopls risponde lentamente a initialize e segnala su stderr ogni documento ricevuto prima di
