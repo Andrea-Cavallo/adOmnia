@@ -28,7 +28,7 @@ type Collection struct {
 	Color       string                     `json:"color,omitempty"`
 	Headers     []requestcontract.KVRow    `json:"headers,omitempty"`
 	Variables   []requestcontract.Variable `json:"variables,omitempty"`
-	Auth        requestcontract.Auth       `json:"auth"`
+	Auth        requestcontract.Auth       `json:"auth,omitempty"`
 	PreScript   string                     `json:"preScript,omitempty"`
 	PostScript  string                     `json:"postScript,omitempty"`
 	Children    []Node                     `json:"children"`
@@ -41,7 +41,7 @@ type Node struct {
 	Type       string                     `json:"type"`
 	Headers    []requestcontract.KVRow    `json:"headers,omitempty"`
 	Variables  []requestcontract.Variable `json:"variables,omitempty"`
-	Auth       requestcontract.Auth       `json:"auth"`
+	Auth       requestcontract.Auth       `json:"auth,omitempty"`
 	PreScript  string                     `json:"preScript,omitempty"`
 	PostScript string                     `json:"postScript,omitempty"`
 	Children   []Node                     `json:"children,omitempty"`
@@ -69,7 +69,7 @@ func (n Node) MarshalJSON() ([]byte, error) {
 		Type       string                     `json:"type"`
 		Headers    []requestcontract.KVRow    `json:"headers,omitempty"`
 		Variables  []requestcontract.Variable `json:"variables,omitempty"`
-		Auth       requestcontract.Auth       `json:"auth"`
+		Auth       requestcontract.Auth       `json:"auth,omitempty"`
 		PreScript  string                     `json:"preScript,omitempty"`
 		PostScript string                     `json:"postScript,omitempty"`
 		Children   []Node                     `json:"children"`

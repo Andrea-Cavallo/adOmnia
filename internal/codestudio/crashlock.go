@@ -23,8 +23,8 @@ const (
 // CrashStatus dice se l'avvio precedente di adOmnia si è chiuso in modo anomalo.
 type CrashStatus struct {
 	PreviousCrashed bool      `json:"previousCrashed"`
-	LastHeartbeat   time.Time `json:"lastHeartbeat"`
-	StartedAt       time.Time `json:"startedAt"`
+	LastHeartbeat   time.Time `json:"lastHeartbeat,omitempty"`
+	StartedAt       time.Time `json:"startedAt,omitempty"`
 }
 
 type runtimeLockInfo struct {
