@@ -8,16 +8,16 @@ The IDE is a flagship area: it must feel like a real IDE (fast, stable, never lo
 
 ## What it is
 
-**adOmnia IDE Platform + language adapters.** Code Studio is the host and composition root on top of a language-agnostic core. Go lives in `internal/languages/golang`; Java in `internal/languages/java` (JDT LS, JDK, Maven/Gradle, debug and JaCoCo); the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) live in `internal/languages/web`, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`); Python in `internal/languages/python` (basedpyright, pytest, debugpy). Rust is being added incrementally in `internal/languages/rust`: crate/workspace detection first, then run/test/debug and rust-analyzer (see `mds/MULTILANGUAGE-IDE.md` §9.6). The original 12-phase migration is complete; it does not mean all implementation has left the host. Follow the remaining extraction queue in `mds/REFACTOR.md`, section CS-HOST.
+**adOmnia IDE Platform + language adapters.** Code Studio is the host and composition root on top of a language-agnostic core. Go lives in `internal/languages/golang`; Java in `internal/languages/java` (JDT LS, JDK, Maven/Gradle, debug and JaCoCo); the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) live in `internal/languages/web`, with the Live Server in `internal/ide/preview` (see `docs/LIVE-PREVIEW.md`); Python in `internal/languages/python` (basedpyright, pytest, debugpy). Rust is being added incrementally in `internal/languages/rust`: crate/workspace detection first, then run/test/debug and rust-analyzer (see `mds/MULTILANGUAGE-IDE.md` §9.6). The original 12-phase migration is complete; feature code still leaving the host follows `docs/architecture/ide-package-rules.md`.
 
 Read before non-trivial work:
 
 | File | Use |
 |------|-----|
+| `docs/architecture/ide-package-rules.md` | **Package layout and rules**: where code goes, how to move code out of codestudio, shared test setup, a new language |
 | `docs/architecture/ide-multilanguage-refactor.md` | GENERIC/MIXED/GO_SPECIFIC map, interfaces, migration (12 phases, complete), non-goals, manual smoke checklist |
 | `docs/CODE-STUDIO.md` | Usage, trust model, optional tools, persistence schema, shortcuts, limits |
-| `mds/03-GO-STUDIO-PIANO-UNIFICATO.md` | Active work queue (manual checks, gaps) |
-| `mds/FIX.md` | Open fixes |
+| `mds/MANUAL-CHECK.md` | In-app checks still to tick (local, may be absent) |
 | `docs/SOUL.md` | Any UX / visual decision |
 
 ---
@@ -26,13 +26,17 @@ Read before non-trivial work:
 
 ```
 internal/ide/*              CORE, language-agnostic: language (Language + capabilities, registry), project (Unit),
-                            lsp, dap, run, testing, sdk, process, security, graph, apicontract, remote, startup
+                            lsp (protocol), dap, run, testing, sdk, process, security, graph, apicontract, remote, startup
+internal/ide/workspace/     shared vocabulary: Project, Session, Document, DocumentID, DiskChange, ReadTextFile
+internal/ide/langserver/    language server manager (LSPManager): processes, documents, budget, editor features
+internal/ide/terminal/      PTY terminals and shell profiles
+internal/ide/idetest/       shared TestMain (fake gopls, isolated git) and fixtures — tests only
 internal/ide/preview/       Live Server (static server, dev-server proxy, preview Manager), language-agnostic
 internal/languages/web/     Web ADAPTER: typescript/html/css/json, project + package-manager detection, LSP specs
 internal/languages/golang/  Go ADAPTER: detection, SDK, gopls ServerSpec, run options, test2json, race reports,
                             Delve/runtime extensions, architecture/error/context analyses…
-internal/codestudio/             HOST: composition root + `Service` facade for Wails; languages registered in languages.go;
-                            code not yet migrated still lives here
+internal/codestudio/        HOST: composition root + `Service` facade for Wails; languages registered in languages.go;
+                            moved types are re-exported by *_aliases.go; code not yet migrated still lives here
 internal/codestudiowindow/       native per-session windows
 code_studio_bindings.go (root)    thin Wails service `GoIDE` — the STABLE facade
 frontend/src/components/ide/languages/<id>/   language contributions (IdeLanguageContribution)
@@ -51,7 +55,7 @@ frontend/src/stores/codeStudio*.ts                 stores (one per concern)
 
 1. Language-agnostic (editor, terminal, processes, search, SDK plumbing, LSP/DAP lifecycle) → `internal/ide/*`.
 2. Go-only (gopls, Delve, go.mod, pprof, race…) → `internal/languages/golang`.
-3. The `internal/codestudio` `Service` method only wires; keep it thin. Unmigrated code: extend in place, move it when a second language needs it.
+3. The `internal/codestudio` `Service` method only wires; keep it thin. New logic goes into a core package or an adapter, never into a new `codestudio` file; moving existing code follows `docs/architecture/ide-package-rules.md` (keep type names, alias in codestudio, regenerate bindings).
 4. Search for an existing helper first (tool locator, process spec, event router…). No sixth copy of "find this tool on PATH".
 
 ---
@@ -106,6 +110,7 @@ Per CLAUDE.md root: focused tests, not the whole suite after every change.
 # backend
 go vet ./internal/ide/... ./internal/languages/... ./internal/codestudio/...
 go test ./internal/ide/... ./internal/languages/golang/... ./internal/codestudio/ -run <Focus>
+# a new test package that starts processes or commits to git: func TestMain(m *testing.M) { idetest.Main(m) }
 go test ./internal/ide/ -run 'Architecture|CoreDoesNot|AdaptersDo'   # layering gate
 # frontend (from frontend/)
 npx tsc --noEmit

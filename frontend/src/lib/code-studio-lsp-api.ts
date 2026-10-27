@@ -8,8 +8,6 @@ import type {
   DocumentSymbolsResult,
   EditorLocation,
   EditorRange,
-  EditorTextEdit,
-  FileChange,
   FormatResult,
   GoplsInfo,
   HoverResult,
@@ -21,7 +19,6 @@ import type {
   SearchQuery,
   SearchResult,
   SignatureResult,
-  SymbolNode,
   WorkspaceChange,
   WorkspaceSymbol,
   Execution,
@@ -31,8 +28,9 @@ import type {
   InlayHintsResult,
   HighlightsResult,
   RecursiveCallsResult,
-  LanguageServerFeatures,
   QuickDefinitionResult, HierarchyItem } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+// Types nested only inside other results are generated in the package that declares them.
+import type { EditorTextEdit, FileChange, LanguageServerFeatures, SymbolNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/langserver/models'
 
 export type GoIDELanguageServerStatus = LanguageServerStatus
 export type GoIDELanguageServerFeatures = LanguageServerFeatures

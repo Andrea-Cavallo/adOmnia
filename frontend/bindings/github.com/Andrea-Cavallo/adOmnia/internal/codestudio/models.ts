@@ -19,6 +19,9 @@ import * as dap$0 from "../ide/dap/models.js";
 import * as graph$0 from "../ide/graph/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as langserver$0 from "../ide/langserver/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as language$0 from "../ide/language/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -26,9 +29,6 @@ import * as lsp$0 from "../ide/lsp/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as preview$0 from "../ide/preview/models.js";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as project$0 from "../ide/project/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as remote$0 from "../ide/remote/models.js";
@@ -47,6 +47,9 @@ import * as terminal$0 from "../ide/terminal/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as testing$0 from "../ide/testing/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as workspace$0 from "../ide/workspace/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as golang$0 from "../languages/golang/models.js";
@@ -222,16 +225,6 @@ export class ArchitectureResult {
         return new ArchitectureResult($$parsedSource as Partial<ArchitectureResult>);
     }
 }
-
-export enum AuthorizationState {
-    /**
-     * The Go zero value for the underlying type of the enum.
-     */
-    $zero = "",
-
-    AuthorizationOpened = "opened",
-    AuthorizationPermitted = "tooling-permitted",
-};
 
 /**
  * BaseCoverage è la coverage degli stessi package misurata sul merge-base con il branch base,
@@ -483,33 +476,15 @@ export class Capabilities {
     }
 }
 
-export class CodeActionEntry {
-    "id": string;
-    "title": string;
-    "kind"?: string;
-    "preferred"?: boolean;
-    "disabled"?: string;
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const CodeActionEntry = langserver$0.CodeActionEntry;
 
-    /** Creates a new CodeActionEntry instance. */
-    constructor($$source: Partial<CodeActionEntry> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("title" in $$source)) {
-            this["title"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new CodeActionEntry instance from a string or object.
-     */
-    static createFrom($$source: any = {}): CodeActionEntry {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new CodeActionEntry($$parsedSource as Partial<CodeActionEntry>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type CodeActionEntry = langserver$0.CodeActionEntry;
 
 /**
  * CodeGenRequest descrive cosa generare e dove.
@@ -588,87 +563,15 @@ export class CodeGenResult {
     }
 }
 
-export class CompletionEntry {
-    "label": string;
-    "kind": number;
-    "detail"?: string;
-    "documentation"?: string;
-    "sortText"?: string;
-    "filterText"?: string;
-    "insertText": string;
-    "snippet": boolean;
-    "range"?: EditorRange | null;
-    "additionalEdits"?: EditorTextEdit[];
-    "preselect"?: boolean;
-    "deprecated"?: boolean;
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const CompletionResult = langserver$0.CompletionResult;
 
-    /** Creates a new CompletionEntry instance. */
-    constructor($$source: Partial<CompletionEntry> = {}) {
-        if (!("label" in $$source)) {
-            this["label"] = "";
-        }
-        if (!("kind" in $$source)) {
-            this["kind"] = 0;
-        }
-        if (!("insertText" in $$source)) {
-            this["insertText"] = "";
-        }
-        if (!("snippet" in $$source)) {
-            this["snippet"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new CompletionEntry instance from a string or object.
-     */
-    static createFrom($$source: any = {}): CompletionEntry {
-        const $$createField8_0 = $$createType13;
-        const $$createField9_0 = $$createType15;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField8_0($$parsedSource["range"]);
-        }
-        if ("additionalEdits" in $$parsedSource) {
-            $$parsedSource["additionalEdits"] = $$createField9_0($$parsedSource["additionalEdits"]);
-        }
-        return new CompletionEntry($$parsedSource as Partial<CompletionEntry>);
-    }
-}
-
-export class CompletionResult {
-    "version": number;
-    "incomplete": boolean;
-    "items": CompletionEntry[];
-
-    /** Creates a new CompletionResult instance. */
-    constructor($$source: Partial<CompletionResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("incomplete" in $$source)) {
-            this["incomplete"] = false;
-        }
-        if (!("items" in $$source)) {
-            this["items"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new CompletionResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): CompletionResult {
-        const $$createField2_0 = $$createType17;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("items" in $$parsedSource) {
-            $$parsedSource["items"] = $$createField2_0($$parsedSource["items"]);
-        }
-        return new CompletionResult($$parsedSource as Partial<CompletionResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type CompletionResult = langserver$0.CompletionResult;
 
 export const ContainerInfo = remote$0.ContainerInfo;
 export type ContainerInfo = remote$0.ContainerInfo;
@@ -815,9 +718,9 @@ export class CoverageFile {
      * Creates a new CoverageFile instance from a string or object.
      */
     static createFrom($$source: any = {}): CoverageFile {
-        const $$createField6_0 = $$createType19;
-        const $$createField7_0 = $$createType21;
-        const $$createField8_0 = $$createType23;
+        const $$createField6_0 = $$createType13;
+        const $$createField7_0 = $$createType15;
+        const $$createField8_0 = $$createType17;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("blocks" in $$parsedSource) {
             $$parsedSource["blocks"] = $$createField6_0($$parsedSource["blocks"]);
@@ -956,7 +859,7 @@ export class CoverageReport {
      */
     static createFrom($$source: any = {}): CoverageReport {
         const $$createField4_0 = $$createType7;
-        const $$createField5_0 = $$createType25;
+        const $$createField5_0 = $$createType19;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField4_0($$parsedSource["packages"]);
@@ -973,19 +876,13 @@ export class CoverageReport {
  */
 export class CrashStatus {
     "previousCrashed": boolean;
-    "lastHeartbeat": string;
-    "startedAt": string;
+    "lastHeartbeat"?: string;
+    "startedAt"?: string;
 
     /** Creates a new CrashStatus instance. */
     constructor($$source: Partial<CrashStatus> = {}) {
         if (!("previousCrashed" in $$source)) {
             this["previousCrashed"] = false;
-        }
-        if (!("lastHeartbeat" in $$source)) {
-            this["lastHeartbeat"] = "0001-01-01T00:00:00.000Z";
-        }
-        if (!("startedAt" in $$source)) {
-            this["startedAt"] = "0001-01-01T00:00:00.000Z";
         }
 
         Object.assign(this, $$source);
@@ -1059,7 +956,7 @@ export class CreateProjectResult {
      * Creates a new CreateProjectResult instance from a string or object.
      */
     static createFrom($$source: any = {}): CreateProjectResult {
-        const $$createField0_0 = $$createType26;
+        const $$createField0_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("session" in $$parsedSource) {
             $$parsedSource["session"] = $$createField0_0($$parsedSource["session"]);
@@ -1307,9 +1204,9 @@ export class DependencyGraphReport {
      * Creates a new DependencyGraphReport instance from a string or object.
      */
     static createFrom($$source: any = {}): DependencyGraphReport {
-        const $$createField2_0 = $$createType28;
-        const $$createField3_0 = $$createType30;
-        const $$createField4_0 = $$createType32;
+        const $$createField2_0 = $$createType22;
+        const $$createField3_0 = $$createType24;
+        const $$createField4_0 = $$createType26;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("nodes" in $$parsedSource) {
             $$parsedSource["nodes"] = $$createField2_0($$parsedSource["nodes"]);
@@ -1388,7 +1285,7 @@ export class DependencySource {
      * Creates a new DependencySource instance from a string or object.
      */
     static createFrom($$source: any = {}): DependencySource {
-        const $$createField11_0 = $$createType34;
+        const $$createField11_0 = $$createType28;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField11_0($$parsedSource["files"]);
@@ -1474,10 +1371,10 @@ export class DependencyState {
      * Creates a new DependencyState instance from a string or object.
      */
     static createFrom($$source: any = {}): DependencyState {
-        const $$createField6_0 = $$createType36;
-        const $$createField7_0 = $$createType38;
-        const $$createField8_0 = $$createType40;
-        const $$createField9_0 = $$createType42;
+        const $$createField6_0 = $$createType30;
+        const $$createField7_0 = $$createType32;
+        const $$createField8_0 = $$createType34;
+        const $$createField9_0 = $$createType36;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("dependencies" in $$parsedSource) {
             $$parsedSource["dependencies"] = $$createField6_0($$parsedSource["dependencies"]);
@@ -1630,71 +1527,14 @@ export class DependencyWhy {
 }
 
 /**
- * DiagnosticFix è una correzione applicabile al file così come è stato analizzato.
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
  */
-export class DiagnosticFix {
-    "title": string;
-    "edits": EditorTextEdit[];
+export const DiagnosticsReport = langserver$0.DiagnosticsReport;
 
-    /** Creates a new DiagnosticFix instance. */
-    constructor($$source: Partial<DiagnosticFix> = {}) {
-        if (!("title" in $$source)) {
-            this["title"] = "";
-        }
-        if (!("edits" in $$source)) {
-            this["edits"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new DiagnosticFix instance from a string or object.
-     */
-    static createFrom($$source: any = {}): DiagnosticFix {
-        const $$createField1_0 = $$createType15;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("edits" in $$parsedSource) {
-            $$parsedSource["edits"] = $$createField1_0($$parsedSource["edits"]);
-        }
-        return new DiagnosticFix($$parsedSource as Partial<DiagnosticFix>);
-    }
-}
-
-export class DiagnosticsReport {
-    "uri": string;
-    "path": string;
-    "relativePath"?: string;
-    "documentId"?: DocumentID;
-    "diagnostics": EditorDiagnostic[];
-
-    /** Creates a new DiagnosticsReport instance. */
-    constructor($$source: Partial<DiagnosticsReport> = {}) {
-        if (!("uri" in $$source)) {
-            this["uri"] = "";
-        }
-        if (!("path" in $$source)) {
-            this["path"] = "";
-        }
-        if (!("diagnostics" in $$source)) {
-            this["diagnostics"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new DiagnosticsReport instance from a string or object.
-     */
-    static createFrom($$source: any = {}): DiagnosticsReport {
-        const $$createField4_0 = $$createType44;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("diagnostics" in $$parsedSource) {
-            $$parsedSource["diagnostics"] = $$createField4_0($$parsedSource["diagnostics"]);
-        }
-        return new DiagnosticsReport($$parsedSource as Partial<DiagnosticsReport>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type DiagnosticsReport = langserver$0.DiagnosticsReport;
 
 /**
  * DockerOptions completa le configurazioni docker-build e docker-run. I build
@@ -1708,130 +1548,27 @@ export const DockerOptions = run$0.DockerOptions;
  */
 export type DockerOptions = run$0.DockerOptions;
 
-export class Document {
-    "id": DocumentID;
-    "sessionId": SessionID;
-    "uri": string;
-    "path": string;
-    "relativePath": string;
-    "name": string;
-    "language": string;
-    "version": number;
-    "dirty": boolean;
-    "readOnly"?: boolean;
-    "external"?: boolean;
+/**
+ * Core Code Studio types live in internal/ide/workspace so the IDE packages can share them; the aliases keep
+ * the GoIDE bindings and callers unchanged.
+ */
+export const DocumentDiskState = workspace$0.DocumentDiskState;
 
-    /**
-     * MediaType è valorizzato per le immagini (image/png, image/jpeg…); Language è "image".
-     */
-    "mediaType"?: string;
+/**
+ * Core Code Studio types live in internal/ide/workspace so the IDE packages can share them; the aliases keep
+ * the GoIDE bindings and callers unchanged.
+ */
+export type DocumentDiskState = workspace$0.DocumentDiskState;
 
-    /** Creates a new Document instance. */
-    constructor($$source: Partial<Document> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("uri" in $$source)) {
-            this["uri"] = "";
-        }
-        if (!("path" in $$source)) {
-            this["path"] = "";
-        }
-        if (!("relativePath" in $$source)) {
-            this["relativePath"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("language" in $$source)) {
-            this["language"] = "";
-        }
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("dirty" in $$source)) {
-            this["dirty"] = false;
-        }
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const DocumentSymbolsResult = langserver$0.DocumentSymbolsResult;
 
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new Document instance from a string or object.
-     */
-    static createFrom($$source: any = {}): Document {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new Document($$parsedSource as Partial<Document>);
-    }
-}
-
-export class DocumentDiskState {
-    "documentId": DocumentID;
-    "changed": boolean;
-    "content"?: string;
-    "diskToken": string;
-    "modifiedAt": string;
-
-    /** Creates a new DocumentDiskState instance. */
-    constructor($$source: Partial<DocumentDiskState> = {}) {
-        if (!("documentId" in $$source)) {
-            this["documentId"] = "";
-        }
-        if (!("changed" in $$source)) {
-            this["changed"] = false;
-        }
-        if (!("diskToken" in $$source)) {
-            this["diskToken"] = "";
-        }
-        if (!("modifiedAt" in $$source)) {
-            this["modifiedAt"] = "0001-01-01T00:00:00.000Z";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new DocumentDiskState instance from a string or object.
-     */
-    static createFrom($$source: any = {}): DocumentDiskState {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new DocumentDiskState($$parsedSource as Partial<DocumentDiskState>);
-    }
-}
-
-export type DocumentID = string;
-
-export class DocumentSymbolsResult {
-    "version": number;
-    "symbols": SymbolNode[];
-
-    /** Creates a new DocumentSymbolsResult instance. */
-    constructor($$source: Partial<DocumentSymbolsResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("symbols" in $$source)) {
-            this["symbols"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new DocumentSymbolsResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): DocumentSymbolsResult {
-        const $$createField1_0 = $$createType46;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("symbols" in $$parsedSource) {
-            $$parsedSource["symbols"] = $$createField1_0($$parsedSource["symbols"]);
-        }
-        return new DocumentSymbolsResult($$parsedSource as Partial<DocumentSymbolsResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type DocumentSymbolsResult = langserver$0.DocumentSymbolsResult;
 
 /**
  * DocumentationReport è la documentazione del progetto: package Go (go/doc), simboli esportati
@@ -1861,9 +1598,9 @@ export class DocumentationReport {
      * Creates a new DocumentationReport instance from a string or object.
      */
     static createFrom($$source: any = {}): DocumentationReport {
-        const $$createField0_0 = $$createType48;
-        const $$createField1_0 = $$createType50;
-        const $$createField2_0 = $$createType52;
+        const $$createField0_0 = $$createType38;
+        const $$createField1_0 = $$createType40;
+        const $$createField2_0 = $$createType42;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField0_0($$parsedSource["packages"]);
@@ -1901,7 +1638,7 @@ export class DuplicateDependency {
      * Creates a new DuplicateDependency instance from a string or object.
      */
     static createFrom($$source: any = {}): DuplicateDependency {
-        const $$createField1_0 = $$createType54;
+        const $$createField1_0 = $$createType44;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("versions" in $$parsedSource) {
             $$parsedSource["versions"] = $$createField1_0($$parsedSource["versions"]);
@@ -1910,156 +1647,25 @@ export class DuplicateDependency {
     }
 }
 
-export class EditorDiagnostic {
-    "range": EditorRange;
-    "severity": number;
-    "message": string;
-    "source"?: string;
-    "code"?: string;
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const EditorLocation = langserver$0.EditorLocation;
 
-    /**
-     * Suppression e Fixes arrivano solo dai linter: direttiva per ignorare la riga e correzioni proposte.
-     */
-    "suppression"?: string;
-    "fixes"?: DiagnosticFix[];
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type EditorLocation = langserver$0.EditorLocation;
 
-    /** Creates a new EditorDiagnostic instance. */
-    constructor($$source: Partial<EditorDiagnostic> = {}) {
-        if (!("range" in $$source)) {
-            this["range"] = (new EditorRange());
-        }
-        if (!("severity" in $$source)) {
-            this["severity"] = 0;
-        }
-        if (!("message" in $$source)) {
-            this["message"] = "";
-        }
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const EditorRange = langserver$0.EditorRange;
 
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new EditorDiagnostic instance from a string or object.
-     */
-    static createFrom($$source: any = {}): EditorDiagnostic {
-        const $$createField0_0 = $$createType12;
-        const $$createField6_0 = $$createType56;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField0_0($$parsedSource["range"]);
-        }
-        if ("fixes" in $$parsedSource) {
-            $$parsedSource["fixes"] = $$createField6_0($$parsedSource["fixes"]);
-        }
-        return new EditorDiagnostic($$parsedSource as Partial<EditorDiagnostic>);
-    }
-}
-
-export class EditorLocation {
-    "uri": string;
-    "path": string;
-    "relativePath"?: string;
-    "external": boolean;
-    "range": EditorRange;
-    "preview"?: string;
-
-    /**
-     * Usage vale declaration, read, write o import per i risultati di Find Usages.
-     */
-    "usage"?: string;
-
-    /** Creates a new EditorLocation instance. */
-    constructor($$source: Partial<EditorLocation> = {}) {
-        if (!("uri" in $$source)) {
-            this["uri"] = "";
-        }
-        if (!("path" in $$source)) {
-            this["path"] = "";
-        }
-        if (!("external" in $$source)) {
-            this["external"] = false;
-        }
-        if (!("range" in $$source)) {
-            this["range"] = (new EditorRange());
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new EditorLocation instance from a string or object.
-     */
-    static createFrom($$source: any = {}): EditorLocation {
-        const $$createField4_0 = $$createType12;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField4_0($$parsedSource["range"]);
-        }
-        return new EditorLocation($$parsedSource as Partial<EditorLocation>);
-    }
-}
-
-export class EditorRange {
-    "startLine": number;
-    "startColumn": number;
-    "endLine": number;
-    "endColumn": number;
-
-    /** Creates a new EditorRange instance. */
-    constructor($$source: Partial<EditorRange> = {}) {
-        if (!("startLine" in $$source)) {
-            this["startLine"] = 0;
-        }
-        if (!("startColumn" in $$source)) {
-            this["startColumn"] = 0;
-        }
-        if (!("endLine" in $$source)) {
-            this["endLine"] = 0;
-        }
-        if (!("endColumn" in $$source)) {
-            this["endColumn"] = 0;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new EditorRange instance from a string or object.
-     */
-    static createFrom($$source: any = {}): EditorRange {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new EditorRange($$parsedSource as Partial<EditorRange>);
-    }
-}
-
-export class EditorTextEdit {
-    "range": EditorRange;
-    "text": string;
-
-    /** Creates a new EditorTextEdit instance. */
-    constructor($$source: Partial<EditorTextEdit> = {}) {
-        if (!("range" in $$source)) {
-            this["range"] = (new EditorRange());
-        }
-        if (!("text" in $$source)) {
-            this["text"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new EditorTextEdit instance from a string or object.
-     */
-    static createFrom($$source: any = {}): EditorTextEdit {
-        const $$createField0_0 = $$createType12;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField0_0($$parsedSource["range"]);
-        }
-        return new EditorTextEdit($$parsedSource as Partial<EditorTextEdit>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type EditorRange = langserver$0.EditorRange;
 
 /**
  * EnvironmentEntry rappresenta una variabile d'ambiente di una configurazione Run.
@@ -2099,8 +1705,8 @@ export class ErrorFunctionPath {
      * Creates a new ErrorFunctionPath instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorFunctionPath {
-        const $$createField1_0 = $$createType57;
-        const $$createField2_0 = $$createType59;
+        const $$createField1_0 = $$createType45;
+        const $$createField2_0 = $$createType47;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
@@ -2136,7 +1742,7 @@ export class ErrorFunctionReturn {
      * Creates a new ErrorFunctionReturn instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorFunctionReturn {
-        const $$createField0_0 = $$createType57;
+        const $$createField0_0 = $$createType45;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField0_0($$parsedSource["location"]);
@@ -2172,7 +1778,7 @@ export class ErrorHandlingEdit {
      * Creates a new ErrorHandlingEdit instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorHandlingEdit {
-        const $$createField0_0 = $$createType12;
+        const $$createField0_0 = $$createType48;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("range" in $$parsedSource) {
             $$parsedSource["range"] = $$createField0_0($$parsedSource["range"]);
@@ -2215,9 +1821,9 @@ export class ErrorHandlingFinding {
      * Creates a new ErrorHandlingFinding instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorHandlingFinding {
-        const $$createField4_0 = $$createType57;
-        const $$createField5_0 = $$createType57;
-        const $$createField6_0 = $$createType61;
+        const $$createField4_0 = $$createType45;
+        const $$createField5_0 = $$createType45;
+        const $$createField6_0 = $$createType50;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField4_0($$parsedSource["location"]);
@@ -2252,7 +1858,7 @@ export class ErrorHandlingFix {
      * Creates a new ErrorHandlingFix instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorHandlingFix {
-        const $$createField1_0 = $$createType63;
+        const $$createField1_0 = $$createType52;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("edits" in $$parsedSource) {
             $$parsedSource["edits"] = $$createField1_0($$parsedSource["edits"]);
@@ -2282,7 +1888,7 @@ export class ErrorHandlingRef {
      * Creates a new ErrorHandlingRef instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorHandlingRef {
-        const $$createField2_0 = $$createType57;
+        const $$createField2_0 = $$createType45;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField2_0($$parsedSource["location"]);
@@ -2330,10 +1936,10 @@ export class ErrorHandlingReport {
      * Creates a new ErrorHandlingReport instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorHandlingReport {
-        const $$createField0_0 = $$createType50;
-        const $$createField1_0 = $$createType65;
-        const $$createField2_0 = $$createType67;
-        const $$createField3_0 = $$createType69;
+        const $$createField0_0 = $$createType40;
+        const $$createField1_0 = $$createType54;
+        const $$createField2_0 = $$createType56;
+        const $$createField3_0 = $$createType58;
         const $$createField4_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("findings" in $$parsedSource) {
@@ -2416,8 +2022,8 @@ export class ErrorSentinel {
      * Creates a new ErrorSentinel instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorSentinel {
-        const $$createField3_0 = $$createType57;
-        const $$createField4_0 = $$createType71;
+        const $$createField3_0 = $$createType45;
+        const $$createField4_0 = $$createType60;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField3_0($$parsedSource["location"]);
@@ -2477,9 +2083,9 @@ export class ErrorTypeEntry {
      * Creates a new ErrorTypeEntry instance from a string or object.
      */
     static createFrom($$source: any = {}): ErrorTypeEntry {
-        const $$createField2_0 = $$createType57;
+        const $$createField2_0 = $$createType45;
         const $$createField7_0 = $$createType4;
-        const $$createField8_0 = $$createType71;
+        const $$createField8_0 = $$createType60;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("location" in $$parsedSource) {
             $$parsedSource["location"] = $$createField2_0($$parsedSource["location"]);
@@ -2557,58 +2163,6 @@ export type Execution = run$0.Execution;
 export const FileBreakpoints = dap$0.FileBreakpoints;
 export type FileBreakpoints = dap$0.FileBreakpoints;
 
-export class FileChange {
-    "uri": string;
-    "path": string;
-    "relativePath": string;
-    "documentId"?: DocumentID;
-    "edits": EditorTextEdit[];
-    "newContent": string;
-
-    /**
-     * OriginalContent è il testo su cui gopls ha calcolato gli edit: serve all'anteprima per mostrare le righe rimosse.
-     */
-    "originalContent"?: string;
-
-    /**
-     * Created indica un file nuovo: va creato su disco, non esiste un buffer da modificare.
-     */
-    "created"?: boolean;
-
-    /** Creates a new FileChange instance. */
-    constructor($$source: Partial<FileChange> = {}) {
-        if (!("uri" in $$source)) {
-            this["uri"] = "";
-        }
-        if (!("path" in $$source)) {
-            this["path"] = "";
-        }
-        if (!("relativePath" in $$source)) {
-            this["relativePath"] = "";
-        }
-        if (!("edits" in $$source)) {
-            this["edits"] = [];
-        }
-        if (!("newContent" in $$source)) {
-            this["newContent"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new FileChange instance from a string or object.
-     */
-    static createFrom($$source: any = {}): FileChange {
-        const $$createField4_0 = $$createType15;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("edits" in $$parsedSource) {
-            $$parsedSource["edits"] = $$createField4_0($$parsedSource["edits"]);
-        }
-        return new FileChange($$parsedSource as Partial<FileChange>);
-    }
-}
-
 export class FileEntry {
     "name": string;
     "relativePath": string;
@@ -2677,34 +2231,15 @@ export class FindingLocation {
     }
 }
 
-export class FormatResult {
-    "version": number;
-    "edits": EditorTextEdit[];
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const FormatResult = langserver$0.FormatResult;
 
-    /** Creates a new FormatResult instance. */
-    constructor($$source: Partial<FormatResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("edits" in $$source)) {
-            this["edits"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new FormatResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): FormatResult {
-        const $$createField1_0 = $$createType15;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("edits" in $$parsedSource) {
-            $$parsedSource["edits"] = $$createField1_0($$parsedSource["edits"]);
-        }
-        return new FormatResult($$parsedSource as Partial<FormatResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type FormatResult = langserver$0.FormatResult;
 
 export const FunctionBreakpoint = dap$0.FunctionBreakpoint;
 export type FunctionBreakpoint = dap$0.FunctionBreakpoint;
@@ -2776,7 +2311,7 @@ export class FuzzInputContent {
      * Creates a new FuzzInputContent instance from a string or object.
      */
     static createFrom($$source: any = {}): FuzzInputContent {
-        const $$createField0_0 = $$createType73;
+        const $$createField0_0 = $$createType62;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("values" in $$parsedSource) {
             $$parsedSource["values"] = $$createField0_0($$parsedSource["values"]);
@@ -2830,8 +2365,8 @@ export class FuzzTarget {
      * Creates a new FuzzTarget instance from a string or object.
      */
     static createFrom($$source: any = {}): FuzzTarget {
-        const $$createField5_0 = $$createType75;
-        const $$createField6_0 = $$createType75;
+        const $$createField5_0 = $$createType64;
+        const $$createField6_0 = $$createType64;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("seeds" in $$parsedSource) {
             $$parsedSource["seeds"] = $$createField5_0($$parsedSource["seeds"]);
@@ -3132,7 +2667,7 @@ export class GoWorkState {
      * Creates a new GoWorkState instance from a string or object.
      */
     static createFrom($$source: any = {}): GoWorkState {
-        const $$createField2_0 = $$createType77;
+        const $$createField2_0 = $$createType66;
         const $$createField3_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("modules" in $$parsedSource) {
@@ -3183,7 +2718,7 @@ export class GraphRiskMap {
      * Creates a new GraphRiskMap instance from a string or object.
      */
     static createFrom($$source: any = {}): GraphRiskMap {
-        const $$createField0_0 = $$createType79;
+        const $$createField0_0 = $$createType68;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField0_0($$parsedSource["packages"]);
@@ -3232,7 +2767,7 @@ export class GraphSummary {
      * Creates a new GraphSummary instance from a string or object.
      */
     static createFrom($$source: any = {}): GraphSummary {
-        const $$createField2_0 = $$createType80;
+        const $$createField2_0 = $$createType69;
         const $$createField5_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stats" in $$parsedSource) {
@@ -3246,120 +2781,24 @@ export class GraphSummary {
 }
 
 /**
- * HierarchyItem è un nodo di Call Hierarchy o Type Hierarchy.
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
  */
-export class HierarchyItem {
-    "name": string;
-    "detail"?: string;
-    "kind": number;
-    "location": EditorLocation;
+export const HierarchyItem = langserver$0.HierarchyItem;
 
-    /**
-     * CallSites sono le righe delle chiamate (nel chiamante per incoming, nel nodo corrente per outgoing).
-     */
-    "callSites"?: EditorRange[];
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type HierarchyItem = langserver$0.HierarchyItem;
 
-    /**
-     * Token è l'elemento LSP originale, da ripassare a ExpandHierarchy.
-     */
-    "token": string;
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const HighlightsResult = langserver$0.HighlightsResult;
 
-    /** Creates a new HierarchyItem instance. */
-    constructor($$source: Partial<HierarchyItem> = {}) {
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("kind" in $$source)) {
-            this["kind"] = 0;
-        }
-        if (!("location" in $$source)) {
-            this["location"] = (new EditorLocation());
-        }
-        if (!("token" in $$source)) {
-            this["token"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new HierarchyItem instance from a string or object.
-     */
-    static createFrom($$source: any = {}): HierarchyItem {
-        const $$createField3_0 = $$createType81;
-        const $$createField4_0 = $$createType82;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("location" in $$parsedSource) {
-            $$parsedSource["location"] = $$createField3_0($$parsedSource["location"]);
-        }
-        if ("callSites" in $$parsedSource) {
-            $$parsedSource["callSites"] = $$createField4_0($$parsedSource["callSites"]);
-        }
-        return new HierarchyItem($$parsedSource as Partial<HierarchyItem>);
-    }
-}
-
-export class HighlightEntry {
-    "range": EditorRange;
-
-    /**
-     * Kind è text, read o write.
-     */
-    "kind": string;
-
-    /** Creates a new HighlightEntry instance. */
-    constructor($$source: Partial<HighlightEntry> = {}) {
-        if (!("range" in $$source)) {
-            this["range"] = (new EditorRange());
-        }
-        if (!("kind" in $$source)) {
-            this["kind"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new HighlightEntry instance from a string or object.
-     */
-    static createFrom($$source: any = {}): HighlightEntry {
-        const $$createField0_0 = $$createType12;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField0_0($$parsedSource["range"]);
-        }
-        return new HighlightEntry($$parsedSource as Partial<HighlightEntry>);
-    }
-}
-
-export class HighlightsResult {
-    "version": number;
-    "highlights": HighlightEntry[];
-
-    /** Creates a new HighlightsResult instance. */
-    constructor($$source: Partial<HighlightsResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("highlights" in $$source)) {
-            this["highlights"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new HighlightsResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): HighlightsResult {
-        const $$createField1_0 = $$createType84;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("highlights" in $$parsedSource) {
-            $$parsedSource["highlights"] = $$createField1_0($$parsedSource["highlights"]);
-        }
-        return new HighlightsResult($$parsedSource as Partial<HighlightsResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type HighlightsResult = langserver$0.HighlightsResult;
 
 /**
  * HistoryRevision è una versione salvata di un file, senza contenuto.
@@ -3397,35 +2836,15 @@ export class HistoryRevision {
     }
 }
 
-export class HoverResult {
-    "version": number;
-    "markdown": string;
-    "range"?: EditorRange | null;
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const HoverResult = langserver$0.HoverResult;
 
-    /** Creates a new HoverResult instance. */
-    constructor($$source: Partial<HoverResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("markdown" in $$source)) {
-            this["markdown"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new HoverResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): HoverResult {
-        const $$createField2_0 = $$createType13;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField2_0($$parsedSource["range"]);
-        }
-        return new HoverResult($$parsedSource as Partial<HoverResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type HoverResult = langserver$0.HoverResult;
 
 export class IDEExtensionRequest {
     "sessionId": string;
@@ -3470,123 +2889,24 @@ export class IDEExtensionRequest {
 }
 
 /**
- * ImplementationMarker è un marcatore del gutter: un'interfaccia (o un suo metodo) implementata altrove,
- * oppure un tipo (o metodo) che implementa interfacce. Locations sono le destinazioni della navigazione.
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
  */
-export class ImplementationMarker {
-    "line": number;
-    "column": number;
-    "name": string;
+export const ImplementationMarker = langserver$0.ImplementationMarker;
 
-    /**
-     * "implementedBy" oppure "implements"
-     */
-    "direction": string;
-    "locations": EditorLocation[];
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type ImplementationMarker = langserver$0.ImplementationMarker;
 
-    /** Creates a new ImplementationMarker instance. */
-    constructor($$source: Partial<ImplementationMarker> = {}) {
-        if (!("line" in $$source)) {
-            this["line"] = 0;
-        }
-        if (!("column" in $$source)) {
-            this["column"] = 0;
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("direction" in $$source)) {
-            this["direction"] = "";
-        }
-        if (!("locations" in $$source)) {
-            this["locations"] = [];
-        }
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const InlayHintsResult = langserver$0.InlayHintsResult;
 
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ImplementationMarker instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ImplementationMarker {
-        const $$createField4_0 = $$createType85;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("locations" in $$parsedSource) {
-            $$parsedSource["locations"] = $$createField4_0($$parsedSource["locations"]);
-        }
-        return new ImplementationMarker($$parsedSource as Partial<ImplementationMarker>);
-    }
-}
-
-export class InlayHintEntry {
-    "line": number;
-    "column": number;
-    "label": string;
-    "kind": number;
-    "paddingLeft": boolean;
-    "paddingRight": boolean;
-
-    /** Creates a new InlayHintEntry instance. */
-    constructor($$source: Partial<InlayHintEntry> = {}) {
-        if (!("line" in $$source)) {
-            this["line"] = 0;
-        }
-        if (!("column" in $$source)) {
-            this["column"] = 0;
-        }
-        if (!("label" in $$source)) {
-            this["label"] = "";
-        }
-        if (!("kind" in $$source)) {
-            this["kind"] = 0;
-        }
-        if (!("paddingLeft" in $$source)) {
-            this["paddingLeft"] = false;
-        }
-        if (!("paddingRight" in $$source)) {
-            this["paddingRight"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new InlayHintEntry instance from a string or object.
-     */
-    static createFrom($$source: any = {}): InlayHintEntry {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new InlayHintEntry($$parsedSource as Partial<InlayHintEntry>);
-    }
-}
-
-export class InlayHintsResult {
-    "version": number;
-    "hints": InlayHintEntry[];
-
-    /** Creates a new InlayHintsResult instance. */
-    constructor($$source: Partial<InlayHintsResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("hints" in $$source)) {
-            this["hints"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new InlayHintsResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): InlayHintsResult {
-        const $$createField1_0 = $$createType87;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("hints" in $$parsedSource) {
-            $$parsedSource["hints"] = $$createField1_0($$parsedSource["hints"]);
-        }
-        return new InlayHintsResult($$parsedSource as Partial<InlayHintsResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type InlayHintsResult = langserver$0.InlayHintsResult;
 
 /**
  * L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati
@@ -3666,7 +2986,7 @@ export class JavaDebugRequest {
         const $$createField4_0 = $$createType4;
         const $$createField8_0 = $$createType4;
         const $$createField9_0 = $$createType4;
-        const $$createField10_0 = $$createType88;
+        const $$createField10_0 = $$createType70;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("buildArguments" in $$parsedSource) {
             $$parsedSource["buildArguments"] = $$createField4_0($$parsedSource["buildArguments"]);
@@ -3728,8 +3048,8 @@ export class JavaJDKReport {
      * Creates a new JavaJDKReport instance from a string or object.
      */
     static createFrom($$source: any = {}): JavaJDKReport {
-        const $$createField0_0 = $$createType90;
-        const $$createField1_0 = $$createType89;
+        const $$createField0_0 = $$createType72;
+        const $$createField1_0 = $$createType71;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("installed" in $$parsedSource) {
             $$parsedSource["installed"] = $$createField0_0($$parsedSource["installed"]);
@@ -3770,58 +3090,6 @@ export class JavaJFRRecording {
 }
 
 /**
- * LanguageServerFeatures descrive le funzioni opzionali annunciate da gopls all'avvio.
- */
-export class LanguageServerFeatures {
-    "semanticTokens": boolean;
-    "tokenTypes": string[];
-    "tokenModifiers": string[];
-    "inlayHints": boolean;
-    "documentHighlight": boolean;
-    "callHierarchy": boolean;
-
-    /** Creates a new LanguageServerFeatures instance. */
-    constructor($$source: Partial<LanguageServerFeatures> = {}) {
-        if (!("semanticTokens" in $$source)) {
-            this["semanticTokens"] = false;
-        }
-        if (!("tokenTypes" in $$source)) {
-            this["tokenTypes"] = [];
-        }
-        if (!("tokenModifiers" in $$source)) {
-            this["tokenModifiers"] = [];
-        }
-        if (!("inlayHints" in $$source)) {
-            this["inlayHints"] = false;
-        }
-        if (!("documentHighlight" in $$source)) {
-            this["documentHighlight"] = false;
-        }
-        if (!("callHierarchy" in $$source)) {
-            this["callHierarchy"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new LanguageServerFeatures instance from a string or object.
-     */
-    static createFrom($$source: any = {}): LanguageServerFeatures {
-        const $$createField1_0 = $$createType4;
-        const $$createField2_0 = $$createType4;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("tokenTypes" in $$parsedSource) {
-            $$parsedSource["tokenTypes"] = $$createField1_0($$parsedSource["tokenTypes"]);
-        }
-        if ("tokenModifiers" in $$parsedSource) {
-            $$parsedSource["tokenModifiers"] = $$createField2_0($$parsedSource["tokenModifiers"]);
-        }
-        return new LanguageServerFeatures($$parsedSource as Partial<LanguageServerFeatures>);
-    }
-}
-
-/**
  * LanguageServerInfo descrive la disponibilità del server di un linguaggio.
  */
 export const LanguageServerInfo = lsp$0.ServerInfo;
@@ -3843,65 +3111,15 @@ export const LanguageServerSettings = golang$0.GoplsSettings;
  */
 export type LanguageServerSettings = golang$0.GoplsSettings;
 
-export enum LanguageServerState {
-    /**
-     * The Go zero value for the underlying type of the enum.
-     */
-    $zero = "",
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const LanguageServerStatus = langserver$0.LanguageServerStatus;
 
-    LanguageServerStopped = "stopped",
-    LanguageServerStarting = "starting",
-    LanguageServerReady = "ready",
-    LanguageServerCrashed = "crashed",
-    LanguageServerUnavailable = "unavailable",
-};
-
-export class LanguageServerStatus {
-    "sessionId": SessionID;
-
-    /**
-     * Language è il linguaggio servito (es. "go"): una sessione può avere un server per linguaggio.
-     */
-    "language"?: string;
-    "state": LanguageServerState;
-    "binary"?: string;
-    "version"?: string;
-    "pid"?: number;
-    "restarts": number;
-    "error"?: string;
-
-    /**
-     * Features elenca ciò che il gopls in esecuzione supporta davvero: l'editor nasconde il resto.
-     */
-    "features"?: LanguageServerFeatures | null;
-
-    /** Creates a new LanguageServerStatus instance. */
-    constructor($$source: Partial<LanguageServerStatus> = {}) {
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("state" in $$source)) {
-            this["state"] = LanguageServerState.$zero;
-        }
-        if (!("restarts" in $$source)) {
-            this["restarts"] = 0;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new LanguageServerStatus instance from a string or object.
-     */
-    static createFrom($$source: any = {}): LanguageServerStatus {
-        const $$createField8_0 = $$createType92;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("features" in $$parsedSource) {
-            $$parsedSource["features"] = $$createField8_0($$parsedSource["features"]);
-        }
-        return new LanguageServerStatus($$parsedSource as Partial<LanguageServerStatus>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type LanguageServerStatus = langserver$0.LanguageServerStatus;
 
 export class LintResult {
     "linter": string;
@@ -3947,7 +3165,7 @@ export class LintResult {
      * Creates a new LintResult instance from a string or object.
      */
     static createFrom($$source: any = {}): LintResult {
-        const $$createField1_0 = $$createType94;
+        const $$createField1_0 = $$createType74;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("reports" in $$parsedSource) {
             $$parsedSource["reports"] = $$createField1_0($$parsedSource["reports"]);
@@ -4075,7 +3293,7 @@ export class MemoryModelReport {
      * Creates a new MemoryModelReport instance from a string or object.
      */
     static createFrom($$source: any = {}): MemoryModelReport {
-        const $$createField2_0 = $$createType96;
+        const $$createField2_0 = $$createType76;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("groups" in $$parsedSource) {
             $$parsedSource["groups"] = $$createField2_0($$parsedSource["groups"]);
@@ -4225,47 +3443,17 @@ export class NewFile {
     }
 }
 
-export class OpenDocument {
-    "document": Document;
-    "content": string;
-    "diskToken": string;
-    "modifiedAt": string;
+/**
+ * Core Code Studio types live in internal/ide/workspace so the IDE packages can share them; the aliases keep
+ * the GoIDE bindings and callers unchanged.
+ */
+export const OpenDocument = workspace$0.OpenDocument;
 
-    /**
-     * DataURL è il contenuto base64 di un'immagine, per l'anteprima nell'editor.
-     */
-    "dataUrl"?: string;
-
-    /** Creates a new OpenDocument instance. */
-    constructor($$source: Partial<OpenDocument> = {}) {
-        if (!("document" in $$source)) {
-            this["document"] = (new Document());
-        }
-        if (!("content" in $$source)) {
-            this["content"] = "";
-        }
-        if (!("diskToken" in $$source)) {
-            this["diskToken"] = "";
-        }
-        if (!("modifiedAt" in $$source)) {
-            this["modifiedAt"] = "0001-01-01T00:00:00.000Z";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new OpenDocument instance from a string or object.
-     */
-    static createFrom($$source: any = {}): OpenDocument {
-        const $$createField0_0 = $$createType97;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("document" in $$parsedSource) {
-            $$parsedSource["document"] = $$createField0_0($$parsedSource["document"]);
-        }
-        return new OpenDocument($$parsedSource as Partial<OpenDocument>);
-    }
-}
+/**
+ * Core Code Studio types live in internal/ide/workspace so the IDE packages can share them; the aliases keep
+ * the GoIDE bindings and callers unchanged.
+ */
+export type OpenDocument = workspace$0.OpenDocument;
 
 /**
  * PackageHeatmap: metriche statiche dei package e import del progetto, per la heatmap delle dipendenze.
@@ -4290,8 +3478,8 @@ export class PackageHeatmap {
      * Creates a new PackageHeatmap instance from a string or object.
      */
     static createFrom($$source: any = {}): PackageHeatmap {
-        const $$createField0_0 = $$createType99;
-        const $$createField1_0 = $$createType100;
+        const $$createField0_0 = $$createType78;
+        const $$createField1_0 = $$createType79;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("packages" in $$parsedSource) {
             $$parsedSource["packages"] = $$createField0_0($$parsedSource["packages"]);
@@ -4333,7 +3521,7 @@ export class PathComparison {
      * Creates a new PathComparison instance from a string or object.
      */
     static createFrom($$source: any = {}): PathComparison {
-        const $$createField5_0 = $$createType102;
+        const $$createField5_0 = $$createType81;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("differences" in $$parsedSource) {
             $$parsedSource["differences"] = $$createField5_0($$parsedSource["differences"]);
@@ -4636,9 +3824,9 @@ export class ProfileEdge {
      * Creates a new ProfileEdge instance from a string or object.
      */
     static createFrom($$source: any = {}): ProfileEdge {
-        const $$createField0_0 = $$createType103;
-        const $$createField1_0 = $$createType103;
-        const $$createField2_0 = $$createType104;
+        const $$createField0_0 = $$createType82;
+        const $$createField1_0 = $$createType82;
+        const $$createField2_0 = $$createType83;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("caller" in $$parsedSource) {
             $$parsedSource["caller"] = $$createField0_0($$parsedSource["caller"]);
@@ -4721,9 +3909,9 @@ export class ProfileFlame {
      * Creates a new ProfileFlame instance from a string or object.
      */
     static createFrom($$source: any = {}): ProfileFlame {
-        const $$createField0_0 = $$createType103;
-        const $$createField1_0 = $$createType104;
-        const $$createField2_0 = $$createType107;
+        const $$createField0_0 = $$createType82;
+        const $$createField1_0 = $$createType83;
+        const $$createField2_0 = $$createType86;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("function" in $$parsedSource) {
             $$parsedSource["function"] = $$createField0_0($$parsedSource["function"]);
@@ -4802,7 +3990,7 @@ export class ProfileLine {
      * Creates a new ProfileLine instance from a string or object.
      */
     static createFrom($$source: any = {}): ProfileLine {
-        const $$createField3_0 = $$createType104;
+        const $$createField3_0 = $$createType83;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("value" in $$parsedSource) {
             $$parsedSource["value"] = $$createField3_0($$parsedSource["value"]);
@@ -4838,9 +4026,9 @@ export class ProfileNode {
      * Creates a new ProfileNode instance from a string or object.
      */
     static createFrom($$source: any = {}): ProfileNode {
-        const $$createField0_0 = $$createType103;
-        const $$createField1_0 = $$createType104;
-        const $$createField2_0 = $$createType104;
+        const $$createField0_0 = $$createType82;
+        const $$createField1_0 = $$createType83;
+        const $$createField2_0 = $$createType83;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("function" in $$parsedSource) {
             $$parsedSource["function"] = $$createField0_0($$parsedSource["function"]);
@@ -4931,14 +4119,14 @@ export class ProfileReport {
      * Creates a new ProfileReport instance from a string or object.
      */
     static createFrom($$source: any = {}): ProfileReport {
-        const $$createField4_0 = $$createType108;
-        const $$createField7_0 = $$createType109;
-        const $$createField8_0 = $$createType104;
-        const $$createField10_0 = $$createType111;
-        const $$createField11_0 = $$createType111;
-        const $$createField12_0 = $$createType106;
-        const $$createField13_0 = $$createType113;
-        const $$createField14_0 = $$createType115;
+        const $$createField4_0 = $$createType87;
+        const $$createField7_0 = $$createType88;
+        const $$createField8_0 = $$createType83;
+        const $$createField10_0 = $$createType90;
+        const $$createField11_0 = $$createType90;
+        const $$createField12_0 = $$createType85;
+        const $$createField13_0 = $$createType92;
+        const $$createField14_0 = $$createType94;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("periodType" in $$parsedSource) {
             $$parsedSource["periodType"] = $$createField4_0($$parsedSource["periodType"]);
@@ -4996,56 +4184,6 @@ export class ProfileSampleType {
     }
 }
 
-export class Project {
-    "id": string;
-    "name": string;
-    "rootPath": string;
-    "realPath": string;
-    "authorization": AuthorizationState;
-
-    /**
-     * Units sono le unità di build rilevate dai language adapter (multi-linguaggio): moduli Go,
-     * go.work e cartelle sciolte si leggono da qui (goLayoutOf), non da campi dedicati.
-     */
-    "units": project$0.Unit[];
-
-    /** Creates a new Project instance. */
-    constructor($$source: Partial<Project> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("rootPath" in $$source)) {
-            this["rootPath"] = "";
-        }
-        if (!("realPath" in $$source)) {
-            this["realPath"] = "";
-        }
-        if (!("authorization" in $$source)) {
-            this["authorization"] = AuthorizationState.$zero;
-        }
-        if (!("units" in $$source)) {
-            this["units"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new Project instance from a string or object.
-     */
-    static createFrom($$source: any = {}): Project {
-        const $$createField5_0 = $$createType117;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("units" in $$parsedSource) {
-            $$parsedSource["units"] = $$createField5_0($$parsedSource["units"]);
-        }
-        return new Project($$parsedSource as Partial<Project>);
-    }
-}
-
 /**
  * ProjectService è un servizio esterno usato dal progetto, riconosciuto dalle dipendenze dirette di
  * un'unità (go.mod, manifest Python…) oppure dalla sua configurazione (Spring `spring.datasource.*`).
@@ -5086,7 +4224,7 @@ export class ProjectService {
      */
     static createFrom($$source: any = {}): ProjectService {
         const $$createField3_0 = $$createType4;
-        const $$createField4_0 = $$createType119;
+        const $$createField4_0 = $$createType96;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("modules" in $$parsedSource) {
             $$parsedSource["modules"] = $$createField3_0($$parsedSource["modules"]);
@@ -5170,7 +4308,7 @@ export class ProjectTemplateList {
      * Creates a new ProjectTemplateList instance from a string or object.
      */
     static createFrom($$source: any = {}): ProjectTemplateList {
-        const $$createField0_0 = $$createType121;
+        const $$createField0_0 = $$createType98;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("templates" in $$parsedSource) {
             $$parsedSource["templates"] = $$createField0_0($$parsedSource["templates"]);
@@ -5223,7 +4361,7 @@ export class PythonDebugRequest {
     static createFrom($$source: any = {}): PythonDebugRequest {
         const $$createField8_0 = $$createType4;
         const $$createField11_0 = $$createType4;
-        const $$createField12_0 = $$createType88;
+        const $$createField12_0 = $$createType70;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("targets" in $$parsedSource) {
             $$parsedSource["targets"] = $$createField8_0($$parsedSource["targets"]);
@@ -5280,7 +4418,7 @@ export class PythonInterpreterReport {
      * Creates a new PythonInterpreterReport instance from a string or object.
      */
     static createFrom($$source: any = {}): PythonInterpreterReport {
-        const $$createField0_0 = $$createType123;
+        const $$createField0_0 = $$createType100;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("installed" in $$parsedSource) {
             $$parsedSource["installed"] = $$createField0_0($$parsedSource["installed"]);
@@ -5334,7 +4472,7 @@ export class PythonUnitDependencies {
      * Creates a new PythonUnitDependencies instance from a string or object.
      */
     static createFrom($$source: any = {}): PythonUnitDependencies {
-        const $$createField4_0 = $$createType125;
+        const $$createField4_0 = $$createType102;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("dependencies" in $$parsedSource) {
             $$parsedSource["dependencies"] = $$createField4_0($$parsedSource["dependencies"]);
@@ -5344,48 +4482,14 @@ export class PythonUnitDependencies {
 }
 
 /**
- * QuickDefinitionResult è il sorgente della dichiarazione da mostrare in popup, senza lasciare il file corrente.
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
  */
-export class QuickDefinitionResult {
-    "found": boolean;
-    "location": EditorLocation;
-    "code": string;
-    "startLine": number;
-    "truncated": boolean;
+export const QuickDefinitionResult = langserver$0.QuickDefinitionResult;
 
-    /** Creates a new QuickDefinitionResult instance. */
-    constructor($$source: Partial<QuickDefinitionResult> = {}) {
-        if (!("found" in $$source)) {
-            this["found"] = false;
-        }
-        if (!("location" in $$source)) {
-            this["location"] = (new EditorLocation());
-        }
-        if (!("code" in $$source)) {
-            this["code"] = "";
-        }
-        if (!("startLine" in $$source)) {
-            this["startLine"] = 0;
-        }
-        if (!("truncated" in $$source)) {
-            this["truncated"] = false;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new QuickDefinitionResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): QuickDefinitionResult {
-        const $$createField1_0 = $$createType81;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("location" in $$parsedSource) {
-            $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
-        }
-        return new QuickDefinitionResult($$parsedSource as Partial<QuickDefinitionResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type QuickDefinitionResult = langserver$0.QuickDefinitionResult;
 
 export class QuickOpenResult {
     "name": string;
@@ -5513,63 +4617,15 @@ export class RecoveredBuffer {
     }
 }
 
-export class RecursiveCall {
-    "function": string;
-    "range": EditorRange;
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const RecursiveCallsResult = langserver$0.RecursiveCallsResult;
 
-    /** Creates a new RecursiveCall instance. */
-    constructor($$source: Partial<RecursiveCall> = {}) {
-        if (!("function" in $$source)) {
-            this["function"] = "";
-        }
-        if (!("range" in $$source)) {
-            this["range"] = (new EditorRange());
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new RecursiveCall instance from a string or object.
-     */
-    static createFrom($$source: any = {}): RecursiveCall {
-        const $$createField1_0 = $$createType12;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField1_0($$parsedSource["range"]);
-        }
-        return new RecursiveCall($$parsedSource as Partial<RecursiveCall>);
-    }
-}
-
-export class RecursiveCallsResult {
-    "version": number;
-    "calls": RecursiveCall[];
-
-    /** Creates a new RecursiveCallsResult instance. */
-    constructor($$source: Partial<RecursiveCallsResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("calls" in $$source)) {
-            this["calls"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new RecursiveCallsResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): RecursiveCallsResult {
-        const $$createField1_0 = $$createType127;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("calls" in $$parsedSource) {
-            $$parsedSource["calls"] = $$createField1_0($$parsedSource["calls"]);
-        }
-        return new RecursiveCallsResult($$parsedSource as Partial<RecursiveCallsResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type RecursiveCallsResult = langserver$0.RecursiveCallsResult;
 
 /**
  * RemoteTarget è un ambiente in cui eseguire run, test e comandi: distro WSL, host SSH o container.
@@ -5581,38 +4637,15 @@ export const RemoteTarget = remote$0.Target;
  */
 export type RemoteTarget = remote$0.Target;
 
-export class RenameTarget {
-    "version": number;
-    "range": EditorRange;
-    "placeholder": string;
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const RenameTarget = langserver$0.RenameTarget;
 
-    /** Creates a new RenameTarget instance. */
-    constructor($$source: Partial<RenameTarget> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("range" in $$source)) {
-            this["range"] = (new EditorRange());
-        }
-        if (!("placeholder" in $$source)) {
-            this["placeholder"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new RenameTarget instance from a string or object.
-     */
-    static createFrom($$source: any = {}): RenameTarget {
-        const $$createField1_0 = $$createType12;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField1_0($$parsedSource["range"]);
-        }
-        return new RenameTarget($$parsedSource as Partial<RenameTarget>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type RenameTarget = langserver$0.RenameTarget;
 
 export class RunConfiguration {
     "language"?: string;
@@ -5755,13 +4788,13 @@ export class RunConfiguration {
         const $$createField10_0 = $$createType4;
         const $$createField11_0 = $$createType4;
         const $$createField12_0 = $$createType4;
-        const $$createField13_0 = $$createType129;
-        const $$createField14_0 = $$createType130;
+        const $$createField13_0 = $$createType104;
+        const $$createField14_0 = $$createType105;
         const $$createField21_0 = $$createType4;
         const $$createField23_0 = $$createType4;
         const $$createField24_0 = $$createType4;
         const $$createField25_0 = $$createType4;
-        const $$createField30_0 = $$createType132;
+        const $$createField30_0 = $$createType107;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField7_0($$parsedSource["files"]);
@@ -5922,10 +4955,10 @@ export class RunRequest {
         const $$createField7_0 = $$createType4;
         const $$createField8_0 = $$createType4;
         const $$createField9_0 = $$createType4;
-        const $$createField10_0 = $$createType88;
-        const $$createField11_0 = $$createType130;
+        const $$createField10_0 = $$createType70;
+        const $$createField11_0 = $$createType105;
         const $$createField12_0 = $$createType4;
-        const $$createField13_0 = $$createType132;
+        const $$createField13_0 = $$createType107;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("extraTargets" in $$parsedSource) {
             $$parsedSource["extraTargets"] = $$createField5_0($$parsedSource["extraTargets"]);
@@ -6033,7 +5066,7 @@ export class RustDebugRequest {
     static createFrom($$source: any = {}): RustDebugRequest {
         const $$createField7_0 = $$createType4;
         const $$createField14_0 = $$createType4;
-        const $$createField15_0 = $$createType88;
+        const $$createField15_0 = $$createType70;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("features" in $$parsedSource) {
             $$parsedSource["features"] = $$createField7_0($$parsedSource["features"]);
@@ -6089,7 +5122,7 @@ export class RustToolchainReport {
      * Creates a new RustToolchainReport instance from a string or object.
      */
     static createFrom($$source: any = {}): RustToolchainReport {
-        const $$createField0_0 = $$createType134;
+        const $$createField0_0 = $$createType109;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("installed" in $$parsedSource) {
             $$parsedSource["installed"] = $$createField0_0($$parsedSource["installed"]);
@@ -6212,7 +5245,7 @@ export class SearchResult {
      * Creates a new SearchResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SearchResult {
-        const $$createField0_0 = $$createType136;
+        const $$createField0_0 = $$createType111;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("matches" in $$parsedSource) {
             $$parsedSource["matches"] = $$createField0_0($$parsedSource["matches"]);
@@ -6251,8 +5284,8 @@ export class SecurityExposure {
      * Creates a new SecurityExposure instance from a string or object.
      */
     static createFrom($$source: any = {}): SecurityExposure {
-        const $$createField2_0 = $$createType138;
-        const $$createField3_0 = $$createType138;
+        const $$createField2_0 = $$createType113;
+        const $$createField3_0 = $$createType113;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("public" in $$parsedSource) {
             $$parsedSource["public"] = $$createField2_0($$parsedSource["public"]);
@@ -6284,34 +5317,15 @@ export const SecurityReport = security$0.Report;
  */
 export type SecurityReport = security$0.Report;
 
-export class SemanticTokensResult {
-    "version": number;
-    "data": number[];
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const SemanticTokensResult = langserver$0.SemanticTokensResult;
 
-    /** Creates a new SemanticTokensResult instance. */
-    constructor($$source: Partial<SemanticTokensResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("data" in $$source)) {
-            this["data"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SemanticTokensResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SemanticTokensResult {
-        const $$createField1_0 = $$createType139;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("data" in $$parsedSource) {
-            $$parsedSource["data"] = $$createField1_0($$parsedSource["data"]);
-        }
-        return new SemanticTokensResult($$parsedSource as Partial<SemanticTokensResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type SemanticTokensResult = langserver$0.SemanticTokensResult;
 
 /**
  * ServerInstallPreview è ciò che la UI mostra prima di chiedere conferma: il comando esatto.
@@ -6323,47 +5337,17 @@ export const ServerInstallPreview = lsp$0.InstallPlan;
  */
 export type ServerInstallPreview = lsp$0.InstallPlan;
 
-export class Session {
-    "id": SessionID;
-    "project": Project;
+/**
+ * Core Code Studio types live in internal/ide/workspace so the IDE packages can share them; the aliases keep
+ * the GoIDE bindings and callers unchanged.
+ */
+export const Session = workspace$0.Session;
 
-    /**
-     * WorkspaceID è il workspace Code Studio che contiene la sessione, indipendente dai workspace API di adOmnia.
-     */
-    "workspaceId"?: string;
-    "openedAt": string;
-    "updatedAt": string;
-
-    /** Creates a new Session instance. */
-    constructor($$source: Partial<Session> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("project" in $$source)) {
-            this["project"] = (new Project());
-        }
-        if (!("openedAt" in $$source)) {
-            this["openedAt"] = "0001-01-01T00:00:00.000Z";
-        }
-        if (!("updatedAt" in $$source)) {
-            this["updatedAt"] = "0001-01-01T00:00:00.000Z";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new Session instance from a string or object.
-     */
-    static createFrom($$source: any = {}): Session {
-        const $$createField1_0 = $$createType140;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("project" in $$parsedSource) {
-            $$parsedSource["project"] = $$createField1_0($$parsedSource["project"]);
-        }
-        return new Session($$parsedSource as Partial<Session>);
-    }
-}
+/**
+ * Core Code Studio types live in internal/ide/workspace so the IDE packages can share them; the aliases keep
+ * the GoIDE bindings and callers unchanged.
+ */
+export type Session = workspace$0.Session;
 
 export type SessionID = run$0.SessionID;
 
@@ -6436,13 +5420,13 @@ export class SessionView {
      */
     static createFrom($$source: any = {}): SessionView {
         const $$createField0_0 = $$createType4;
-        const $$createField10_0 = $$createType142;
-        const $$createField11_0 = $$createType144;
-        const $$createField13_0 = $$createType147;
-        const $$createField14_0 = $$createType149;
+        const $$createField10_0 = $$createType115;
+        const $$createField11_0 = $$createType117;
+        const $$createField13_0 = $$createType120;
+        const $$createField14_0 = $$createType122;
         const $$createField16_0 = $$createType4;
-        const $$createField17_0 = $$createType151;
-        const $$createField18_0 = $$createType153;
+        const $$createField17_0 = $$createType124;
+        const $$createField18_0 = $$createType126;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("openPaths" in $$parsedSource) {
             $$parsedSource["openPaths"] = $$createField0_0($$parsedSource["openPaths"]);
@@ -6544,8 +5528,8 @@ export class ShutdownReport {
      * Creates a new ShutdownReport instance from a string or object.
      */
     static createFrom($$source: any = {}): ShutdownReport {
-        const $$createField3_0 = $$createType154;
-        const $$createField4_0 = $$createType156;
+        const $$createField3_0 = $$createType127;
+        const $$createField4_0 = $$createType129;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("shutdown" in $$parsedSource) {
             $$parsedSource["shutdown"] = $$createField3_0($$parsedSource["shutdown"]);
@@ -6557,94 +5541,15 @@ export class ShutdownReport {
     }
 }
 
-export class SignatureEntry {
-    "label": string;
-    "documentation"?: string;
-    "parameters": SignatureParameter[];
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const SignatureResult = langserver$0.SignatureResult;
 
-    /** Creates a new SignatureEntry instance. */
-    constructor($$source: Partial<SignatureEntry> = {}) {
-        if (!("label" in $$source)) {
-            this["label"] = "";
-        }
-        if (!("parameters" in $$source)) {
-            this["parameters"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SignatureEntry instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SignatureEntry {
-        const $$createField2_0 = $$createType158;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("parameters" in $$parsedSource) {
-            $$parsedSource["parameters"] = $$createField2_0($$parsedSource["parameters"]);
-        }
-        return new SignatureEntry($$parsedSource as Partial<SignatureEntry>);
-    }
-}
-
-export class SignatureParameter {
-    "label": string;
-    "documentation"?: string;
-
-    /** Creates a new SignatureParameter instance. */
-    constructor($$source: Partial<SignatureParameter> = {}) {
-        if (!("label" in $$source)) {
-            this["label"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SignatureParameter instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SignatureParameter {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new SignatureParameter($$parsedSource as Partial<SignatureParameter>);
-    }
-}
-
-export class SignatureResult {
-    "version": number;
-    "signatures": SignatureEntry[];
-    "activeSignature": number;
-    "activeParameter": number;
-
-    /** Creates a new SignatureResult instance. */
-    constructor($$source: Partial<SignatureResult> = {}) {
-        if (!("version" in $$source)) {
-            this["version"] = 0;
-        }
-        if (!("signatures" in $$source)) {
-            this["signatures"] = [];
-        }
-        if (!("activeSignature" in $$source)) {
-            this["activeSignature"] = 0;
-        }
-        if (!("activeParameter" in $$source)) {
-            this["activeParameter"] = 0;
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SignatureResult instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SignatureResult {
-        const $$createField1_0 = $$createType160;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("signatures" in $$parsedSource) {
-            $$parsedSource["signatures"] = $$createField1_0($$parsedSource["signatures"]);
-        }
-        return new SignatureResult($$parsedSource as Partial<SignatureResult>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type SignatureResult = langserver$0.SignatureResult;
 
 /**
  * SonarConfig è la configurazione non segreta di una sessione (il token non è mai qui).
@@ -6768,9 +5673,9 @@ export class SonarScanResult {
      * Creates a new SonarScanResult instance from a string or object.
      */
     static createFrom($$source: any = {}): SonarScanResult {
-        const $$createField2_0 = $$createType162;
-        const $$createField5_0 = $$createType80;
-        const $$createField6_0 = $$createType80;
+        const $$createField2_0 = $$createType131;
+        const $$createField5_0 = $$createType69;
+        const $$createField6_0 = $$createType69;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("issues" in $$parsedSource) {
             $$parsedSource["issues"] = $$createField2_0($$parsedSource["issues"]);
@@ -6886,8 +5791,8 @@ export class StartupReport {
      * Creates a new StartupReport instance from a string or object.
      */
     static createFrom($$source: any = {}): StartupReport {
-        const $$createField4_0 = $$createType156;
-        const $$createField5_0 = $$createType164;
+        const $$createField4_0 = $$createType129;
+        const $$createField5_0 = $$createType133;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("events" in $$parsedSource) {
             $$parsedSource["events"] = $$createField4_0($$parsedSource["events"]);
@@ -6955,59 +5860,12 @@ export class StudioWorkspaces {
      * Creates a new StudioWorkspaces instance from a string or object.
      */
     static createFrom($$source: any = {}): StudioWorkspaces {
-        const $$createField0_0 = $$createType166;
+        const $$createField0_0 = $$createType135;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("workspaces" in $$parsedSource) {
             $$parsedSource["workspaces"] = $$createField0_0($$parsedSource["workspaces"]);
         }
         return new StudioWorkspaces($$parsedSource as Partial<StudioWorkspaces>);
-    }
-}
-
-export class SymbolNode {
-    "name": string;
-    "detail"?: string;
-    "kind": number;
-    "range": EditorRange;
-    "selectionRange": EditorRange;
-    "children"?: SymbolNode[];
-
-    /** Creates a new SymbolNode instance. */
-    constructor($$source: Partial<SymbolNode> = {}) {
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("kind" in $$source)) {
-            this["kind"] = 0;
-        }
-        if (!("range" in $$source)) {
-            this["range"] = (new EditorRange());
-        }
-        if (!("selectionRange" in $$source)) {
-            this["selectionRange"] = (new EditorRange());
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new SymbolNode instance from a string or object.
-     */
-    static createFrom($$source: any = {}): SymbolNode {
-        const $$createField3_0 = $$createType12;
-        const $$createField4_0 = $$createType12;
-        const $$createField5_0 = $$createType46;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("range" in $$parsedSource) {
-            $$parsedSource["range"] = $$createField3_0($$parsedSource["range"]);
-        }
-        if ("selectionRange" in $$parsedSource) {
-            $$parsedSource["selectionRange"] = $$createField4_0($$parsedSource["selectionRange"]);
-        }
-        if ("children" in $$parsedSource) {
-            $$parsedSource["children"] = $$createField5_0($$parsedSource["children"]);
-        }
-        return new SymbolNode($$parsedSource as Partial<SymbolNode>);
     }
 }
 
@@ -7109,10 +5967,10 @@ export class TestRunSnapshot {
      * Creates a new TestRunSnapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): TestRunSnapshot {
-        const $$createField2_0 = $$createType167;
-        const $$createField7_0 = $$createType168;
-        const $$createField8_0 = $$createType170;
-        const $$createField12_0 = $$createType172;
+        const $$createField2_0 = $$createType136;
+        const $$createField7_0 = $$createType137;
+        const $$createField8_0 = $$createType139;
+        const $$createField12_0 = $$createType141;
         const $$createField13_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
@@ -7226,7 +6084,7 @@ export class TraceEvent {
      * Creates a new TraceEvent instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceEvent {
-        const $$createField4_0 = $$createType174;
+        const $$createField4_0 = $$createType143;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stack" in $$parsedSource) {
             $$parsedSource["stack"] = $$createField4_0($$parsedSource["stack"]);
@@ -7314,8 +6172,8 @@ export class TraceGoroutine {
      * Creates a new TraceGoroutine instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceGoroutine {
-        const $$createField4_0 = $$createType174;
-        const $$createField5_0 = $$createType176;
+        const $$createField4_0 = $$createType143;
+        const $$createField5_0 = $$createType145;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("startStack" in $$parsedSource) {
             $$parsedSource["startStack"] = $$createField4_0($$parsedSource["startStack"]);
@@ -7354,7 +6212,7 @@ export class TraceProc {
      * Creates a new TraceProc instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceProc {
-        const $$createField2_0 = $$createType176;
+        const $$createField2_0 = $$createType145;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("spans" in $$parsedSource) {
             $$parsedSource["spans"] = $$createField2_0($$parsedSource["spans"]);
@@ -7396,7 +6254,7 @@ export class TraceRange {
      * Creates a new TraceRange instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceRange {
-        const $$createField5_0 = $$createType174;
+        const $$createField5_0 = $$createType143;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stack" in $$parsedSource) {
             $$parsedSource["stack"] = $$createField5_0($$parsedSource["stack"]);
@@ -7453,11 +6311,11 @@ export class TraceReport {
      * Creates a new TraceReport instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceReport {
-        const $$createField3_0 = $$createType178;
-        const $$createField4_0 = $$createType180;
-        const $$createField5_0 = $$createType182;
-        const $$createField6_0 = $$createType184;
-        const $$createField7_0 = $$createType185;
+        const $$createField3_0 = $$createType147;
+        const $$createField4_0 = $$createType149;
+        const $$createField5_0 = $$createType151;
+        const $$createField6_0 = $$createType153;
+        const $$createField7_0 = $$createType154;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("goroutines" in $$parsedSource) {
             $$parsedSource["goroutines"] = $$createField3_0($$parsedSource["goroutines"]);
@@ -7507,7 +6365,7 @@ export class TraceSpan {
      * Creates a new TraceSpan instance from a string or object.
      */
     static createFrom($$source: any = {}): TraceSpan {
-        const $$createField4_0 = $$createType174;
+        const $$createField4_0 = $$createType143;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stack" in $$parsedSource) {
             $$parsedSource["stack"] = $$createField4_0($$parsedSource["stack"]);
@@ -7815,7 +6673,7 @@ export class VCSStatus {
     static createFrom($$source: any = {}): VCSStatus {
         const $$createField0_0 = $$createType4;
         const $$createField8_0 = $$createType4;
-        const $$createField9_0 = $$createType187;
+        const $$createField9_0 = $$createType156;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("repositories" in $$parsedSource) {
             $$parsedSource["repositories"] = $$createField0_0($$parsedSource["repositories"]);
@@ -7962,7 +6820,7 @@ export class WebDebugRequest {
     static createFrom($$source: any = {}): WebDebugRequest {
         const $$createField4_0 = $$createType4;
         const $$createField5_0 = $$createType4;
-        const $$createField7_0 = $$createType88;
+        const $$createField7_0 = $$createType70;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("runtimeArgs" in $$parsedSource) {
             $$parsedSource["runtimeArgs"] = $$createField4_0($$parsedSource["runtimeArgs"]);
@@ -8022,11 +6880,11 @@ export class WebProjectReport {
      * Creates a new WebProjectReport instance from a string or object.
      */
     static createFrom($$source: any = {}): WebProjectReport {
-        const $$createField0_0 = $$createType189;
-        const $$createField1_0 = $$createType190;
-        const $$createField2_0 = $$createType192;
-        const $$createField3_0 = $$createType194;
-        const $$createField4_0 = $$createType196;
+        const $$createField0_0 = $$createType158;
+        const $$createField1_0 = $$createType159;
+        const $$createField2_0 = $$createType161;
+        const $$createField3_0 = $$createType163;
+        const $$createField4_0 = $$createType165;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("targets" in $$parsedSource) {
             $$parsedSource["targets"] = $$createField0_0($$parsedSource["targets"]);
@@ -8047,31 +6905,15 @@ export class WebProjectReport {
     }
 }
 
-export class WorkspaceChange {
-    "label"?: string;
-    "files": FileChange[];
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const WorkspaceChange = langserver$0.WorkspaceChange;
 
-    /** Creates a new WorkspaceChange instance. */
-    constructor($$source: Partial<WorkspaceChange> = {}) {
-        if (!("files" in $$source)) {
-            this["files"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new WorkspaceChange instance from a string or object.
-     */
-    static createFrom($$source: any = {}): WorkspaceChange {
-        const $$createField1_0 = $$createType198;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("files" in $$parsedSource) {
-            $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
-        }
-        return new WorkspaceChange($$parsedSource as Partial<WorkspaceChange>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type WorkspaceChange = langserver$0.WorkspaceChange;
 
 /**
  * WorkspaceModule è un modulo del progetto con i moduli dello stesso progetto che richiede.
@@ -8134,39 +6976,15 @@ export class WorkspaceModule {
     }
 }
 
-export class WorkspaceSymbol {
-    "name": string;
-    "kind": number;
-    "container"?: string;
-    "location": EditorLocation;
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const WorkspaceSymbol = langserver$0.WorkspaceSymbol;
 
-    /** Creates a new WorkspaceSymbol instance. */
-    constructor($$source: Partial<WorkspaceSymbol> = {}) {
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("kind" in $$source)) {
-            this["kind"] = 0;
-        }
-        if (!("location" in $$source)) {
-            this["location"] = (new EditorLocation());
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new WorkspaceSymbol instance from a string or object.
-     */
-    static createFrom($$source: any = {}): WorkspaceSymbol {
-        const $$createField3_0 = $$createType81;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("location" in $$parsedSource) {
-            $$parsedSource["location"] = $$createField3_0($$parsedSource["location"]);
-        }
-        return new WorkspaceSymbol($$parsedSource as Partial<WorkspaceSymbol>);
-    }
-}
+/**
+ * Language server types live in internal/ide/langserver; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type WorkspaceSymbol = langserver$0.WorkspaceSymbol;
 
 // Private type creation functions
 const $$createType0 = apicontract$0.Issue.createFrom;
@@ -8181,190 +6999,157 @@ const $$createType8 = BinarySizeChange.createFrom;
 const $$createType9 = $Create.Array($$createType8);
 const $$createType10 = language$0.Info.createFrom;
 const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = EditorRange.createFrom;
-const $$createType13 = $Create.Nullable($$createType12);
-const $$createType14 = EditorTextEdit.createFrom;
+const $$createType12 = CoverageBlock.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = CoverageFunction.createFrom;
 const $$createType15 = $Create.Array($$createType14);
-const $$createType16 = CompletionEntry.createFrom;
+const $$createType16 = CoverageBranch.createFrom;
 const $$createType17 = $Create.Array($$createType16);
-const $$createType18 = CoverageBlock.createFrom;
+const $$createType18 = CoverageFile.createFrom;
 const $$createType19 = $Create.Array($$createType18);
-const $$createType20 = CoverageFunction.createFrom;
-const $$createType21 = $Create.Array($$createType20);
-const $$createType22 = CoverageBranch.createFrom;
-const $$createType23 = $Create.Array($$createType22);
-const $$createType24 = CoverageFile.createFrom;
-const $$createType25 = $Create.Array($$createType24);
-const $$createType26 = Session.createFrom;
-const $$createType27 = DependencyGraphNode.createFrom;
+const $$createType20 = workspace$0.Session.createFrom;
+const $$createType21 = DependencyGraphNode.createFrom;
+const $$createType22 = $Create.Array($$createType21);
+const $$createType23 = DependencyEdge.createFrom;
+const $$createType24 = $Create.Array($$createType23);
+const $$createType25 = DuplicateDependency.createFrom;
+const $$createType26 = $Create.Array($$createType25);
+const $$createType27 = DependencySourceFile.createFrom;
 const $$createType28 = $Create.Array($$createType27);
-const $$createType29 = DependencyEdge.createFrom;
+const $$createType29 = GoDependency.createFrom;
 const $$createType30 = $Create.Array($$createType29);
-const $$createType31 = DuplicateDependency.createFrom;
+const $$createType31 = GoReplacement.createFrom;
 const $$createType32 = $Create.Array($$createType31);
-const $$createType33 = DependencySourceFile.createFrom;
+const $$createType33 = GoExclusion.createFrom;
 const $$createType34 = $Create.Array($$createType33);
-const $$createType35 = GoDependency.createFrom;
+const $$createType35 = GoRetraction.createFrom;
 const $$createType36 = $Create.Array($$createType35);
-const $$createType37 = GoReplacement.createFrom;
+const $$createType37 = golang$0.PackageDoc.createFrom;
 const $$createType38 = $Create.Array($$createType37);
-const $$createType39 = GoExclusion.createFrom;
+const $$createType39 = ErrorHandlingFinding.createFrom;
 const $$createType40 = $Create.Array($$createType39);
-const $$createType41 = GoRetraction.createFrom;
+const $$createType41 = protodoc$0.File.createFrom;
 const $$createType42 = $Create.Array($$createType41);
-const $$createType43 = EditorDiagnostic.createFrom;
+const $$createType43 = DependencyVersionUse.createFrom;
 const $$createType44 = $Create.Array($$createType43);
-const $$createType45 = SymbolNode.createFrom;
-const $$createType46 = $Create.Array($$createType45);
-const $$createType47 = golang$0.PackageDoc.createFrom;
-const $$createType48 = $Create.Array($$createType47);
-const $$createType49 = ErrorHandlingFinding.createFrom;
-const $$createType50 = $Create.Array($$createType49);
-const $$createType51 = protodoc$0.File.createFrom;
+const $$createType45 = ErrorLocation.createFrom;
+const $$createType46 = ErrorFunctionReturn.createFrom;
+const $$createType47 = $Create.Array($$createType46);
+const $$createType48 = langserver$0.EditorRange.createFrom;
+const $$createType49 = ErrorHandlingFix.createFrom;
+const $$createType50 = $Create.Nullable($$createType49);
+const $$createType51 = ErrorHandlingEdit.createFrom;
 const $$createType52 = $Create.Array($$createType51);
-const $$createType53 = DependencyVersionUse.createFrom;
+const $$createType53 = ErrorSentinel.createFrom;
 const $$createType54 = $Create.Array($$createType53);
-const $$createType55 = DiagnosticFix.createFrom;
+const $$createType55 = ErrorTypeEntry.createFrom;
 const $$createType56 = $Create.Array($$createType55);
-const $$createType57 = ErrorLocation.createFrom;
-const $$createType58 = ErrorFunctionReturn.createFrom;
-const $$createType59 = $Create.Array($$createType58);
-const $$createType60 = ErrorHandlingFix.createFrom;
-const $$createType61 = $Create.Nullable($$createType60);
-const $$createType62 = ErrorHandlingEdit.createFrom;
-const $$createType63 = $Create.Array($$createType62);
-const $$createType64 = ErrorSentinel.createFrom;
-const $$createType65 = $Create.Array($$createType64);
-const $$createType66 = ErrorTypeEntry.createFrom;
-const $$createType67 = $Create.Array($$createType66);
-const $$createType68 = ErrorFunctionPath.createFrom;
-const $$createType69 = $Create.Array($$createType68);
-const $$createType70 = ErrorHandlingRef.createFrom;
-const $$createType71 = $Create.Array($$createType70);
-const $$createType72 = golang$0.FuzzValue.createFrom;
-const $$createType73 = $Create.Array($$createType72);
-const $$createType74 = FuzzInput.createFrom;
-const $$createType75 = $Create.Array($$createType74);
-const $$createType76 = GoWorkModule.createFrom;
-const $$createType77 = $Create.Array($$createType76);
-const $$createType78 = graph$0.PackageRisk.createFrom;
-const $$createType79 = $Create.Array($$createType78);
-const $$createType80 = $Create.Map($Create.Any, $Create.Any);
-const $$createType81 = EditorLocation.createFrom;
-const $$createType82 = $Create.Array($$createType12);
-const $$createType83 = HighlightEntry.createFrom;
-const $$createType84 = $Create.Array($$createType83);
-const $$createType85 = $Create.Array($$createType81);
-const $$createType86 = InlayHintEntry.createFrom;
-const $$createType87 = $Create.Array($$createType86);
-const $$createType88 = $Create.Map($Create.Any, $Create.Any);
-const $$createType89 = java$0.JDK.createFrom;
+const $$createType57 = ErrorFunctionPath.createFrom;
+const $$createType58 = $Create.Array($$createType57);
+const $$createType59 = ErrorHandlingRef.createFrom;
+const $$createType60 = $Create.Array($$createType59);
+const $$createType61 = golang$0.FuzzValue.createFrom;
+const $$createType62 = $Create.Array($$createType61);
+const $$createType63 = FuzzInput.createFrom;
+const $$createType64 = $Create.Array($$createType63);
+const $$createType65 = GoWorkModule.createFrom;
+const $$createType66 = $Create.Array($$createType65);
+const $$createType67 = graph$0.PackageRisk.createFrom;
+const $$createType68 = $Create.Array($$createType67);
+const $$createType69 = $Create.Map($Create.Any, $Create.Any);
+const $$createType70 = $Create.Map($Create.Any, $Create.Any);
+const $$createType71 = java$0.JDK.createFrom;
+const $$createType72 = $Create.Array($$createType71);
+const $$createType73 = langserver$0.DiagnosticsReport.createFrom;
+const $$createType74 = $Create.Array($$createType73);
+const $$createType75 = golang$0.SyncGroup.createFrom;
+const $$createType76 = $Create.Array($$createType75);
+const $$createType77 = graph$0.PackageMetric.createFrom;
+const $$createType78 = $Create.Array($$createType77);
+const $$createType79 = $Create.Array($Create.Any);
+const $$createType80 = PathDifference.createFrom;
+const $$createType81 = $Create.Array($$createType80);
+const $$createType82 = ProfileFunction.createFrom;
+const $$createType83 = $Create.Array($Create.Any);
+const $$createType84 = ProfileFlame.createFrom;
+const $$createType85 = $Create.Nullable($$createType84);
+const $$createType86 = $Create.Array($$createType85);
+const $$createType87 = ProfileSampleType.createFrom;
+const $$createType88 = $Create.Array($$createType87);
+const $$createType89 = ProfileNode.createFrom;
 const $$createType90 = $Create.Array($$createType89);
-const $$createType91 = LanguageServerFeatures.createFrom;
-const $$createType92 = $Create.Nullable($$createType91);
-const $$createType93 = DiagnosticsReport.createFrom;
+const $$createType91 = ProfileEdge.createFrom;
+const $$createType92 = $Create.Array($$createType91);
+const $$createType93 = ProfileLine.createFrom;
 const $$createType94 = $Create.Array($$createType93);
-const $$createType95 = golang$0.SyncGroup.createFrom;
+const $$createType95 = language$0.ConfiguredDatabase.createFrom;
 const $$createType96 = $Create.Array($$createType95);
-const $$createType97 = Document.createFrom;
-const $$createType98 = graph$0.PackageMetric.createFrom;
-const $$createType99 = $Create.Array($$createType98);
-const $$createType100 = $Create.Array($Create.Any);
-const $$createType101 = PathDifference.createFrom;
+const $$createType97 = ProjectTemplate.createFrom;
+const $$createType98 = $Create.Array($$createType97);
+const $$createType99 = python$0.Interpreter.createFrom;
+const $$createType100 = $Create.Array($$createType99);
+const $$createType101 = python$0.DeclaredDependency.createFrom;
 const $$createType102 = $Create.Array($$createType101);
-const $$createType103 = ProfileFunction.createFrom;
-const $$createType104 = $Create.Array($Create.Any);
-const $$createType105 = ProfileFlame.createFrom;
-const $$createType106 = $Create.Nullable($$createType105);
-const $$createType107 = $Create.Array($$createType106);
-const $$createType108 = ProfileSampleType.createFrom;
+const $$createType103 = run$0.EnvironmentEntry.createFrom;
+const $$createType104 = $Create.Array($$createType103);
+const $$createType105 = run$0.DockerOptions.createFrom;
+const $$createType106 = remote$0.Target.createFrom;
+const $$createType107 = $Create.Nullable($$createType106);
+const $$createType108 = rust$0.Toolchain.createFrom;
 const $$createType109 = $Create.Array($$createType108);
-const $$createType110 = ProfileNode.createFrom;
+const $$createType110 = SearchMatch.createFrom;
 const $$createType111 = $Create.Array($$createType110);
-const $$createType112 = ProfileEdge.createFrom;
+const $$createType112 = graph$0.Ref.createFrom;
 const $$createType113 = $Create.Array($$createType112);
-const $$createType114 = ProfileLine.createFrom;
+const $$createType114 = Bookmark.createFrom;
 const $$createType115 = $Create.Array($$createType114);
-const $$createType116 = project$0.Unit.createFrom;
+const $$createType116 = NavigationEntry.createFrom;
 const $$createType117 = $Create.Array($$createType116);
-const $$createType118 = language$0.ConfiguredDatabase.createFrom;
+const $$createType118 = dap$0.Breakpoint.createFrom;
 const $$createType119 = $Create.Array($$createType118);
-const $$createType120 = ProjectTemplate.createFrom;
-const $$createType121 = $Create.Array($$createType120);
-const $$createType122 = python$0.Interpreter.createFrom;
-const $$createType123 = $Create.Array($$createType122);
-const $$createType124 = python$0.DeclaredDependency.createFrom;
-const $$createType125 = $Create.Array($$createType124);
-const $$createType126 = RecursiveCall.createFrom;
-const $$createType127 = $Create.Array($$createType126);
-const $$createType128 = run$0.EnvironmentEntry.createFrom;
+const $$createType120 = $Create.Map($Create.Any, $$createType119);
+const $$createType121 = dap$0.FunctionBreakpoint.createFrom;
+const $$createType122 = $Create.Array($$createType121);
+const $$createType123 = CursorPosition.createFrom;
+const $$createType124 = $Create.Array($$createType123);
+const $$createType125 = SplitView.createFrom;
+const $$createType126 = $Create.Nullable($$createType125);
+const $$createType127 = startup$0.Shutdown.createFrom;
+const $$createType128 = startup$0.Event.createFrom;
 const $$createType129 = $Create.Array($$createType128);
-const $$createType130 = run$0.DockerOptions.createFrom;
-const $$createType131 = remote$0.Target.createFrom;
-const $$createType132 = $Create.Nullable($$createType131);
-const $$createType133 = rust$0.Toolchain.createFrom;
-const $$createType134 = $Create.Array($$createType133);
-const $$createType135 = SearchMatch.createFrom;
-const $$createType136 = $Create.Array($$createType135);
-const $$createType137 = graph$0.Ref.createFrom;
-const $$createType138 = $Create.Array($$createType137);
-const $$createType139 = $Create.Array($Create.Any);
-const $$createType140 = Project.createFrom;
-const $$createType141 = Bookmark.createFrom;
-const $$createType142 = $Create.Array($$createType141);
-const $$createType143 = NavigationEntry.createFrom;
-const $$createType144 = $Create.Array($$createType143);
-const $$createType145 = dap$0.Breakpoint.createFrom;
-const $$createType146 = $Create.Array($$createType145);
-const $$createType147 = $Create.Map($Create.Any, $$createType146);
-const $$createType148 = dap$0.FunctionBreakpoint.createFrom;
+const $$createType130 = SonarIssue.createFrom;
+const $$createType131 = $Create.Array($$createType130);
+const $$createType132 = golang$0.InitStep.createFrom;
+const $$createType133 = $Create.Array($$createType132);
+const $$createType134 = StudioWorkspace.createFrom;
+const $$createType135 = $Create.Array($$createType134);
+const $$createType136 = golang$0.TestOptions.createFrom;
+const $$createType137 = testing$0.TestSummary.createFrom;
+const $$createType138 = testing$0.TestResult.createFrom;
+const $$createType139 = $Create.Array($$createType138);
+const $$createType140 = CoverageReport.createFrom;
+const $$createType141 = $Create.Nullable($$createType140);
+const $$createType142 = TraceFrame.createFrom;
+const $$createType143 = $Create.Array($$createType142);
+const $$createType144 = TraceSpan.createFrom;
+const $$createType145 = $Create.Array($$createType144);
+const $$createType146 = TraceGoroutine.createFrom;
+const $$createType147 = $Create.Array($$createType146);
+const $$createType148 = TraceProc.createFrom;
 const $$createType149 = $Create.Array($$createType148);
-const $$createType150 = CursorPosition.createFrom;
+const $$createType150 = TraceRange.createFrom;
 const $$createType151 = $Create.Array($$createType150);
-const $$createType152 = SplitView.createFrom;
-const $$createType153 = $Create.Nullable($$createType152);
-const $$createType154 = startup$0.Shutdown.createFrom;
-const $$createType155 = startup$0.Event.createFrom;
+const $$createType152 = TraceEvent.createFrom;
+const $$createType153 = $Create.Array($$createType152);
+const $$createType154 = TraceStats.createFrom;
+const $$createType155 = VCSFileChange.createFrom;
 const $$createType156 = $Create.Array($$createType155);
-const $$createType157 = SignatureParameter.createFrom;
+const $$createType157 = web$0.Info.createFrom;
 const $$createType158 = $Create.Array($$createType157);
-const $$createType159 = SignatureEntry.createFrom;
-const $$createType160 = $Create.Array($$createType159);
-const $$createType161 = SonarIssue.createFrom;
-const $$createType162 = $Create.Array($$createType161);
-const $$createType163 = golang$0.InitStep.createFrom;
-const $$createType164 = $Create.Array($$createType163);
-const $$createType165 = StudioWorkspace.createFrom;
-const $$createType166 = $Create.Array($$createType165);
-const $$createType167 = golang$0.TestOptions.createFrom;
-const $$createType168 = testing$0.TestSummary.createFrom;
-const $$createType169 = testing$0.TestResult.createFrom;
-const $$createType170 = $Create.Array($$createType169);
-const $$createType171 = CoverageReport.createFrom;
-const $$createType172 = $Create.Nullable($$createType171);
-const $$createType173 = TraceFrame.createFrom;
-const $$createType174 = $Create.Array($$createType173);
-const $$createType175 = TraceSpan.createFrom;
-const $$createType176 = $Create.Array($$createType175);
-const $$createType177 = TraceGoroutine.createFrom;
-const $$createType178 = $Create.Array($$createType177);
-const $$createType179 = TraceProc.createFrom;
-const $$createType180 = $Create.Array($$createType179);
-const $$createType181 = TraceRange.createFrom;
-const $$createType182 = $Create.Array($$createType181);
-const $$createType183 = TraceEvent.createFrom;
-const $$createType184 = $Create.Array($$createType183);
-const $$createType185 = TraceStats.createFrom;
-const $$createType186 = VCSFileChange.createFrom;
-const $$createType187 = $Create.Array($$createType186);
-const $$createType188 = web$0.Info.createFrom;
-const $$createType189 = $Create.Array($$createType188);
-const $$createType190 = web$0.Runtime.createFrom;
-const $$createType191 = lsp$0.ServerInfo.createFrom;
-const $$createType192 = $Create.Array($$createType191);
-const $$createType193 = PreviewConfig.createFrom;
-const $$createType194 = $Create.Nullable($$createType193);
-const $$createType195 = preview$0.Preview.createFrom;
-const $$createType196 = $Create.Array($$createType195);
-const $$createType197 = FileChange.createFrom;
-const $$createType198 = $Create.Array($$createType197);
+const $$createType159 = web$0.Runtime.createFrom;
+const $$createType160 = lsp$0.ServerInfo.createFrom;
+const $$createType161 = $Create.Array($$createType160);
+const $$createType162 = PreviewConfig.createFrom;
+const $$createType163 = $Create.Nullable($$createType162);
+const $$createType164 = preview$0.Preview.createFrom;
+const $$createType165 = $Create.Array($$createType164);

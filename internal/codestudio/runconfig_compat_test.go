@@ -2,9 +2,10 @@ package codestudio
 
 import (
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"reflect"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // roundTrip imports a shared-file payload the way importSharedRunConfigurations does

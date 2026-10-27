@@ -15,14 +15,6 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
-// TestGoIDEManagedChildrenHelper è il processo figlio di prova per lo sweep.
-func TestGoIDEManagedChildrenHelper(t *testing.T) {
-	if os.Getenv("ADOMNIA_GOIDE_MANAGED_HELPER") != "1" {
-		t.Skip("helper per i test di sweep")
-	}
-	time.Sleep(5 * time.Minute)
-}
-
 func spawnManagedHelper(t *testing.T) *exec.Cmd {
 	t.Helper()
 	command := exec.Command(os.Args[0], "-test.run=^TestGoIDEManagedChildrenHelper$", "-test.count=1")

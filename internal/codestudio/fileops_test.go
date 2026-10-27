@@ -1,11 +1,12 @@
 package codestudio
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 func TestFileOperations(t *testing.T) {

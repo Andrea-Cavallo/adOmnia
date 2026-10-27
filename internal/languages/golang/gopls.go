@@ -131,9 +131,15 @@ func GoplsServerSpec(info GoplsInfo, environment []string, settings GoplsSetting
 		TraceEnvironment: []string{"GOFLAGS", "GOWORK", "GOPROXY", "GOPRIVATE", "GONOSUMDB", "GOTOOLCHAIN", "GOMEMLIMIT", "GOCACHE", "GOMODCACHE"},
 		// Con 12 moduli annidati e una cartella per modulo gopls creava 12 view e le caricava tutte
 		// all'avvio (minuti); dalla radice carica solo i moduli dei file aperti.
-		DiscoversNestedUnits: true,
+		DiscoversNestedUnits:   true,
+		HiddenCodeActionKinds:  GoplsWebViewActionKinds,
+		ChangeSignatureCommand: GoplsChangeSignatureCommand,
 	}
 }
+
+// GoplsWebViewActionKinds are gopls actions that open its web UI via window/showDocument: Code Studio does not
+// open external pages, so they are not offered instead of showing inert buttons.
+var GoplsWebViewActionKinds = []string{"source.doc", GoplsDocCommand, "source.splitPackage", "source.assembly", "source.freesymbols"}
 
 // goplsConfiguration traduce le preferenze della sessione nella configurazione gopls; i link esterni restano disattivati (local-first).
 func goplsConfiguration(settings GoplsSettings) map[string]any {

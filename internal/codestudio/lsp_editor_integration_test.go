@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 func TestEditorFeaturesWithRealGopls(t *testing.T) {
@@ -127,7 +130,7 @@ func TestImplementInterfaceQuickFixAndNoInertActions(t *testing.T) {
 	}
 	var declare *CodeActionEntry
 	for index, action := range actions {
-		if opensGoplsWebView(action.Kind) {
+		if lsp.MatchesKind(action.Kind, golang.GoplsWebViewActionKinds) {
 			t.Fatalf("azione inerte proposta: %+v", action)
 		}
 		if strings.HasPrefix(action.Title, "Declare missing methods of io.ReadWriter") {

@@ -28,22 +28,6 @@ const (
 	maxBatchPaths = 500
 )
 
-// DiskChangeKind segue workspace/didChangeWatchedFiles: 1 creato, 2 modificato, 3 eliminato.
-type DiskChangeKind int
-
-const (
-	FileCreated DiskChangeKind = 1
-	FileChanged DiskChangeKind = 2
-	FileDeleted DiskChangeKind = 3
-)
-
-// DiskChange è un file del progetto cambiato su disco.
-type DiskChange struct {
-	Path         string         `json:"path"`
-	RelativePath string         `json:"relativePath"`
-	Kind         DiskChangeKind `json:"kind"`
-}
-
 // FilesChanged è il payload dell'evento files.changed: modifiche raggruppate, o overflow se troppe.
 type FilesChanged struct {
 	Changes  []DiskChange `json:"changes"`

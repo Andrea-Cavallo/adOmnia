@@ -85,13 +85,10 @@ func TestIDEExtensionLanguageServerUsesGenericLifecycleAndBuffers(t *testing.T) 
 	if err := service.UpdateDocumentBuffer(string(session.ID), string(doc.Document.ID), 2, "unsaved"); err != nil {
 		t.Fatal(err)
 	}
-	state, ok := service.lsp.forDocument(session.ID, doc.Document.ID)
+	_, _, text, _, ok := service.lsp.DocumentSnapshot(session.ID, doc.Document.ID)
 	if !ok {
 		t.Fatal("extension document not tracked")
 	}
-	state.mu.Lock()
-	text := state.documents[doc.Document.ID].text
-	state.mu.Unlock()
 	if text != "unsaved" {
 		t.Fatal("unsaved buffer not synced")
 	}

@@ -1,10 +1,11 @@
 package codestudio
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func newWorkspaceTestProject(t *testing.T) string {
