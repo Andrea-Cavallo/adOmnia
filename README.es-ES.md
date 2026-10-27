@@ -14,7 +14,7 @@
 <p align="center">
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia?color=8A2BE2"></a>
   <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=main&label=build"></a>
-  <a href="LICENSE.md"><img alt="Licencia: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+  <a href="LICENSE"><img alt="Licencia: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
   <a href="https://www.adomnia-dev.com"><img alt="Sitio web" src="https://img.shields.io/badge/website-adomnia--dev.com-8A2BE2"></a>
 </p>
 
@@ -244,4 +244,4 @@ Informa de errores y propón cambios en [GitHub Issues](https://github.com/Andre
 
 ## Licencia
 
-[MIT](LICENSE.md) · Copyright © 2027 Andrea Cavallo
+[MIT](LICENSE) · Copyright © 2026 Andrea Cavallo · [Avisos de terceros](NOTICE.md)

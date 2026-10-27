@@ -562,7 +562,7 @@ Four files live at the root — everything else is under `docs/`:
 
 - `README.md` — User-facing overview, quick start, feature list
 - `AGENTS.md` — Detailed architecture, conventions, file-by-file breakdown
-- `LICENSE.md` — MIT license
+- `LICENSE` — MIT license (third-party notices in `NOTICE.md`)
 - `CLAUDE.md` — This file
 
 ### docs/ index
