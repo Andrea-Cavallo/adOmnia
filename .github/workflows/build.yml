@@ -21,6 +21,9 @@ jobs:
   checks:
     name: Checks
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      id-token: write # Codecov OIDC upload; no repository secret needed
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
@@ -78,6 +81,18 @@ jobs:
           path: coverage.out
           if-no-files-found: ignore
           retention-days: 30
+
+      # Same coverage.out, no second test run. OIDC instead of a stored token: the repository must be
+      # enabled on codecov.io. Fork PRs get no OIDC token, so an upload failure never fails the build.
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() && hashFiles('coverage.out') != '' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: coverage.out
+          disable_search: true
+          flags: go
+          use_oidc: true
+          fail_ci_if_error: false
 
   windows:
     name: Windows exe

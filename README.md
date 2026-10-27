@@ -22,6 +22,7 @@
 
 <p align="center">
   <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml"><img alt="Build and tests" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=main&label=build%20%26%20tests"></a>
+  <a href="https://codecov.io/gh/Andrea-Cavallo/adOmnia"><img alt="Go coverage" src="https://codecov.io/gh/Andrea-Cavallo/adOmnia/graph/badge.svg?flag=go"></a>
   <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/quality.yml"><img alt="Lint and security scans" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/quality.yml?branch=main&label=lint%20%26%20security"></a>
   <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/codeql.yml?branch=main&label=CodeQL"></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/Andrea-Cavallo/adOmnia"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/Andrea-Cavallo/adOmnia/badge"></a>
