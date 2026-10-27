@@ -51,6 +51,18 @@ func EnsureWithin(root, candidate string) error {
 	return nil
 }
 
+// RelativeWithin restituisce path relativo a root con le barre "/", o "" se path è fuori da root.
+func RelativeWithin(root, path string) string {
+	if root == "" || path == "" || EnsureWithin(root, path) != nil {
+		return ""
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return ""
+	}
+	return filepath.ToSlash(rel)
+}
+
 // SamePath confronta due percorsi dopo Clean, senza distinguere maiuscole (come gli FS di Windows e macOS).
 func SamePath(left, right string) bool {
 	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))

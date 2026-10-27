@@ -7,5 +7,4 @@ var (
 	configureProcess          = process.Configure
 	terminateProcessTree      = process.TerminateTree
 	terminateProcessTreeByPID = process.TerminateTreeByPID
-	defaultShell              = process.DefaultShell
 )

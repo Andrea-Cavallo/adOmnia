@@ -5,10 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/flight"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/preview"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"maps"
 	"os"
 	"os/exec"
@@ -19,6 +15,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/flight"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/preview"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/terminal"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
@@ -102,7 +104,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		toolchain:        NewToolchainManager(),
 		processes:        NewProcessManager(),
 		lsp:              NewLSPManager(languages),
-		terminal:         NewTerminalManager(),
+		terminal:         terminal.NewTerminalManager(),
 		debug:            NewDebugManager(),
 		tests:            NewTestManager(),
 		runConfigs:       NewRunConfigManager(),

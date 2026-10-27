@@ -779,7 +779,7 @@ export class PluginManifest {
     /**
      * Contributes is the IDE extension API: commands, code actions, analyzers, templates, languages, adapters.
      */
-    "contributes"?: PluginContributes;
+    "contributes": PluginContributes;
 
     /** Creates a new PluginManifest instance. */
     constructor($$source: Partial<PluginManifest> = {}) {
@@ -824,6 +824,9 @@ export class PluginManifest {
         }
         if (!("icon" in $$source)) {
             this["icon"] = "";
+        }
+        if (!("contributes" in $$source)) {
+            this["contributes"] = (new PluginContributes());
         }
 
         Object.assign(this, $$source);

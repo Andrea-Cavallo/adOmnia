@@ -1,20 +1,21 @@
 //go:build !windows
 
-package codestudio
+package proctest
 
 import (
-	"os/exec"
 	"strings"
 	"syscall"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
-func processAlive(pid int) bool {
+func Alive(pid int) bool {
 	return pid > 0 && syscall.Kill(pid, 0) == nil
 }
 
-// processExists indica se esiste un processo la cui riga di comando contiene
+// Exists indica se esiste un processo la cui riga di comando contiene
 // il percorso indicato.
-func processExists(fragment string) bool {
-	output, err := exec.Command("pgrep", "-f", fragment).Output()
+func Exists(fragment string) bool {
+	output, err := procutil.Command("pgrep", "-f", fragment).Output()
 	return err == nil && len(strings.TrimSpace(string(output))) > 0
 }

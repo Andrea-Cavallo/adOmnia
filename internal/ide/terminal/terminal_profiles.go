@@ -1,4 +1,4 @@
-package codestudio
+package terminal
 
 import (
 	"context"
@@ -56,7 +56,7 @@ func ListTerminalProfiles() []TerminalProfile {
 
 // resolveTerminalProfile restituisce shell e argomenti del profilo ("" = predefinito).
 // Il frontend sceglie solo fra profili rilevati: non può avviare un eseguibile arbitrario.
-func resolveTerminalProfile(id string) (TerminalProfile, error) {
+func ResolveTerminalProfile(id string) (TerminalProfile, error) {
 	terminalProfilesMu.Lock()
 	profiles := terminalProfilesCached
 	terminalProfilesMu.Unlock()

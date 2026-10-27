@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process/proctest"
 )
 
 type eventRecorder struct {
@@ -260,7 +262,7 @@ func expectCleanStop(t *testing.T, f lspFixture, killedPID int) {
 		}
 		t.Fatalf("gopls non arrestato: %+v\nstorico:\n%s", final, strings.Join(history, "\n"))
 	}
-	if processAlive(killedPID) {
+	if proctest.Alive(killedPID) {
 		t.Fatal("processo gopls orfano dopo lo stop")
 	}
 }

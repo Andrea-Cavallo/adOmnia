@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -15,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/fileio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
@@ -436,13 +436,7 @@ func diskToken(data []byte, info os.FileInfo) string {
 	return fmt.Sprintf("%d-%d-%s", info.ModTime().UnixNano(), info.Size(), hex.EncodeToString(hash[:8]))
 }
 
-func fileURI(path string) string {
-	normalized := filepath.ToSlash(path)
-	if len(normalized) >= 2 && normalized[1] == ':' {
-		normalized = "/" + normalized
-	}
-	return (&url.URL{Scheme: "file", Path: normalized}).String()
-}
+func fileURI(path string) string { return lsp.FileURI(path) }
 
 // languageByExtension mappa le estensioni sugli id dei linguaggi Monaco già
 // inclusi nel bundle: solo colorazione, nessun language server oltre a gopls.

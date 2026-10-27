@@ -234,6 +234,5 @@ export {
 export type {
     DocumentID,
     RunID,
-    SessionID,
-    TerminalID
+    SessionID
 } from "./models.js";

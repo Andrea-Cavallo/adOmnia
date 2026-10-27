@@ -43,6 +43,9 @@ import * as run$0 from "./internal/ide/run/models.js";
 import * as security$0 from "./internal/ide/security/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as terminal$0 from "./internal/ide/terminal/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as golang$0 from "./internal/languages/golang/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -3057,9 +3060,9 @@ const $$createType137 = $Create.Array($$createType23);
 const $$createType138 = codestudio$0.RuntimeSnapshotFile.createFrom;
 const $$createType139 = $Create.Array($$createType138);
 const $$createType140 = $Create.Array($$createType12);
-const $$createType141 = codestudio$0.TerminalProfile.createFrom;
+const $$createType141 = terminal$0.TerminalProfile.createFrom;
 const $$createType142 = $Create.Array($$createType141);
-const $$createType143 = codestudio$0.TerminalSession.createFrom;
+const $$createType143 = terminal$0.TerminalSession.createFrom;
 const $$createType144 = $Create.Array($$createType143);
 const $$createType145 = $Create.Array($$createType78);
 const $$createType146 = golang$0.ToolchainRelease.createFrom;

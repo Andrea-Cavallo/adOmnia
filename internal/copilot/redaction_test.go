@@ -3,6 +3,8 @@ package copilot
 import (
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // Split so the repository never contains a contiguous credential-shaped string:
@@ -17,7 +19,7 @@ const (
 func TestDocumentBuffersAreRedactedBeforeSync(t *testing.T) {
 	root := t.TempDir()
 	manager := NewManager(NewSettingsStore(t.TempDir()), NewInstaller(t.TempDir()))
-	uri := fileURI(root + "/main.go")
+	uri := lsp.FileURI(root + "/main.go")
 	text := "package main\n\nconst awsKey = \"" + fakeAWSKey + "\"\nvar jwt = \"" + fakeJWTValue + "\"\n"
 	manager.DocumentOpened(OpenedDocument{ID: "doc-1", URI: uri, Root: root, RootName: "demo", RelativePath: "main.go", LanguageID: "go", Text: text})
 

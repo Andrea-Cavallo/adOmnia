@@ -1,4 +1,4 @@
-package codestudio
+package terminal
 
 import (
 	"os"
@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process/proctest"
 )
 
 // terminalRecorder raccoglie gli eventi emessi dal TerminalManager durante i test.
@@ -66,13 +68,6 @@ func waitForOutput(t *testing.T, recorder *terminalRecorder, marker string, time
 	return recorder.text()
 }
 
-func shellEcho(marker string) string {
-	if runtime.GOOS == "windows" {
-		return "echo " + marker + "\r\n"
-	}
-	return "echo " + marker + "\n"
-}
-
 func shellExit() string {
 	if runtime.GOOS == "windows" {
 		return "exit\r\n"
@@ -98,7 +93,7 @@ func TestTerminalRunsInteractiveShellAndExitsNaturally(t *testing.T) {
 	}
 
 	const marker = "ADOMNIA_PTY_OK"
-	if err := manager.Write(terminal.ID, shellEcho(marker)); err != nil {
+	if err := manager.Write(terminal.ID, proctest.ShellEcho(marker)); err != nil {
 		t.Fatal(err)
 	}
 	if text := waitForOutput(t, recorder, marker, 15*time.Second); !strings.Contains(text, marker) {
@@ -234,12 +229,12 @@ func waitProcessGone(pid int, timeout time.Duration) bool {
 	}
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if !processAlive(pid) {
+		if !proctest.Alive(pid) {
 			return true
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return !processAlive(pid)
+	return !proctest.Alive(pid)
 }
 
 func truncateForLog(value string) string {

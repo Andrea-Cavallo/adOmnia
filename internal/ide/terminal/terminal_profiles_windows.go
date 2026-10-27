@@ -1,6 +1,6 @@
 //go:build windows
 
-package codestudio
+package terminal
 
 import (
 	"context"

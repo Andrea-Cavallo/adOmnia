@@ -323,7 +323,7 @@ func (m *Manager) chatContext(request ChatRequest) (string, map[string]any, []ma
 	folders := []map[string]string{}
 	if request.IncludeWorkspace && root != "" {
 		folders = append(folders, map[string]string{
-			"uri":  fileURI(root),
+			"uri":  lsp.FileURI(root),
 			"name": filepath.Base(root),
 		})
 	}

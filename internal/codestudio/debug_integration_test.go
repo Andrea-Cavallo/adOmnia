@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process/proctest"
 )
 
 func findDelveForTest(t *testing.T) string {
@@ -292,7 +294,7 @@ func TestDebuggerStopLeavesNoOrphans(t *testing.T) {
 		t.Fatal(err)
 	}
 	binary := filepath.Join(buildDir, debugBinaryName())
-	if !processExists(binary) {
+	if !proctest.Exists(binary) {
 		t.Skip("impossibile osservare il processo debuggato in questo ambiente")
 	}
 	if err := ide.StopDebug(string(started.ID)); err != nil {
@@ -300,7 +302,7 @@ func TestDebuggerStopLeavesNoOrphans(t *testing.T) {
 	}
 	waitDebugState(t, recorder, started.ID, DebugTerminated, 0)
 	deadline := time.Now().Add(5 * time.Second)
-	for processExists(binary) {
+	for proctest.Exists(binary) {
 		if time.Now().After(deadline) {
 			t.Fatal("il programma debuggato è rimasto in esecuzione dopo Stop")
 		}

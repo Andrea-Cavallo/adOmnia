@@ -43,6 +43,9 @@ import * as security$0 from "../ide/security/models.js";
 import * as startup$0 from "../ide/startup/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as terminal$0 from "../ide/terminal/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as testing$0 from "../ide/testing/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -970,13 +973,19 @@ export class CoverageReport {
  */
 export class CrashStatus {
     "previousCrashed": boolean;
-    "lastHeartbeat"?: string;
-    "startedAt"?: string;
+    "lastHeartbeat": string;
+    "startedAt": string;
 
     /** Creates a new CrashStatus instance. */
     constructor($$source: Partial<CrashStatus> = {}) {
         if (!("previousCrashed" in $$source)) {
             this["previousCrashed"] = false;
+        }
+        if (!("lastHeartbeat" in $$source)) {
+            this["lastHeartbeat"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("startedAt" in $$source)) {
+            this["startedAt"] = "0001-01-01T00:00:00.000Z";
         }
 
         Object.assign(this, $$source);
@@ -7002,147 +7011,35 @@ export class SymbolNode {
     }
 }
 
-export type TerminalID = string;
+/**
+ * Terminal types live in internal/ide/terminal; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const TerminalProfile = terminal$0.TerminalProfile;
 
 /**
- * TerminalProfile è una shell rilevata sulla macchina (PowerShell, Git Bash, una distro WSL, zsh…).
+ * Terminal types live in internal/ide/terminal; the aliases keep the GoIDE bindings and callers unchanged.
  */
-export class TerminalProfile {
-    "id": string;
-    "name": string;
-    "kind": string;
-    "shell": string;
-    "arguments"?: string[];
-
-    /** Creates a new TerminalProfile instance. */
-    constructor($$source: Partial<TerminalProfile> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("kind" in $$source)) {
-            this["kind"] = "";
-        }
-        if (!("shell" in $$source)) {
-            this["shell"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new TerminalProfile instance from a string or object.
-     */
-    static createFrom($$source: any = {}): TerminalProfile {
-        const $$createField4_0 = $$createType4;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("arguments" in $$parsedSource) {
-            $$parsedSource["arguments"] = $$createField4_0($$parsedSource["arguments"]);
-        }
-        return new TerminalProfile($$parsedSource as Partial<TerminalProfile>);
-    }
-}
+export type TerminalProfile = terminal$0.TerminalProfile;
 
 /**
- * TerminalRequest descrive l'apertura di un nuovo terminale.
+ * Terminal types live in internal/ide/terminal; the aliases keep the GoIDE bindings and callers unchanged.
  */
-export class TerminalRequest {
-    "sessionId": SessionID;
-    "name": string;
-
-    /**
-     * Profile è l'ID di un TerminalProfile rilevato ("" = predefinito); il Service lo traduce in Shell.
-     */
-    "profile"?: string;
-    "shell"?: string;
-    "shellArguments"?: string[];
-    "workingDirectory"?: string;
-    "environment"?: { [_ in string]?: string };
-    "columns"?: number;
-    "rows"?: number;
-
-    /** Creates a new TerminalRequest instance. */
-    constructor($$source: Partial<TerminalRequest> = {}) {
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new TerminalRequest instance from a string or object.
-     */
-    static createFrom($$source: any = {}): TerminalRequest {
-        const $$createField4_0 = $$createType4;
-        const $$createField6_0 = $$createType88;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("shellArguments" in $$parsedSource) {
-            $$parsedSource["shellArguments"] = $$createField4_0($$parsedSource["shellArguments"]);
-        }
-        if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField6_0($$parsedSource["environment"]);
-        }
-        return new TerminalRequest($$parsedSource as Partial<TerminalRequest>);
-    }
-}
+export const TerminalRequest = terminal$0.TerminalRequest;
 
 /**
- * TerminalSession descrive un terminale interattivo dal punto di vista dell'interfaccia.
+ * Terminal types live in internal/ide/terminal; the aliases keep the GoIDE bindings and callers unchanged.
  */
-export class TerminalSession {
-    "id": TerminalID;
-    "sessionId": SessionID;
-    "name": string;
-    "shell": string;
-    "workingDirectory": string;
-    "status": string;
-    "pid"?: number;
-    "startedAt": string;
-    "exitedAt"?: string | null;
-    "exitCode"?: number | null;
-    "error"?: string;
+export type TerminalRequest = terminal$0.TerminalRequest;
 
-    /** Creates a new TerminalSession instance. */
-    constructor($$source: Partial<TerminalSession> = {}) {
-        if (!("id" in $$source)) {
-            this["id"] = "";
-        }
-        if (!("sessionId" in $$source)) {
-            this["sessionId"] = "";
-        }
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("shell" in $$source)) {
-            this["shell"] = "";
-        }
-        if (!("workingDirectory" in $$source)) {
-            this["workingDirectory"] = "";
-        }
-        if (!("status" in $$source)) {
-            this["status"] = "";
-        }
-        if (!("startedAt" in $$source)) {
-            this["startedAt"] = "0001-01-01T00:00:00.000Z";
-        }
+/**
+ * Terminal types live in internal/ide/terminal; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export const TerminalSession = terminal$0.TerminalSession;
 
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new TerminalSession instance from a string or object.
-     */
-    static createFrom($$source: any = {}): TerminalSession {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new TerminalSession($$parsedSource as Partial<TerminalSession>);
-    }
-}
+/**
+ * Terminal types live in internal/ide/terminal; the aliases keep the GoIDE bindings and callers unchanged.
+ */
+export type TerminalSession = terminal$0.TerminalSession;
 
 export const TestResult = testing$0.TestResult;
 export type TestResult = testing$0.TestResult;

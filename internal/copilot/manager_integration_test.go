@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // TestRealLanguageServerStartsSignedOut avvia il Copilot Language Server ufficiale indicato da
@@ -64,7 +66,7 @@ func TestRealLanguageServerResolvesChatModel(t *testing.T) {
 	if model == "" {
 		t.Fatal("Copilot returned no chat model")
 	}
-	manager.DocumentOpened(OpenedDocument{ID: "real-chat", URI: fileURI(filepath.Join(root, "main.go")), Root: root, RootName: "real-chat", RelativePath: "main.go", LanguageID: "go", Text: "package main\n"})
+	manager.DocumentOpened(OpenedDocument{ID: "real-chat", URI: lsp.FileURI(filepath.Join(root, "main.go")), Root: root, RootName: "real-chat", RelativePath: "main.go", LanguageID: "go", Text: "package main\n"})
 	var eventMu sync.Mutex
 	var reply strings.Builder
 	ended := false

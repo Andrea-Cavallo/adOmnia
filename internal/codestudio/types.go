@@ -2,10 +2,12 @@ package codestudio
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/remote"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
-	"time"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/terminal"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
@@ -14,7 +16,7 @@ import (
 type SessionID = run.SessionID
 type DocumentID string
 type RunID = run.RunID
-type TerminalID string
+type TerminalID = terminal.TerminalID
 type LSPRequestID string
 type DebugSessionID = dap.DebugSessionID
 

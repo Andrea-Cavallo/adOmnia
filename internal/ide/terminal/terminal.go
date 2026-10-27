@@ -1,4 +1,4 @@
-package codestudio
+package terminal
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
 	pty "github.com/aymanbagabas/go-pty"
 )
 
@@ -129,7 +130,7 @@ func (m *TerminalManager) Open(request TerminalRequest, environment []string) (T
 	shell := strings.TrimSpace(request.Shell)
 	arguments := request.ShellArguments
 	if shell == "" {
-		shell, arguments = defaultShell()
+		shell, arguments = process.DefaultShell()
 	}
 	if shell == "" {
 		return TerminalSession{}, fmt.Errorf("no shell available on this platform")
@@ -430,7 +431,7 @@ func (m *TerminalManager) terminate(managed *managedTerminal) {
 		return
 	}
 	if managed.command.Process != nil {
-		if err := terminateProcessTreeByPID(managed.command.Process.Pid); err != nil {
+		if err := process.TerminateTreeByPID(managed.command.Process.Pid); err != nil {
 			// Se l'arresto dell'albero fallisce resta il kill diretto: meglio
 			// una shell chiusa a metà che un processo orfano invisibile.
 			_ = managed.command.Process.Kill()

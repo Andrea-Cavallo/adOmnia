@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // ErrStaleDocumentVersion indica una modifica con versione non successiva a quella già sincronizzata.
@@ -189,16 +190,7 @@ func pathFromURI(uri string) string {
 }
 
 // relativeWithin restituisce il percorso relativo con "/" se path è dentro root, altrimenti stringa vuota.
-func relativeWithin(root, path string) string {
-	if root == "" || path == "" || ensureWithinRoot(root, path) != nil {
-		return ""
-	}
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return ""
-	}
-	return filepath.ToSlash(rel)
-}
+func relativeWithin(root, path string) string { return project.RelativeWithin(root, path) }
 
 func editorRange(value lsp.Range) EditorRange {
 	return EditorRange{

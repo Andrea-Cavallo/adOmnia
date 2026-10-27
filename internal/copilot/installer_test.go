@@ -8,13 +8,14 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/pem"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func fakeTarball(t *testing.T, name string, content []byte) []byte {
