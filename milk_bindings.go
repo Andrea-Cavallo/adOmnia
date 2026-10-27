@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"adomnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )

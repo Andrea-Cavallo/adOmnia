@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const runTargetDiscoveryTimeout = 30 * time.Second

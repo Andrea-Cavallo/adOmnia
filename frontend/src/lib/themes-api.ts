@@ -1,6 +1,6 @@
 import type { Theme } from '@/stores/themes'
 import { BUILTIN_THEME_FALLBACKS } from './builtinThemeFallbacks'
-import * as ThemeManagerBindings from '../../bindings/adomnia/thememanager'
+import * as ThemeManagerBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/thememanager'
 
 declare global {
   interface WailsGoMain {

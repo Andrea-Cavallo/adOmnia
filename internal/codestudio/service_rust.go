@@ -3,7 +3,7 @@ package codestudio
 import (
 	"fmt"
 
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // RustToolchainReport è ciò che serve a scegliere la toolchain Rust: i candidati con la loro

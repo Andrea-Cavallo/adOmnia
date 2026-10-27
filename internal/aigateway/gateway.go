@@ -1,9 +1,9 @@
 package aigateway
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"log"
 	"net"
 	"net/http"

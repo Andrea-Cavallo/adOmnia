@@ -1,4 +1,4 @@
-import * as AIEngine from '../../../bindings/adomnia/aiengine'
+import * as AIEngine from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine'
 import { ensureAIConfigured } from '@/lib/aiEngine'
 import { useSettingsStore } from '@/stores/settings'
 import type { AnalyzedRequest } from './analyze'

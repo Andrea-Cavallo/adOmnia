@@ -1,10 +1,10 @@
 package java
 
 import (
-	"adomnia/internal/jsonutil"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // DebugCommand executes a command on this project's Java language server.

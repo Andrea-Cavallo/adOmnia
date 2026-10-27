@@ -1,12 +1,12 @@
 package database
 
 import (
-	"adomnia/internal/storage"
-	"adomnia/internal/vault"
 	"context"
 	"database/sql"
 	"encoding/json/v2"
 	"errors"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/vault"
 	"math/rand/v2" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used -- non-security randomness (fake data / jitter)
 	"net/http"
 	"regexp"
@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"

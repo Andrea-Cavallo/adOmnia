@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/milk"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // AdapterPackage è l'adapter ACP ufficiale di Claude Code, avviato con npx quando

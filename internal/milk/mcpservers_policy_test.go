@@ -1,7 +1,7 @@
 package milk
 
 import (
-	"adomnia/internal/aipolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
 
 	"testing"
 )

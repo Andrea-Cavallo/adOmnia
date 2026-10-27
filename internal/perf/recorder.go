@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/activity"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/resources"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
 )
 
 // DefaultScenarioInterval matches the resources sampler cache (1s), so every

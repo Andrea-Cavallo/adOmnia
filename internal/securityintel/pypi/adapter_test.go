@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // I requirements dichiarano versioni in molti modi: solo `==` è una versione risolta, e un

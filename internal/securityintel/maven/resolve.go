@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // managedVersion è una versione imposta da dependencyManagement o da un BOM.

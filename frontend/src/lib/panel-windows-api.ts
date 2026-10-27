@@ -1,4 +1,4 @@
-import * as AppBindings from '../../bindings/adomnia/app'
+import * as AppBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { Events } from '@wailsio/runtime'
 import { normalizeRailItem, type RailItem } from '@/lib/navigation'
 import { flushPendingSaves } from '@/lib/storeSave'

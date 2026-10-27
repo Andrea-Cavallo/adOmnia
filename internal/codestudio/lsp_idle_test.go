@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/activity"
-	"adomnia/internal/ide/language"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"os"
 	"path/filepath"
 	"strings"

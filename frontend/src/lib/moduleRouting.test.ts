@@ -18,7 +18,7 @@ const tabs = vi.hoisted(() => ({ openTab: vi.fn() }))
 const collections = vi.hoisted(() => ({ importCollection: vi.fn() }))
 
 vi.mock('@wailsio/runtime', () => ({ Events: { Emit: runtime.emit, On: runtime.on } }))
-vi.mock('../../bindings/adomnia/app', () => ({
+vi.mock('../../bindings/github.com/Andrea-Cavallo/adOmnia/app', () => ({
   FocusMainWindow: bindings.focusMain,
   FocusPanelWindow: bindings.focusPanel,
   ListPanelWindows: bindings.list,

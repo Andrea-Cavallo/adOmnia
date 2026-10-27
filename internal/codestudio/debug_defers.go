@@ -1,6 +1,6 @@
 package codestudio
 
-import "adomnia/internal/languages/golang"
+import "github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 
 type PendingDefer = golang.PendingDefer
 

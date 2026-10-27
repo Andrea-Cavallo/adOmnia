@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/dop251/goja"
 )
 

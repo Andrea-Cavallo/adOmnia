@@ -7,7 +7,7 @@ import { useCollabStore } from '@/stores/collab'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useSettingsStore } from '@/stores/settings'
 import { configureMonacoLoader, applyCodeStudioMonacoThemes, CODE_STUDIO_THEMES } from '@/lib/monacoSetup'
-import type { ProjectEntry } from '../../../bindings/adomnia/internal/collab/models'
+import type { ProjectEntry } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/collab/models'
 import '../code-studio/codeStudioCollab.css'
 
 configureMonacoLoader()

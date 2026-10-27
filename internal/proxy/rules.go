@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/gaissmai/bart"
 )
 

@@ -1,11 +1,11 @@
 package docker
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"os/exec"
 	"path/filepath"

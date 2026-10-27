@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Puzzle } from 'lucide-react'
-import { StartExtensionLanguageServer, StopExtensionLanguageServer } from '../../../bindings/adomnia/goide'
+import { StartExtensionLanguageServer, StopExtensionLanguageServer } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { useIDEExtensionsStore, extensionLanguageForPath } from '@/stores/ideExtensions'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { CodeStudioModal, CodeStudioButton, CodeStudioAlert } from './CodeStudioModal'

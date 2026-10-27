@@ -1,13 +1,13 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/flight"
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/preview"
-	"adomnia/internal/ide/run"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/flight"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/preview"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"maps"
 	"os"
 	"os/exec"
@@ -19,10 +19,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 const maxRecentProjects = 20

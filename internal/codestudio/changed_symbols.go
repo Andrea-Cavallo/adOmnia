@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/git"
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 )
 
 const maxChangedSymbolFiles = 200

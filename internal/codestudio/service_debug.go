@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // DetectDelve individua dlv e ne legge la versione, senza avviare nulla.

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 const killChildEnv = "ADOMNIA_RECOVERY_KILL_CHILD"

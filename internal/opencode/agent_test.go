@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 )
 
 func TestLocalSettings(t *testing.T) {

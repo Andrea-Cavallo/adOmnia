@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // TestOptions sono le opzioni di LanguageOptions per i test Java. Hanno gli stessi nomi JSON della richiesta

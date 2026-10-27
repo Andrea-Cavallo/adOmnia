@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/sdk"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // Coverage opzionale dei test Rust (RS-5.6, scelta RS-0.3): cargo-llvm-cov (Windows, macOS e

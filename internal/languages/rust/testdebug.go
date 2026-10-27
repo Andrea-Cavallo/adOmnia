@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Debug dei test Rust (RS-5.5): `cargo test --no-run --message-format=json` compila il solo target

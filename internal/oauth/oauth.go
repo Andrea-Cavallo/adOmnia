@@ -1,11 +1,11 @@
 package oauth
 
 import (
-	"adomnia/internal/httputil"
-	"adomnia/internal/jsonutil"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"html"
 	"net/http"
 	"sync"

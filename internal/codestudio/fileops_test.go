@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"os"
 	"path/filepath"
 	"strings"

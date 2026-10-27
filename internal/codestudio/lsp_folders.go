@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // workspaceFolderRoots are the roots a language server of one language should be given in a project whose

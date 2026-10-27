@@ -6,7 +6,7 @@ import { serviceNameFor } from '@/lib/devsession-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { relativeToRoots } from '@/lib/sourcePaths'
 import { projectArtifactText } from '@/lib/code-studio/projectArtifacts'
-import { FindRetryPolicies } from '../../../bindings/adomnia/goide'
+import { FindRetryPolicies } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { CodeStudioModal, CodeStudioButton } from '@/components/code-studio/CodeStudioModal'
 
 export function retryPolicySource(span:OtlpSpan,spans:readonly OtlpSpan[]) {

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/oaslint"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/oaslint"
 	"strings"
 )
 

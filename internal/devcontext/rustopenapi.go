@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"path"
 
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // detectRustOpenApi: un `#[derive(OpenApi)]` (utoipa) segna il crate come produttore di un

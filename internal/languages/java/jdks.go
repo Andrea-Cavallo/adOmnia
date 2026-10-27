@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 // Un JDK scelto dall'utente vale per Run, Debug e Test dello stesso progetto: la stessa toolchain, altrimenti

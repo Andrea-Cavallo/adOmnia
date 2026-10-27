@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestDetectProjectServicesUsesDirectDependenciesOnly(t *testing.T) {

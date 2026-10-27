@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/activity"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
 	"time"
 )
 

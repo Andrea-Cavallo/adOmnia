@@ -12,7 +12,7 @@ import (
 	"strings"
 	"syscall"
 
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const createNewConsole = 0x00000010

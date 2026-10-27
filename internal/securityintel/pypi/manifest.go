@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // declaredRequirement è una dipendenza letta da un manifest, con la versione esatta solo quando il

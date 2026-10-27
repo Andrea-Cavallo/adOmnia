@@ -1,6 +1,6 @@
-import * as binding from '../../../../bindings/adomnia/gitsync'
+import * as binding from '../../../../bindings/github.com/Andrea-Cavallo/adOmnia/gitsync'
 
-export * from '../../../../bindings/adomnia/gitsync'
+export * from '../../../../bindings/github.com/Andrea-Cavallo/adOmnia/gitsync'
 
 export interface GitHubPR {
   number: number

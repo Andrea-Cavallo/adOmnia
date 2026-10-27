@@ -41,7 +41,7 @@ internal/securityintel/            core del motore (NON importa adapter — arch
   `src/components/security/SecurityFindingInspector.tsx`, rail id `security`.
 - Catalogo: `docs/adomnia-feature-catalog.en.md` sezione **K. SECURITY INTELLIGENCE** (K1.1–K1.13).
 
-## Perché `frontend/bindings/adomnia/securityintel.ts` è scritto a mano
+## Perché `frontend/bindings/github.com/Andrea-Cavallo/adOmnia/securityintel.ts` è scritto a mano
 
 **SUPERATO (2026-10-18).** La CLI `wails3` non era installata e il binding era stato scritto a mano
 replicando la forma generata, con ID di metodo calcolati a mano come

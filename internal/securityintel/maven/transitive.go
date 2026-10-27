@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // Limiti della visita: un grafo reale ha centinaia di nodi, non decine di migliaia.

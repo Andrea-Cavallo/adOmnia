@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, AlertTriangle, Boxes, Loader2 } from 'lucide-react'
-import * as GoIDEBindings from '../../../bindings/adomnia/goide'
-import type { GoWorkState } from '../../../bindings/adomnia/internal/codestudio/models'
+import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { GoWorkState } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 
 interface CodeStudioGoWorkDialogProps {

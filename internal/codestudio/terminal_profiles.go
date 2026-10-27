@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/remote"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/remote"
 )
 
 // TerminalProfile è una shell rilevata sulla macchina (PowerShell, Git Bash, una distro WSL, zsh…).

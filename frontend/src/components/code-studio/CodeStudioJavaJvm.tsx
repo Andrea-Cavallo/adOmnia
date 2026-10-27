@@ -3,8 +3,8 @@ import { Activity, Circle, Loader2, RefreshCw, Square } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { getJavaJvmSample, getJavaJvms, startJavaJfr, stopJavaJfr } from '@/lib/code-studio-api'
 import { formatKb, gcOverheadPercent, pushSample, sparkline } from '@/lib/code-studio/jvmMonitor'
-import type { JVMHeapSample, JVMProcess } from '../../../bindings/adomnia/internal/languages/java/models'
-import type { JavaJFRRecording } from '../../../bindings/adomnia/internal/codestudio/models'
+import type { JVMHeapSample, JVMProcess } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
+import type { JavaJFRRecording } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 const POLL_MILLIS = 2000
 const CHART = { width: 520, height: 90 }

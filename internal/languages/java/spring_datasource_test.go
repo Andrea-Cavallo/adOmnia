@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestDatasourcesFollowProfilesAndOverrides(t *testing.T) {

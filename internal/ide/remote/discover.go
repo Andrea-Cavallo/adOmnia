@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const discoverTimeout = 3 * time.Second

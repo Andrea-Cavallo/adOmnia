@@ -1,10 +1,10 @@
 package bootstrap
 
 import (
-	"adomnia/internal/collectionsstore"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/storage"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionsstore"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	bolt "go.etcd.io/bbolt"
 	"testing"
 )

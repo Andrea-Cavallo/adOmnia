@@ -1,8 +1,8 @@
 package main
 
 import (
-	"adomnia/internal/panelwindow"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/panelwindow"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"

@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/languages/java"
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // Gradle usa le coordinate Maven (OSV: ecosistema "Maven"), quindi i build.gradle(.kts) passano da questo adapter:

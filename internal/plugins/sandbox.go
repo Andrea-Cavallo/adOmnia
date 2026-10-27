@@ -4,11 +4,11 @@
 package plugins
 
 import (
-	"adomnia/internal/storage"
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"io"
 	"log"
 	"net"
@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 

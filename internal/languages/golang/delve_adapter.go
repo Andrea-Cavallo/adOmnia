@@ -1,9 +1,9 @@
 package golang
 
 import (
-	"adomnia/internal/ide/dap"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 	"path/filepath"
 	"regexp"
 	"runtime"

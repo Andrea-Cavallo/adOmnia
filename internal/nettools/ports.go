@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/httputil"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // PortEntry describes one listening TCP socket and the process that owns it.

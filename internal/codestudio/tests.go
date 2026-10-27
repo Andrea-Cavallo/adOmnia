@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/testing"
-	"adomnia/internal/languages/golang"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"math"
 	"path/filepath"
 	"sort"

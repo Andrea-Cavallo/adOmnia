@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AlertCircle, FolderOpen, GitBranch } from 'lucide-react'
-import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { chooseGoIDEProjectFolder } from '@/lib/code-studio-api'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioField, CodeStudioModal } from './CodeStudioModal'
 import { useCodeStudioStore } from '@/stores/codeStudio'

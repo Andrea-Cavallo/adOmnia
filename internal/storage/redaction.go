@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/url"
 	"regexp"
 	"strings"

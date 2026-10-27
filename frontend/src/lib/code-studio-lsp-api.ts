@@ -1,4 +1,4 @@
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
 import type {
   CodeActionEntry,
@@ -31,7 +31,7 @@ import type {
   HighlightsResult,
   RecursiveCallsResult,
   LanguageServerFeatures,
-  QuickDefinitionResult, HierarchyItem } from '../../bindings/adomnia/internal/codestudio/models'
+  QuickDefinitionResult, HierarchyItem } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 export type GoIDELanguageServerStatus = LanguageServerStatus
 export type GoIDELanguageServerFeatures = LanguageServerFeatures

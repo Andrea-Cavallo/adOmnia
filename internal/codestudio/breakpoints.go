@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 type Breakpoint = dap.Breakpoint

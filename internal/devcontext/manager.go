@@ -1,10 +1,10 @@
 package devcontext
 
 import (
-	"adomnia/internal/plugins"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 	"io/fs"
 	"os"
 	"path"

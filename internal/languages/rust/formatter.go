@@ -4,10 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/ide/toml"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toml"
 )
 
 // FormatTool implementa language.FormatToolProvider con rustfmt (componente rustup, allineato alla

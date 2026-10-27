@@ -147,8 +147,8 @@ import {
   taskConfiguration,
   taskConfigurationForDetected,
 } from './codeStudioWorkspaceStart'
-import * as DevContextBindings from '../../../bindings/adomnia/devcontext'
-import { ListLocalPorts } from '../../../bindings/adomnia/devsession'
+import * as DevContextBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/devcontext'
+import { ListLocalPorts } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/devsession'
 import { CodeStudioWorkspaceBar } from './CodeStudioWorkspaceBar'
 import { CodeStudioToasts } from './CodeStudioToasts'
 import { CodeStudioSnapshots, useSnapshotsDrawer } from './CodeStudioSnapshots'

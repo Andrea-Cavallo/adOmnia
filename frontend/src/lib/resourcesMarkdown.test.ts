@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Snapshot } from '../../bindings/adomnia/internal/resources/models'
+import type { Snapshot } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 import { resourcesToMarkdown } from './resourcesMarkdown'
 
 const snapshot = (ram: number, at = '2026-10-19T10:00:00Z'): Snapshot => ({

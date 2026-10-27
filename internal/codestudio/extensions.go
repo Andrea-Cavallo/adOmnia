@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/plugins"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 	"io/fs"
 	"os"
 	"os/exec"

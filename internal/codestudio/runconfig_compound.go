@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/run"
 	"context"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"path/filepath"
 	"time"
 )

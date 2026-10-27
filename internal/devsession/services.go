@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/nettools"
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/nettools"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 const (

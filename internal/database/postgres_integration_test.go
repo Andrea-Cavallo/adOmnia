@@ -1,12 +1,12 @@
 package database
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/procutil"
-	"adomnia/internal/storage"
-	"adomnia/internal/vault"
 	"bytes"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/vault"
 	"net/http"
 	"net/http/httptest"
 	"os"

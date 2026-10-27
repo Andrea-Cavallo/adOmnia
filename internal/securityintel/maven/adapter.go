@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/procutil"
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // Adapter è l'adapter Maven di adOmnia Security Intelligence.

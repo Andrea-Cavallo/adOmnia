@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 
 	"github.com/fsnotify/fsnotify"
 )

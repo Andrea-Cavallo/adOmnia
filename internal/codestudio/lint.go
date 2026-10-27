@@ -19,9 +19,9 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (

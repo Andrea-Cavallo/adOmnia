@@ -3,7 +3,7 @@ package codestudio
 import (
 	"fmt"
 
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // JavaJFRRecording è una registrazione avviata da adOmnia: il nome serve a fermarla, il file è dove finisce.

@@ -3,8 +3,8 @@ package codestudio
 import (
 	"testing"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 func symbol(kind, line int, name string, children ...SymbolNode) SymbolNode {

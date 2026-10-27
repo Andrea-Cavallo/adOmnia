@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"gopkg.in/yaml.v3"
 )
 

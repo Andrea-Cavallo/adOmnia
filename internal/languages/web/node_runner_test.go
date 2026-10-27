@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestDetectsNodeTestScript(t *testing.T) {

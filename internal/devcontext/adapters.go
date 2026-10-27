@@ -3,7 +3,7 @@ package devcontext
 import (
 	"reflect"
 
-	"adomnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 )
 
 // AdapterHints carries the detection knowledge plugins teach to the built-in

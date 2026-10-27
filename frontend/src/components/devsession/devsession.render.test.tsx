@@ -16,7 +16,7 @@ vi.mock(import('@wailsio/runtime'), async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return { ...actual, Events: { On: () => () => undefined } } as never
 })
-vi.mock('../../../bindings/adomnia/devsession', () => new Proxy({}, { get: () => () => Promise.resolve([]) }))
+vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/devsession', () => new Proxy({}, { get: () => () => Promise.resolve([]) }))
 
 const { useDevSessionStore } = await import('@/stores/devSession')
 const { useAppStore } = await import('@/stores/app')

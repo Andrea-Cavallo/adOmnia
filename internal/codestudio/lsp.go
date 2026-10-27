@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/activity"
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (

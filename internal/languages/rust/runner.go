@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Options sono le opzioni di LanguageOptions delle configurazioni Rust. La toolchain è opzionale:

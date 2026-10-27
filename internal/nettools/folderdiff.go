@@ -1,13 +1,13 @@
 package nettools
 
 import (
-	"adomnia/internal/jsonutil"
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"os"

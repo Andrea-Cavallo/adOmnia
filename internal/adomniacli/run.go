@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/collectionfs"
-	"adomnia/internal/collectionresolve"
-	"adomnia/internal/httpexec"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/oascontract"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionresolve"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/oascontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 type RunSummary struct {

@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 type lspStateProbeWriter struct {

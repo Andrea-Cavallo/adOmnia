@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 const (

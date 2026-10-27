@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/mod/modfile"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 type ToolchainConfiguration struct {

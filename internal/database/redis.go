@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/redis/go-redis/v9"
 )
 

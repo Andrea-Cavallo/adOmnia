@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const binaryBuildTimeout = 5 * time.Minute

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/toolmanifest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toolmanifest"
 )
 
 // Artefatti verificati dell'installazione gestita (PY-8.3).

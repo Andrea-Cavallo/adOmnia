@@ -6,7 +6,7 @@ import (
 	"go/token"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // DeclarationSource restituisce la dichiarazione top-level (con commento di documentazione) che contiene la posizione.

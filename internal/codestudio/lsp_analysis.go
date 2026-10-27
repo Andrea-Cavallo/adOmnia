@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // classifyUsages assegna a ogni riferimento il tipo di utilizzo, chiedendolo al linguaggio del file

@@ -1,6 +1,6 @@
 package language
 
-import "adomnia/internal/ide/run"
+import "github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 
 // FormatRequest descrive il documento da formattare con uno strumento esterno. I percorsi sono
 // assoluti tranne RelativePath, relativo alla radice del progetto.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 )
 
 func TestCommandPrefersAdapterThenNpx(t *testing.T) {

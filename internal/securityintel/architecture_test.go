@@ -21,13 +21,13 @@ func TestCoreDoesNotImportAdapters(t *testing.T) {
 		t.Fatal(err)
 	}
 	forbidden := []string{
-		"adomnia/internal/securityintel/maven",
-		"adomnia/internal/securityintel/gomod",
-		"adomnia/internal/securityintel/pypi",
-		"adomnia/internal/securityintel/cargo",
-		"adomnia/internal/securityintel/govuln",
-		"adomnia/internal/languages/",
-		"adomnia/internal/codestudio",
+		"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/maven",
+		"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/gomod",
+		"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/pypi",
+		"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/cargo",
+		"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/govuln",
+		"github.com/Andrea-Cavallo/adOmnia/internal/languages/",
+		"github.com/Andrea-Cavallo/adOmnia/internal/codestudio",
 	}
 	tokenSet := token.NewFileSet()
 	entries, err := os.ReadDir(packageDirectory)

@@ -1,6 +1,6 @@
 package main
 
-import "adomnia/internal/devsession"
+import "github.com/Andrea-Cavallo/adOmnia/internal/devsession"
 
 // WatchKafka reads new messages of the given topics while the session runs.
 func (d *DevSession) WatchKafka(sessionID string, brokers, topics []string) (devsession.SessionTools, error) {

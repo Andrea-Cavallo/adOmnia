@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"errors"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"strings"
 	"time"
 )

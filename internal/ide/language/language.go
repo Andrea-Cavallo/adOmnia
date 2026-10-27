@@ -9,11 +9,11 @@ package language
 import (
 	"context"
 
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // Language è l'unica interfaccia obbligatoria per un language adapter.

@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 )
 
 const EndpointKey = "ADOMNIA_OLLAMA_URL"

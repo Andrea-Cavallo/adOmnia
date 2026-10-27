@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { Snapshot } from '../../../bindings/adomnia/internal/resources/models'
+import type { Snapshot } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 import { GOPLS_MEMORY_PRESETS, ResourceMemoryControls } from './ResourceMemoryControls'
 
 const emptySnapshot = { runtime: { memoryLimit: 0 }, processes: [] } as unknown as Snapshot

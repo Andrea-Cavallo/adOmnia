@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Monitoraggio delle JVM in esecuzione con gli strumenti del JDK (jcmd, jstat): nessun agente da installare e

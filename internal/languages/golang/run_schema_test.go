@@ -4,8 +4,8 @@ import (
 	jsonv1 "encoding/json"
 	"testing"
 
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestRunSchemaOnlyExposesGoFieldsForBuildKinds(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 const maxCoverageSourceScan = 20_000

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // ─── stress_run ────────────────────────────────────────────────────────────

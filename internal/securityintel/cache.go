@@ -1,11 +1,11 @@
 package securityintel
 
 import (
-	"adomnia/internal/jsonutil"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"sync"

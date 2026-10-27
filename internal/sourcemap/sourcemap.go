@@ -8,10 +8,10 @@
 package sourcemap
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io/fs"
 	"net/http"
 	"os"

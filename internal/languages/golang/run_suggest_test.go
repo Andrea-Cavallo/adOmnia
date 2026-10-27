@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func TestSuggestGoModule(t *testing.T) {

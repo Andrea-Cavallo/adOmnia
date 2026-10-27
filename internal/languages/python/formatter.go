@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // RuffVersion è la versione pinnata installata dall'azione esplicita "Install Ruff…". basedpyright

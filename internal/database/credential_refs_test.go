@@ -3,8 +3,8 @@ package database
 import (
 	"testing"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 func TestIsCredentialRefOnlyMatchesSavedSecrets(t *testing.T) {

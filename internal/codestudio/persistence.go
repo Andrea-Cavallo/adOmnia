@@ -4,8 +4,8 @@ import (
 	"encoding/json/v2"
 	"fmt"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const PersistenceSchemaVersion = 4

@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // GoplsModule è il modulo che `go install` usa per installare gopls nella cartella strumenti.

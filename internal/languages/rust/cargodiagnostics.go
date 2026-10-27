@@ -3,7 +3,7 @@ package rust
 import (
 	"encoding/json/v2"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // cargoDiagnostic è il messaggio JSON di cargo con `--message-format=json-diagnostic-rendered-ansi`:

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
 )
 
 func TestLintPassesValidYAMLSpec(t *testing.T) {

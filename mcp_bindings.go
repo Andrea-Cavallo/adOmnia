@@ -1,11 +1,11 @@
 package main
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/mcp"
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/mcp"
 )
 
 const defaultMCPSessionID = "default"

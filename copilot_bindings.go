@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"adomnia/internal/codestudio"
-	"adomnia/internal/copilot"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/copilot"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )

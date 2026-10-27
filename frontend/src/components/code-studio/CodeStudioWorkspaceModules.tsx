@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
-import * as GoIDEBindings from '../../../bindings/adomnia/goide'
-import type { WorkspaceModule } from '../../../bindings/adomnia/internal/codestudio/models'
+import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { WorkspaceModule } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 /** Moduli che dipendono da un modulo (archi inversi), per vedere l'impatto di una modifica. */
 export function workspaceDependents(modules: readonly WorkspaceModule[]): Map<string, string[]> {

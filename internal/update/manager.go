@@ -1,8 +1,6 @@
 package update
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/netpolicy"
 	"archive/zip"
 	"context"
 	"crypto/ed25519"
@@ -12,6 +10,8 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 	"golang.org/x/mod/semver"
 	"io"
 	"net/http"

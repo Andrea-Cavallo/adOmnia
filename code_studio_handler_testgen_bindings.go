@@ -1,6 +1,6 @@
 package main
 
-import "adomnia/internal/languages/golang"
+import "github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 
 func (g *GoIDE) GenerateHandlerTest(sessionID, filename, source string, input golang.HandlerTestInput) (golang.HandlerTestPreview, error) {
 	return g.service.GenerateHandlerTest(sessionID, filename, source, input)

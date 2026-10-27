@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // Raggiungibilità Maven via bytecode: l'adapter cerca riferimenti a classi e metodi

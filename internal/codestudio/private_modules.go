@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"golang.org/x/mod/modfile"
 	modulepath "golang.org/x/mod/module"

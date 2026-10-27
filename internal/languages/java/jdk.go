@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // JDK descrive il JDK trovato. Un JDK mancante non è fatale: l'editor funziona, ma build e run no.

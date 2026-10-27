@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/collectionfs"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/mock"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/mock"
 )
 
 // Revisions of the protocol this server understands, newest first. The client's requested

@@ -13,13 +13,13 @@
 package logindex
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"os"

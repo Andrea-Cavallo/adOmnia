@@ -3,13 +3,13 @@ package contracttest_test
 import (
 	"testing"
 
-	"adomnia/internal/ide/language"
-	contracttest "adomnia/internal/languages/contracttest"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/languages/java"
-	"adomnia/internal/languages/python"
-	"adomnia/internal/languages/rust"
-	"adomnia/internal/languages/web"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	contracttest "github.com/Andrea-Cavallo/adOmnia/internal/languages/contracttest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/web"
 )
 
 // TestLanguageAdaptersShareTheContract è la suite parametrica del contratto minimo: ogni adapter

@@ -3,11 +3,11 @@
 package standard
 
 import (
-	"adomnia/internal/securityintel"
-	"adomnia/internal/securityintel/cargo"
-	"adomnia/internal/securityintel/gomod"
-	"adomnia/internal/securityintel/maven"
-	"adomnia/internal/securityintel/pypi"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/cargo"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/gomod"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/maven"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/pypi"
 )
 
 // Engine compone il motore. cacheDirectory è il database locale degli advisory (scansioni offline);

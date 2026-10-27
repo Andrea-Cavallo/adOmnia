@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // DeclaredDependency è una dipendenza dichiarata da un'unità Python, con la versione risolta dal

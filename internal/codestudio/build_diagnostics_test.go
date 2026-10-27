@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func TestBuildDiagnosticReportsResolveWorkspaceRelativePaths(t *testing.T) {

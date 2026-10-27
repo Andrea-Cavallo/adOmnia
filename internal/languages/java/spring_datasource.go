@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // datasourcePrefix è il prefisso che Spring Boot usa per il datasource principale. Un datasource

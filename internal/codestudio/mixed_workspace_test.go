@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // writeFixtureFiles creates a minimal monorepo fixture: path → content.

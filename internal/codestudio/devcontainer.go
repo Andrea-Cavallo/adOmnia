@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/remote"
 	"bytes"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/remote"
 	"os"
 	"sync"
 )

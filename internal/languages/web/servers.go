@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 //go:embed schemas/package.schema.json

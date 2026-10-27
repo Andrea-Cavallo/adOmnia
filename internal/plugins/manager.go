@@ -4,12 +4,12 @@
 package plugins
 
 import (
-	"adomnia/internal/storage"
 	"encoding/base64"
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"io/fs"
 	"log"
 	"os"
@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 

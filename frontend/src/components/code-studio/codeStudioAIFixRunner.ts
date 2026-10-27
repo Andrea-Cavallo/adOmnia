@@ -1,5 +1,5 @@
 import { goModules } from '@/lib/code-studio/goProject'
-import * as AIEngine from '../../../bindings/adomnia/aiengine'
+import * as AIEngine from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine'
 import { closeGoIDEDocument, getGoIDEAIPolicy, isLocalAIProvider, listGoIDEAIExcludedPaths, listGoIDEDirectory, openGoIDEDocument } from '@/lib/code-studio-api'
 import { createAIRedactor } from '@/lib/aiRedaction'
 import type { GoIDEFileChange, GoIDEWorkspaceChange } from '@/lib/code-studio-lsp-api'

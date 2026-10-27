@@ -1,11 +1,11 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"sync"

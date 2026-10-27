@@ -1,8 +1,8 @@
 package sidecar
 
 import (
-	"adomnia/internal/oauth"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/oauth"
 	"net/http"
 	"net/http/httptest"
 	"net/url"

@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"path/filepath"
 
-	"adomnia/internal/airedact"
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/airedact"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // ErrExcluded indica un file escluso dal contesto AI (segreti o .adomnia/aiignore).

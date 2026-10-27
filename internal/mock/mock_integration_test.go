@@ -1,9 +1,9 @@
 package mock
 
 import (
-	"adomnia/internal/jsonutil"
 	"bytes"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"

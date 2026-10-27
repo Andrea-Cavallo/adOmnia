@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/run"
-	"adomnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
 )
 
 // PythonInterpreterReport è ciò che serve a scegliere l'interprete Python: i candidati con la

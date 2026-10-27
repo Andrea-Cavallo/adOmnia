@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/archivetest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/archivetest"
 )
 
 func TestExtractPackageRejectsEntriesOutsideTheStage(t *testing.T) {
@@ -33,7 +33,7 @@ func TestExtractPackageExtractsRegularEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	archive := filepath.Join(base, "ok.zip")
-	archivetest.WriteZip(t, archive, "adomnia/app.exe")
+	archivetest.WriteZip(t, archive, "github.com/Andrea-Cavallo/adOmnia/app.exe")
 	if err := extractPackage(archive, stage); err != nil {
 		t.Fatal(err)
 	}

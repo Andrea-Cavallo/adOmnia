@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 // Complementi di RS-6.6 a `real_dap_test.go`: i due casi d'errore che restano fuori dal flusso

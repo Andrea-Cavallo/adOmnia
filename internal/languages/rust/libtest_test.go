@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	idetesting "adomnia/internal/ide/testing"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 func parseRust(t *testing.T, pkg string, output string) []idetesting.TestResult {

@@ -1,9 +1,9 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-vi.mock('../../bindings/adomnia/goide', () => ({
+vi.mock('../../bindings/github.com/Andrea-Cavallo/adOmnia/goide', () => ({
   StartLanguageServer: vi.fn(async () => ({})), RestartLanguageServer: vi.fn(async () => ({})),
   StartAutomaticLanguageServer: vi.fn(async () => ({})), RestartAutomaticLanguageServer: vi.fn(async () => ({})),
 }))
-import * as bindings from '../../bindings/adomnia/goide'
+import * as bindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { startLanguageServer, restartLanguageServer } from './code-studio-lsp-api'
 const settings = { gofumpt: false, staticcheck: false, placeholders: false, semanticLinks: false, vulncheck: false }
 beforeEach(() => vi.clearAllMocks())

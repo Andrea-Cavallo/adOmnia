@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 // ID dei linguaggi, salvati in project.Unit.Language e usati come chiave del language server.

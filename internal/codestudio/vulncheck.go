@@ -10,10 +10,10 @@ import (
 
 	modulepath "golang.org/x/mod/module"
 
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
-	"adomnia/internal/securityintel/govuln"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/govuln"
 )
 
 // Il modello e il parser dello stream govulncheck vivono in internal/securityintel/govuln:

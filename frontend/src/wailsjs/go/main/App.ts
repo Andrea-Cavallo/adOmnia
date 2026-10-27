@@ -1,6 +1,6 @@
 // Compatibility import path retained while the generated Wails v3 bindings
 // live under frontend/bindings.
-export * from '../../../../bindings/adomnia/app'
+export * from '../../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 
 export interface StorageEntry {
   bucket: string

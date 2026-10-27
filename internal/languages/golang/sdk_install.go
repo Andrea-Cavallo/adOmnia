@@ -19,9 +19,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 )
 
 const (

@@ -1,4 +1,4 @@
-import type { Snapshot } from '../../bindings/adomnia/internal/resources/models'
+import type { Snapshot } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 
 export function resourceStats(history: Snapshot[]) {
   const cpus = history.filter(s => s.processes.some(p => p.cpu != null)).map(s => s.cpu)

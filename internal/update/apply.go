@@ -1,14 +1,14 @@
 package update
 
 import (
-	"adomnia/internal/ide/process"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/procutil"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io"
 	"os"
 	"os/exec"

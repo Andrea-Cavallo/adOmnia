@@ -1,10 +1,10 @@
 package java
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"os/exec"
 	"path/filepath"

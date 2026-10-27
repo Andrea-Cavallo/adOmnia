@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	idetesting "adomnia/internal/ide/testing"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // Report JUnit XML: Surefire (Maven) e Gradle usano lo stesso formato, in cartelle diverse.

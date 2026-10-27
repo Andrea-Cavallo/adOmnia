@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 const fakeGoplsEnv = "ADOMNIA_FAKE_GOPLS"

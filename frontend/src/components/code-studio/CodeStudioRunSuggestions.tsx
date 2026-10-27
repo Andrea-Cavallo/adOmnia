@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Plus, Sparkles } from 'lucide-react'
 import { getRunSuggestions } from '@/lib/code-studio-api'
 import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
-import type { Suggestion } from '../../../bindings/adomnia/internal/ide/run/models'
+import type { Suggestion } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/run/models'
 
 interface Props {
   sessionId: string

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 func TestWorkspaceSymbolsPreservesHealthyServerResults(t *testing.T) {

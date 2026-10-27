@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 )
 
 const (

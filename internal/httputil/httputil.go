@@ -1,7 +1,7 @@
 package httputil
 
 import (
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 )
 

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // ErrStaleDocumentVersion indica una modifica con versione non successiva a quella già sincronizzata.

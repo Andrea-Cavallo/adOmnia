@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // Debug Java: il Java Debug Server è un plugin di JDT LS. L'host chiede a JDT LS (workspace/executeCommand)

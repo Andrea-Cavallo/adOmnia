@@ -1,4 +1,4 @@
-import * as AppBindings from '../../bindings/adomnia/app'
+import * as AppBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { StorageGet, StoragePut } from '@/wailsjs/go/main/App'
 import { safeSetItem } from './safeLocalStorage'
 

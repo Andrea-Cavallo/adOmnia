@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/run"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"os"
 	"os/exec"
 	"path/filepath"

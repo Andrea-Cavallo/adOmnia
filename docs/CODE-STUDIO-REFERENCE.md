@@ -48,7 +48,7 @@ frontend (React)                         Go / Wails
 components/code-studio/   (Code Studio UI shell)   code_studio_bindings.go   ← stable Wails facade `GoIDE`
 components/ide/     (language contribs)          │
         │  generated bindings                    ▼
-        └──────────────► bindings/adomnia/goide.ts
+        └──────────────► bindings/github.com/Andrea-Cavallo/adOmnia/goide.ts
                                               internal/codestudio            HOST: composition root,
                                                   │                     Service facade, gopls/Delve
                           ┌───────────────────────┼─────────────────┐   config, persistence
@@ -603,8 +603,8 @@ intent in `useCodeStudioRuntimeContext`.
 ### 8.10 Wails bindings
 Stable facade `GoIDE` in `code_studio_bindings.go` (no feature logic allowed there), regenerated
 with the pinned `wails3 generate bindings`. Generated TypeScript bindings:
-`frontend/bindings/adomnia/goide.ts` — **296 functions** (2026-10-17), models under
-`bindings/adomnia/internal/{goide,ide/*,languages/*}/models`. Typed wrappers used by the
+`frontend/bindings/github.com/Andrea-Cavallo/adOmnia/goide.ts` — **296 functions** (2026-10-17), models under
+`bindings/github.com/Andrea-Cavallo/adOmnia/internal/{goide,ide/*,languages/*}/models`. Typed wrappers used by the
 UI live in `frontend/src/lib/code-studio-*.ts` (`code-studio-api`, `-lsp-api`, `-debug-api`,
 `-tests-api`, `-vcs-api`, `-workspaces-api`, `-window-api`, `livepreview-api`,
 `devcontext-api`). Events: a single `code-studio:event` carrying a versioned

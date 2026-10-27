@@ -1,9 +1,9 @@
 package mcp
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"

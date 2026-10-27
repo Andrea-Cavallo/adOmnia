@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func TestFinalizeSuggestionsDedupesMarksSavedAndUsesRelativeDirectory(t *testing.T) {

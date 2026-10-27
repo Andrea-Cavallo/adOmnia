@@ -4,8 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Suggest propone Run, Test e Build per un modulo Go. Il target "." viene risolto nel main package

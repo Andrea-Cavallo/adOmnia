@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/remote"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/remote"
 )
 
 // Uses only an already-cached image: acceptance never pulls an image implicitly.

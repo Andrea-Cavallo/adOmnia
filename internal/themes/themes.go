@@ -5,15 +5,15 @@
 package themes
 
 import (
-	"adomnia/internal/storage"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"log"
 	"os"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 

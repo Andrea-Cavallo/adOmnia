@@ -1,11 +1,11 @@
 package generator
 
 import (
-	"adomnia/internal/jsonutil"
 	"bytes"
 	"embed"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"regexp"

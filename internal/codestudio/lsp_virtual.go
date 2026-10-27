@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // virtualDocumentPath salva il testo di un documento con URI non-file (classi JDK e librerie Java) in un

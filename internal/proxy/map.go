@@ -1,10 +1,10 @@
 package proxy
 
 import (
-	"adomnia/internal/httputil"
-	"adomnia/internal/jsonutil"
 	"bytes"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"strings"

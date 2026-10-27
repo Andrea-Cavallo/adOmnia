@@ -1,11 +1,11 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/process"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"os/exec"
 	"path/filepath"

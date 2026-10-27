@@ -1,4 +1,4 @@
-import * as CopilotBindings from '../../bindings/adomnia/copilot'
+import * as CopilotBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/copilot'
 import { Events } from '@wailsio/runtime'
 import type {
   GitHubProfile,
@@ -12,7 +12,7 @@ import type {
   Settings,
   SignInPrompt,
   Status,
-} from '../../bindings/adomnia/internal/copilot/models'
+} from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/copilot/models'
 import type { CancellablePromise } from '@wailsio/runtime'
 
 export type CopilotProfile = GitHubProfile

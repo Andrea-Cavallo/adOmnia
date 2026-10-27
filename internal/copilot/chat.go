@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/airedact"
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/airedact"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 const (

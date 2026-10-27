@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/languages/golang/golangtest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang/golangtest"
 )
 
 func timingOf(info ToolchainInfo, phase string) (ToolchainTiming, bool) {

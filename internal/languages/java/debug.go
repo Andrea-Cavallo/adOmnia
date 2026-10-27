@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 // Comandi del Java Debug Server, esposti da JDT LS come workspace/executeCommand (vscode-java-debug).

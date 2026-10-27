@@ -1,8 +1,8 @@
 package dap
 
 import (
-	"adomnia/internal/ide/run"
 	"encoding/json"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 type SessionID = run.SessionID

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/collectionfs"
-	"adomnia/internal/oaslint"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/oaslint"
 )
 
 func Lint(args []string, stdout, stderr io.Writer) int {

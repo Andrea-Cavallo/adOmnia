@@ -1,8 +1,8 @@
 package mock
 
 import (
-	"adomnia/internal/jsonutil"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"math"
 	"math/rand" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used -- non-security randomness (fake data / jitter)
 	"strings"

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func suggestFixture(t *testing.T, files map[string]string) []run.Suggestion {

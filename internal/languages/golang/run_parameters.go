@@ -1,8 +1,8 @@
 package golang
 
 import (
-	idetesting "adomnia/internal/ide/testing"
 	"fmt"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 	"os"
 	"path/filepath"
 	"regexp"

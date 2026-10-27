@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 	"os"
 	"path/filepath"
 	"strings"

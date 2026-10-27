@@ -1,10 +1,10 @@
 package testing
 
 import (
-	"adomnia/internal/ide/run"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"sort"
 	"sync"
 	"time"

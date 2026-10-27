@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/dap"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // DebugOptions sono le opzioni di LanguageOptions del debug Python: lo stesso target della Run

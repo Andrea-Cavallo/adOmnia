@@ -1,5 +1,5 @@
 import { Events } from '@wailsio/runtime'
-import * as AppBindings from '../../../bindings/adomnia/app'
+import * as AppBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioWindowsStore } from '@/stores/codeStudioWindows'
 import { useMilkStore } from '@/stores/milk'

@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (

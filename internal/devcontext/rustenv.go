@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // clapEnvAssign è `env = "X"`/`env="X"` nell'attributo clap: il gate non deve dipendere dagli spazi.

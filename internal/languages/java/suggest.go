@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // buildTool è il comando con cui si esegue il build di un'unità: il wrapper del progetto se c'è

@@ -5,10 +5,10 @@
 package vault
 
 import (
-	"adomnia/internal/storage"
 	"bytes"
 	"encoding/base64"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"io"
 	"log"
 	"net/http"
@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
 	"filippo.io/age"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 

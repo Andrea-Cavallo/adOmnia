@@ -4,11 +4,11 @@
 package themes
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/storage"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"io"
 	"log"
 	"math"

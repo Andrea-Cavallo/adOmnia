@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"os/exec"
 	"path/filepath"

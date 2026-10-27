@@ -1,11 +1,11 @@
 package kafka
 
 import (
-	"adomnia/internal/devlog"
-	"adomnia/internal/httputil"
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
 	"math"
 	"net/http"
 	"sort"
@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	hdr "github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/IBM/sarama"
 )

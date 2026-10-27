@@ -1,8 +1,8 @@
 package main
 
 import (
-	"adomnia/internal/codestudio"
-	"adomnia/internal/devcontext"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devcontext"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )

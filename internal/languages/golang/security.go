@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/security"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/security"
 )
 
 // Regole statiche Go: euristiche conservative sull'AST (senza type checking), pensate per pochi falsi positivi.

@@ -1,4 +1,4 @@
-import * as SecurityIntelBindings from '../../bindings/adomnia/securityintel'
+import * as SecurityIntelBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/securityintel'
 
 // Tipi di adOmnia Security Intelligence. Il backend parla JSON per non generare
 // centinaia di modelli Wails: qui il contratto è tipizzato una volta sola.

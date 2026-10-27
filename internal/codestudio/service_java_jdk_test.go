@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 func fakeProjectJDK(t *testing.T) string {

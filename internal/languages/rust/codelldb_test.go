@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/toolmanifest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toolmanifest"
 )
 
 // codeLLDBTestAsset è la release pinnata per la piattaforma del test: senza asset pinnati la

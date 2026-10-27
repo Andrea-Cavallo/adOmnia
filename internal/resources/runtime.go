@@ -1,9 +1,9 @@
 package resources
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"runtime"

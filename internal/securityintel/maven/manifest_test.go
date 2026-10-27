@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 func TestUpgradeManifestUpdatesTheDeclaredVersion(t *testing.T) {

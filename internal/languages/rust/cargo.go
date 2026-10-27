@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"adomnia/internal/ide/toml"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toml"
 )
 
 const maxManifestBytes = 2 << 20

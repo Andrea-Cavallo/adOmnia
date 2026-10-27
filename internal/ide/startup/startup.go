@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/nettools"
+	"github.com/Andrea-Cavallo/adOmnia/internal/nettools"
 )
 
 // Event è un momento dell'avvio, in millisecondi dall'avvio del processo.

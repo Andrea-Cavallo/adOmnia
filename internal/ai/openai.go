@@ -1,13 +1,13 @@
 package ai
 
 import (
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
-	"adomnia/internal/jsonutil"
 	"bytes"
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"strings"
 )

@@ -1,12 +1,12 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/language"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/languages/java"
-	"adomnia/internal/languages/python"
-	"adomnia/internal/languages/rust"
-	"adomnia/internal/languages/web"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/web"
 )
 
 // newLanguageRegistry è la composition root dei linguaggi: aggiungerne uno è una riga qui,

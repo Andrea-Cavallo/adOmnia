@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { MyBatisLink } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { MyBatisLink } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { mybatisBrokenLinks, mybatisLinkAt, mybatisTarget } from './mybatisLinks'
 
 const linked = { namespace: 'a.M', id: 'find', kind: 'select', state: 'linked', xmlFile: 'src/M.xml', xmlLine: 3, xmlStartColumn: 15, xmlEndColumn: 19, javaFile: 'src/M.java', javaLine: 7, javaStartColumn: 10, javaEndColumn: 14 } as MyBatisLink

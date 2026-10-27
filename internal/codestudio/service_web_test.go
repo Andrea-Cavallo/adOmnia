@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/preview"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/preview"
 )
 
 func webProject(t *testing.T, files map[string]string) (*Service, Session) {

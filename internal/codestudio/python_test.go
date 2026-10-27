@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
 )
 
 // venvInterpreter è il percorso (con "/") dell'interprete dentro un ambiente della piattaforma.

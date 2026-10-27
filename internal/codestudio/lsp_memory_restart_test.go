@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"github.com/shirou/gopsutil/v4/process"
 )
 

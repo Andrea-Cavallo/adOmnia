@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 func TestGoplsConfigurationKeepsVulncheckOptIn(t *testing.T) {

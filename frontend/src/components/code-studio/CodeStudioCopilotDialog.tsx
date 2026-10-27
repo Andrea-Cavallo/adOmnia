@@ -3,7 +3,7 @@ import { AlertCircle, Copy, ExternalLink, Loader2, ShieldCheck, Sparkles } from 
 import { Browser } from '@wailsio/runtime'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import { getCopilotLog, type CopilotSettings } from '@/lib/copilot-api'
-import { State } from '../../../bindings/adomnia/internal/copilot/models'
+import { State } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/copilot/models'
 import { useCopilotStore } from '@/stores/copilot'
 import { CodeStudioCopilotProfiles } from './CodeStudioCopilotProfiles'
 import { copilotAccountLabel, copilotPresentation } from './CodeStudioCopilotStatus'

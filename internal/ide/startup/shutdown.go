@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/nettools"
+	"github.com/Andrea-Cavallo/adOmnia/internal/nettools"
 )
 
 // Shutdown è ciò che succede dopo il segnale di arresto.

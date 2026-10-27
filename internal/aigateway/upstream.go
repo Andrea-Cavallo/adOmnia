@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"adomnia/internal/ai"
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 const tokenKey = "ai-gateway-token"

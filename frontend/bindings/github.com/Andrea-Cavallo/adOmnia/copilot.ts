@@ -12,10 +12,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as copilot$0 from "./internal/copilot/models.js";
+import * as json$0 from "../../../encoding/json/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as json$0 from "../encoding/json/models.js";
+import * as copilot$0 from "./internal/copilot/models.js";
 
 export function CancelChat(token: string): $CancellablePromise<boolean> {
     return $Call.ByID(1054825816, token);

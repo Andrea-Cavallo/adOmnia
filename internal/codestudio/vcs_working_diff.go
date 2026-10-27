@@ -3,7 +3,7 @@ package codestudio
 import (
 	"strings"
 
-	"adomnia/internal/git"
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 )
 
 // maxWorkingDiffBytes oltre il quale il dialog di commit non mostra il diff (file generati, dump).

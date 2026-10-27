@@ -3,7 +3,7 @@ package run
 import (
 	"context"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // Suggestion è una configurazione pronta da salvare, proposta per un'unità di build rilevata.

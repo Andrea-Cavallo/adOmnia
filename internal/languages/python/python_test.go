@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func writeFile(t *testing.T, root, name, text string) string {

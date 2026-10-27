@@ -5,8 +5,8 @@ import (
 	"go/parser"
 	"go/token"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // Tipi di utilizzo ricavati dall'AST Go (alias locali dei valori del core).

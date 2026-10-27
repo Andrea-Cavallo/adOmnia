@@ -1,9 +1,9 @@
 package plugins
 
 import (
-	"adomnia/internal/storage"
 	"encoding/base64"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"os"
 	"path/filepath"
 	"strings"

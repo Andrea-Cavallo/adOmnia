@@ -1,14 +1,14 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/ide/remote"
-	"adomnia/internal/ide/run"
 	"encoding/json"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/remote"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 type SessionID = run.SessionID

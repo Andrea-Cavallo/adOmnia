@@ -1,9 +1,9 @@
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import type {
   Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugMemory, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
   DelveInfo, EvaluateResult, Execution, ExceptionBreakpointSettings, ExceptionBreakpointsView, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
   GoroutineOverview, JavaDebugRequest, ProcessInfo, PythonDebugRequest, RustDebugRequest,
-} from '../../bindings/adomnia/internal/codestudio/models'
+} from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 export type GoIDEDebugRequest = DebugRequest
 export type GoIDEDebugSession = DebugSessionInfo

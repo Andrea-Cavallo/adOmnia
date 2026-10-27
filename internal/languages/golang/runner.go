@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 // RunOptions belongs to the Go adapter; the core stores its JSON unchanged.

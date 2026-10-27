@@ -1,9 +1,9 @@
 package securityintel
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/jsontext"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"html"
 	"net/url"
 	"strings"

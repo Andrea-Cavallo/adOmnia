@@ -1,10 +1,10 @@
 package git
 
 import (
-	"adomnia/internal/procutil"
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"os/exec"
 	"path/filepath"

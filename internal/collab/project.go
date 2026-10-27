@@ -13,8 +13,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	ideproject "adomnia/internal/ide/project"
-	"adomnia/internal/jsonutil"
+	ideproject "github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"gopkg.in/yaml.v3"
 )
 

@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"github.com/shirou/gopsutil/v4/process"
 )
 

@@ -1,6 +1,6 @@
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
-import type { SessionWindow } from '../../bindings/adomnia/internal/codestudio/models'
+import type { SessionWindow } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 export type GoIDESessionWindow = SessionWindow
 

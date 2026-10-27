@@ -1,11 +1,11 @@
 package milk
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"os/exec"
 	"path/filepath"

@@ -1,8 +1,6 @@
 package proxy
 
 import (
-	"adomnia/internal/httputil"
-	"adomnia/internal/jsonutil"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -10,6 +8,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"math/big"
 	"net"
 	"net/http"

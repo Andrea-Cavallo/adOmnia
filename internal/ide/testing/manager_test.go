@@ -1,9 +1,9 @@
 package testing
 
 import (
-	"adomnia/internal/ide/run"
 	"encoding/json"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"os"
 	"sync"
 	"testing"

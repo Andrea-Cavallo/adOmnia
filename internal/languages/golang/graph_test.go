@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/graph"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/graph"
 )
 
 func graphFixture() map[string]string {

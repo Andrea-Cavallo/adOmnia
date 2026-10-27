@@ -1,13 +1,13 @@
 package milk
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io"
 	"net/http"
 	"os"

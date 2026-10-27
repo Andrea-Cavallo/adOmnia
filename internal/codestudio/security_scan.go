@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/security"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/security"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // Alias della facciata: le binding Wails e il frontend vedono i tipi del core tramite goide.

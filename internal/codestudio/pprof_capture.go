@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 	"github.com/google/pprof/profile"
 )

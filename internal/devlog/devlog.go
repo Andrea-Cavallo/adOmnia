@@ -2,9 +2,9 @@
 package devlog
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"os"

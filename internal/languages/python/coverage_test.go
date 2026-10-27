@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TestPytestCoverageReportMapsFilesAndLines: il report JSON di coverage.py diventa un report

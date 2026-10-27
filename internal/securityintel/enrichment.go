@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 )
 
 const (

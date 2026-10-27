@@ -3,7 +3,7 @@
 package process
 
 import (
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"strconv"
 	"strings"

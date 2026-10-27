@@ -1,6 +1,6 @@
-import * as CollabBindings from '../../bindings/adomnia/collab'
+import * as CollabBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/collab'
 import { Events } from '@wailsio/runtime'
-import type { Invite, Participant, Share, Status } from '../../bindings/adomnia/internal/collab/models'
+import type { Invite, Participant, Share, Status } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/collab/models'
 
 export type CollabStatus = Status
 export type CollabParticipant = Participant

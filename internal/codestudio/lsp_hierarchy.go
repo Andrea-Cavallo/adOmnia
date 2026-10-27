@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Gerarchie di gopls (chiamate e tipi) esposte in forma uniforme: l'elemento LSP

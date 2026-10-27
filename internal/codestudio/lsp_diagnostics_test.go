@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 func TestDiagnosticsDeduplicateContentButPreserveClearAndReopen(t *testing.T) {

@@ -3,9 +3,9 @@ package collectionresolve
 import (
 	"testing"
 
-	"adomnia/internal/collectionfs"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 func TestResolveEffectiveRequestAppliesCollectionAuthAndFolderHeaders(t *testing.T) {

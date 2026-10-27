@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strconv"
 
-	"adomnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
 )
 
 // detectPythonFile: gli endpoint FastAPI, Flask e Django diventano route come quelle Go e Spring,

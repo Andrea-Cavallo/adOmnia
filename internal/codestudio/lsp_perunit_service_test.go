@@ -3,9 +3,9 @@ package codestudio
 import (
 	"testing"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/languages/java"
-	"adomnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
 )
 
 // Il servizio passa la factory delle spec per unità solo ai linguaggi che la dichiarano: Python ha un

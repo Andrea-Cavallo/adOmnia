@@ -1,7 +1,7 @@
 package httpexec
 
 import (
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 	"context"
 	"crypto/tls"
@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/psd2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/psd2"
 )
 
 // inFlight tracks cancel functions for running requests, keyed by the

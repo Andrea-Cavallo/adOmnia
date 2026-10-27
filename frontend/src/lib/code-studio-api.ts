@@ -1,11 +1,11 @@
-import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUnitDependencies, RustToolchainReport, ServerInstallPreview } from '../../bindings/adomnia/internal/codestudio/models'
-import type { EnvironmentPlan } from '../../bindings/adomnia/internal/languages/python/models'
-import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
-import type { CargoTreeNode } from '../../bindings/adomnia/internal/languages/rust/models'
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
+import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUnitDependencies, RustToolchainReport, ServerInstallPreview } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/python/models'
+import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
+import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
-import type { FileChange as AgentReviewFileModel, Review as AgentReviewModel } from '../../bindings/adomnia/internal/ide/agentreview/models'
+import type { FileChange as AgentReviewFileModel, Review as AgentReviewModel } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/agentreview/models'
 import type {
   WatcherStatus,
   HistoryRevision,
@@ -38,8 +38,8 @@ import type {
   TerminalSession,
   TerminalRequest,
   TerminalProfile,
-} from '../../bindings/adomnia/internal/codestudio/models'
-import type { FieldSchema, RunTarget, Suggestion as RunSuggestion } from '../../bindings/adomnia/internal/ide/run/models'
+} from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+import type { FieldSchema, RunTarget, Suggestion as RunSuggestion } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/run/models'
 
 export type GoIDECapabilities = Capabilities
 export type GoIDESession = Session
@@ -60,7 +60,7 @@ export type GoIDEToolchainRelease = ToolchainRelease
 export type GoIDEInstalledToolchain = InstalledToolchain
 export type GoIDERunConfiguration = RunConfiguration
 export type GoIDERunTarget = RunTarget
-export { RunConfigurationKind as GoIDERunConfigurationKind } from '../../bindings/adomnia/internal/codestudio/models'
+export { RunConfigurationKind as GoIDERunConfigurationKind } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 export type GoIDEEnvironmentEntry = EnvironmentEntry
 export type GoIDESessionView = SessionView
 export type GoIDERecoveredBuffer = RecoveredBuffer

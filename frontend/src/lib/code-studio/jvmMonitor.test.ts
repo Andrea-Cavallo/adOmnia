@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { JVMHeapSample } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { JVMHeapSample } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { formatKb, gcOverheadPercent, pushSample, sparkline } from './jvmMonitor'
 
 const sample = (heapUsedKb: number, extra: Partial<JVMHeapSample> = {}) => ({ heapUsedKb, heapCapacityKb: 1000, youngUsedKb: 0, oldUsedKb: 0, youngGcs: 0, youngGcSeconds: 0, fullGcs: 0, fullGcSeconds: 0, uptimeSeconds: 0, ...extra }) as JVMHeapSample

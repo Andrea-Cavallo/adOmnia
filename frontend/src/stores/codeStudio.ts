@@ -817,7 +817,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     if (/\.pdf$/i.test(path)) {
       try {
         const [{ ReadProjectPDF }, { base64ToBytes }, { useAppStore }] = await Promise.all([
-          import('../../bindings/adomnia/goide'), import('@/lib/pdf/pdfProjects'), import('@/stores/app'),
+          import('../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'), import('@/lib/pdf/pdfProjects'), import('@/stores/app'),
         ])
         const bytes = base64ToBytes(await ReadProjectPDF(sessionId, path))
         useAppStore.getState().queueFileImport({ kind: 'pdf', name: path.split(/[\\/]/).pop() ?? path, bytes })

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
 	"github.com/dop251/goja"
 )
 

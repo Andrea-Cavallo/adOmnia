@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // TestMain fa da finto govulncheck: rilanciato con FAKE_GOVULNCHECK=1 scrive la sezione "config" su stdout e

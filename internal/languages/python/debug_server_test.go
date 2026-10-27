@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/dap"
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestDebugAdapterBuildsDebugpyLaunch(t *testing.T) {

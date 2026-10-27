@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/toml"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toml"
 )
 
 // Stato di un nodo dell'albero.

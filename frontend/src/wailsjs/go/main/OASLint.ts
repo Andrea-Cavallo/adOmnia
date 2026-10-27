@@ -1,1 +1,1 @@
-export * from '../../../../bindings/adomnia/oaslint'
+export * from '../../../../bindings/github.com/Andrea-Cavallo/adOmnia/oaslint'

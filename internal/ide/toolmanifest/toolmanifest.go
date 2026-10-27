@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"strings"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const (

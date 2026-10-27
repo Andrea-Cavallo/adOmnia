@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 func (l *Language) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {

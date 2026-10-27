@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { ProfileType } from '../../../bindings/adomnia/internal/copilot/models'
+import { ProfileType } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/copilot/models'
 import type { CopilotProfile, CopilotSettings } from '@/lib/copilot-api'
 
 const INPUT = 'gs-input'

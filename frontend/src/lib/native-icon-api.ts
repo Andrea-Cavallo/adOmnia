@@ -1,5 +1,5 @@
 import { isDesktopRuntime } from './desktopRuntime'
-import { SetNativeIconMode } from '../../bindings/adomnia/app'
+import { SetNativeIconMode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 
 let desired: { mode: 'dark' | 'light' } | null = null
 let running = false

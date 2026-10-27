@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/graph"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/graph"
 )
 
 func TestSessionCyclesReleaseDocumentsWatchersAndGraphCaches(t *testing.T) {

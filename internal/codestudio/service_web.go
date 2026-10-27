@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/preview"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/languages/web"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/preview"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/web"
 )
 
 // Live Server: anteprima dei progetti web (HTML/CSS/JS statici, React/Vite, Node) dentro l'IDE.

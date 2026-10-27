@@ -2,13 +2,13 @@
 package dap
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"strconv"
 	"strings"

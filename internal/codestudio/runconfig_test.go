@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"os"
 	"path/filepath"
 	"strings"

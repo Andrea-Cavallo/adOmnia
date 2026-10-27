@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/collectionresolve"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionresolve"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type mcpTool struct {

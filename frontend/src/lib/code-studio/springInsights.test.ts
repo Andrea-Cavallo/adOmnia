@@ -6,7 +6,7 @@ import type {
   SpringInjection,
   SpringProperty,
   SpringValue,
-} from '../../../bindings/adomnia/internal/languages/java/models'
+} from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import {
   beanForInjection,
   configProfileOf,

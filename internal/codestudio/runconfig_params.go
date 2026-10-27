@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/run"
-	"adomnia/internal/languages/golang"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"strings"
 	"time"
 )

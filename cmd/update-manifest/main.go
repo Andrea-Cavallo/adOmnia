@@ -2,8 +2,6 @@
 package main
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/update"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
@@ -12,6 +10,8 @@ import (
 	"encoding/json/jsontext"
 	"flag"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 	"io"
 	"os"
 	"path/filepath"

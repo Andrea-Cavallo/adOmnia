@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/activity"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/resources"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
 )
 
 func budgetServer(t *testing.T, manager *LSPManager, id string, now time.Time) (*lspSession, int) {

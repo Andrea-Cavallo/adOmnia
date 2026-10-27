@@ -1,8 +1,8 @@
 package java
 
 import (
-	"adomnia/internal/jsonutil"
 	"archive/zip"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"testing"

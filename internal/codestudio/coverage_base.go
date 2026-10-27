@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const baseCoverageTimeout = 10 * time.Minute

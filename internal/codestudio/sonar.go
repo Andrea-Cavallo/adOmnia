@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // SonarQube è un'integrazione opzionale: adOmnia non installa né avvia nulla da sé. Con un server

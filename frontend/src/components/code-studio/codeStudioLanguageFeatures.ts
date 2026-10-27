@@ -4,7 +4,7 @@ import { ideLanguageForEditor, languageServerEditorLanguages } from '@/component
 import { isServerReady, serverLanguageForEditor } from '@/stores/ideLanguageServers'
 import { isServiceSuspended } from '@/lib/code-studio/pausedServices'
 import { extensionLanguageForPath } from '@/stores/ideExtensions'
-import { ExtensionLanguageStatus } from '../../../bindings/adomnia/goide'
+import { ExtensionLanguageStatus } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { monaco } from '@/lib/monacoSetup'
 import {

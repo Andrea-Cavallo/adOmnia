@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/devsession"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devsession"
 )
 
 const liveServiceSource = `package main

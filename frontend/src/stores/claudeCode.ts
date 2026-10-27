@@ -1,5 +1,5 @@
-import * as ClaudeCode from '../../bindings/adomnia/claudecode'
-import type { Config, Diagnosis } from '../../bindings/adomnia/internal/claudecode/models'
+import * as ClaudeCode from '../../bindings/github.com/Andrea-Cavallo/adOmnia/claudecode'
+import type { Config, Diagnosis } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/claudecode/models'
 import { subscribeAgentEvents } from '@/lib/milk-api'
 import { createAgentChatStore } from './agentChat'
 

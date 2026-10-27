@@ -1,8 +1,8 @@
 package main
 
 import (
-	"adomnia/internal/markdown"
 	"errors"
+	"github.com/Andrea-Cavallo/adOmnia/internal/markdown"
 	"strings"
 )
 

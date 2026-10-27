@@ -1,14 +1,14 @@
 import { Events } from '@wailsio/runtime'
 import { confirm } from '@/lib/confirmDialog'
-import { StartDevContainer, StopRun } from '../../../bindings/adomnia/goide'
+import { StartDevContainer, StopRun } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { CodeStudioButton } from './CodeStudioModal'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { GoIDERunConfigurationKind, listGoIDERemoteTargets, type GoIDERemoteTarget, type GoIDERunConfiguration } from '@/lib/code-studio-api'
 import { withContentKeys } from '@/lib/contentKeys'
-import { InspectContainer } from '../../../bindings/adomnia/goide'
-import type { ContainerInfo } from '../../../bindings/adomnia/internal/ide/remote/models'
+import { InspectContainer } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { ContainerInfo } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/remote/models'
 
 /** Tipi che il backend sa eseguire altrove: quelli che lanciano un singolo comando. */
 const REMOTE_KINDS = new Set<string>([

@@ -1,11 +1,11 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io/fs"
 	"os"
 	"path"

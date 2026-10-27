@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { PomDependency, VersionInfo } from '../../bindings/adomnia/internal/languages/java/models'
+import type { PomDependency, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { getPomDependencies, getPomManagedVersions, getPomVersions } from '@/lib/code-studio-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { isPomFile, mergeManagedVersions, projectRootOf, versionRequest } from '@/lib/code-studio/pomInsights'

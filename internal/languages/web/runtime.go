@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Runtime descrive Node.js e il package manager trovati per un progetto.

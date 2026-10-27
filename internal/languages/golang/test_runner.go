@@ -1,11 +1,11 @@
 package golang
 
 import (
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 	"regexp"
 	"strconv"
 	"strings"

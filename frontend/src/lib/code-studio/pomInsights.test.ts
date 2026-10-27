@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { PomDependency, VersionInfo } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { PomDependency, VersionInfo } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { SecurityFinding } from '../securityIntel-api'
 import { compareVersions, dependencyStatuses, mergeManagedVersions, projectRootOf, updateEdit, versionRequest } from './pomInsights'
 

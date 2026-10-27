@@ -1,18 +1,18 @@
 package ws
 
 import (
-	"adomnia/internal/httputil"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
 	"log"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/gorilla/websocket"
 )
 

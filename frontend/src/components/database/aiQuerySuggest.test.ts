@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('../../../bindings/adomnia/aiengine', () => ({ Complete: vi.fn(), Configure: vi.fn() }))
+vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine', () => ({ Complete: vi.fn(), Configure: vi.fn() }))
 vi.mock('@/lib/aiEngine', () => ({ ensureAIConfigured: vi.fn() }))
 vi.mock('@/lib/aiAvailability', () => ({ isAICompanionAvailable: () => available.value }))
 const available = vi.hoisted(() => ({ value: true }))
 
-import * as AIEngine from '../../../bindings/adomnia/aiengine'
+import * as AIEngine from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine'
 import { buildQueryPrompt, lineDiff, parseQueryResponse, suggestQueryWithAI } from './aiQuerySuggest'
 
 const schema = [

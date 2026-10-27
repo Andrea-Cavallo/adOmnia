@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 var projectNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$`)

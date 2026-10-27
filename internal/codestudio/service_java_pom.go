@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/languages/java"
-	"adomnia/internal/securityintel"
-	mavensecurity "adomnia/internal/securityintel/maven"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
+	mavensecurity "github.com/Andrea-Cavallo/adOmnia/internal/securityintel/maven"
 )
 
 // pomVersionsTimeout è il tempo massimo di una ricerca delle versioni su Maven Central.

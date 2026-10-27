@@ -1,9 +1,9 @@
 package nettools
 
 import (
-	"adomnia/internal/httputil"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
 	"net"
 	"net/http"
 	"strconv"
@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/miekg/dns"
 )
 

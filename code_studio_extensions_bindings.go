@@ -1,8 +1,8 @@
 package main
 
 import (
-	"adomnia/internal/codestudio"
-	"adomnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 )
 
 func (g *GoIDE) RemoteSourceFiles(sessionID string) ([]string, error) {

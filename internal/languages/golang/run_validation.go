@@ -1,8 +1,8 @@
 package golang
 
 import (
-	"adomnia/internal/ide/project"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"path/filepath"
 	"strings"
 )

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // I test costruiscono class file reali in memoria: la distinzione fra conferma e

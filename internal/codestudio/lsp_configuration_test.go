@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"testing"
 )
 

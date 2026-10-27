@@ -1,6 +1,6 @@
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
-import type { LanguageServerStatus, ServerInstallPreview, Execution } from '../../bindings/adomnia/internal/codestudio/models'
-import type { ServerInfo } from '../../bindings/adomnia/internal/ide/lsp/models'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { LanguageServerStatus, ServerInstallPreview, Execution } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+import type { ServerInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp/models'
 
 /** Language server gestiti da adOmnia (web, Java…): stessa API per ogni linguaggio. */
 export type LanguageServerInfo = ServerInfo

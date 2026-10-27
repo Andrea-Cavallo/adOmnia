@@ -21,7 +21,7 @@ import { ForwardForm, PodExec, PodFiles } from './PodTools'
 import { PodGoTools } from './PodGoTools'
 import { PodLogLine } from './PodLogLine'
 import { useCodeStudioStore } from '@/stores/codeStudio'
-import { RemoteSourceFiles } from '../../../bindings/adomnia/goide'
+import { RemoteSourceFiles } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 
 const POLL_MS = 1500
 const MAX_LOG_LINES = 2000

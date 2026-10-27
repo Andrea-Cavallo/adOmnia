@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/languages/golang/golangtest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang/golangtest"
 )
 
 // testSession è il minimo che il manager conosce di una sessione: ID e cartella del progetto.

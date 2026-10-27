@@ -1,5 +1,5 @@
 import { isDesktopRuntime } from './desktopRuntime'
-import * as AppBindings from '../../bindings/adomnia/app'
+import * as AppBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 export interface MarkdownFileEntry {
   name: string
   path: string

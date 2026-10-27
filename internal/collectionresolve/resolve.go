@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"adomnia/internal/collectionfs"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 type ResolvedRequest struct {

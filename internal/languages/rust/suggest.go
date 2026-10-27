@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Suggest propone le configurazioni rilevate per un'unità Cargo: ogni bin ed example dichiarato

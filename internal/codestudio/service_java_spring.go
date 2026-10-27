@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/java"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo: proprietà di configurazione

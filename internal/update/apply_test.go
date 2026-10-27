@@ -1,7 +1,6 @@
 package update
 
 import (
-	"adomnia/internal/jsonutil"
 	"archive/zip"
 	"bytes"
 	"crypto/ed25519"
@@ -10,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"os"

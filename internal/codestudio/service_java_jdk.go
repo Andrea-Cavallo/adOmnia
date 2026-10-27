@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // JavaJDKReport è ciò che serve a scegliere il JDK: quelli installati, quello che si userebbe senza scelta,

@@ -1,7 +1,7 @@
 package aigateway
 
 import (
-	"adomnia/internal/ai"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
 	"testing"
 )
 

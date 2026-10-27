@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"adomnia/internal/ide/remote"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/remote"
 )
 
 func detectTerminalProfiles() []TerminalProfile {

@@ -5,7 +5,7 @@ package main
 import (
 	"log"
 
-	"adomnia/internal/nativeicon"
+	"github.com/Andrea-Cavallo/adOmnia/internal/nativeicon"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )

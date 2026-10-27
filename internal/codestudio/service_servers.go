@@ -3,8 +3,8 @@ package codestudio
 import (
 	"fmt"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // Language server gestiti da adOmnia (web, Java, …): localizzazione, installazione e ciclo di vita

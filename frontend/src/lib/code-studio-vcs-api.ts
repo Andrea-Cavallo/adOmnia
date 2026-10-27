@@ -1,6 +1,6 @@
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
-import type { VCSBlameLine, VCSChangedSymbol, VCSCommit, VCSFileChange, VCSStatus } from '../../bindings/adomnia/internal/codestudio/models'
-import type { CommitResult } from '../../bindings/adomnia/internal/git/models'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { VCSBlameLine, VCSChangedSymbol, VCSCommit, VCSFileChange, VCSStatus } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+import type { CommitResult } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/git/models'
 
 export type GoIDEVCSStatus = VCSStatus
 export type GoIDEVCSFileChange = VCSFileChange

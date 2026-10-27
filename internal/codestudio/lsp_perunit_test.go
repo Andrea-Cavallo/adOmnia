@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // fakeUnitLanguage è un linguaggio con un server per unità, come Python: ogni unità porta il proprio

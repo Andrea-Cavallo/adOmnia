@@ -1,8 +1,8 @@
 package devsession
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net"
 	"net/http"
 	"net/http/httptest"

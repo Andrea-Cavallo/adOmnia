@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/language"
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 var _ language.TestRunner = (*Language)(nil)

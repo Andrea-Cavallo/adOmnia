@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/devlog"
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 // versionQueryTimeout vale solo per il ripiego `go version` quando manca il file VERSION dell'SDK.

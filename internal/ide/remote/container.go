@@ -1,11 +1,11 @@
 package remote
 
 import (
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os/exec"
 	"path"
 	"sort"

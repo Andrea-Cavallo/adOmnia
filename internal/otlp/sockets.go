@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/nettools"
+	"github.com/Andrea-Cavallo/adOmnia/internal/nettools"
 )
 
 // The map refreshes every 2 s; netstat/tasklist run at most once per socketsTTL.

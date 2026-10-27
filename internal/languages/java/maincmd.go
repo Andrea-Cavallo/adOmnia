@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // MainOptions sono le LanguageOptions di una configurazione Run di kind "main": la classe da eseguire e le

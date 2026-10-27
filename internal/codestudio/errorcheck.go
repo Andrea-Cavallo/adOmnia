@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 
 	"golang.org/x/tools/go/packages"
 )

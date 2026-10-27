@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Mode dice come l'anteprima viene prodotta.

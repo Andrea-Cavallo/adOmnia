@@ -1,8 +1,8 @@
 package golang
 
 import (
-	idetesting "adomnia/internal/ide/testing"
 	"encoding/json/v2"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 	"regexp"
 	"strings"
 )

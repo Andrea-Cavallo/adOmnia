@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	idetesting "adomnia/internal/ide/testing"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // Il lock di `target/` non è un blocco dell'IDE: la riga di cargo va riconosciuta e spiegata,

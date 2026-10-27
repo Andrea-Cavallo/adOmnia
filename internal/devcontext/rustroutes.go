@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strconv"
 
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // detectRustFile è l'entry point per i sorgenti `.rs` in Developer Context: route (axum/actix/

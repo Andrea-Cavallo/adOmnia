@@ -1,14 +1,14 @@
 package sse
 
 import (
-	"adomnia/internal/httputil"
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"log"
 	"net/http"
 	"strconv"

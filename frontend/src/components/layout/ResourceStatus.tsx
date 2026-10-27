@@ -2,7 +2,7 @@ import { currentActivityPhase } from '@/stores/activity'
 import { visibleInterval } from '@/lib/visiblePolling'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Activity, Download } from 'lucide-react'
-import type { Snapshot } from '../../../bindings/adomnia/internal/resources/models'
+import type { Snapshot } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { saveTextFile } from '@/lib/fileUtils'
 import { resourcesToMarkdown } from '@/lib/resourcesMarkdown'
@@ -35,7 +35,7 @@ export function useResourceSample() {
       if (recordUntil && Date.now() >= recordUntil) { setRecordUntil(0); return }
       if (currentActivityPhase() === 'Active' || (recordUntil && !document.hidden)) {
         inFlight = true
-        try { const { ResourceUsage } = await import('../../../bindings/adomnia/goide'); const next = await ResourceUsage(); if (!disposed) { if((!hasRecording || recordUntil) && history.current[history.current.length-1]?.at !== next.at) history.current = [...history.current, next].slice(-HISTORY_SAMPLES); setSample(next); setFailed(false) } }
+        try { const { ResourceUsage } = await import('../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'); const next = await ResourceUsage(); if (!disposed) { if((!hasRecording || recordUntil) && history.current[history.current.length-1]?.at !== next.at) history.current = [...history.current, next].slice(-HISTORY_SAMPLES); setSample(next); setFailed(false) } }
         catch { if (!disposed) setFailed(true) }
         finally { inFlight = false }
       }

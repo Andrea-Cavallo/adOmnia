@@ -5,7 +5,7 @@
 // converge qui fase dopo fase (docs/architecture/ide-multilanguage-refactor.md).
 package golang
 
-import "adomnia/internal/ide/language"
+import "github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 
 // ID del linguaggio Go, salvato in project.Unit.Language.
 const ID = "go"

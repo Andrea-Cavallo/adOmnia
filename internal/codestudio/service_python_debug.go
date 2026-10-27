@@ -3,9 +3,9 @@ package codestudio
 import (
 	"fmt"
 
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
 )
 
 // PythonDebugRequest chiede il debug di uno script, di un modulo o di test pytest, con gli stessi

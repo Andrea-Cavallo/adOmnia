@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 func writeFile(t *testing.T, root, name, content string) string {

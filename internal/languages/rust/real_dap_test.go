@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 // logAll copia il registro degli eventi per stamparlo nei fallimenti.

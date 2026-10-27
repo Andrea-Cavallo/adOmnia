@@ -1,10 +1,10 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"bufio"
 	"context"
 	"encoding/csv"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"runtime"
 	"sort"

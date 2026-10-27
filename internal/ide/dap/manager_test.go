@@ -1,10 +1,10 @@
 package dap
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net"
 	"os"

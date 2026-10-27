@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
 
 	"encoding/json/v2"
 	"os"

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // analyzerHandler risponde al server come l'IDE (workspace/configuration con le impostazioni

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/httpexec"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 	"gopkg.in/yaml.v3"
 )
 

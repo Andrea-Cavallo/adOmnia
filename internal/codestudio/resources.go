@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"adomnia/internal/resources"
+	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
 	"strings"
 )
 

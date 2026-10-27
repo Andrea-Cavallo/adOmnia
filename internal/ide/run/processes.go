@@ -1,13 +1,13 @@
 package run
 
 import (
-	processcore "adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	processcore "github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io"
 	"os/exec"
 	"slices"

@@ -90,7 +90,7 @@ wails3 task build                        # checkpoint desktop/release
 ```
 - Durante le singole feature eseguire i test mirati al comportamento modificato; non rilanciare ogni volta l'intera suite frontend da oltre 1.300 test.
 - Eseguire le suite complete frontend e Go al rilascio/checkpoint finale, dopo modifiche trasversali oppure quando i test mirati indicano una regressione più ampia.
-- Se si toccano i binding Go: `wails3 generate bindings -clean=true -ts ./...` con il `wails3` pinnato in `go.mod`, e `frontend/bindings/adomnia/*` aggiornati.
+- Se si toccano i binding Go: `wails3 generate bindings -clean=true -ts ./...` con il `wails3` pinnato in `go.mod`, e `frontend/bindings/github.com/Andrea-Cavallo/adOmnia/*` aggiornati.
 - `internal/ide/architecture_test.go` deve restare verde.
 - Test manuale: `wails3 task dev` con un progetto reale (`root/go.mod` + `root/cmd/main.go` + sotto-package con test), skin scuro **e** chiaro.
 
@@ -963,7 +963,7 @@ DB-1 e DB-2 sono indipendenti; DB-3 usa lo schema condiviso e il `ConnectionMana
 - [ ] Tutti i Gate delle sezioni IDE-1…IDE-5, GS-1…GS-10, DB-1…DB-3 completi (nessuna casella aperta senza nota `BLOCCATO` o `NON VERIFICATO`).
 - [ ] `go test ./...`, `npm run build`, `npm run check:startup` verdi (output incollato nel Registro).
 - [ ] `internal/ide/architecture_test.go` e test di guardia di IDE-2.5 verdi.
-- [ ] Binding rigenerati con il `wails3` pinnato; `frontend/bindings/adomnia/*` aggiornati.
+- [ ] Binding rigenerati con il `wails3` pinnato; `frontend/bindings/github.com/Andrea-Cavallo/adOmnia/*` aggiornati.
 - [ ] Layout/storage esistenti si caricano senza migrazione manuale (`LEGACY_RAIL_ALIASES`, id pane invariati); migrazioni di `adomnia.database.connections` e cronologia documentate.
 - [ ] Verifica manuale completata: elenco, passi ed esiti in `mds/MANUAL-CHECK.md` (sezione "Verifica globale di rilascio").
 - [ ] Nessun segreto in chiaro su disco, nei log o nelle risposte HTTP (DB-2.S1); security review fatta dove richiesta.

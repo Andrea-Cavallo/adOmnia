@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 func TestWorkspaceFolderRoots(t *testing.T) {

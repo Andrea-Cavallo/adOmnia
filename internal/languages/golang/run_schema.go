@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // RunSchema descrive i campi Go di una configurazione: la UI li genera da qui.

@@ -1,6 +1,6 @@
 package codestudio
 
-import "adomnia/internal/ide/process"
+import "github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
 
 // Alias locali verso il core: evitano di toccare decine di call site durante la migrazione.
 var (

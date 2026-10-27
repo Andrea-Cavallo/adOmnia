@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // formatToolTimeout limita lo strumento esterno: un Ruff bloccato non deve congelare il salvataggio.

@@ -9,8 +9,8 @@ import (
 // Il core dell'IDE non deve dipendere da alcun language adapter né dalle librerie del tooling Go:
 // è la regola che rende possibile aggiungere un linguaggio senza toccare il core.
 var forbiddenCoreImports = []string{
-	"adomnia/internal/languages/",
-	"adomnia/internal/codestudio",
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/",
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio",
 	"golang.org/x/mod",
 	"golang.org/x/tools",
 	"golang.org/x/exp/trace",
@@ -18,22 +18,22 @@ var forbiddenCoreImports = []string{
 }
 
 func TestCoreDoesNotImportLanguageAdapters(t *testing.T) {
-	assertNoForbiddenDeps(t, "adomnia/internal/ide/...", forbiddenCoreImports)
+	assertNoForbiddenDeps(t, "github.com/Andrea-Cavallo/adOmnia/internal/ide/...", forbiddenCoreImports)
 }
 
 // L'adapter dipende dal core, mai dall'host: niente cicli con internal/codestudio.
 func TestLanguageAdaptersDoNotImportHost(t *testing.T) {
-	assertNoForbiddenDeps(t, "adomnia/internal/languages/...", []string{"adomnia/internal/codestudio"})
+	assertNoForbiddenDeps(t, "github.com/Andrea-Cavallo/adOmnia/internal/languages/...", []string{"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"})
 }
 
 // Ogni linguaggio resta indipendente dagli altri: condividono il core, non il codice di un altro
 // adapter. Un bisogno comune si sposta nel core (MULTILANGUAGE-IDE 10.1).
 func TestLanguageAdaptersDoNotImportEachOther(t *testing.T) {
-	output, err := exec.Command("go", "list", "-f", `{{.ImportPath}}|{{join .Imports " "}}`, "adomnia/internal/languages/...").CombinedOutput()
+	output, err := exec.Command("go", "list", "-f", `{{.ImportPath}}|{{join .Imports " "}}`, "github.com/Andrea-Cavallo/adOmnia/internal/languages/...").CombinedOutput()
 	if err != nil {
 		t.Fatalf("go list: %v\n%s", err, output)
 	}
-	const prefix = "adomnia/internal/languages/"
+	const prefix = "github.com/Andrea-Cavallo/adOmnia/internal/languages/"
 	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
 		path, imports, found := strings.Cut(line, "|")
 		if !found || !strings.HasPrefix(path, prefix) {

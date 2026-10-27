@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/toml"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toml"
 )
 
 // Manifest è ciò che serve del pyproject.toml e degli altri indizi Python di un'unità.

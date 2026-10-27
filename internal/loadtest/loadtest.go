@@ -1,11 +1,11 @@
 package loadtest
 
 import (
-	"adomnia/internal/devlog"
 	"bytes"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
 	"io"
 	"math"
 	"net/http"
@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	hdr "github.com/HdrHistogram/hdrhistogram-go"
 )
 

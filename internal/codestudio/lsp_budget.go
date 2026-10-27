@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/activity"
-	"adomnia/internal/resources"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
 )
 
 const memoryBudgetSampleInterval = 10 * time.Second

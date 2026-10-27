@@ -1,8 +1,8 @@
 package main
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/perf"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/perf"
 )
 
 // PerfRecordingStatus reports the active scenario recording as local JSON:

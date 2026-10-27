@@ -1,9 +1,9 @@
 package ai
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"net/http/httptest"

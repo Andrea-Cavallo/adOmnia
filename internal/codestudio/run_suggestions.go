@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // GetRunSuggestions propone configurazioni per ogni unità di build rilevata, qualunque sia il suo

@@ -1,8 +1,6 @@
 package nettools
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/procutil"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -10,6 +8,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io"
 	"net/http"
 	"os"

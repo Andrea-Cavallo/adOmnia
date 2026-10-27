@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { monaco } from '@/lib/monacoSetup'
-import * as AIEngine from '../../../bindings/adomnia/aiengine'
+import * as AIEngine from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine'
 import { getGoIDEAIPolicy, isLocalAIProvider, listGoIDEAIExcludedPaths } from '@/lib/code-studio-api'
 import { createAIRedactor } from '@/lib/aiRedaction'
 import { ensureAIConfigured } from '@/lib/aiEngine'

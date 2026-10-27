@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"adomnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 

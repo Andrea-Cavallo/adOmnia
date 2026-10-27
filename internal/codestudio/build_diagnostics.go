@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // BuildDiagnostics sono i diagnostici dell'ultima build/run di una sessione, nella forma dei

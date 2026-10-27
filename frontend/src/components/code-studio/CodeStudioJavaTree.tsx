@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { GitFork, Loader2, Search } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { getJavaDependencyTree } from '@/lib/code-studio-api'
-import type { TreeNode } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { TreeNode } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { withContentKeys } from '@/lib/contentKeys'
 
 interface TreeRequest {

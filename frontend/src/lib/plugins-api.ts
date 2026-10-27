@@ -1,8 +1,8 @@
 import type { PluginInstance } from '@/stores/plugins'
-import * as PluginManagerBindings from '../../bindings/adomnia/pluginmanager'
-import * as WasmRuntimeBindings from '../../bindings/adomnia/wasmruntime'
-import * as TemplateStoreBindings from '../../bindings/adomnia/templatestore'
-import * as AppBindings from '../../bindings/adomnia/app'
+import * as PluginManagerBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/pluginmanager'
+import * as WasmRuntimeBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/wasmruntime'
+import * as TemplateStoreBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/templatestore'
+import * as AppBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 
 export interface Template {
   id: string

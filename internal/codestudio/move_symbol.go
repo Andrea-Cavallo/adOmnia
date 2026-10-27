@@ -1,11 +1,11 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/packages"
 )

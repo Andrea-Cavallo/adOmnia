@@ -12,9 +12,9 @@ import (
 	"sync"
 	"unicode/utf16"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 const (

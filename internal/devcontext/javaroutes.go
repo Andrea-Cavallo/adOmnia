@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strconv"
 
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // detectJavaFile: gli endpoint Spring MVC (@RestController, @RequestMapping…) diventano route come quelle Go,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { SpringIndex } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { SpringIndex } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { buildBeanGraph, edgePath, shortType } from './beanGraph'
 
 const bean = (type: string, kind: string, extra: Record<string, unknown> = {}) => ({ name: shortType(type).toLowerCase(), type, kind, ...extra })

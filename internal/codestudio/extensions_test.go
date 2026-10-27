@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/plugins"
-	"adomnia/internal/storage"
 	"encoding/base64"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"os"
 	"path/filepath"
 	"runtime"

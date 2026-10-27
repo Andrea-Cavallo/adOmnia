@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	"adomnia/internal/collectionsstore"
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionsstore"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	bolt "go.etcd.io/bbolt"
 )
 

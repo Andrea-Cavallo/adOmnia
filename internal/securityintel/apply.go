@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Stati di un passo di verifica. Un passo non è mai "ok" finché non è stato eseguito:

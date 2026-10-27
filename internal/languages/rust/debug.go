@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // DebugOptions sono le opzioni di LanguageOptions del debug Rust: lo stesso target della Run

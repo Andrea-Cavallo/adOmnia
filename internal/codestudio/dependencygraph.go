@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"context"
 	"encoding/json/jsontext"

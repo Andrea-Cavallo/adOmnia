@@ -6,7 +6,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 const maxRecursionProbes = 300

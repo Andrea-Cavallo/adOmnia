@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/golang"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"path/filepath"
 	"strings"
 )

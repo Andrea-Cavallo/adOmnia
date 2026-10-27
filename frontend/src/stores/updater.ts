@@ -1,6 +1,6 @@
 import { currentActivityPhase } from '@/stores/activity'
 import { create } from 'zustand'
-import { CheckUpdateChannel, GetUpdateState, DownloadUpdate, CancelUpdateDownload, ScheduleUpdateOnExit, ConfirmUpdateStartup, OpenUpdateApplyLog } from '../../bindings/adomnia/app'
+import { CheckUpdateChannel, GetUpdateState, DownloadUpdate, CancelUpdateDownload, ScheduleUpdateOnExit, ConfirmUpdateStartup, OpenUpdateApplyLog } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { useSettingsStore } from './settings'
 import { APP_VERSION } from '@/lib/buildInfo'
 

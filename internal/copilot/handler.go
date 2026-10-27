@@ -5,7 +5,7 @@ import (
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // handler riceve notifiche e richieste del Copilot Language Server; ignora quelle di processi superati.

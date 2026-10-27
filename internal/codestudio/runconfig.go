@@ -1,11 +1,11 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/golang"
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"strings"
 )
 

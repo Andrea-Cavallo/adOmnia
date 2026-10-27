@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, Coffee, Loader2 } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { getJavaJdks, setJavaJdk } from '@/lib/code-studio-api'
-import type { JavaJDKReport } from '../../../bindings/adomnia/internal/codestudio/models'
+import type { JavaJDKReport } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 let openRequest: ((sessionId: string) => void) | null = null
 

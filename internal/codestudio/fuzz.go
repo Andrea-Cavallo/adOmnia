@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // Fuzzing Studio: elenca i target fuzz del progetto con il loro corpus (testdata/fuzz e cache di Go),

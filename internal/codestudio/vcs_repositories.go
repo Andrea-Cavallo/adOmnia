@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	"adomnia/internal/git"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 	"path/filepath"
 	"sort"
 )

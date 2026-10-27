@@ -1,4 +1,4 @@
-module adomnia
+module github.com/Andrea-Cavallo/adOmnia
 
 go 1.27.3
 

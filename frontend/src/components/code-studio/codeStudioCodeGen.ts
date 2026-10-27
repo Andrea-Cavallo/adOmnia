@@ -1,5 +1,5 @@
 import type { monaco } from '@/lib/monacoSetup'
-import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import type { GoIDEFileChange, GoIDEWorkspaceChange } from '@/lib/code-studio-lsp-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'

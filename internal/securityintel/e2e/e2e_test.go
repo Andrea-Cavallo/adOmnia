@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/securityintel"
-	"adomnia/internal/securityintel/gomod"
-	"adomnia/internal/securityintel/maven"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/gomod"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/maven"
 )
 
 // Prova end-to-end del flusso di remediation su un manifest **reale**. Vive in un package

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 var (

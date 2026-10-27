@@ -4,7 +4,7 @@ import (
 	"encoding/json/v2"
 	"strings"
 
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 // IsCredentialRef riporta se un riferimento protetto è usato da una credenziale database

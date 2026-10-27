@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Options sono le opzioni di LanguageOptions delle configurazioni Python. L'interprete è

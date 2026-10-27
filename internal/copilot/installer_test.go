@@ -1,7 +1,6 @@
 package copilot
 
 import (
-	"adomnia/internal/jsonutil"
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
@@ -9,6 +8,7 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/pem"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"os"

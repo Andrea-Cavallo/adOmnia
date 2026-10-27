@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"adomnia/internal/codestudio"
-	"adomnia/internal/codestudiowindow"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudiowindow"
 )
 
 // Live Preview e strumenti web dell'IDE. Solo binding: la logica è in internal/codestudio (service_web.go),

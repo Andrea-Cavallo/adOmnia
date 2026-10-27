@@ -31,7 +31,7 @@ Indice: [1 Architettura attuale](#1-architettura-attuale) · [2 Problemi](#2-pro
 
 ```text
 React (components/code-studio, stores/codeStudio*)
-        │  @wailsio/runtime + bindings/adomnia/goide.ts
+        │  @wailsio/runtime + bindings/github.com/Andrea-Cavallo/adOmnia/goide.ts
         ▼
 GoIDE (root binding, 213 metodi)  ──►  goide.Service (facade unica, service.go)
                                          ├─ WorkspaceManager   (sessioni + ispezione go.mod/go.work)
@@ -599,7 +599,7 @@ Architetturali (nuovi):
 
 | Test | Come |
 |---|---|
-| Il core non importa adapter né librerie Go-tooling | `go list -deps ./internal/ide/...` non contiene `adomnia/internal/languages/`, `golang.org/x/mod`, `golang.org/x/tools`, `golang.org/x/exp/trace`, `github.com/google/pprof` |
+| Il core non importa adapter né librerie Go-tooling | `go list -deps ./internal/ide/...` non contiene `github.com/Andrea-Cavallo/adOmnia/internal/languages/`, `golang.org/x/mod`, `golang.org/x/tools`, `golang.org/x/exp/trace`, `github.com/google/pprof` |
 | Nessun ciclo | `go build ./...` + `go vet ./...` |
 | Registry con `FakeLanguage` | registra un linguaggio fittizio, `Get`/`ForPath`/`DetectUnits` funzionano, duplicati e ID vuoti rifiutati |
 | Capability derivate | `FakeLanguage` che implementa solo `Runner` → `CapabilitiesOf` = solo Run |

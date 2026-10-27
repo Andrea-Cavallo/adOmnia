@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/ide/toolmanifest"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toolmanifest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // CodeLLDB è il debug adapter DAP di Rust (LLDB incluso). Release e checksum sono pinnati (RS-0.2/

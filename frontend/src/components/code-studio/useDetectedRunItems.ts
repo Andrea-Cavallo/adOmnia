@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getRunSuggestions, type GoIDERunConfiguration } from '@/lib/code-studio-api'
 import { cleanRunConfiguration, emptyRunConfiguration } from '@/lib/code-studio/runFormTypes'
 import { useCodeStudioStore } from '@/stores/codeStudio'
-import type { Suggestion } from '../../../bindings/adomnia/internal/ide/run/models'
+import type { Suggestion } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/run/models'
 
 const MAX_ITEMS = 4
 

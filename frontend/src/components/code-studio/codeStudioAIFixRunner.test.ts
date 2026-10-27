@@ -12,7 +12,7 @@ const codeStudio = vi.hoisted(() => ({
 }))
 const lsp = vi.hoisted(() => ({ setState: vi.fn() }))
 
-vi.mock('../../../bindings/adomnia/aiengine', () => ({ Complete: ai.complete }))
+vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine', () => ({ Complete: ai.complete }))
 vi.mock('@/lib/aiEngine', () => ({ ensureAIConfigured: ai.configure }))
 vi.mock('@/lib/aiAvailability', () => ({ isAICompanionAvailable: () => ai.available }))
 vi.mock('@/stores/settings', () => ({ useSettingsStore: { getState: () => ({ settings: { ai: { provider: 'anthropic' } } }) } }))

@@ -1,5 +1,5 @@
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
-import type { StudioWorkspace, StudioWorkspaces } from '../../bindings/adomnia/internal/codestudio/models'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { StudioWorkspace, StudioWorkspaces } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 export type GoIDEStudioWorkspace = StudioWorkspace
 export type GoIDEStudioWorkspaces = StudioWorkspaces

@@ -1,11 +1,11 @@
 package main
 
 import (
-	"adomnia/internal/collectionfs"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/requestcontract"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 	"path/filepath"
 	"strings"
 )

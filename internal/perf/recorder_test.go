@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
 )
 
 // TestHelperProcess is re-executed by the recording tests as a real child

@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/httpexec"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type KVRow struct {

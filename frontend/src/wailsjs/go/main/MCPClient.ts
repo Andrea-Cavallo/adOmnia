@@ -1,1 +1,1 @@
-export * from '../../../../bindings/adomnia/mcpclient'
+export * from '../../../../bindings/github.com/Andrea-Cavallo/adOmnia/mcpclient'

@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 type DebugRequest = golang.DebugRequest

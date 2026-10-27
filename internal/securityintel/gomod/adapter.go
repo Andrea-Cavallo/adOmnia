@@ -23,9 +23,9 @@ import (
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 
-	"adomnia/internal/procutil"
-	"adomnia/internal/securityintel"
-	"adomnia/internal/securityintel/govuln"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/govuln"
 )
 
 // Adapter è l'adapter Go di adOmnia Security Intelligence.

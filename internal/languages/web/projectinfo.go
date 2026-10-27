@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // Package manager supportati.

@@ -2,7 +2,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { Download, Loader2, Play, Upload, ArrowRightLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServerPort } from '@/lib/useServerPort'
-import { SaveBinaryFileBase64 } from '../../../bindings/adomnia/app'
+import { SaveBinaryFileBase64 } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { execInPod, readPodFile, startForward, writePodFile, type KubePodTarget } from '@/lib/kube-api'
 
 const INPUT = 'h-7 min-w-0 rounded border border-border-2 bg-surface-0 px-2 font-mono text-[11px] text-text-1 outline-none focus:border-accent/50'

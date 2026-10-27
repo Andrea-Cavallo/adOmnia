@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/startup"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/startup"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // ShutdownReport: dall'avvio al segnale di arresto, fino all'uscita (o al timeout).

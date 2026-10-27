@@ -17,10 +17,10 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
 	"crypto/rand"
 	"encoding/hex"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (
