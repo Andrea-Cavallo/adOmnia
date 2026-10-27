@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -86,12 +87,9 @@ func (s *mcpServer) collectionBenchmark(requested string, runs int, envName stri
 		totalFailed += summary.Failed
 		totalRequests += summary.Passed + summary.Failed
 	}
-	sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
+	slices.Sort(durations)
 	pct := func(p float64) int64 {
-		idx := int(math.Ceil(p*float64(len(durations)))) - 1
-		if idx < 0 {
-			idx = 0
-		}
+		idx := max(int(math.Ceil(p*float64(len(durations))))-1, 0)
 		return durations[idx]
 	}
 	var sum int64
@@ -118,9 +116,7 @@ func (s *mcpServer) collectionBenchmark(requested string, runs int, envName stri
 
 func cloneStringMap(m map[string]string) map[string]string {
 	out := make(map[string]string, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
+	maps.Copy(out, m)
 	return out
 }
 

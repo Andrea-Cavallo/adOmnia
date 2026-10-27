@@ -34,17 +34,17 @@ func TestLanguageAdaptersDoNotImportEachOther(t *testing.T) {
 		t.Fatalf("go list: %v\n%s", err, output)
 	}
 	const prefix = "github.com/Andrea-Cavallo/adOmnia/internal/languages/"
-	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(output)), "\n") {
 		path, imports, found := strings.Cut(line, "|")
 		if !found || !strings.HasPrefix(path, prefix) {
 			continue
 		}
-		language := strings.Split(strings.TrimPrefix(path, prefix), "/")[0]
-		for _, dependency := range strings.Fields(imports) {
+		language, _, _ := strings.Cut(strings.TrimPrefix(path, prefix), "/")
+		for dependency := range strings.FieldsSeq(imports) {
 			if !strings.HasPrefix(dependency, prefix) || dependency == path {
 				continue
 			}
-			other := strings.Split(strings.TrimPrefix(dependency, prefix), "/")[0]
+			other, _, _ := strings.Cut(strings.TrimPrefix(dependency, prefix), "/")
 			if other != language {
 				t.Errorf("%s imports %s: adapters must not depend on each other", path, dependency)
 			}
@@ -58,7 +58,7 @@ func assertNoForbiddenDeps(t *testing.T, pattern string, forbidden []string) {
 	if err != nil {
 		t.Fatalf("go list %s: %v\n%s", pattern, err, output)
 	}
-	for _, dependency := range strings.Fields(string(output)) {
+	for dependency := range strings.FieldsSeq(string(output)) {
 		for _, prefix := range forbidden {
 			if strings.HasPrefix(dependency, prefix) {
 				t.Errorf("%s depends on %s (forbidden prefix %s)", pattern, dependency, prefix)

@@ -7,11 +7,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -100,10 +102,8 @@ func entryTarget(label, cleanDestination, name string) (target string, skip bool
 	if strings.HasPrefix(normalized, "/") || hasDriveLetter(normalized) || filepath.IsAbs(filepath.FromSlash(normalized)) || filepath.VolumeName(filepath.FromSlash(normalized)) != "" {
 		return "", false, fmt.Errorf("archive %s is unsafe: absolute entry name", label)
 	}
-	for _, segment := range strings.Split(normalized, "/") {
-		if segment == ".." {
-			return "", false, fmt.Errorf("archive %s is unsafe: entry escapes the destination", label)
-		}
+	if slices.Contains(strings.Split(normalized, "/"), "..") {
+		return "", false, fmt.Errorf("archive %s is unsafe: entry escapes the destination", label)
 	}
 	target = filepath.Join(cleanDestination, filepath.FromSlash(normalized))
 	if target == cleanDestination {
@@ -198,7 +198,7 @@ func extractTarGzip(ctx context.Context, label, archivePath, destination string,
 			return err
 		}
 		header, err := reader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {

@@ -2,10 +2,11 @@ package proxy
 
 import (
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func proxyExportHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,19 +51,19 @@ func proxyExportHandler(w http.ResponseWriter, r *http.Request) {
 	switch body.Format {
 	case "har":
 		har := buildHAR(entries)
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "data": har})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "data": har})
 	case "curl":
 		cmds := buildCurlCommands(entries)
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "data": cmds})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "data": cmds})
 	case "json":
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "data": entries})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "data": entries})
 	default:
 		httputil.JSONError(w, "unsupported format: "+body.Format+". Use har, curl, or json", 400)
 	}
 }
 
-func buildHAR(entries []trafficEntry) map[string]interface{} {
-	harEntries := make([]map[string]interface{}, 0, len(entries))
+func buildHAR(entries []trafficEntry) map[string]any {
+	harEntries := make([]map[string]any, 0, len(entries))
 	for _, e := range entries {
 		reqHeaders := make([]map[string]string, 0)
 		for k, v := range e.ReqHeaders {
@@ -73,12 +74,12 @@ func buildHAR(entries []trafficEntry) map[string]interface{} {
 			respHeaders = append(respHeaders, map[string]string{"name": k, "value": v})
 		}
 
-		var timings map[string]interface{}
+		var timings map[string]any
 		if e.Timing != nil {
 			t := e.Timing
 			// HAR spec: connect includes TLS (ssl)
 			connect := t.TCPConnection + t.TLSHandshake
-			timings = map[string]interface{}{
+			timings = map[string]any{
 				"blocked": -1.0,
 				"dns":     t.DNSLookup,
 				"connect": connect,
@@ -88,7 +89,7 @@ func buildHAR(entries []trafficEntry) map[string]interface{} {
 				"receive": t.ResponseRecv,
 			}
 		} else {
-			timings = map[string]interface{}{
+			timings = map[string]any{
 				"blocked": -1.0,
 				"dns":     -1.0,
 				"connect": -1.0,
@@ -100,30 +101,30 @@ func buildHAR(entries []trafficEntry) map[string]interface{} {
 		}
 
 		reqMime := getHeaderValue(e.ReqHeaders, "Content-Type")
-		harEntry := map[string]interface{}{
+		harEntry := map[string]any{
 			"startedDateTime": e.Timestamp,
 			"time":            e.DurationMs,
-			"request": map[string]interface{}{
+			"request": map[string]any{
 				"method":      e.Method,
 				"url":         e.URL,
 				"httpVersion": "HTTP/1.1",
 				"headers":     reqHeaders,
-				"queryString": []interface{}{},
-				"cookies":     []interface{}{},
+				"queryString": []any{},
+				"cookies":     []any{},
 				"headersSize": -1,
 				"bodySize":    len(e.ReqBody),
-				"postData": map[string]interface{}{
+				"postData": map[string]any{
 					"mimeType": reqMime,
 					"text":     e.ReqBody,
 				},
 			},
-			"response": map[string]interface{}{
+			"response": map[string]any{
 				"status":      e.Status,
 				"statusText":  http.StatusText(e.Status),
 				"httpVersion": "HTTP/1.1",
 				"headers":     respHeaders,
-				"cookies":     []interface{}{},
-				"content": map[string]interface{}{
+				"cookies":     []any{},
+				"content": map[string]any{
 					"size":     len(e.RespBody),
 					"mimeType": getHeaderValue(e.RespHeaders, "Content-Type"),
 					"text":     e.RespBody,
@@ -137,8 +138,8 @@ func buildHAR(entries []trafficEntry) map[string]interface{} {
 		harEntries = append(harEntries, harEntry)
 	}
 
-	return map[string]interface{}{
-		"log": map[string]interface{}{
+	return map[string]any{
+		"log": map[string]any{
 			"version": "1.2",
 			"creator": map[string]string{
 				"name":    "adomnia",

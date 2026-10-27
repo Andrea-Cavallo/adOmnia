@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
@@ -61,10 +62,5 @@ func hasFile(path string) bool {
 
 // containsName dice se names contiene name.
 func containsName(names []string, name string) bool {
-	for _, candidate := range names {
-		if candidate == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(names, name)
 }

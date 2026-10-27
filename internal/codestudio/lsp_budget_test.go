@@ -49,7 +49,7 @@ func TestGlobalMemoryBudgetReclaimsOldestWithoutTouchingActiveOrPinned(t *testin
 	manager.activity.Report("detached", activity.Active, []string{"code-studio:active"})
 	sample := resources.Snapshot{RAM: 1500, Processes: []resources.Usage{}}
 	for _, pid := range []int{oldPID, warmPID, activePID, pinnedPID} {
-		sample.Processes = append(sample.Processes, resources.Usage{Target: resources.Target{PID: pid}, RAM: 300})
+		sample.Processes = append(sample.Processes, resources.Usage{PID: pid, RAM: 300})
 	}
 	policy := resources.NewMemoryBudget(1000)
 	manager.enforceMemoryBudget(policy, sample, now)
@@ -99,7 +99,7 @@ func TestGlobalMemoryBudgetDefersBusyServer(t *testing.T) {
 	if conn.PendingRequests() == 0 {
 		t.Fatal("fixture did not start a request")
 	}
-	manager.enforceMemoryBudget(resources.NewMemoryBudget(1), resources.Snapshot{RAM: 1000, Processes: []resources.Usage{{Target: resources.Target{PID: pid}, RAM: 999}}}, now)
+	manager.enforceMemoryBudget(resources.NewMemoryBudget(1), resources.Snapshot{RAM: 1000, Processes: []resources.Usage{{PID: pid, RAM: 999}}}, now)
 	if manager.Status("busy", golang.ID).PID != pid {
 		t.Fatal("budget interrupted an in-flight operation")
 	}

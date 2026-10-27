@@ -62,7 +62,7 @@ func readManifest(root string) Manifest {
 // opzioni, URL ed edit install.
 func requirementLines(text string) []string {
 	var packages []string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "-") {
 			continue

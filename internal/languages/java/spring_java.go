@@ -329,7 +329,7 @@ func fieldFlags(text string) (final, static, initialized bool) {
 		initialized = head[cut] == '='
 		head = head[:cut]
 	}
-	for _, word := range strings.Fields(head) {
+	for word := range strings.FieldsSeq(head) {
 		switch word {
 		case "final":
 			final = true
@@ -398,8 +398,8 @@ func parseJavaAnnotation(text string, line, startColumn, endColumn int) javaAnno
 	if open := strings.Index(text, "("); open >= 0 && strings.HasSuffix(strings.TrimSpace(text), ")") {
 		annotation.Args = strings.TrimSpace(text[open+1 : strings.LastIndex(text, ")")])
 	}
-	if dot := strings.LastIndex(name, "."); dot >= 0 {
-		annotation.Name = name[dot+1:]
+	if _, after, ok := strings.CutLast(name, "."); ok {
+		annotation.Name = after
 	}
 	return annotation
 }
@@ -613,8 +613,8 @@ func splitTopLevel(text string, separator byte) []string {
 func relativeTo(root, path string) string {
 	slashedRoot := strings.TrimSuffix(filepathToSlash(root), "/")
 	slashedPath := filepathToSlash(path)
-	if strings.HasPrefix(slashedPath, slashedRoot+"/") {
-		return strings.TrimPrefix(slashedPath, slashedRoot+"/")
+	if after, ok := strings.CutPrefix(slashedPath, slashedRoot+"/"); ok {
+		return after
 	}
 	return slashedPath
 }

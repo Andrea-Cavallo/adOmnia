@@ -17,17 +17,19 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (
@@ -132,10 +134,7 @@ func (s *Session) append(line string) {
 // trim drops the oldest lines until both the count and the byte budget fit.
 // The newest line is always kept. Caller holds the lock.
 func (s *Session) trim() {
-	cut := len(s.lines) - s.capacity()
-	if cut < 0 {
-		cut = 0
-	}
+	cut := max(len(s.lines)-s.capacity(), 0)
 	remaining := s.bytes
 	for i := 0; i < cut; i++ {
 		remaining -= int64(len(s.lines[i])) + 1
@@ -158,16 +157,8 @@ func (s *Session) trim() {
 // holdsLine reports whether the tail of the buffer already contains line.
 // Caller holds the lock.
 func (s *Session) holdsLine(line string) bool {
-	start := len(s.lines) - 400
-	if start < 0 {
-		start = 0
-	}
-	for _, held := range s.lines[start:] {
-		if held == line {
-			return true
-		}
-	}
-	return false
+	start := max(len(s.lines)-400, 0)
+	return slices.Contains(s.lines[start:], line)
 }
 
 func (s *Session) fail(err error) {

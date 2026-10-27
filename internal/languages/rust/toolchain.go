@@ -178,7 +178,7 @@ func readToolchainInfo(cargo string) (host, version string, err error) {
 
 // parseRustcVerbose legge host e versione dall'output di `rustc -vV` (coppie `key: value`).
 func parseRustcVerbose(output string) (host, version string, err error) {
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		key, value, ok := strings.Cut(line, ":")
 		if !ok {
 			continue

@@ -14,15 +14,13 @@ func TestDoSharesOneRunPerKey(t *testing.T) {
 	var wg sync.WaitGroup
 	results := make([]int, 5)
 	for i := range results {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			results[i], _ = group.Do("k", func() (int, error) {
 				runs.Add(1)
 				<-release
 				return 42, nil
 			})
-		}()
+		})
 	}
 	time.Sleep(50 * time.Millisecond)
 	close(release)

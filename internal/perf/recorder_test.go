@@ -42,7 +42,7 @@ func readSamples(t *testing.T, path string) []Sample {
 		t.Fatalf("read recording: %v", err)
 	}
 	samples := []Sample{}
-	for _, line := range strings.Split(strings.TrimSpace(string(content)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(content)), "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -540,10 +541,8 @@ func waitDebugStateAny(t *testing.T, recorder *eventRecorder, id DebugSessionID,
 	for time.Now().Before(deadline) {
 		for _, event := range recorder.all() {
 			if info, ok := event.Payload.(DebugSessionInfo); ok && info.ID == id {
-				for _, state := range states {
-					if info.State == state {
-						return info
-					}
+				if slices.Contains(states, info.State) {
+					return info
 				}
 			}
 		}

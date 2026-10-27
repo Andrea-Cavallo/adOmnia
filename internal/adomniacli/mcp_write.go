@@ -227,7 +227,7 @@ func validateMCPFolder(folder string) error {
 	if strings.Contains(folder, `\`) {
 		return fmt.Errorf("folder must use slash-separated names")
 	}
-	for _, part := range strings.Split(folder, "/") {
+	for part := range strings.SplitSeq(folder, "/") {
 		part = strings.TrimSpace(part)
 		if part == "." || part == ".." || (part == "" && strings.TrimSpace(folder) != "") {
 			return fmt.Errorf("folder contains an invalid path segment")

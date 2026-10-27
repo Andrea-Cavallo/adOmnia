@@ -5,6 +5,7 @@ import (
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 )
@@ -240,9 +241,7 @@ func parseSecrets(raw []byte) ([]Secret, error) {
 
 func nonNil(m map[string]string) map[string]string {
 	out := make(map[string]string, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
+	maps.Copy(out, m)
 	return out
 }
 

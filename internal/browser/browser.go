@@ -39,11 +39,11 @@ type DebugNetworkEntry struct {
 
 // cdpMessage represents a Chrome DevTools Protocol JSON-RPC message.
 type cdpMessage struct {
-	ID     int                    `json:"id"`
-	Method string                 `json:"method,omitempty"`
-	Params map[string]interface{} `json:"params,omitempty"`
-	Result jsonv1.RawMessage      `json:"result,omitempty"`
-	Error  *cdpError              `json:"error,omitempty"`
+	ID     int               `json:"id"`
+	Method string            `json:"method,omitempty"`
+	Params map[string]any    `json:"params,omitempty"`
+	Result jsonv1.RawMessage `json:"result,omitempty"`
+	Error  *cdpError         `json:"error,omitempty"`
 }
 
 type cdpError struct {
@@ -239,7 +239,7 @@ func (b *BrowserDebug) GetRequestBody(requestId string) (string, error) {
 	}
 	b.mu.Unlock()
 
-	result, err := b.sendCommandWithResult("Network.getRequestPostData", map[string]interface{}{
+	result, err := b.sendCommandWithResult("Network.getRequestPostData", map[string]any{
 		"requestId": requestId,
 	})
 	if err != nil {
@@ -264,7 +264,7 @@ func (b *BrowserDebug) GetResponseBody(requestId string) (string, error) {
 	}
 	b.mu.Unlock()
 
-	result, err := b.sendCommandWithResult("Network.getResponseBody", map[string]interface{}{
+	result, err := b.sendCommandWithResult("Network.getResponseBody", map[string]any{
 		"requestId": requestId,
 	})
 	if err != nil {
@@ -328,13 +328,13 @@ func (b *BrowserDebug) StopBrowser() error {
 }
 
 // sendCommand sends a CDP command without waiting for a specific result.
-func (b *BrowserDebug) sendCommand(method string, params map[string]interface{}) error {
+func (b *BrowserDebug) sendCommand(method string, params map[string]any) error {
 	_, err := b.sendCommandWithResult(method, params)
 	return err
 }
 
 // sendCommandWithResult sends a CDP command and waits for the result.
-func (b *BrowserDebug) sendCommandWithResult(method string, params map[string]interface{}) (jsonv1.RawMessage, error) {
+func (b *BrowserDebug) sendCommandWithResult(method string, params map[string]any) (jsonv1.RawMessage, error) {
 	id := int(b.msgID.Add(1))
 
 	msg := cdpMessage{
@@ -449,11 +449,11 @@ func (b *BrowserDebug) handleEvent(msg cdpMessage) {
 	}
 }
 
-func (b *BrowserDebug) handleRequestWillBeSent(params map[string]interface{}) {
+func (b *BrowserDebug) handleRequestWillBeSent(params map[string]any) {
 	requestID, _ := params["requestId"].(string)
 	timestamp, _ := params["timestamp"].(float64)
 
-	request, _ := params["request"].(map[string]interface{})
+	request, _ := params["request"].(map[string]any)
 	if request == nil {
 		return
 	}
@@ -482,10 +482,10 @@ func (b *BrowserDebug) handleRequestWillBeSent(params map[string]interface{}) {
 	b.traffic = append(b.traffic, entry)
 }
 
-func (b *BrowserDebug) handleResponseReceived(params map[string]interface{}) {
+func (b *BrowserDebug) handleResponseReceived(params map[string]any) {
 	requestID, _ := params["requestId"].(string)
 
-	response, _ := params["response"].(map[string]interface{})
+	response, _ := params["response"].(map[string]any)
 	if response == nil {
 		return
 	}
@@ -510,7 +510,7 @@ func (b *BrowserDebug) handleResponseReceived(params map[string]interface{}) {
 	}
 }
 
-func (b *BrowserDebug) handleLoadingFinished(params map[string]interface{}) {
+func (b *BrowserDebug) handleLoadingFinished(params map[string]any) {
 	requestID, _ := params["requestId"].(string)
 	timestamp, _ := params["timestamp"].(float64)
 	encodedDataLength := int64(toFloat64(params["encodedDataLength"]))
@@ -582,7 +582,7 @@ func (b *BrowserDebug) discoverDebugTarget() (string, error) {
 
 	// Retry a few times as the browser may still be starting
 	var lastErr error
-	for attempt := 0; attempt < 10; attempt++ {
+	for range 10 {
 		resp, err := client.Get(fmt.Sprintf("http://localhost:%d/json", port))
 		if err != nil {
 			lastErr = err
@@ -669,12 +669,12 @@ func buildBrowserCandidates() []string {
 }
 
 // extractHeaders converts a CDP headers object (map[string]interface{}) to map[string]string.
-func extractHeaders(raw interface{}) map[string]string {
+func extractHeaders(raw any) map[string]string {
 	result := make(map[string]string)
 	if raw == nil {
 		return result
 	}
-	m, ok := raw.(map[string]interface{})
+	m, ok := raw.(map[string]any)
 	if !ok {
 		return result
 	}
@@ -689,7 +689,7 @@ func extractHeaders(raw interface{}) map[string]string {
 }
 
 // toFloat64 safely converts an interface{} to float64.
-func toFloat64(v interface{}) float64 {
+func toFloat64(v any) float64 {
 	switch n := v.(type) {
 	case float64:
 		return n

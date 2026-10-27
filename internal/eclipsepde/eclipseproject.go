@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -174,12 +175,7 @@ func (p *EclipseProject) scanPdeFiles() {
 
 // HasPdeFile reports whether the project carries the given PDE metadata file.
 func (p *EclipseProject) HasPdeFile(name string) bool {
-	for _, f := range p.PdeFiles {
-		if f == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.PdeFiles, name)
 }
 
 // reportExecutionEnvironment flags the JDK requirement of the bundle
@@ -338,12 +334,7 @@ func (p *EclipseProject) IsPdePlugin() bool {
 
 // HasNature reports whether the project declares the given .project nature.
 func (p *EclipseProject) HasNature(nature string) bool {
-	for _, n := range p.Natures {
-		if n == nature {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.Natures, nature)
 }
 
 // isAbsoluteOnAnyOS: a .classpath written on Windows keeps `C:/dev/lib.jar` when opened on Linux or macOS,

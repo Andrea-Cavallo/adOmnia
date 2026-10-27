@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -88,9 +89,7 @@ func (scriptDebugger) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, 
 		// stesso server e le passa la configurazione ricevuta (con __pendingTargetId).
 		ChildSession: func(request string, child map[string]any) (dap.AdapterSpec, error) {
 			configuration := make(map[string]any, len(child)+1)
-			for key, value := range child {
-				configuration[key] = value
-			}
+			maps.Copy(configuration, child)
 			if _, ok := configuration["type"]; !ok {
 				configuration["type"] = "pwa-node"
 			}

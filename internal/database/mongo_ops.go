@@ -31,7 +31,7 @@ func (o *mongoOpCtx) collection() (*mongo.Collection, error) {
 }
 
 // filterDoc parses cmd.Filter, defaulting to an empty document.
-func (o *mongoOpCtx) filterDoc() (interface{}, error) {
+func (o *mongoOpCtx) filterDoc() (any, error) {
 	filter, err := mongoRawDoc(o.cmd.Filter, bson.D{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid filter: %w", err)
@@ -41,21 +41,21 @@ func (o *mongoOpCtx) filterDoc() (interface{}, error) {
 
 func (o *mongoOpCtx) setCount(count int64) {
 	o.resp.Columns = []string{"count"}
-	o.resp.Rows = []map[string]interface{}{{"count": count}}
+	o.resp.Rows = []map[string]any{{"count": count}}
 }
 
 func (o *mongoOpCtx) setNames(column string, names []string) {
 	o.resp.Columns = []string{column}
-	o.resp.Rows = make([]map[string]interface{}, 0, len(names))
+	o.resp.Rows = make([]map[string]any, 0, len(names))
 	for _, name := range names {
-		o.resp.Rows = append(o.resp.Rows, map[string]interface{}{column: name})
+		o.resp.Rows = append(o.resp.Rows, map[string]any{column: name})
 	}
 }
 
 func (o *mongoOpCtx) setUpdateResult(r *mongo.UpdateResult) {
 	o.resp.RowsAffected = r.ModifiedCount
 	o.resp.Columns = []string{"matched", "modified", "upsertedId"}
-	o.resp.Rows = []map[string]interface{}{{"matched": r.MatchedCount, "modified": r.ModifiedCount, "upsertedId": mongoValue(r.UpsertedID)}}
+	o.resp.Rows = []map[string]any{{"matched": r.MatchedCount, "modified": r.ModifiedCount, "upsertedId": mongoValue(r.UpsertedID)}}
 }
 
 type mongoOpHandler func(*mongoOpCtx) error
@@ -159,7 +159,7 @@ func mongoOpInsertOne(o *mongoOpCtx) error {
 	}
 	o.resp.RowsAffected = 1
 	o.resp.Columns = []string{"insertedId"}
-	o.resp.Rows = []map[string]interface{}{{"insertedId": mongoValue(result.InsertedID)}}
+	o.resp.Rows = []map[string]any{{"insertedId": mongoValue(result.InsertedID)}}
 	return nil
 }
 
@@ -178,7 +178,7 @@ func mongoOpInsertMany(o *mongoOpCtx) error {
 	}
 	o.resp.RowsAffected = int64(len(result.InsertedIDs))
 	o.resp.Columns = []string{"insertedIds"}
-	o.resp.Rows = []map[string]interface{}{{"insertedIds": mongoValue(result.InsertedIDs)}}
+	o.resp.Rows = []map[string]any{{"insertedIds": mongoValue(result.InsertedIDs)}}
 	return nil
 }
 
@@ -351,8 +351,8 @@ func mongoOpRunCommand(o *mongoOpCtx) error {
 		return nil
 	}
 	row := mongoDocToMap(out)
-	o.resp.Columns = columnsFromRows([]map[string]interface{}{row})
-	o.resp.Rows = []map[string]interface{}{row}
+	o.resp.Columns = columnsFromRows([]map[string]any{row})
+	o.resp.Rows = []map[string]any{row}
 	return nil
 }
 

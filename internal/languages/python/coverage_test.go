@@ -113,7 +113,7 @@ func TestRealPytestCoverageReport(t *testing.T) {
 	if !ok {
 		t.Fatal("the pytest parser is not a batch parser")
 	}
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		batch.ParseAll([]byte(line))
 	}
 	provider, ok := parser.(idetesting.CoverageProvider)

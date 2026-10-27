@@ -285,7 +285,7 @@ func parseCVSSVector(vector, wantVersion string) (map[string]string, bool) {
 		return nil, false
 	}
 	metrics := map[string]string{}
-	for _, part := range strings.Split(body, "/") {
+	for part := range strings.SplitSeq(body, "/") {
 		name, value, found := strings.Cut(part, ":")
 		if !found {
 			continue

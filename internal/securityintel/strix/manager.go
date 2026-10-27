@@ -205,10 +205,7 @@ func (r *run) snapshot(since int) Run {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	info := r.info
-	start := max(since-r.dropped, 0)
-	if start > len(r.lines) {
-		start = len(r.lines)
-	}
+	start := min(max(since-r.dropped, 0), len(r.lines))
 	info.Output = append([]string(nil), r.lines[start:]...)
 	info.Offset = r.dropped + len(r.lines)
 	return info

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -153,12 +154,7 @@ func TestTestCommandRunsTheUnitAndRejectsUnsafeFilters(t *testing.T) {
 }
 
 func contains(list []string, want string) bool {
-	for _, item := range list {
-		if item == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, want)
 }
 
 func TestSkippedTestKeepsItsReason(t *testing.T) {

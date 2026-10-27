@@ -6,6 +6,7 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
+	"slices"
 
 	"golang.org/x/tools/go/types/typeutil"
 )
@@ -204,8 +205,8 @@ func (a *errorAnalysis) recordRef(fn *errorFunc, ident *ast.Ident, stack []ast.N
 }
 
 func sentinelRole(info *types.Info, stack []ast.Node) string {
-	for index := len(stack) - 1; index >= 0; index-- {
-		switch node := stack[index].(type) {
+	for _, s := range slices.Backward(stack) {
+		switch node := s.(type) {
 		case *ast.CallExpr:
 			if callee := typeutil.Callee(info, node); callee != nil {
 				switch fullName(callee) {

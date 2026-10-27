@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -85,9 +86,7 @@ func (a *Adapter) Resolve(ctx context.Context, target securityintel.Target, opti
 	workspaceReplaces := map[string]modfile.Replace{}
 	if workspace := findGoWork(filepath.Dir(target.Manifest)); workspace != "" {
 		if replaces, warnings := readWorkspace(workspace); len(replaces) > 0 {
-			for key, value := range replaces {
-				workspaceReplaces[key] = value
-			}
+			maps.Copy(workspaceReplaces, replaces)
 			resolution.Warnings = append(resolution.Warnings, warnings...)
 		}
 	}

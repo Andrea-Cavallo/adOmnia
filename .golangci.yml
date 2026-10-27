@@ -11,7 +11,9 @@ linters:
   enable:
     - copyloopvar
     - durationcheck
+    - errorlint
     - gocyclo
+    - modernize
     - nakedret
     - whitespace
   settings:

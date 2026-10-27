@@ -56,7 +56,7 @@ func connection(local, remote string, pid int) (Connection, bool) {
 // "  TCP    127.0.0.1:52144    127.0.0.1:5432    ESTABLISHED    4242"
 func parseEstablishedNetstatWindows(out string) []Connection {
 	var conns []Connection
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 5 || !strings.EqualFold(f[0], "TCP") || !strings.EqualFold(f[3], "ESTABLISHED") {
 			continue
@@ -72,7 +72,7 @@ func parseEstablishedNetstatWindows(out string) []Connection {
 // ss -tnpH state established: "0 0 127.0.0.1:52144 127.0.0.1:5432 users:(("api",pid=4242,fd=7))"
 func parseEstablishedSS(out string) []Connection {
 	var conns []Connection
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 4 {
 			continue
@@ -91,7 +91,7 @@ func parseEstablishedSS(out string) []Connection {
 // netstat -tnp: "tcp 0 0 127.0.0.1:52144 127.0.0.1:5432 ESTABLISHED 4242/api"
 func parseEstablishedNetstatLinux(out string) []Connection {
 	var conns []Connection
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 7 || !strings.HasPrefix(strings.ToLower(f[0]), "tcp") || !strings.EqualFold(f[5], "ESTABLISHED") {
 			continue
@@ -107,7 +107,7 @@ func parseEstablishedNetstatLinux(out string) []Connection {
 // lsof: "api 4242 me 7u IPv4 0x… 0t0 TCP 127.0.0.1:52144->127.0.0.1:5432 (ESTABLISHED)"
 func parseEstablishedLsof(out string) []Connection {
 	var conns []Connection
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 9 || f[0] == "COMMAND" {
 			continue

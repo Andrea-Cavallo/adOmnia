@@ -35,7 +35,7 @@ func iconsForMode(mode string) (iconPair, error) {
 	}
 	load := func(size int) (uintptr, error) {
 		count := int(binary.LittleEndian.Uint16(data[4:6]))
-		for i := 0; i < count; i++ {
+		for i := range count {
 			entry := data[6+i*16 : 6+(i+1)*16]
 			if int(entry[0]) != size {
 				continue

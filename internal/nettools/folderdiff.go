@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"os"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type folderDiffFile struct {
@@ -92,7 +93,7 @@ func init() {
 	go func() {
 		for {
 			time.Sleep(2 * time.Minute)
-			folderDiffScans.Range(func(key, value interface{}) bool {
+			folderDiffScans.Range(func(key, value any) bool {
 				s, ok := value.(folderDiffSession)
 				if !ok || time.Now().After(s.expiresAt) {
 					folderDiffScans.Delete(key)
@@ -149,7 +150,7 @@ func folderDiffFileHandler(w http.ResponseWriter, r *http.Request) {
 	jsonutil.MarshalWrite(w, result)
 }
 
-func ScanFolderDiff(leftPath, rightPath string, maxFileMB int64) (map[string]interface{}, error) {
+func ScanFolderDiff(leftPath, rightPath string, maxFileMB int64) (map[string]any, error) {
 	if maxFileMB <= 0 {
 		maxFileMB = 20
 	}
@@ -189,7 +190,7 @@ func ScanFolderDiff(leftPath, rightPath string, maxFileMB int64) (map[string]int
 		rightRoot: rightRoot,
 		expiresAt: time.Now().Add(folderDiffExpiry),
 	})
-	return map[string]interface{}{
+	return map[string]any{
 		"scanId":    scanID,
 		"leftRoot":  leftRoot,
 		"rightRoot": rightRoot,
@@ -199,7 +200,7 @@ func ScanFolderDiff(leftPath, rightPath string, maxFileMB int64) (map[string]int
 	}, nil
 }
 
-func ReadFolderDiffFile(scanID, relativePath string, maxBytes int64) (map[string]interface{}, error) {
+func ReadFolderDiffFile(scanID, relativePath string, maxBytes int64) (map[string]any, error) {
 	if scanID == "" {
 		return nil, fmt.Errorf("scanId required")
 	}
@@ -232,7 +233,7 @@ func ReadFolderDiffFile(scanID, relativePath string, maxBytes int64) (map[string
 
 	leftText, leftState, leftErr := readPreviewText(leftFilePath, maxBytes)
 	rightText, rightState, rightErr := readPreviewText(rightFilePath, maxBytes)
-	return map[string]interface{}{
+	return map[string]any{
 		"path":       rel,
 		"left":       leftText,
 		"right":      rightText,

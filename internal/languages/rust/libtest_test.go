@@ -12,7 +12,7 @@ func parseRust(t *testing.T, pkg string, output string) []idetesting.TestResult 
 	t.Helper()
 	parser := newLibtestParser(pkg)
 	tree := idetesting.NewTree()
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if event, ok := parser.Parse([]byte(line)); ok {
 			tree.Apply(event)
 		}
@@ -94,7 +94,7 @@ func TestLibtestCompileErrorIsBuildOutput(t *testing.T) {
 	output := "error[E0308]: mismatched types\n  --> src/lib.rs:3:5\n"
 	parser := newLibtestParser("mylib")
 	var events []idetesting.Event
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if ev, ok := parser.Parse([]byte(line)); ok {
 			events = append(events, ev)
 		}

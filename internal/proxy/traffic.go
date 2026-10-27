@@ -171,16 +171,10 @@ func writeWithThrottle(w interface{ Write([]byte) (int, error) }, data []byte) {
 		w.Write(data)
 		return
 	}
-	chunkSize := (bw * 1024 / 8) / 10
-	if chunkSize < 1024 {
-		chunkSize = 1024
-	}
+	chunkSize := max((bw*1024/8)/10, 1024)
 	type flusher interface{ Flush() }
 	for i := 0; i < len(data); i += chunkSize {
-		end := i + chunkSize
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(i+chunkSize, len(data))
 		w.Write(data[i:end])
 		if f, ok := w.(flusher); ok {
 			f.Flush()

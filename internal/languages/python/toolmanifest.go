@@ -83,7 +83,7 @@ func verifyManagedTool(directory string) error {
 func parsePipInstallReport(report []byte) ([]toolArtifact, error) {
 	var parsed pipInstallReport
 	if err := json.Unmarshal(report, &parsed); err != nil {
-		return nil, fmt.Errorf("the pip install report is unreadable: %v", err)
+		return nil, fmt.Errorf("the pip install report is unreadable: %w", err)
 	}
 	if len(parsed.Install) == 0 {
 		return nil, fmt.Errorf("the pip install report lists no artifacts")
@@ -142,7 +142,7 @@ func verifyInstalledVersion(directory string) error {
 		if err != nil {
 			continue
 		}
-		for _, line := range strings.Split(string(metadata), "\n") {
+		for line := range strings.SplitSeq(string(metadata), "\n") {
 			version, found := strings.CutPrefix(strings.TrimSpace(line), "Version:")
 			if !found {
 				continue

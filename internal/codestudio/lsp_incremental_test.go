@@ -6,6 +6,7 @@ import (
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -133,7 +134,7 @@ func TestIncrementalDocumentWireAndSessionIsolation(t *testing.T) {
 			if err := manager.UpdateDocument(session.ID, document.ID, 2, after); err != nil {
 				t.Fatal(err)
 			}
-			if err := manager.UpdateDocument(session.ID, document.ID, 2, "stale"); err != ErrStaleDocumentVersion {
+			if err := manager.UpdateDocument(session.ID, document.ID, 2, "stale"); !errors.Is(err, ErrStaleDocumentVersion) {
 				t.Fatal("stale version accepted")
 			}
 			if kind == 0 {

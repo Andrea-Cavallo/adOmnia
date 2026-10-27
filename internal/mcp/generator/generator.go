@@ -6,13 +6,14 @@ import (
 	"embed"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"text/template"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 //go:embed templates/*
@@ -171,7 +172,7 @@ func bodyTemplateFromRequest(req RawRequest, properties map[string]map[string]st
 		return false, "{}"
 	}
 
-	var body map[string]interface{}
+	var body map[string]any
 	if err := json.Unmarshal([]byte(raw), &body); err != nil {
 		properties["body"] = map[string]string{"type": "string", "description": "Raw request body"}
 		return true, "a.body"

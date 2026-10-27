@@ -109,8 +109,8 @@ func className(file string) string {
 	slashed := "/" + strings.TrimPrefix(filepath.ToSlash(file), "/")
 	stem := strings.TrimSuffix(slashed, filepath.Ext(slashed))
 	for _, root := range testRoots {
-		if index := strings.Index(stem, root); index >= 0 {
-			return strings.ReplaceAll(stem[index+len(root):], "/", ".")
+		if _, after, ok := strings.Cut(stem, root); ok {
+			return strings.ReplaceAll(after, "/", ".")
 		}
 	}
 	return "*." + filepath.Base(stem)

@@ -45,7 +45,7 @@ func GenerateGoCode(request CodeGenRequest) (CodeGenResult, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", request.Text, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
-		return CodeGenResult{}, fmt.Errorf("the file could not be parsed: fix the syntax errors first (%v)", err)
+		return CodeGenResult{}, fmt.Errorf("the file could not be parsed: fix the syntax errors first (%w)", err)
 	}
 	switch request.Kind {
 	case "constructor", "getters", "setters", "interface":
@@ -370,7 +370,7 @@ func appendToTestFile(testText, packageName, code string) (string, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", testText, parser.ImportsOnly)
 	if err != nil {
-		return "", fmt.Errorf("the test file could not be parsed: %v", err)
+		return "", fmt.Errorf("the test file could not be parsed: %w", err)
 	}
 	text := testText
 	if !importsPackage(file, "testing") {

@@ -7,7 +7,7 @@ import (
 )
 
 func TestGenerateFromSchemaEmail(t *testing.T) {
-	result, err := GenerateFromSchema(map[string]interface{}{"type": "string", "format": "email"})
+	result, err := GenerateFromSchema(map[string]any{"type": "string", "format": "email"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,19 +17,19 @@ func TestGenerateFromSchemaEmail(t *testing.T) {
 }
 
 func TestGenerateFromSchemaObject(t *testing.T) {
-	result, err := GenerateFromSchema(map[string]interface{}{
+	result, err := GenerateFromSchema(map[string]any{
 		"type": "object",
-		"properties": map[string]interface{}{
-			"id":    map[string]interface{}{"type": "string", "format": "uuid"},
-			"email": map[string]interface{}{"type": "string", "format": "email"},
-			"age":   map[string]interface{}{"type": "integer", "minimum": float64(18), "maximum": float64(99)},
+		"properties": map[string]any{
+			"id":    map[string]any{"type": "string", "format": "uuid"},
+			"email": map[string]any{"type": "string", "format": "email"},
+			"age":   map[string]any{"type": "integer", "minimum": float64(18), "maximum": float64(99)},
 		},
-		"required": []interface{}{"id", "email"},
+		"required": []any{"id", "email"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var obj map[string]interface{}
+	var obj map[string]any
 	if err := json.Unmarshal([]byte(result), &obj); err != nil {
 		t.Fatalf("result is not valid JSON: %v, got %s", err, result)
 	}
@@ -42,7 +42,7 @@ func TestGenerateFromSchemaObject(t *testing.T) {
 }
 
 func TestGenerateFromSchemaEnum(t *testing.T) {
-	result, err := GenerateFromSchema(map[string]interface{}{"enum": []interface{}{"active", "inactive", "pending"}})
+	result, err := GenerateFromSchema(map[string]any{"enum": []any{"active", "inactive", "pending"}})
 	if err != nil {
 		t.Fatal(err)
 	}

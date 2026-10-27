@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -68,18 +69,13 @@ func (e *EPSSSource) Enrich(ctx context.Context, advisories []Advisory) error {
 	}
 	scores := map[string]epssEntry{}
 	for start := 0; start < len(cves); start += epssBatchLimit {
-		end := start + epssBatchLimit
-		if end > len(cves) {
-			end = len(cves)
-		}
+		end := min(start+epssBatchLimit, len(cves))
 		fetched, err := fetchEPSS(ctx, client, endpoint, cves[start:end])
 		if err != nil {
 			e.status = SourceStatus{Name: e.Name(), Endpoint: endpoint, Error: err.Error()}
 			return err
 		}
-		for cve, entry := range fetched {
-			scores[cve] = entry
-		}
+		maps.Copy(scores, fetched)
 	}
 	for index := range advisories {
 		cve := advisories[index].CVE()

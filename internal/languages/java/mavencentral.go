@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -83,9 +84,9 @@ func describeVersions(key, current string, versions []string) VersionInfo {
 		return info
 	}
 	info.Latest = stable[len(stable)-1]
-	for index := len(stable) - 1; index >= 0; index-- {
-		if majorOf(stable[index]) == majorOf(current) {
-			info.SameMajor = stable[index]
+	for _, s := range slices.Backward(stable) {
+		if majorOf(s) == majorOf(current) {
+			info.SameMajor = s
 			break
 		}
 	}

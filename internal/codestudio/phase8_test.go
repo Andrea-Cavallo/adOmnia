@@ -4,14 +4,15 @@ import (
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
-	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 type fixtureRunner struct{ binary string }
@@ -182,13 +183,11 @@ func TestPhase8ToolBuildAndContainerRememberConcurrent(t *testing.T) {
 	tools := service.tools(RunRequest{Target: "original"})
 	var group sync.WaitGroup
 	for _, id := range []RunID{"build", "container"} {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			for range 32 {
 				tools.Remember(id, run.ToolRequest{SessionID: "session", Kind: "docker-run", Target: string(id), Docker: run.DockerOptions{Context: "normalized"}})
 			}
-		}()
+		})
 	}
 	group.Wait()
 	for _, id := range []RunID{"build", "container"} {

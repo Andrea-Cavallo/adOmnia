@@ -26,7 +26,7 @@ func workspaceListHandler(w http.ResponseWriter, r *http.Request) {
 	keys, err := List("workspace", "ws/")
 	if err != nil || keys == nil {
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"workspaces": []WorkspaceMeta{}, "count": 0})
+		jsonutil.MarshalWrite(w, map[string]any{"workspaces": []WorkspaceMeta{}, "count": 0})
 		return
 	}
 
@@ -44,7 +44,7 @@ func workspaceListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"workspaces": workspaces,
 		"count":      len(workspaces),
 	})
@@ -82,9 +82,9 @@ func workspaceSaveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var tabs int
-	var state map[string]interface{}
+	var state map[string]any
 	if json.Unmarshal([]byte(req.State), &state) == nil {
-		if t, ok := state["openTabs"].([]interface{}); ok {
+		if t, ok := state["openTabs"].([]any); ok {
 			tabs = len(t)
 		}
 	}
@@ -107,7 +107,7 @@ func workspaceSaveHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[workspace] saved %q (%d tabs)", req.Name, tabs) // NOSONAR -- %q escapes control characters, so a crafted workspace name cannot forge log lines
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "name": req.Name, "tabs": tabs})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "name": req.Name, "tabs": tabs})
 }
 
 func workspaceLoadHandler(w http.ResponseWriter, r *http.Request) {
@@ -149,5 +149,5 @@ func workspaceDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }

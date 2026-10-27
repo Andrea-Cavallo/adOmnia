@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -143,12 +144,7 @@ func goroutinesOf(report ArchitectureReport, function string) []ArchGoroutine {
 }
 
 func hasRisk(g ArchGoroutine, risk string) bool {
-	for _, item := range g.Risks {
-		if item == risk {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(g.Risks, risk)
 }
 
 func TestCollectGoroutinesKindsAndShapes(t *testing.T) {

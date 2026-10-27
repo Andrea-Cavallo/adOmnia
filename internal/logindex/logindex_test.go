@@ -59,7 +59,7 @@ func TestIndexRecordsLevelsTimestampsAndSize(t *testing.T) {
 
 func TestQueryPaginatesAndFiltersWithoutLoadingTheFile(t *testing.T) {
 	lines := make([]string, 0, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		level := "INFO"
 		if i%10 == 0 {
 			level = "ERROR"
@@ -108,7 +108,7 @@ func TestQueryFoldsContinuationLinesIntoTheirRecord(t *testing.T) {
 
 func TestQueryStopsOnTheTimeBudget(t *testing.T) {
 	lines := make([]string, 0, 20000)
-	for i := 0; i < 20000; i++ {
+	for i := range 20000 {
 		lines = append(lines, fmt.Sprintf("2026-09-10T08:00:00Z INFO filler %d", i))
 	}
 	job := indexed(t, write(t, lines...))
@@ -128,7 +128,7 @@ func TestQueryStopsOnTheTimeBudget(t *testing.T) {
 
 func TestCancelKeepsWhatWasIndexed(t *testing.T) {
 	lines := make([]string, 0, 200000)
-	for i := 0; i < 200000; i++ {
+	for i := range 200000 {
 		lines = append(lines, fmt.Sprintf("2026-09-10T08:00:00Z INFO cancellable %d", i))
 	}
 	path := write(t, lines...)

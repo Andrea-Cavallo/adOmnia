@@ -21,7 +21,7 @@ func LocalReplacesAtHead(repoPath string) ([]LocalReplace, error) {
 		return nil, err
 	}
 	result := []LocalReplace{}
-	for _, file := range strings.Split(listing, "\n") {
+	for file := range strings.SplitSeq(listing, "\n") {
 		file = strings.TrimSpace(file)
 		if file != "go.mod" && !strings.HasSuffix(file, "/go.mod") {
 			continue

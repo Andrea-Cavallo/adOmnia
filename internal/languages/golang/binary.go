@@ -193,10 +193,9 @@ func parseNM(output string, report *BinaryReport, ranges []FileRange) {
 		if index > 0 && symbol.address == symbols[index-1].address {
 			continue
 		}
-		start := symbol.address
-		if start < end {
-			start = end // già coperto da un simbolo precedente
-		}
+		start := max(symbol.address,
+			// già coperto da un simbolo precedente
+			end)
 		stop := symbol.address + uint64(symbol.size)
 		for next := index + 1; next < len(symbols); next++ {
 			if symbols[next].address > symbol.address {
@@ -251,12 +250,12 @@ func EmbeddedFiles(dir string) []BinarySize {
 		if err != nil {
 			return nil
 		}
-		for _, line := range strings.Split(string(data), "\n") {
+		for line := range strings.SplitSeq(string(data), "\n") {
 			match := embedDirective.FindStringSubmatch(strings.TrimSpace(line))
 			if match == nil {
 				continue
 			}
-			for _, pattern := range strings.Fields(match[1]) {
+			for pattern := range strings.FieldsSeq(match[1]) {
 				pattern = strings.TrimPrefix(strings.Trim(pattern, "\""), "all:")
 				matches, _ := filepath.Glob(filepath.Join(filepath.Dir(path), filepath.FromSlash(pattern)))
 				for _, file := range matches {

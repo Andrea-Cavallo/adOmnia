@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
 	"net/http"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -71,7 +72,7 @@ func brokerPresetsSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "id": preset.ID})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "id": preset.ID})
 }
 
 func brokerPresetsListHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +91,7 @@ func brokerPresetsListHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	})
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "presets": presets})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "presets": presets})
 }
 
 func brokerPresetsDeleteHandler(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +111,7 @@ func brokerPresetsDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 // ─── RabbitMQ ────────────────────────────────────────────────────────────────
@@ -201,7 +202,7 @@ func rabbitPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":         true,
 		"exchange":   req.Config.Exchange,
 		"routingKey": req.RoutingKey,
@@ -291,7 +292,7 @@ func rabbitConsumeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 done:
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":       true,
 		"messages": collected,
 		"count":    len(collected),
@@ -380,7 +381,7 @@ func mqttPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":        true,
 		"topic":     req.Topic,
 		"qos":       req.QoS,
@@ -456,7 +457,7 @@ func mqttSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 done:
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":       true,
 		"messages": collected,
 		"count":    len(collected),
@@ -526,7 +527,7 @@ func redisPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":        true,
 		"channel":   req.Channel,
 		"receivers": receivers,
@@ -591,7 +592,7 @@ func redisSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 redisDone:
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":       true,
 		"messages": collected,
 		"count":    len(collected),
@@ -681,7 +682,7 @@ func natsPublishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":        true,
 		"subject":   req.Subject,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
@@ -758,7 +759,7 @@ func natsSubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 natsDone:
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":       true,
 		"messages": collected,
 		"count":    len(collected),

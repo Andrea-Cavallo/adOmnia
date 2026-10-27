@@ -356,7 +356,7 @@ func fillVersionChains(duplicates []DuplicateDependency, edgeLookup map[string][
 func parseUsedModules(depsOutput, modulePath string) (map[string]bool, map[string]int) {
 	used := map[string]bool{}
 	counts := map[string]int{}
-	for _, line := range strings.Split(strings.ReplaceAll(depsOutput, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(depsOutput, "\r\n", "\n"), "\n") {
 		path := strings.TrimSpace(line)
 		if path == "" || path == modulePath {
 			continue
@@ -388,7 +388,7 @@ func parseModuleList(output string) ([]moduleJSON, error) {
 func parseModuleGraph(output string) ([]DependencyEdge, map[string][]string) {
 	edges := make([]DependencyEdge, 0, 256)
 	lookup := map[string][]string{}
-	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -407,7 +407,7 @@ func parseModuleGraph(output string) ([]DependencyEdge, map[string][]string) {
 
 func findDuplicates(graphOutput string) []DuplicateDependency {
 	byPath := map[string]map[string]map[string]bool{}
-	for _, line := range strings.Split(strings.ReplaceAll(graphOutput, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(graphOutput, "\r\n", "\n"), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -473,8 +473,8 @@ func parseDependencyUpdates(output string) []DependencyUpdate {
 
 // splitModuleVersion divide "path@versione" nel percorso modulo e nella versione.
 func splitModuleVersion(token string) (string, string) {
-	if index := strings.LastIndex(token, "@"); index >= 0 {
-		return token[:index], token[index+1:]
+	if before, after, ok := strings.CutLast(token, "@"); ok {
+		return before, after
 	}
 	return token, ""
 }

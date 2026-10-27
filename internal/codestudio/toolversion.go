@@ -5,13 +5,15 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"go/version"
 	"os/exec"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"golang.org/x/mod/semver"
 )
@@ -88,8 +90,7 @@ func sdkGoVersion(ctx context.Context, goBinary, workDir string, env []string) (
 // toolDisplayName ricava un nome leggibile dal percorso del pacchetto (es. golangci-lint, gopls).
 func toolDisplayName(packagePath string) string {
 	parts := strings.Split(packagePath, "/")
-	for index := len(parts) - 1; index >= 0; index-- {
-		part := parts[index]
+	for _, part := range slices.Backward(parts) {
 		if len(part) > 1 && part[0] == 'v' && strings.Trim(part[1:], "0123456789") == "" {
 			continue
 		}

@@ -135,7 +135,7 @@ func featureList(value string) []string {
 		return nil
 	}
 	var features []string
-	for _, item := range strings.Split(value[start+open+1:start+close], ",") {
+	for item := range strings.SplitSeq(value[start+open+1:start+close], ",") {
 		if name := trimQuotes(strings.TrimSpace(item)); name != "" {
 			features = append(features, name)
 		}
@@ -157,11 +157,11 @@ func trimQuotes(value string) string {
 
 // versionColumn restituisce la colonna 1-based (in caratteri) del valore della versione nella riga.
 func versionColumn(line, version string) (startCol, endCol int) {
-	index := strings.Index(line, version)
-	if index < 0 {
+	before, _, ok := strings.Cut(line, version)
+	if !ok {
 		return 0, 0
 	}
-	startCol = len([]rune(line[:index])) + 1
+	startCol = len([]rune(before)) + 1
 	endCol = startCol + len([]rune(version))
 	return startCol, endCol
 }

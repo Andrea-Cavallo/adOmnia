@@ -2,10 +2,11 @@ package java
 
 import (
 	"archive/zip"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const metadataSample = `{
@@ -132,7 +133,7 @@ func TestRefreshSpringMetadataKeepsChangedJars(t *testing.T) {
 func TestRefreshSpringMetadataStopsAtTheLimit(t *testing.T) {
 	isolateMetadataCache(t)
 	repository := t.TempDir()
-	for index := 0; index < 5; index++ {
+	for index := range 5 {
 		writeJar(t, filepath.Join(repository, "lib-"+string(rune('a'+index))+".jar"), metadataSample)
 	}
 	report := RefreshSpringMetadata(repository, 2)

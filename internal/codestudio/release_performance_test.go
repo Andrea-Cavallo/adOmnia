@@ -18,7 +18,7 @@ func BenchmarkReleaseRepository(b *testing.B) {
 			if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.test/perf\n\ngo 1.26\n"), 0600); err != nil {
 				b.Fatal(err)
 			}
-			for i := 0; i < count; i++ {
+			for i := range count {
 				dir := filepath.Join(root, fmt.Sprintf("pkg%04d", i))
 				if err := os.MkdirAll(dir, 0700); err != nil {
 					b.Fatal(err)
@@ -30,7 +30,7 @@ func BenchmarkReleaseRepository(b *testing.B) {
 			}
 			b.Run("Open", func(b *testing.B) {
 				b.ReportAllocs()
-				for i := 0; i < b.N; i++ {
+				for b.Loop() {
 					service := NewService(&memoryStore{}, nil)
 					if _, err := service.OpenProject(root); err != nil {
 						b.Fatal(err)
@@ -46,7 +46,7 @@ func BenchmarkReleaseRepository(b *testing.B) {
 			}
 			b.Run("OpenFile", func(b *testing.B) {
 				b.ReportAllocs()
-				for i := 0; i < b.N; i++ {
+				for b.Loop() {
 					document, err := service.OpenDocument(string(session.ID), "pkg0000/source.go")
 					if err != nil {
 						b.Fatal(err)
@@ -58,7 +58,7 @@ func BenchmarkReleaseRepository(b *testing.B) {
 			})
 			b.Run("Search", func(b *testing.B) {
 				b.ReportAllocs()
-				for i := 0; i < b.N; i++ {
+				for b.Loop() {
 					result, err := service.SearchProject(context.Background(), SearchQuery{SessionID: session.ID, Pattern: "ReleaseNeedle"})
 					if err != nil {
 						b.Fatal(err)
@@ -97,7 +97,7 @@ func BenchmarkDependencyGraph(b *testing.B) {
 	for _, mode := range []string{"Cold", "Warm"} {
 		b.Run(mode, func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				if mode == "Cold" {
 					service.depGraph.invalidateSession(session.ID)
 				}

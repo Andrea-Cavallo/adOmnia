@@ -61,14 +61,14 @@ type dbQueryRequest struct {
 }
 
 type dbQueryResponse struct {
-	Columns       []string                 `json:"columns"`
-	Rows          []map[string]interface{} `json:"rows"`
-	RowsAffected  int64                    `json:"rowsAffected"`
-	DurationMS    int64                    `json:"durationMs"`
-	Driver        string                   `json:"driver"`
-	Limited       bool                     `json:"limited"`
-	Destructive   bool                     `json:"destructive"`
-	StatementType string                   `json:"statementType"`
+	Columns       []string         `json:"columns"`
+	Rows          []map[string]any `json:"rows"`
+	RowsAffected  int64            `json:"rowsAffected"`
+	DurationMS    int64            `json:"durationMs"`
+	Driver        string           `json:"driver"`
+	Limited       bool             `json:"limited"`
+	Destructive   bool             `json:"destructive"`
+	StatementType string           `json:"statementType"`
 	// Explain is "plan" or "analyze" when the rows are an execution plan.
 	Explain string `json:"explain,omitempty"`
 	Warning string `json:"warning,omitempty"`
@@ -122,7 +122,7 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
-		dbWriteJSON(w, map[string]interface{}{"ok": true, "driver": "mongodb", "durationMs": time.Since(start).Milliseconds()})
+		dbWriteJSON(w, map[string]any{"ok": true, "driver": "mongodb", "durationMs": time.Since(start).Milliseconds()})
 		return
 	}
 	if strings.EqualFold(req.Driver, "redis") {
@@ -139,7 +139,7 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 			return
 		}
-		dbWriteJSON(w, map[string]interface{}{"ok": true, "driver": "redis", "durationMs": time.Since(start).Milliseconds()})
+		dbWriteJSON(w, map[string]any{"ok": true, "driver": "redis", "durationMs": time.Since(start).Milliseconds()})
 		return
 	}
 	db, driver, err := openDatabase(req)
@@ -155,7 +155,7 @@ func databaseTestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 		return
 	}
-	dbWriteJSON(w, map[string]interface{}{"ok": true, "driver": driver, "durationMs": time.Since(start).Milliseconds()})
+	dbWriteJSON(w, map[string]any{"ok": true, "driver": driver, "durationMs": time.Since(start).Milliseconds()})
 }
 
 func databaseQueryHandler(w http.ResponseWriter, r *http.Request) {
@@ -318,7 +318,7 @@ func databaseCreateLocalSQLiteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, safeDatabaseError(err), http.StatusBadRequest)
 		return
 	}
-	dbWriteJSON(w, map[string]interface{}{"ok": true, "path": path})
+	dbWriteJSON(w, map[string]any{"ok": true, "path": path})
 }
 
 // RegisterHandlers registers Database Studio endpoints.
@@ -614,11 +614,11 @@ func mongoDestructiveOperation(op string) (bool, bool) {
 	}
 }
 
-func mongoRawDoc(raw jsonv1.RawMessage, fallback interface{}) (interface{}, error) {
+func mongoRawDoc(raw jsonv1.RawMessage, fallback any) (any, error) {
 	if len(raw) == 0 || strings.TrimSpace(string(raw)) == "" {
 		return fallback, nil
 	}
-	var doc interface{}
+	var doc any
 	// Relaxed mode also accepts canonical input, plus {"$date": "<ISO-8601>"}.
 	if err := bson.UnmarshalExtJSON(raw, false, &doc); err != nil {
 		return nil, err
@@ -626,11 +626,11 @@ func mongoRawDoc(raw jsonv1.RawMessage, fallback interface{}) (interface{}, erro
 	return doc, nil
 }
 
-func mongoRawDocuments(rawDocs []jsonv1.RawMessage) ([]interface{}, error) {
+func mongoRawDocuments(rawDocs []jsonv1.RawMessage) ([]any, error) {
 	if len(rawDocs) == 0 {
 		return nil, fmt.Errorf("documents array is required")
 	}
-	docs := make([]interface{}, 0, len(rawDocs))
+	docs := make([]any, 0, len(rawDocs))
 	for _, raw := range rawDocs {
 		doc, err := mongoRawDoc(raw, nil)
 		if err != nil {
@@ -641,11 +641,11 @@ func mongoRawDocuments(rawDocs []jsonv1.RawMessage) ([]interface{}, error) {
 	return docs, nil
 }
 
-func mongoRawPipeline(rawStages []jsonv1.RawMessage) ([]interface{}, error) {
+func mongoRawPipeline(rawStages []jsonv1.RawMessage) ([]any, error) {
 	if len(rawStages) == 0 {
 		return nil, fmt.Errorf("pipeline array is required")
 	}
-	pipeline := make([]interface{}, 0, len(rawStages))
+	pipeline := make([]any, 0, len(rawStages))
 	for _, raw := range rawStages {
 		stage, err := mongoRawDoc(raw, nil)
 		if err != nil {
@@ -690,44 +690,44 @@ func mongoCanonicalDocuments(ctx context.Context, cursor *mongo.Cursor) ([]jsonv
 	return docs, cursor.Err()
 }
 
-func mongoCursorRows(ctx context.Context, cursor *mongo.Cursor) ([]map[string]interface{}, error) {
+func mongoCursorRows(ctx context.Context, cursor *mongo.Cursor) ([]map[string]any, error) {
 	defer cursor.Close(ctx)
 	var docs []bson.M
 	if err := cursor.All(ctx, &docs); err != nil {
 		return nil, err
 	}
-	rows := make([]map[string]interface{}, 0, len(docs))
+	rows := make([]map[string]any, 0, len(docs))
 	for _, doc := range docs {
 		rows = append(rows, mongoDocToMap(doc))
 	}
 	return rows, nil
 }
 
-func mongoDocToMap(doc interface{}) map[string]interface{} {
+func mongoDocToMap(doc any) map[string]any {
 	bytes, err := bson.MarshalExtJSON(doc, false, false)
 	if err != nil {
-		return map[string]interface{}{"value": fmt.Sprint(doc)}
+		return map[string]any{"value": fmt.Sprint(doc)}
 	}
-	var row map[string]interface{}
+	var row map[string]any
 	if err := json.Unmarshal(bytes, &row); err != nil {
-		return map[string]interface{}{"value": string(bytes)}
+		return map[string]any{"value": string(bytes)}
 	}
 	return row
 }
 
-func mongoValue(value interface{}) interface{} {
+func mongoValue(value any) any {
 	bytes, err := bson.MarshalExtJSON(bson.M{"value": value}, false, false)
 	if err != nil {
 		return fmt.Sprint(value)
 	}
-	var row map[string]interface{}
+	var row map[string]any
 	if err := json.Unmarshal(bytes, &row); err != nil {
 		return string(bytes)
 	}
 	return row["value"]
 }
 
-func columnsFromRows(rows []map[string]interface{}) []string {
+func columnsFromRows(rows []map[string]any) []string {
 	seen := map[string]bool{}
 	cols := make([]string, 0)
 	for _, row := range rows {
@@ -741,7 +741,7 @@ func columnsFromRows(rows []map[string]interface{}) []string {
 	return cols
 }
 
-func dbWriteJSON(w http.ResponseWriter, value interface{}) {
+func dbWriteJSON(w http.ResponseWriter, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = jsonutil.MarshalWrite(w, value)
 }
@@ -894,7 +894,7 @@ func maskSQLNonCode(query string, backslashEscapes bool) string {
 // cannot hide the statement.
 func destructiveQuery(driver, query string) (bool, bool) {
 	destructive, strict := false, false
-	for _, stmt := range strings.Split(maskSQLNonCode(query, backslashEscapesStrings(driver)), ";") {
+	for stmt := range strings.SplitSeq(maskSQLNonCode(query, backslashEscapesStrings(driver)), ";") {
 		fields := strings.Fields(strings.ToUpper(stmt))
 		if len(fields) == 0 {
 			continue
@@ -921,7 +921,7 @@ func destructiveQuery(driver, query string) (bool, bool) {
 	return destructive, strict
 }
 
-func runRows(ctx context.Context, db *sql.DB, query string) ([]string, []map[string]interface{}, error) {
+func runRows(ctx context.Context, db *sql.DB, query string) ([]string, []map[string]any, error) {
 	rows, err := db.QueryContext(ctx, query) // NOSONAR -- query is the SQL the user typed in the console (see databaseQueryHandler); running it verbatim is the feature
 	if err != nil {
 		return nil, nil, err
@@ -931,17 +931,17 @@ func runRows(ctx context.Context, db *sql.DB, query string) ([]string, []map[str
 	if err != nil {
 		return nil, nil, err
 	}
-	out := make([]map[string]interface{}, 0)
+	out := make([]map[string]any, 0)
 	for rows.Next() {
-		values := make([]interface{}, len(cols))
-		ptrs := make([]interface{}, len(cols))
+		values := make([]any, len(cols))
+		ptrs := make([]any, len(cols))
 		for i := range values {
 			ptrs[i] = &values[i]
 		}
 		if err := rows.Scan(ptrs...); err != nil {
 			return nil, nil, err
 		}
-		row := map[string]interface{}{}
+		row := map[string]any{}
 		for i, col := range cols {
 			switch v := values[i].(type) {
 			case []byte:

@@ -14,8 +14,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io"
 	"net/http"
 	"os/exec"
@@ -23,6 +21,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Command timeout: a cluster call that hangs must not hang the sidecar.
@@ -309,10 +310,7 @@ func humanAgeAt(timestamp string, now time.Time) string {
 	if err != nil {
 		return ""
 	}
-	age := now.Sub(parsed)
-	if age < 0 {
-		age = 0
-	}
+	age := max(now.Sub(parsed), 0)
 	switch {
 	case age < time.Minute:
 		return fmt.Sprintf("%ds", int(age.Seconds()))

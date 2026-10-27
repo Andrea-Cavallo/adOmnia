@@ -17,7 +17,7 @@ func TestSessionCyclesReleaseDocumentsWatchersAndGraphCaches(t *testing.T) {
 	t.Cleanup(service.Shutdown)
 	graphs := service.graphs()
 	before := runtime.NumGoroutine()
-	for cycle := 0; cycle < 15; cycle++ {
+	for cycle := range 15 {
 		session, err := service.OpenProject(root)
 		if err != nil {
 			t.Fatal(err)

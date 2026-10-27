@@ -20,6 +20,7 @@ import (
 
 	"crypto/rand"
 	"encoding/hex"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
 	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
@@ -302,7 +303,7 @@ func (m *DebugManager) run(session *debugger, launch Launch, stdout io.Reader) {
 func (m *DebugManager) connect(session *debugger, launch Launch, endpoint string) {
 	var conn net.Conn
 	var err error
-	for attempt := 0; attempt < 40; attempt++ {
+	for range 40 {
 		conn, err = net.DialTimeout("tcp", endpoint, 2*time.Second)
 		if err == nil {
 			break
@@ -380,7 +381,7 @@ func (m *DebugManager) handleReverseRequest(session *debugger, command string, a
 func (m *DebugManager) startChildSession(session *debugger, spec AdapterSpec, request string, configuration map[string]any) {
 	var conn net.Conn
 	var err error
-	for attempt := 0; attempt < 40; attempt++ {
+	for range 40 {
 		conn, err = net.DialTimeout("tcp", spec.Address, 2*time.Second)
 		if err == nil {
 			break

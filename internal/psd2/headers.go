@@ -3,6 +3,7 @@ package psd2
 import (
 	"crypto/rand"
 	"fmt"
+	"maps"
 	"regexp"
 	"strings"
 )
@@ -53,9 +54,7 @@ func operationHeaders(operation string) ([]string, []string, error) {
 
 func cloneHeaders(source map[string]string) map[string]string {
 	out := make(map[string]string, len(source)+1)
-	for k, v := range source {
-		out[k] = v
-	}
+	maps.Copy(out, source)
 	return out
 }
 func missingHeaders(headers map[string]string, required []string) []string {

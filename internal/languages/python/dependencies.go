@@ -179,7 +179,7 @@ func pyprojectDependencies(root string) []DeclaredDependency {
 	lines := strings.Split(string(data), "\n")
 	var dependencies []DeclaredDependency
 	section := ""
-	for index := 0; index < len(lines); index++ {
+	for index := range lines {
 		line := strings.TrimSpace(strings.TrimSuffix(lines[index], "\r"))
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -323,7 +323,7 @@ func parseLockedVersions(text string) map[string]string {
 		}
 		name, version, local = "", "", false
 	}
-	for _, raw := range strings.Split(text, "\n") {
+	for raw := range strings.SplitSeq(text, "\n") {
 		line := strings.TrimSpace(strings.TrimSuffix(raw, "\r"))
 		if strings.HasPrefix(line, "[[package]]") {
 			flush()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -189,23 +190,21 @@ func (store *PlanStore) Plan(ctx context.Context, engine *Engine, request Upgrad
 	}
 
 	plan.Steps = append(plan.Steps, UpgradeStep{
-		VerifyStep: VerifyStep{
-			ID:      StepWrite,
-			Label:   "Write the change",
-			Command: "backup + write " + filepath.ToSlash(manifest),
-		},
-		Status: StepIdle,
+		ID:      StepWrite,
+		Label:   "Write the change",
+		Command: "backup + write " + filepath.ToSlash(manifest),
+		Status:  StepIdle,
 	})
 	plan.Steps = append(plan.Steps, UpgradeStep{
-		VerifyStep: VerifyStep{ID: StepResolve, Label: "Dependency resolution"},
-		Status:     StepIdle,
+		ID: StepResolve, Label: "Dependency resolution",
+		Status: StepIdle,
 	})
 	for _, step := range editor.VerifySteps(target, component, targetVersion, request.Options) {
 		plan.Steps = append(plan.Steps, UpgradeStep{VerifyStep: step, Status: StepIdle})
 	}
 	plan.Steps = append(plan.Steps, UpgradeStep{
-		VerifyStep: VerifyStep{ID: StepRescan, Label: "Rescan and compare with the impact preview"},
-		Status:     StepIdle,
+		ID: StepRescan, Label: "Rescan and compare with the impact preview",
+		Status: StepIdle,
 	})
 
 	store.mu.Lock()
@@ -582,9 +581,9 @@ func diffLines(left, right []string) []diffLine {
 	for index := range table {
 		table[index] = make([]int, len(right)+1)
 	}
-	for i := len(left) - 1; i >= 0; i-- {
+	for i, l := range slices.Backward(left) {
 		for j := len(right) - 1; j >= 0; j-- {
-			if left[i] == right[j] {
+			if l == right[j] {
 				table[i][j] = table[i+1][j+1] + 1
 				continue
 			}

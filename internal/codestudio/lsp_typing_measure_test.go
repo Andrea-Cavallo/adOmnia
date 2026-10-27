@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -197,8 +198,8 @@ func captureCPUProfile(address, path string) error {
 // anchor does not exist in this workspace.
 func firstBodyLine(t *testing.T, content, anchor string) int {
 	t.Helper()
-	if index := strings.Index(content, anchor); index >= 0 {
-		return strings.Count(content[:index], "\n") // 1-based line of the anchor, minus one
+	if before, _, ok := strings.Cut(content, anchor); ok {
+		return strings.Count(before, "\n") // 1-based line of the anchor, minus one
 	}
 	for index, line := range strings.Split(content, "\n") {
 		if strings.HasPrefix(line, "func ") && strings.HasSuffix(strings.TrimSpace(line), "{") {
@@ -319,7 +320,7 @@ func (r *typingRecorder) summary(loaded time.Duration, target string, keystrokes
 	for _, sample := range samples {
 		rss = append(rss, sample.rss)
 	}
-	sort.Slice(rss, func(i, j int) bool { return rss[i] < rss[j] })
+	slices.Sort(rss)
 	median, max, first := uint64(0), uint64(0), uint64(0)
 	if len(rss) > 0 {
 		median = rss[len(rss)/2]

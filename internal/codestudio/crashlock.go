@@ -5,11 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const (
@@ -22,8 +23,8 @@ const (
 // CrashStatus dice se l'avvio precedente di adOmnia si è chiuso in modo anomalo.
 type CrashStatus struct {
 	PreviousCrashed bool      `json:"previousCrashed"`
-	LastHeartbeat   time.Time `json:"lastHeartbeat,omitempty"`
-	StartedAt       time.Time `json:"startedAt,omitempty"`
+	LastHeartbeat   time.Time `json:"lastHeartbeat"`
+	StartedAt       time.Time `json:"startedAt"`
 }
 
 type runtimeLockInfo struct {

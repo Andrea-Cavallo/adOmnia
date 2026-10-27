@@ -47,7 +47,7 @@ func TestJobCloseCyclesReleaseChildrenAndHandles(t *testing.T) {
 	_ = windows.CloseHandle(job)
 	var before uint32
 	// Include os/exec runtime initialization in warmup, not in the leak delta.
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		if i == 3 {
 			before = handleCount(t)
 		}

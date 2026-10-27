@@ -2,9 +2,10 @@ package git
 
 import (
 	"bytes"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"path/filepath"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // OpResult is the single, typed shape every operational Git command returns.
@@ -170,7 +171,7 @@ func inspectState(repoPath string) (RepoState, error) {
 		conflicts := []string{}
 		dirty := false
 		conflictCodes := map[string]bool{"DD": true, "AU": true, "UD": true, "UA": true, "DU": true, "AA": true, "UU": true}
-		for _, line := range strings.Split(porcelain, "\n") {
+		for line := range strings.SplitSeq(porcelain, "\n") {
 			if len(line) < 4 {
 				continue
 			}

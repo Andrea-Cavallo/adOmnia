@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -323,16 +324,16 @@ func buildProfileReport(root, path string, p *profile.Profile) ProfileReport {
 		}
 		// flame: dalla radice (ultimo frame) alla foglia (primo frame).
 		node := rootFlame
-		for i := len(stack) - 1; i >= 0; i-- {
+		for _, s := range slices.Backward(stack) {
 			children := flameChildren[node]
-			child, exists := children[stack[i].fn.Name]
+			child, exists := children[s.fn.Name]
 			if !exists {
 				if flameCount >= maxProfileFlame {
 					report.Truncated = true
 					break
 				}
-				child = &ProfileFlame{Function: stack[i].fn, Value: make([]int64, width)}
-				children[stack[i].fn.Name] = child
+				child = &ProfileFlame{Function: s.fn, Value: make([]int64, width)}
+				children[s.fn.Name] = child
 				flameChildren[child] = map[string]*ProfileFlame{}
 				flameCount++
 			}

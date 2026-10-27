@@ -303,8 +303,8 @@ func validatePathName(path string) string {
 	if !strings.HasPrefix(path, "/") {
 		return "Paths should start with /."
 	}
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-	for _, part := range parts {
+	parts := strings.SplitSeq(strings.Trim(path, "/"), "/")
+	for part := range parts {
 		if part == "" || strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
 			continue
 		}

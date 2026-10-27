@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -89,7 +90,7 @@ type grpcFieldInfo struct {
 	EnumValues   []grpcEnumValue `json:"enum_values,omitempty"`
 	KeyType      string          `json:"key_type,omitempty"`
 	ValueType    string          `json:"value_type,omitempty"`
-	DefaultValue interface{}     `json:"default_value,omitempty"`
+	DefaultValue any             `json:"default_value,omitempty"`
 	Description  string          `json:"description,omitempty"`
 }
 
@@ -121,8 +122,8 @@ type grpcInvokeRequest struct {
 }
 
 type grpcInvokeResponse struct {
-	Response         interface{}       `json:"response,omitempty"`
-	Messages         []interface{}     `json:"messages,omitempty"`
+	Response         any               `json:"response,omitempty"`
+	Messages         []any             `json:"messages,omitempty"`
 	Error            string            `json:"error,omitempty"`
 	Status           string            `json:"status"`
 	TimeMs           int64             `json:"time_ms"`
@@ -225,7 +226,7 @@ func fieldKind(fd *desc.FieldDescriptor) string {
 	return lowercase(name)
 }
 
-func normalizeDefaultValue(v interface{}) interface{} {
+func normalizeDefaultValue(v any) any {
 	switch value := v.(type) {
 	case int64:
 		return fmt.Sprintf("%d", value)
@@ -294,7 +295,7 @@ func buildFieldInfo(fd *desc.FieldDescriptor) grpcFieldInfo {
 	}
 	if fd.IsMap() {
 		info.KeyType, info.ValueType = mapKeyValueTypes(fd)
-		info.DefaultValue = map[string]interface{}{}
+		info.DefaultValue = map[string]any{}
 	}
 	label := ""
 	if info.Required {
@@ -422,7 +423,7 @@ func lowercase(s string) string {
 	return string(b)
 }
 
-func writeJSON(w http.ResponseWriter, code int, v interface{}) {
+func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	jsonutil.MarshalWrite(w, v)
@@ -676,16 +677,16 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		type streamResult struct {
-			messages []interface{}
+			messages []any
 			err      error
 		}
 		recvDone := make(chan streamResult, 1)
 		go func() {
-			messages := make([]interface{}, 0)
+			messages := make([]any, 0)
 			for {
 				msg := dynamic.NewMessage(methodDesc.GetOutputType())
 				err := stream.RecvMsg(msg)
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					recvDone <- streamResult{messages: messages}
 					return
 				}
@@ -698,7 +699,7 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 					recvDone <- streamResult{messages: messages, err: fmt.Errorf("marshal stream message: %w", err)}
 					return
 				}
-				var item interface{}
+				var item any
 				if err := json.Unmarshal(msgJSON, &item); err != nil {
 					recvDone <- streamResult{messages: messages, err: fmt.Errorf("decode stream message: %w", err)}
 					return
@@ -793,7 +794,7 @@ func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var respData interface{}
+	var respData any
 	// respJSON viene da MarshalJSON appena riuscito: se l'unmarshal fallisce (tipi ambigui) la
 	// risposta resta il testo grezzo invece di sparire.
 	if err := json.Unmarshal(respJSON, &respData); err != nil {
@@ -930,7 +931,7 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		message := dynamic.NewMessage(method.GetOutputType())
 		err := stream.RecvMsg(message)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			emit(map[string]any{"type": "complete", "status": "OK", "time_ms": time.Since(started).Milliseconds(), "trailers": metadataMap(stream.Trailer())})
 			return
 		}

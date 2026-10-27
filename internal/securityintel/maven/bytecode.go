@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -786,7 +787,7 @@ func (s *classFileSummary) recordBootstrapMethods(data []byte, pool []cpEntry, m
 		handle := reader.u2()
 		arguments := reader.u2()
 		argumentIndexes := make([]uint16, 0, arguments)
-		for argument := uint16(0); argument < arguments; argument++ {
+		for range arguments {
 			argumentIndexes = append(argumentIndexes, reader.u2())
 		}
 		if !s.invokedynamicSites[index] {
@@ -975,10 +976,8 @@ func appendDistinctString(values []string, value string) []string {
 	if value == "" {
 		return values
 	}
-	for _, existing := range values {
-		if existing == value {
-			return values
-		}
+	if slices.Contains(values, value) {
+		return values
 	}
 	return append(values, value)
 }

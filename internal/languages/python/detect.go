@@ -3,6 +3,7 @@ package python
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -35,11 +36,8 @@ func (v *unitsVisitor) VisitDirectory(visit project.DirectoryVisit) bool {
 	manifest := ""
 	// Strong project markers have stable precedence. Do not parse or execute setup.py.
 	for _, marker := range []string{"pyproject.toml", "setup.cfg", "setup.py", "requirements.txt", "manage.py"} {
-		for _, name := range visit.Files {
-			if name == marker {
-				manifest = marker
-				break
-			}
+		if slices.Contains(visit.Files, marker) {
+			manifest = marker
 		}
 		if manifest != "" {
 			break

@@ -3,15 +3,17 @@
 package update
 
 import (
+	"errors"
 	"fmt"
-	"golang.org/x/sys/windows"
 	"time"
+
+	"golang.org/x/sys/windows"
 )
 
 func waitForParent(pid int, timeout time.Duration) error {
 	h, e := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(pid))
 	if e != nil {
-		if e == windows.ERROR_INVALID_PARAMETER {
+		if errors.Is(e, windows.ERROR_INVALID_PARAMETER) {
 			return nil
 		} // parent already exited
 		return e

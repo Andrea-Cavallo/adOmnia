@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sync"
 	"time"
@@ -366,12 +367,8 @@ func resolveOptionsFrom(options ScanOptionsJSON, settings securityintel.Workspac
 // significa aggiungere una riga qui, non una seconda logica CVE.
 func buildSecurityEngine(options ScanOptionsJSON, settings securityintel.WorkspaceSettings) (*securityintel.Engine, *securityintel.AdvisoryCache) {
 	overrides := map[string]string{}
-	for key, value := range settings.SourceEndpoints {
-		overrides[key] = value
-	}
-	for key, value := range options.SourceEndpoints {
-		overrides[key] = value
-	}
+	maps.Copy(overrides, settings.SourceEndpoints)
+	maps.Copy(overrides, options.SourceEndpoints)
 	return standard.Engine(securityintelCacheDirectory(), overrides)
 }
 

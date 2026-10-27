@@ -89,7 +89,7 @@ func TestMeasureLanguageServerMemory(t *testing.T) {
 					t.Fatal(err)
 				}
 				warm := time.Now()
-				for i := 0; i < 5; i++ {
+				for range 5 {
 					if err := conn.Call(ctx, "workspace/symbol", map[string]any{"query": "LSPManager"}, &symbols); err != nil {
 						t.Fatal(err)
 					}

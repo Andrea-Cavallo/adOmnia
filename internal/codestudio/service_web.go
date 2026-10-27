@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -79,9 +80,7 @@ func (c *previewConfigStore) replace(configs map[string]PreviewConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.configs = make(map[string]PreviewConfig, len(configs))
-	for key, config := range configs {
-		c.configs[key] = config
-	}
+	maps.Copy(c.configs, configs)
 }
 
 func (c *previewConfigStore) snapshot() map[string]PreviewConfig {
@@ -91,9 +90,7 @@ func (c *previewConfigStore) snapshot() map[string]PreviewConfig {
 		return nil
 	}
 	clone := make(map[string]PreviewConfig, len(c.configs))
-	for key, config := range c.configs {
-		clone[key] = config
-	}
+	maps.Copy(clone, c.configs)
 	return clone
 }
 

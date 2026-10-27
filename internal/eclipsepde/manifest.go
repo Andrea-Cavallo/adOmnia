@@ -70,7 +70,7 @@ func ParseManifest(data []byte) (*Manifest, error) {
 // continuation lines that begin with a single space.
 func unfoldManifestLines(text string) []string {
 	var out []string
-	for _, raw := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
+	for raw := range strings.SplitSeq(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
 		if strings.HasPrefix(raw, " ") && len(out) > 0 {
 			out[len(out)-1] += raw[1:]
 			continue

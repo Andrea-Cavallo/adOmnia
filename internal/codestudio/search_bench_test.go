@@ -15,7 +15,7 @@ func BenchmarkSearchProject(b *testing.B) {
 	root := b.TempDir()
 	line := strings.Repeat("x", 30) + " handler := newServer(config)\n"
 	body := strings.Repeat(line, 200)
-	for i := 0; i < 10_000; i++ {
+	for i := range 10_000 {
 		dir := filepath.Join(root, fmt.Sprintf("pkg%03d", i%100))
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			b.Fatal(err)
@@ -35,7 +35,7 @@ func BenchmarkSearchProject(b *testing.B) {
 	}
 	for _, tc := range []struct{ name, pattern string }{{"rare", "needle_unique_token"}, {"common-capped", "newServer"}} {
 		b.Run(tc.name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				if _, err := service.SearchProject(context.Background(), SearchQuery{SessionID: session.ID, Pattern: tc.pattern}); err != nil {
 					b.Fatal(err)
 				}

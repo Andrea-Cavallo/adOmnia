@@ -88,7 +88,7 @@ func goplsVersion(binary string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("gopls is not executable: %s", strings.TrimSpace(string(output)))
 	}
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) >= 2 && strings.HasSuffix(fields[0], "gopls") {
 			return fields[1], nil

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -105,11 +106,8 @@ func unitInCandidate(visit project.DirectoryVisit) (project.Unit, bool) {
 			candidate = true
 			break
 		}
-		for _, build := range gradleBuildFiles {
-			if name == build {
-				candidate = true
-				break
-			}
+		if slices.Contains(gradleBuildFiles, name) {
+			candidate = true
 		}
 	}
 	if !candidate {

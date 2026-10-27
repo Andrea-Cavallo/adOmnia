@@ -30,7 +30,7 @@ func ValidClassName(name string) bool {
 	if name == "" || len(name) > maxClassNameBytes {
 		return false
 	}
-	for _, part := range strings.Split(name, ".") {
+	for part := range strings.SplitSeq(name, ".") {
 		if part == "" || (part[0] >= '0' && part[0] <= '9') {
 			return false
 		}

@@ -8,8 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,6 +15,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type SSEEvent struct {
@@ -78,7 +79,7 @@ func (s *SSESession) touch() {
 
 func sseSessionCount() int {
 	n := 0
-	sseSessions.Range(func(_, _ interface{}) bool { n++; return true })
+	sseSessions.Range(func(_, _ any) bool { n++; return true })
 	return n
 }
 
@@ -138,7 +139,7 @@ func sseSessionReaper() {
 	defer ticker.Stop()
 	for range ticker.C {
 		now := time.Now().UnixNano()
-		sseSessions.Range(func(key, value interface{}) bool {
+		sseSessions.Range(func(key, value any) bool {
 			sess := value.(*SSESession)
 			last := sess.lastActive.Load()
 			if now-last > int64(sseSessionIdleTimeout) {
@@ -152,7 +153,7 @@ func sseSessionReaper() {
 
 // SseShutdown closes every active SSE session. Safe to call multiple times.
 func SseShutdown() {
-	sseSessions.Range(func(key, value interface{}) bool {
+	sseSessions.Range(func(key, value any) bool {
 		sess := value.(*SSESession)
 		sess.close()
 		return true
@@ -162,7 +163,7 @@ func SseShutdown() {
 // SseListHandler lists all active SSE sessions (GET /sse/list).
 func SseListHandler(w http.ResponseWriter, r *http.Request) {
 	sessions := make([]sseSessionInfo, 0)
-	sseSessions.Range(func(key, value interface{}) bool {
+	sseSessions.Range(func(key, value any) bool {
 		sess := value.(*SSESession)
 		sess.clientsMu.Lock()
 		clientCount := len(sess.clients)
@@ -185,7 +186,7 @@ func SseCloseAllHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	count := 0
-	sseSessions.Range(func(key, value interface{}) bool {
+	sseSessions.Range(func(key, value any) bool {
 		sess := value.(*SSESession)
 		sess.close()
 		count++

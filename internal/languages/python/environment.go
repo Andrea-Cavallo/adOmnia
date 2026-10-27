@@ -188,7 +188,7 @@ func readPythonVersion(unitRoot string) string {
 	if err != nil {
 		return ""
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		if value := strings.TrimSpace(line); value != "" && !strings.HasPrefix(value, "#") {
 			return value
 		}

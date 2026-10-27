@@ -330,7 +330,7 @@ func TestTraceBuilderCloseOpenStateFinalizesAliveAndOpenRanges(t *testing.T) {
 
 func TestSummarizeGoroutinesAndProcsCapAndOrder(t *testing.T) {
 	goroutines := map[int64]*TraceGoroutine{}
-	for index := 0; index < maxTraceGoroutines+5; index++ {
+	for index := range maxTraceGoroutines + 5 {
 		id := int64(index)
 		goroutines[id] = &TraceGoroutine{ID: id, Running: int64(index), Spans: []TraceSpan{{Start: 30}, {Start: 10}}}
 	}
@@ -427,7 +427,7 @@ func TestListTraceFilesSkipsDeepFoldersAndCapsResults(t *testing.T) {
 	}
 
 	capped := t.TempDir()
-	for index := 0; index < maxProfileFiles+5; index++ {
+	for index := range maxProfileFiles + 5 {
 		writeFixtureFile(t, capped, "trace-"+strconv.Itoa(index)+".out", "trace")
 	}
 	cappedService := NewService(&memoryStore{}, nil)

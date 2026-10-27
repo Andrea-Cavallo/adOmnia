@@ -3,11 +3,12 @@ package plugins
 import (
 	"encoding/base64"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 func pluginTestDataDir(tempDir string) string {
@@ -258,20 +259,20 @@ func TestPluginPackageExecutesActionAndTransformsRequestHook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyEventJSON() error = %v", err)
 	}
-	var request map[string]interface{}
+	var request map[string]any
 	if err := json.Unmarshal([]byte(transformed), &request); err != nil {
 		t.Fatalf("decode transformed request: %v", err)
 	}
-	headers := request["headers"].(map[string]interface{})
+	headers := request["headers"].(map[string]any)
 	if got := headers["X-Adomnia-Plugin"]; got != "active" {
 		t.Fatalf("plugin header = %#v, want active", got)
 	}
 
-	result := manager.ExecuteAction("request-advisor", "inspect", map[string]interface{}{})
+	result := manager.ExecuteAction("request-advisor", "inspect", map[string]any{})
 	if !result.Success {
 		t.Fatalf("ExecuteAction() failed: %s", result.Error)
 	}
-	data := result.Data.(map[string]interface{})
+	data := result.Data.(map[string]any)
 	if data["ok"] != true || data["pluginId"] != "request-advisor" {
 		t.Fatalf("action result = %#v", data)
 	}

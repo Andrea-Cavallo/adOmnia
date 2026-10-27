@@ -70,7 +70,7 @@ func parseLCOV(data []byte) []lcovFile {
 		}
 		current = lcovFile{lines: map[int]int{}}
 	}
-	for _, raw := range strings.Split(string(data), "\n") {
+	for raw := range strings.SplitSeq(string(data), "\n") {
 		line := strings.TrimSpace(strings.TrimRight(raw, "\r"))
 		switch {
 		case line == "end_of_record":

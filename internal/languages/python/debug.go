@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -240,10 +241,5 @@ func withoutFlag(arguments []string, flag string) []string {
 
 // containsWord dice se arguments contiene la parola esatta.
 func containsWord(arguments []string, word string) bool {
-	for _, argument := range arguments {
-		if argument == word {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(arguments, word)
 }

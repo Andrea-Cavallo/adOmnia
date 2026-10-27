@@ -110,8 +110,8 @@ func WSLPath(windowsPath string) (string, error) {
 	for _, prefix := range []string{`\\wsl.localhost\`, `\\wsl$\`} {
 		if strings.HasPrefix(lower, prefix) {
 			rest := clean[len(prefix):]
-			if index := strings.Index(rest, `\`); index >= 0 {
-				return "/" + strings.ReplaceAll(strings.Trim(rest[index+1:], `\`), `\`, "/"), nil
+			if _, after, ok := strings.Cut(rest, `\`); ok {
+				return "/" + strings.ReplaceAll(strings.Trim(after, `\`), `\`, "/"), nil
 			}
 			return "/", nil
 		}

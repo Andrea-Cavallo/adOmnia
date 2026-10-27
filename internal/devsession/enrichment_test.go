@@ -6,8 +6,8 @@ import (
 
 func TestBuildRuntimeEnrichment(t *testing.T) {
 	runs := []RequestRun{
-		{ID: "r1", Method: "GET", URL: "http://localhost:8080/users?active=1", Status: 200, DurationMs: 20, Hits: []Hit{{Frame: Frame{Function: "example.com/app/handler.List", RelativePath: "internal/handler/users.go"}}}},
-		{ID: "r2", Method: "GET", URL: "http://localhost:8080/users?active=1", Status: 200, DurationMs: 40, Hits: []Hit{{Frame: Frame{Function: "example.com/app/handler.List", RelativePath: "internal/handler/users.go"}}}},
+		{ID: "r1", Method: "GET", URL: "http://localhost:8080/users?active=1", Status: 200, DurationMs: 20, Hits: []Hit{{Function: "example.com/app/handler.List", RelativePath: "internal/handler/users.go"}}},
+		{ID: "r2", Method: "GET", URL: "http://localhost:8080/users?active=1", Status: 200, DurationMs: 40, Hits: []Hit{{Function: "example.com/app/handler.List", RelativePath: "internal/handler/users.go"}}},
 		{ID: "r3", Method: "POST", URL: "http://localhost:8080/users", Status: 500, DurationMs: 60, Error: "boom"},
 	}
 	queries := []Query{

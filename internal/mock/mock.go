@@ -6,9 +6,6 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
-	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"math/rand" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used -- non-security randomness (fake data / jitter)
 	"net"
@@ -20,6 +17,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 var mockHitFileMu sync.Mutex
@@ -75,7 +76,7 @@ type mockEndpoint struct {
 	Method    string         `json:"method"`
 	Responses []mockResponse `json:"responses"`
 	Mode      string         `json:"mode"` // "first_active", "random", "round_robin"
-	rrIndex   uint64
+	rrIndex   uint64         //nolint:modernize // mockEndpoint is copied by value (append, JSON): atomic.Uint64 would trip copylocks
 }
 
 type mockServerConfig struct {
@@ -96,7 +97,7 @@ var (
 	mockCfgMu     sync.RWMutex
 	mockHits      []mockHitEntry
 	mockHitsMu    sync.Mutex
-	mockHitSeq    int64
+	mockHitSeq    atomic.Int64
 	persistConfig func([]byte) error
 )
 
@@ -190,7 +191,7 @@ func mockStartHandler(w http.ResponseWriter, r *http.Request) {
 	devlog.Info("mockStartHandler", "mock server avviato con successo", map[string]any{"port": cfg.Port, "endpoints": len(cfg.Endpoints)})
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "port": cfg.Port})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "port": cfg.Port})
 }
 
 func mockStopHandler(w http.ResponseWriter, r *http.Request) {
@@ -224,7 +225,7 @@ func mockStatusHandler(w http.ResponseWriter, r *http.Request) {
 	mockSrvMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"running": running, "port": port})
+	jsonutil.MarshalWrite(w, map[string]any{"running": running, "port": port})
 }
 
 // mockConfigHandler atomically replaces the runtime configuration without
@@ -410,7 +411,7 @@ func renderMockResponseBody(resp *mockResponse) string {
 		return resp.Body
 	}
 
-	var schema map[string]interface{}
+	var schema map[string]any
 	if err := json.Unmarshal([]byte(resp.BodySchema), &schema); err != nil {
 		return resp.Body
 	}
@@ -436,7 +437,7 @@ func mockPreviewSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var schema map[string]interface{}
+	var schema map[string]any
 	if err := json.Unmarshal([]byte(req.Schema), &schema); err != nil {
 		httputil.JSONError(w, "invalid schema JSON: "+err.Error(), http.StatusBadRequest)
 		return
@@ -526,7 +527,7 @@ func extractJSONPath(body []byte, path string) (string, bool) {
 		return "", false
 	}
 
-	var obj interface{}
+	var obj any
 	if err := json.Unmarshal(body, &obj); err != nil {
 		return "", false
 	}
@@ -537,7 +538,7 @@ func extractJSONPath(body []byte, path string) (string, bool) {
 		if part == "" {
 			continue
 		}
-		m, ok := current.(map[string]interface{})
+		m, ok := current.(map[string]any)
 		if !ok {
 			return "", false
 		}
@@ -696,7 +697,7 @@ type mockHitDetails struct {
 }
 
 func recordHitDetailed(method, path string, matched bool, responseID string, status int, details mockHitDetails) {
-	seq := atomic.AddInt64(&mockHitSeq, 1)
+	seq := mockHitSeq.Add(1)
 	entry := mockHitEntry{
 		ID:           fmt.Sprintf("mh_%d", seq),
 		Timestamp:    time.Now().Format("15:04:05.000"),

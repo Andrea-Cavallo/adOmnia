@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -229,10 +230,8 @@ func (w *sessionWatch) ignoredPath(path string) bool {
 		return false
 	}
 	segments := strings.Split(filepath.ToSlash(relative), "/")
-	for _, segment := range segments[:len(segments)-1] {
-		if isIgnoredDirectory(segment) {
-			return true
-		}
+	if slices.ContainsFunc(segments[:len(segments)-1], isIgnoredDirectory) {
+		return true
 	}
 	if isIgnoredDirectory(segments[len(segments)-1]) {
 		return true

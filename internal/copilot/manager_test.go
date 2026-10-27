@@ -310,7 +310,7 @@ func TestSensitiveFilesNeverReachCopilot(t *testing.T) {
 	root := t.TempDir()
 	manager := startFakeManager(t, DefaultProfile(), root)
 	manager.DocumentOpened(OpenedDocument{ID: "env", URI: fileURI(filepath.Join(root, ".env")), Root: root, RootName: "demo", RelativePath: ".env", LanguageID: "dotenv", Text: "TOKEN=secret"})
-	if _, err := manager.InlineCompletion(context.Background(), InlineCompletionRequest{DocumentID: "env", Line: 1, Column: 1}); err != ErrExcluded {
+	if _, err := manager.InlineCompletion(context.Background(), InlineCompletionRequest{DocumentID: "env", Line: 1, Column: 1}); !errors.Is(err, ErrExcluded) {
 		t.Fatalf("expected ErrExcluded, got %v", err)
 	}
 	time.Sleep(100 * time.Millisecond)

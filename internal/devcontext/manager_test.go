@@ -219,9 +219,8 @@ func TestManagerConcurrentFirstGetScansOnce(t *testing.T) {
 	scans := 0
 	m := NewManager(func(string) (string, error) { return root, nil }, func(string, int64) { mu.Lock(); scans++; mu.Unlock() })
 	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
-		wg.Add(1)
-		go func() { defer wg.Done(); _, _ = m.Get("s1") }()
+	for range 8 {
+		wg.Go(func() { ; _, _ = m.Get("s1") })
 	}
 	wg.Wait()
 	if scans != 1 {

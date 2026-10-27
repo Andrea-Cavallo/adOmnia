@@ -66,7 +66,7 @@ func TestProfileCumulativeCountsEachFunctionOncePerSample(t *testing.T) {
 // Il Top è limitato, ma ogni tipo di campione (alloc_space, inuse_space…) deve avere i suoi primi.
 func TestProfileTopKeepsTheLeadersOfEverySampleType(t *testing.T) {
 	samples := []*profile.Sample{}
-	for index := 0; index < maxProfileTop+50; index++ {
+	for index := range maxProfileTop + 50 {
 		fn := &profile.Function{ID: uint64(index + 1), Name: fmt.Sprintf("example.com/app.f%d", index)}
 		loc := &profile.Location{ID: uint64(index + 1), Line: []profile.Line{{Function: fn, Line: 1}}}
 		// alloc_space è alto solo per l'ultima funzione, inuse_space (l'ultimo tipo) cresce con l'indice.

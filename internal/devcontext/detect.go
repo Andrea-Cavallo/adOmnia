@@ -23,7 +23,7 @@ func interesting(rel string) bool {
 	}
 	dir := path.Dir(rel)
 	if dir != "." {
-		for _, segment := range strings.Split(dir, "/") {
+		for segment := range strings.SplitSeq(dir, "/") {
 			if skippedDirs[segment] || strings.HasPrefix(segment, ".") {
 				return false
 			}

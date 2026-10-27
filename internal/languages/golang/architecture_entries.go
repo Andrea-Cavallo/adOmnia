@@ -526,8 +526,8 @@ func (a *architecture) collectRepositories(file typedFile) {
 			if !ok {
 				continue
 			}
-			for index := 0; index < structure.NumFields(); index++ {
-				if label := databaseLabel(structure.Field(index).Type()); label != "" {
+			for field := range structure.Fields() {
+				if label := databaseLabel(field.Type()); label != "" {
 					methods := types.NewMethodSet(types.NewPointer(object.Type())).Len()
 					a.addEntry(ArchEntry{Kind: "repository", Name: object.Name(), Detail: label + " · " + pluralize(methods, "method"), Package: file.pkg.PkgPath, Site: a.site(typeSpec.Name.Pos())})
 					break

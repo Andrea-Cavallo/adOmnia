@@ -7,8 +7,6 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"io"
 	"log"
 	"math"
@@ -19,6 +17,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 // ---------------------------------------------------------------------------
@@ -319,7 +320,7 @@ func projectThemeDirectories() []string {
 
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			dirs = append(dirs, filepath.Join(dir, "data", "themes"))
 			dir = filepath.Dir(dir)
 		}

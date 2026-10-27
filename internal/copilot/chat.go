@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -299,11 +300,8 @@ func chatModels(conn *lsp.Conn) ([]ChatModel, error) {
 		if strings.TrimSpace(model.ID) == "" {
 			continue
 		}
-		for _, scope := range model.Scopes {
-			if scope == "chat-panel" {
-				filtered = append(filtered, model)
-				break
-			}
+		if slices.Contains(model.Scopes, "chat-panel") {
+			filtered = append(filtered, model)
 		}
 	}
 	return filtered, nil

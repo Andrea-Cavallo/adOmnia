@@ -203,7 +203,7 @@ func (a *App) OnStartup(ctx context.Context) {
 	startupStages["sidecarMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
 	stageStarted = time.Now()
 	if globalPluginManager != nil {
-		globalPluginManager.FireEvent(PluginEvent{Type: "onStartup", Payload: map[string]interface{}{}})
+		globalPluginManager.FireEvent(PluginEvent{Type: "onStartup", Payload: map[string]any{}})
 	}
 	startupStages["pluginEventMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
 	startupStages["totalMs"] = float64(time.Since(startupStarted).Microseconds()) / 1000
@@ -402,7 +402,7 @@ func (a *App) shutdown(_ context.Context) {
 		}
 	}
 	if globalPluginManager != nil {
-		globalPluginManager.EmitEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
+		globalPluginManager.EmitEvent(PluginEvent{Type: "onShutdown", Payload: map[string]any{}})
 		globalPluginManager.Shutdown()
 	}
 	pluginRuntime.ConfigureNotifier(nil)

@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -139,10 +140,8 @@ func CheckModel(ctx context.Context, endpoint, model string) error {
 	if info.RemoteHost != "" || info.RemoteModel != "" {
 		return fmt.Errorf("cloud-backed Ollama models are not supported by this local integration")
 	}
-	for _, capability := range info.Capabilities {
-		if capability == "tools" {
-			return nil
-		}
+	if slices.Contains(info.Capabilities, "tools") {
+		return nil
 	}
 	return fmt.Errorf("model %q does not report tool-calling support; choose a model with tools support in Ollama", model)
 }

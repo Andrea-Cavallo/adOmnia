@@ -2,7 +2,6 @@ package codestudio
 
 import (
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -10,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 )
 
 type extensionHost struct {
@@ -124,7 +125,7 @@ func (s *Service) InvokeIDEExtension(request IDEExtensionRequest) (plugins.ExecR
 	if len(request.Text) > 1<<20 {
 		return plugins.ExecResult{}, fmt.Errorf("extension input exceeds 1 MiB")
 	}
-	args := map[string]interface{}{"apiVersion": 1, "sessionId": request.SessionID, "projectRoot": session.Project.RealPath, "text": request.Text, "selection": request.Selection}
+	args := map[string]any{"apiVersion": 1, "sessionId": request.SessionID, "projectRoot": session.Project.RealPath, "text": request.Text, "selection": request.Selection}
 	if request.DocumentID != "" {
 		document, ok := s.documents.Get(session.ID, DocumentID(request.DocumentID))
 		if !ok {

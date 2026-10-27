@@ -138,7 +138,7 @@ func (s *Service) GoAuthWithGitCredentials() string {
 
 func parseCredentialOutput(output string) map[string]string {
 	values := map[string]string{}
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if key, value, ok := strings.Cut(strings.TrimRight(line, "\r"), "="); ok {
 			values[key] = value
 		}

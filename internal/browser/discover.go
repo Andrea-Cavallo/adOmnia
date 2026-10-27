@@ -229,7 +229,7 @@ func (b *BrowserDebug) NavigateTarget(url string) error {
 	}
 	b.mu.Unlock()
 
-	_, err := b.sendCommandWithResult("Page.navigate", map[string]interface{}{
+	_, err := b.sendCommandWithResult("Page.navigate", map[string]any{
 		"url": url,
 	})
 	if err != nil {
@@ -241,7 +241,7 @@ func (b *BrowserDebug) NavigateTarget(url string) error {
 }
 
 // GetTargetInfo returns info about the currently connected target.
-func (b *BrowserDebug) GetTargetInfo() (map[string]interface{}, error) {
+func (b *BrowserDebug) GetTargetInfo() (map[string]any, error) {
 	b.mu.Lock()
 	if !b.connected {
 		b.mu.Unlock()
@@ -258,7 +258,7 @@ func (b *BrowserDebug) GetTargetInfo() (map[string]interface{}, error) {
 		}
 	}
 
-	var info map[string]interface{}
+	var info map[string]any
 	if err := json.Unmarshal(result, &info); err != nil {
 		return nil, fmt.Errorf("failed to parse target info: %w", err)
 	}
@@ -281,7 +281,7 @@ func (b *BrowserDebug) TakeScreenshot(format string, quality int) (string, error
 		quality = 80
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"format": format,
 	}
 	if format == "jpeg" || format == "webp" {
@@ -312,7 +312,7 @@ func (b *BrowserDebug) GetPageSource() (string, error) {
 	}
 	b.mu.Unlock()
 
-	result, err := b.sendCommandWithResult("Runtime.evaluate", map[string]interface{}{
+	result, err := b.sendCommandWithResult("Runtime.evaluate", map[string]any{
 		"expression":    "document.documentElement.outerHTML",
 		"returnByValue": true,
 	})
@@ -345,7 +345,7 @@ func (b *BrowserDebug) EmulateDevice(width, height int, mobile bool, deviceScale
 		deviceScaleFactor = 1
 	}
 
-	if err := b.sendCommand("Emulation.setDeviceMetricsOverride", map[string]interface{}{
+	if err := b.sendCommand("Emulation.setDeviceMetricsOverride", map[string]any{
 		"width":             width,
 		"height":            height,
 		"mobile":            mobile,
@@ -531,7 +531,7 @@ func (b *BrowserDebug) LaunchBrowserForDebug(url string, port int) ([]DebugTarge
 	// Wait for CDP to become available
 	client := &http.Client{Timeout: 2 * time.Second}
 	var targets []DebugTarget
-	for attempt := 0; attempt < 20; attempt++ {
+	for range 20 {
 		time.Sleep(300 * time.Millisecond)
 		_, discovered, err := probePort(client, port)
 		pageTargets := inspectablePageTargets(discovered)

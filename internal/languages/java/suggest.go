@@ -54,8 +54,8 @@ func wrapperSupport(kind string) string {
 
 // resolve è il percorso dell'eseguibile: il wrapper dentro l'unità o lo strumento trovato nel PATH.
 func (t buildTool) resolve(unit project.Unit) string {
-	if strings.HasPrefix(t.Target, "./") {
-		return filepath.Join(unit.Root, filepath.FromSlash(strings.TrimPrefix(t.Target, "./")))
+	if after, ok := strings.CutPrefix(t.Target, "./"); ok {
+		return filepath.Join(unit.Root, filepath.FromSlash(after))
 	}
 	if found, err := lookPath(t.Target); err == nil {
 		return found

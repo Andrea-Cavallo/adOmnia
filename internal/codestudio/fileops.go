@@ -86,7 +86,7 @@ func (m *DocumentManager) MovePath(project Project, from, to string) error {
 			path = filepath.Join(target, relative)
 		}
 		if err := os.WriteFile(path, rewrite.updated, rewrite.mode); err != nil {
-			for previous := 0; previous < index; previous++ {
+			for previous := range index {
 				restorePath := rewrites[previous].path
 				if sameOrChildPath(restorePath, source) {
 					relative, _ := filepath.Rel(source, restorePath)

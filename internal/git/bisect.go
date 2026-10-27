@@ -68,7 +68,7 @@ func BisectReset(repoPath string) OpResult {
 // FirstBadCommit extracts the culprit SHA from bisect output, or "" if the
 // search has not concluded yet.
 func FirstBadCommit(output string) string {
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if strings.Contains(line, "is the first bad commit") {
 			return strings.Fields(line)[0]
 		}

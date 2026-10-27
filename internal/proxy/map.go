@@ -3,12 +3,13 @@ package proxy
 import (
 	"bytes"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // --- Map Local Handler ---
@@ -23,7 +24,7 @@ func proxyMapLocalHandler(w http.ResponseWriter, r *http.Request) {
 			rules = []mapLocalRule{}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "rules": rules})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "rules": rules})
 
 	case http.MethodPost:
 		var body struct {
@@ -37,7 +38,7 @@ func proxyMapLocalHandler(w http.ResponseWriter, r *http.Request) {
 		mapLocalRules = body.Rules
 		mapLocalRulesMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "count": len(body.Rules)})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "count": len(body.Rules)})
 
 	default:
 		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
@@ -56,7 +57,7 @@ func proxyMapRemoteHandler(w http.ResponseWriter, r *http.Request) {
 			rules = []mapRemoteRule{}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "rules": rules})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "rules": rules})
 
 	case http.MethodPost:
 		var body struct {
@@ -70,7 +71,7 @@ func proxyMapRemoteHandler(w http.ResponseWriter, r *http.Request) {
 		mapRemoteRules = body.Rules
 		mapRemoteRulesMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "count": len(body.Rules)})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "count": len(body.Rules)})
 
 	default:
 		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
@@ -86,7 +87,7 @@ func proxyThrottleHandler(w http.ResponseWriter, r *http.Request) {
 		cfg := proxyThrottle
 		proxyThrottleMu.RUnlock()
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "config": cfg})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "config": cfg})
 
 	case http.MethodPost:
 		var cfg throttleConfig
@@ -98,7 +99,7 @@ func proxyThrottleHandler(w http.ResponseWriter, r *http.Request) {
 		proxyThrottle = cfg
 		proxyThrottleMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "config": cfg})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true, "config": cfg})
 
 	default:
 		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
@@ -175,7 +176,7 @@ func proxyRepeatHandler(w http.ResponseWriter, r *http.Request) {
 	recordEntry(original.URL, original.Method, original.ReqHeaders, original.ReqBody, resp.StatusCode, respHeaders, string(respBody), duration, "", false)
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":         true,
 		"status":     resp.StatusCode,
 		"headers":    respHeaders,

@@ -6,14 +6,16 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
@@ -44,12 +46,7 @@ var storeBuckets = []string{
 const storagePutMaxBodyBytes = 100 * 1024 * 1024
 
 func isStoreBucketAllowed(bucket string) bool {
-	for _, name := range storeBuckets {
-		if bucket == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(storeBuckets, bucket)
 }
 
 func validateStoreBucket(bucket string) error {
@@ -254,7 +251,7 @@ func List(bucket, prefix string) ([]string, error) {
 }
 
 // storeJSONPut marshals v as JSON and stores it.
-func storeJSONPut(bucket, key string, v interface{}) error {
+func storeJSONPut(bucket, key string, v any) error {
 	data, err := jsonutil.Marshal(v)
 	if err != nil {
 		return err
@@ -302,8 +299,8 @@ func migrateFromLocalStorage(workspaceJSON, settingsJSON, mockJSON string) {
 
 // --- stats ---
 
-func storeStats() map[string]interface{} {
-	stats := map[string]interface{}{}
+func storeStats() map[string]any {
+	stats := map[string]any{}
 	if db == nil {
 		stats["ok"] = false
 		stats["error"] = "db not open"
@@ -418,7 +415,7 @@ func storageListHandler(w http.ResponseWriter, r *http.Request) {
 		keys = []string{}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"bucket": bucket,
 		"prefix": prefix,
 		"keys":   keys,
@@ -442,7 +439,7 @@ func storageMigrateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	migrateFromLocalStorage(req.Workspace, req.Settings, req.Mock)
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 func storageExportHandler(w http.ResponseWriter, r *http.Request) {
@@ -503,7 +500,7 @@ func storageImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "imported": count})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "imported": count})
 }
 
 // Snapshot: export all bbolt data as a single downloadable .adomnia-snapshot file.
@@ -581,7 +578,7 @@ func storageRestoreHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[store] restored %d keys from snapshot", restored)
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "restored": restored})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "restored": restored})
 }
 
 // Full-text search across all buckets.
@@ -639,7 +636,7 @@ func storageSearchHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"q":       q,
 		"results": results,
 		"count":   len(results),

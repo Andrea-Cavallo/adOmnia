@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 
 	"filippo.io/age"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
@@ -164,7 +165,7 @@ func vaultStatusHandler(w http.ResponseWriter, r *http.Request) {
 	defer vaultMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"unlocked": vaultUnlocked,
 	})
 }
@@ -203,7 +204,7 @@ func vaultUnlockHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("[vault] unlocked")
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 func vaultLockHandler(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +212,7 @@ func vaultLockHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("[vault] locked manually")
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 func vaultEncryptHandler(w http.ResponseWriter, r *http.Request) {
@@ -241,7 +242,7 @@ func vaultEncryptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":         true,
 		"ciphertext": ciphertext,
 	})
@@ -317,7 +318,7 @@ func vaultDecryptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":        true,
 		"plaintext": plaintext,
 	})
@@ -374,7 +375,7 @@ func vaultExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":     true,
 		"format": "adomnia-age",
 		"data":   ciphertext,
@@ -434,7 +435,7 @@ func vaultImportHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "imported": imported})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "imported": imported})
 }
 
 // RegisterHandlers registers local secret vault endpoints.

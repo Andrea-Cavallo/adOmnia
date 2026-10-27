@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -73,9 +74,9 @@ func (idx *BundleIndex) BestMatch(name string, r VersionRange, rOK bool) (entry 
 	for _, e := range entries {
 		candidates = append(candidates, e.Bundle.Version.String())
 	}
-	for i := len(entries) - 1; i >= 0; i-- {
-		if !rOK || r.Match(entries[i].Bundle.Version) {
-			return entries[i], candidates, true
+	for _, entry := range slices.Backward(entries) {
+		if !rOK || r.Match(entry.Bundle.Version) {
+			return entry, candidates, true
 		}
 	}
 	return nil, candidates, false

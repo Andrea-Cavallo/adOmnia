@@ -102,7 +102,7 @@ func TestStressApdexAndPercentilesIgnoreFailedRequests(t *testing.T) {
 
 	// Groups stay bounded on noisy runs and are ordered by frequency.
 	many := []stressObservation{}
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		msg := "timeout talking to upstream"
 		if i%2 == 1 {
 			msg = "connection refused"

@@ -301,7 +301,7 @@ func resolveDotEnvCredential(startDir string, keys []string) (string, string) {
 	if err != nil {
 		return "", ""
 	}
-	for depth := 0; depth < 6; depth++ {
+	for range 6 {
 		for _, name := range dotEnvNames {
 			path := filepath.Join(dir, name)
 			if value := readDotEnvCredential(path, wanted); value != "" {

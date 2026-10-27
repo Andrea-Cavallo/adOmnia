@@ -3,9 +3,10 @@ package codestudio
 import (
 	"context"
 	"errors"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // DependencyWhy è la catena di import più corta dal modulo principale al modulo dipendente
@@ -20,7 +21,7 @@ type DependencyWhy struct {
 // ParseModWhy legge l'output di `go mod why -m`.
 func ParseModWhy(module, output string) DependencyWhy {
 	why := DependencyWhy{Module: module, Chain: []string{}}
-	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
 		line = strings.TrimSpace(line)
 		switch {
 		case line == "" || strings.HasPrefix(line, "#"):

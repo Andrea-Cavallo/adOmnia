@@ -193,7 +193,7 @@ func buildArtifactPath(cargo, workingDirectory string, options DebugOptions) (st
 // (i binari delle dipendenze non hanno `executable`).
 func parseArtifactPath(output []byte) (string, error) {
 	executable := ""
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		var message struct {
 			Reason     string `json:"reason"`
 			Executable string `json:"executable"`

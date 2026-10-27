@@ -9,6 +9,7 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -138,10 +139,8 @@ func withGoFirstInPath(environment []string, binary string) []string {
 }
 
 func appendUnique(values []string, value string) []string {
-	for _, existing := range values {
-		if existing == value {
-			return values
-		}
+	if slices.Contains(values, value) {
+		return values
 	}
 	return append(values, value)
 }

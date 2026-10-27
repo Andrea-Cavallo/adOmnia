@@ -51,8 +51,8 @@ func DebugArguments(unitKind string, arguments []string, port int) ([]string, in
 		out := make([]string, 0, len(arguments)+1)
 		vm := ""
 		for _, argument := range arguments {
-			if strings.HasPrefix(argument, prefix) {
-				vm = strings.TrimPrefix(argument, prefix)
+			if after, ok := strings.CutPrefix(argument, prefix); ok {
+				vm = after
 			} else {
 				out = append(out, argument)
 			}

@@ -125,16 +125,14 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 	}
 	var workers sync.WaitGroup
 	for worker := 0; worker < min(searchWorkers, max(1, len(candidates))); worker++ {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			for index := range next {
 				if ctx.Err() == nil && !capped.Load() {
 					perFile[index] = searchFile(candidates[index].path, candidates[index].relative, matcher)
 					finish(index)
 				}
 			}
-		}()
+		})
 	}
 	for index := range candidates {
 		if capped.Load() {

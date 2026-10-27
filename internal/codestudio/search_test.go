@@ -58,7 +58,7 @@ func TestSearchProjectRespectsOptionsExclusionsAndCancellation(t *testing.T) {
 
 func TestSearchProjectStopsAtResultCapInFileOrder(t *testing.T) {
 	root := t.TempDir()
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		content := strings.Repeat("hit\n", 100)
 		if err := os.WriteFile(filepath.Join(root, fmt.Sprintf("f%02d.txt", i)), []byte(content), 0o644); err != nil {
 			t.Fatal(err)

@@ -90,11 +90,11 @@ type Request struct {
 	Bodies        []Body            `json:"bodies"`
 	ActiveBodyIdx int               `json:"activeBodyIdx"`
 	Auth          Auth              `json:"auth"`
-	Inheritance   InheritancePolicy `json:"inheritance,omitempty"`
+	Inheritance   InheritancePolicy `json:"inheritance"`
 	Timeout       int               `json:"timeout"`
 	Follow        *bool             `json:"followRedirects"`
 	Assertions    []Assertion       `json:"assertions"`
-	Scripts       Scripts           `json:"scripts,omitempty"`
+	Scripts       Scripts           `json:"scripts"`
 	OpenAPIPath   string            `json:"_openapiPath,omitempty"`
 }
 
@@ -229,8 +229,8 @@ func RequestBodyString(req Request, vars map[string]string) (string, string, str
 			if unresolved(key) || unresolved(value) {
 				return "", "", "unresolved form variables"
 			}
-			if strings.HasPrefix(value, "@file:") {
-				path := strings.TrimSpace(strings.TrimPrefix(value, "@file:"))
+			if after, ok := strings.CutPrefix(value, "@file:"); ok {
+				path := strings.TrimSpace(after)
 				file, err := os.Open(path)
 				if err != nil {
 					return "", "", fmt.Sprintf("open multipart file %q: %v", path, err)

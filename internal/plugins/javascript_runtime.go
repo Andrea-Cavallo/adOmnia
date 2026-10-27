@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -33,11 +35,11 @@ var hostFunctionPermissions = map[string]string{
 func executeJavaScriptPlugin(
 	plugin PluginInstance,
 	function string,
-	args map[string]interface{},
+	args map[string]any,
 	hostFunctions map[string]HostFunction,
 	timeLimit time.Duration,
 	memoryLimit int64,
-) (interface{}, int64, error) {
+) (any, int64, error) {
 	entryPoint, err := ResolvePluginEntryPoint(plugin.InstallDir, plugin.Manifest.EntryPoint)
 	if err != nil {
 		return nil, 0, err
@@ -92,11 +94,8 @@ func executeJavaScriptPlugin(
 	moduleExports := module.Get("exports")
 	if moduleExports != nil && !goja.IsUndefined(moduleExports) && !goja.IsNull(moduleExports) {
 		exportsObject := moduleExports.ToObject(vm)
-		for _, exportedName := range exportsObject.Keys() {
-			if exportedName == function {
-				candidate = exportsObject.Get(function)
-				break
-			}
+		if slices.Contains(exportsObject.Keys(), function) {
+			candidate = exportsObject.Get(function)
 		}
 	}
 	callable, ok := goja.AssertFunction(candidate)
@@ -130,7 +129,7 @@ func executeJavaScriptPlugin(
 	if memUsed > memoryLimit {
 		return nil, memUsed, fmt.Errorf("plugin I/O memory limit exceeded after execution: %d > %d bytes", memUsed, memoryLimit)
 	}
-	var result interface{}
+	var result any
 	if err := json.Unmarshal(resultJSON, &result); err != nil {
 		return nil, memUsed, fmt.Errorf("failed to normalize plugin result: %w", err)
 	}
@@ -156,7 +155,7 @@ func transformJavaScriptModule(source string) string {
 	})
 	source = exportListPattern.ReplaceAllStringFunc(source, func(match string) string {
 		parts := exportListPattern.FindStringSubmatch(match)
-		for _, item := range strings.Split(parts[2], ",") {
+		for item := range strings.SplitSeq(parts[2], ",") {
 			name := strings.TrimSpace(strings.Split(strings.TrimSpace(item), " as ")[0])
 			aliasParts := strings.Split(strings.TrimSpace(item), " as ")
 			alias := name
@@ -225,13 +224,11 @@ func invokeHostFunction(ctx context.Context, vm *goja.Runtime, plugin PluginInst
 	if permission != "" && !hasPluginPermission(plugin.Manifest.Permissions, permission) {
 		panic(vm.NewGoError(fmt.Errorf("permission denied: %s requires %s", name, permission)))
 	}
-	params := map[string]interface{}{}
+	params := map[string]any{}
 	if value != nil && !goja.IsUndefined(value) && !goja.IsNull(value) {
 		switch exported := value.Export().(type) {
-		case map[string]interface{}:
-			for key, item := range exported {
-				params[key] = item
-			}
+		case map[string]any:
+			maps.Copy(params, exported)
 		case string:
 			switch name {
 			case "log.info", "log.error":
@@ -257,7 +254,7 @@ func invokeHostFunction(ctx context.Context, vm *goja.Runtime, plugin PluginInst
 	if len(result) == 0 {
 		return goja.Undefined()
 	}
-	var decoded interface{}
+	var decoded any
 	if err := json.Unmarshal(result, &decoded); err != nil {
 		panic(vm.NewGoError(fmt.Errorf("invalid %s result: %w", name, err)))
 	}

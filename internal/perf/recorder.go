@@ -4,6 +4,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -237,9 +238,7 @@ func frontendMetrics() map[string]any {
 		return nil
 	}
 	merged := make(map[string]any, len(frontendLatest))
-	for key, value := range frontendLatest {
-		merged[key] = value
-	}
+	maps.Copy(merged, frontendLatest)
 	return merged
 }
 

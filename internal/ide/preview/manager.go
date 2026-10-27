@@ -569,7 +569,7 @@ func relativeWithin(root, changed string) (string, bool) {
 	if relative == "" {
 		return "", false
 	}
-	for _, segment := range strings.Split(relative, "/") {
+	for segment := range strings.SplitSeq(relative, "/") {
 		if project.IgnoredDirectory(segment) || strings.HasPrefix(segment, ".") {
 			return "", false
 		}

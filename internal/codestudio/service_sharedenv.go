@@ -1,6 +1,7 @@
 package codestudio
 
 import (
+	"maps"
 	"regexp"
 	"sync"
 )
@@ -42,9 +43,7 @@ func (s *Service) withSharedEnvironment(own map[string]string) map[string]string
 		return own
 	}
 	merged := make(map[string]string, len(shared)+len(own))
-	for key, value := range shared {
-		merged[key] = value
-	}
+	maps.Copy(merged, shared)
 	for key, value := range own {
 		merged[key] = envRefPattern.ReplaceAllStringFunc(value, func(token string) string {
 			name := envRefPattern.FindStringSubmatch(token)[1]

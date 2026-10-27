@@ -140,7 +140,7 @@ func codeLLDBVersionOf(path string) []int {
 	base := filepath.Base(filepath.Dir(filepath.Dir(path)))
 	base = strings.TrimPrefix(base, "vadimcn.vscode-lldb-")
 	var version []int
-	for _, part := range strings.Split(base, ".") {
+	for part := range strings.SplitSeq(base, ".") {
 		number, err := strconv.Atoi(part)
 		if err != nil {
 			break

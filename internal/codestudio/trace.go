@@ -1,11 +1,13 @@
 package codestudio
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -309,11 +311,11 @@ func (b *traceBuilder) onProcTransition(t int64, transition trace.StateTransitio
 }
 
 func (b *traceBuilder) onRangeEnd(t int64, name string) {
-	for i := len(b.openRanges) - 1; i >= 0; i-- {
-		if b.openRanges[i].name != name {
+	for i, opened := range slices.Backward(b.openRanges) {
+		if opened.name != name {
 			continue
 		}
-		opened := b.openRanges[i]
+
 		b.openRanges = append(b.openRanges[:i], b.openRanges[i+1:]...)
 		if opened.kind == "gc" || opened.kind == "stw" {
 			b.report.GC = append(b.report.GC, TraceRange{Kind: opened.kind, Name: opened.name, Start: opened.start, End: t, Goroutine: opened.goroutine, Stack: opened.stack})
@@ -451,7 +453,7 @@ func buildTraceReport(root, path string, reader *trace.Reader) (TraceReport, err
 	}
 	for {
 		event, err := reader.ReadEvent()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

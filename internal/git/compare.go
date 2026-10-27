@@ -3,12 +3,13 @@ package git
 import (
 	"bytes"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // CompareResult is the structured output of a commit/branch/tag/worktree compare.
@@ -52,7 +53,7 @@ func CompareCommits(repoPath, refA, refB string) (CompareResult, error) {
 
 	numstat, _, _, err := runFull(repoPath, append([]string{"diff", "--numstat"}, base...)...)
 	if err == nil {
-		for _, line := range strings.Split(numstat, "\n") {
+		for line := range strings.SplitSeq(numstat, "\n") {
 			fields := strings.Split(strings.TrimSpace(line), "\t")
 			if len(fields) < 3 {
 				continue
@@ -69,7 +70,7 @@ func CompareCommits(repoPath, refA, refB string) (CompareResult, error) {
 // handling rename/copy lines (R100 old new).
 func parseNameStatus(out string) []ChangedFile {
 	files := []ChangedFile{}
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		if line == "" {
 			continue
 		}
@@ -268,7 +269,7 @@ func ChangedLinesSince(repoPath, base string) (map[string][]LineRange, error) {
 		}
 		section.Reset()
 	}
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if strings.HasPrefix(line, "+++ ") {
 			flush()
 			current = ""
@@ -286,7 +287,7 @@ func ChangedLinesSince(repoPath, base string) (map[string][]LineRange, error) {
 
 func parseHunkRanges(diff string) []LineRange {
 	ranges := []LineRange{}
-	for _, line := range strings.Split(diff, "\n") {
+	for line := range strings.SplitSeq(diff, "\n") {
 		match := hunkHeader.FindStringSubmatch(line)
 		if match == nil {
 			continue
@@ -360,9 +361,9 @@ func BlameLines(repoPath, path string) ([]BlameLine, error) {
 	}
 	lines := []BlameLine{}
 	current := BlameLine{}
-	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(line, "\t") {
-			current.Content = strings.TrimPrefix(line, "\t")
+	for line := range strings.SplitSeq(out, "\n") {
+		if after, ok0 := strings.CutPrefix(line, "\t"); ok0 {
+			current.Content = after
 			lines = append(lines, current)
 			continue
 		}
@@ -393,14 +394,14 @@ func parseCommitLog(out string) []CommitInfo {
 	if strings.TrimSpace(out) == "" {
 		return commits
 	}
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		parts := strings.Split(line, "\x1f")
 		if len(parts) < 7 {
 			continue
 		}
 		var parents []string
 		if p := strings.TrimSpace(parts[2]); p != "" {
-			for _, parent := range strings.Fields(p) {
+			for parent := range strings.FieldsSeq(p) {
 				if len(parent) > 7 {
 					parent = parent[:7]
 				}
@@ -408,7 +409,7 @@ func parseCommitLog(out string) []CommitInfo {
 			}
 		}
 		var decorations []string
-		for _, decoration := range strings.Split(parts[6], ",") {
+		for decoration := range strings.SplitSeq(parts[6], ",") {
 			if trimmed := strings.TrimSpace(decoration); trimmed != "" {
 				decorations = append(decorations, trimmed)
 			}

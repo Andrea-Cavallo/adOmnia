@@ -157,30 +157,30 @@ func localPort(raw string) int {
 func (m *Manager) attributeLocked(sessionID, text string, at time.Time) (*RequestRun, string) {
 	if text != "" {
 		// An id is unique: it ties output of any service (a consumer elsewhere) to the request.
-		for i := len(m.runOrder) - 1; i >= 0; i-- {
-			run := m.runs[m.runOrder[i]]
+		for _, v := range slices.Backward(m.runOrder) {
+			run := m.runs[v]
 			if run.CorrelationID != "" && (strings.Contains(text, run.CorrelationID) || strings.Contains(strings.ToLower(text), TraceIDFor(run.CorrelationID))) {
 				return run, MatchID
 			}
 		}
 	}
 	inFlight := m.inFlightLocked(sessionID)
-	for i := len(inFlight) - 1; i >= 0; i-- {
-		if !inFlight[i].StartedAt.After(at) {
-			return inFlight[i], MatchTime
+	for _, i := range slices.Backward(inFlight) {
+		if !i.StartedAt.After(at) {
+			return i, MatchTime
 		}
 	}
 	// Something that started while a request was in flight but is recorded later (a SQL statement
 	// recorded when the database answers) still belongs to that request.
-	for i := len(m.runOrder) - 1; i >= 0; i-- {
-		run := m.runs[m.runOrder[i]]
+	for _, v := range slices.Backward(m.runOrder) {
+		run := m.runs[v]
 		if run.SessionID == sessionID && run.CompletedAt != nil && !run.StartedAt.After(at) && !at.After(*run.CompletedAt) {
 			return run, MatchTime
 		}
 	}
 	// A service often logs or publishes right after writing the response.
-	for i := len(m.runOrder) - 1; i >= 0; i-- {
-		run := m.runs[m.runOrder[i]]
+	for _, v := range slices.Backward(m.runOrder) {
+		run := m.runs[v]
 		if run.SessionID == sessionID && run.CompletedAt != nil && !at.Before(*run.CompletedAt) && at.Sub(*run.CompletedAt) <= afterResponseGrace {
 			return run, MatchTime
 		}

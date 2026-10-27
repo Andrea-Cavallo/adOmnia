@@ -38,7 +38,7 @@ func GetRebaseTodo(repoPath, baseRef string) (RebasePlan, error) {
 	if err != nil {
 		return plan, fmt.Errorf("git log range: %w", err)
 	}
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		parts := strings.SplitN(line, "\x1f", 2)
 		if len(parts) < 2 {
 			continue

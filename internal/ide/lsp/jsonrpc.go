@@ -9,12 +9,13 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const (
@@ -285,8 +286,7 @@ func (c *Conn) shutdown(cause error) {
 
 // IsCancelled indica se l'errore corrisponde a una richiesta annullata dal client o dal server.
 func IsCancelled(err error) bool {
-	var responseErr *ResponseError
-	if errors.As(err, &responseErr) {
+	if responseErr, ok := errors.AsType[*ResponseError](err); ok {
 		return responseErr.Code == codeCancelled
 	}
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)

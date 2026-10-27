@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -173,10 +174,8 @@ func (pm *PluginManager) TrustPluginKey(publicKey string) error {
 		return fmt.Errorf("not a base64 ed25519 public key")
 	}
 	keys := loadTrustedKeys()
-	for _, key := range keys {
-		if key == publicKey {
-			return nil
-		}
+	if slices.Contains(keys, publicKey) {
+		return nil
 	}
 	if err := saveTrustedKeys(append(keys, publicKey)); err != nil {
 		return err

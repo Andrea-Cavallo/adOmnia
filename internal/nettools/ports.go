@@ -92,18 +92,18 @@ func listListeningPorts(ctx context.Context) (string, []PortEntry, error) {
 // splitHostPort splits "0.0.0.0:135", "[::]:445" or "127.0.0.1:8080" into the
 // host and numeric port, tolerating IPv6 brackets.
 func splitHostPort(s string) (string, int) {
-	i := strings.LastIndex(s, ":")
-	if i < 0 {
+	before, after, ok := strings.CutLast(s, ":")
+	if !ok {
 		return s, 0
 	}
-	host := s[:i]
-	port, _ := strconv.Atoi(s[i+1:])
+	host := before
+	port, _ := strconv.Atoi(after)
 	return host, port
 }
 
 func parseNetstatWindows(out string, names map[int]string) []PortEntry {
 	var entries []PortEntry
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 5 || !strings.EqualFold(f[0], "TCP") {
 			continue
@@ -126,7 +126,7 @@ func windowsPIDNames(ctx context.Context) map[int]string {
 	if err != nil {
 		return names
 	}
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		cols := strings.Split(line, "\",\"")
 		if len(cols) < 2 {
 			continue
@@ -144,7 +144,7 @@ var ssProcRe = regexp.MustCompile(`users:\(\("([^"]+)",pid=(\d+)`)
 
 func parseSS(out string) []PortEntry {
 	var entries []PortEntry
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 4 || !strings.EqualFold(f[0], "LISTEN") {
 			continue
@@ -163,7 +163,7 @@ func parseSS(out string) []PortEntry {
 
 func parseNetstatLinux(out string) []PortEntry {
 	var entries []PortEntry
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 6 || !strings.HasPrefix(strings.ToLower(f[0]), "tcp") {
 			continue
@@ -188,7 +188,7 @@ func parseNetstatLinux(out string) []PortEntry {
 
 func parseLsof(out string) []PortEntry {
 	var entries []PortEntry
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 9 || f[0] == "COMMAND" {
 			continue

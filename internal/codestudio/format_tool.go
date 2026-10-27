@@ -117,7 +117,7 @@ func isAbsoluteExistingFile(path string) bool {
 
 // firstLine è il messaggio compatto di uno strumento: la prima riga non vuota di stderr.
 func firstMeaningfulLine(text string) string {
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if trimmed := strings.TrimSpace(line); trimmed != "" {
 			return trimmed
 		}

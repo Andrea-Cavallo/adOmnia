@@ -2,13 +2,14 @@ package codestudio
 
 import (
 	"encoding/base64"
-	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
-	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 func extensionFixture(t *testing.T, serverCommand ...string) (*Service, *plugins.PluginManager) {
@@ -125,7 +126,7 @@ func TestIDEExtensionSandboxContextTrustAndDisable(t *testing.T) {
 	if err != nil || !result.Success {
 		t.Fatalf("sandbox action: %+v %v", result, err)
 	}
-	data := result.Data.(map[string]interface{})
+	data := result.Data.(map[string]any)
 	if data["text"] != request.Text+"\n// extension" || data["message"] != "main.go" {
 		t.Fatalf("context not delivered: %#v", data)
 	}

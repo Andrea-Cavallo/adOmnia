@@ -60,7 +60,7 @@ func TestLongLaunchOnJDK8UsesAManifestOnlyJar(t *testing.T) {
 	if reader.File[0].Name != "META-INF/MANIFEST.MF" || !strings.Contains(text, "Class-Path: file:///") {
 		t.Fatalf("manifest = %q", text)
 	}
-	for _, line := range strings.Split(text, "\r\n") {
+	for line := range strings.SplitSeq(text, "\r\n") {
 		if len(line) > 72 {
 			t.Fatalf("manifest line over 72 bytes: %d", len(line))
 		}
@@ -69,7 +69,7 @@ func TestLongLaunchOnJDK8UsesAManifestOnlyJar(t *testing.T) {
 
 func TestManifestLineWrapsAt72Bytes(t *testing.T) {
 	wrapped := manifestLine("Class-Path: " + strings.Repeat("a", 200))
-	for _, line := range strings.Split(wrapped, "\r\n") {
+	for line := range strings.SplitSeq(wrapped, "\r\n") {
 		if len(line) > 72 {
 			t.Fatalf("line of %d bytes", len(line))
 		}

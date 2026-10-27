@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"regexp"
@@ -335,9 +336,7 @@ func executeStressPlan(plan stressPlan, baseVars map[string]string, dataset []ma
 				return
 			}
 			vars := map[string]string{}
-			for key, value := range baseVars {
-				vars[key] = value
-			}
+			maps.Copy(vars, baseVars)
 			if len(dataset) > 0 {
 				index := int(iteration % int64(len(dataset)))
 				switch cfg.DatasetMode {
@@ -346,9 +345,7 @@ func executeStressPlan(plan stressPlan, baseVars map[string]string, dataset []ma
 				case "random":
 					index = int((iteration*1103515245 + int64(vu)*2654435761 + 12345) % int64(len(dataset)))
 				}
-				for key, value := range dataset[index] {
-					vars[key] = value
-				}
+				maps.Copy(vars, dataset[index])
 			}
 			vars["__vu"] = strconv.Itoa(vu + 1)
 			vars["__iteration"] = strconv.FormatInt(iteration+1, 10)
@@ -646,7 +643,7 @@ func stressJSONPath(body, path string) (any, bool) {
 	if path == "" {
 		return value, true
 	}
-	for _, part := range strings.Split(path, ".") {
+	for part := range strings.SplitSeq(path, ".") {
 		object, ok := value.(map[string]any)
 		if !ok {
 			return nil, false
@@ -734,15 +731,12 @@ func summarizeStress(items []stressObservation, excluded int, iterations, failed
 			errors++
 		}
 	}
-	sort.Slice(latencies, func(i, j int) bool { return latencies[i] < latencies[j] })
+	slices.Sort(latencies)
 	percentile := func(p float64) int64 {
 		if len(latencies) == 0 {
 			return 0
 		}
-		index := int(math.Ceil(p*float64(len(latencies)))) - 1
-		if index < 0 {
-			index = 0
-		}
+		index := max(int(math.Ceil(p*float64(len(latencies))))-1, 0)
 		return latencies[index]
 	}
 	satisfied, tolerated := 0, 0

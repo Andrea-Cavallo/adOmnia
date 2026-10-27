@@ -3,6 +3,7 @@ package java
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -78,7 +79,7 @@ func ParsePomDependencies(data []byte) ([]PomDependency, error) {
 	for {
 		offset := int(decoder.InputOffset())
 		token, err := decoder.Token()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

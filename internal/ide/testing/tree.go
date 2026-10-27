@@ -127,8 +127,8 @@ func (t *Tree) node(pkg, name string) *TestResult {
 	}
 	parent := ""
 	if name != "" {
-		if slash := strings.LastIndex(name, "/"); slash >= 0 {
-			parent = t.ensure(pkg, name[:slash])
+		if before, _, ok := strings.CutLast(name, "/"); ok {
+			parent = t.ensure(pkg, before)
 		} else {
 			parent = t.ensure(pkg, "")
 		}

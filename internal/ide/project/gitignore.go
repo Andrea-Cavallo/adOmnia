@@ -66,8 +66,8 @@ func parseGitIgnoreLine(line string) (gitIgnoreRule, bool) {
 	if strings.HasPrefix(line, "!") {
 		rule.negate, line = true, line[1:]
 	}
-	if strings.HasSuffix(line, "/") {
-		rule.dirOnly, line = true, strings.TrimSuffix(line, "/")
+	if before, ok := strings.CutSuffix(line, "/"); ok {
+		rule.dirOnly, line = true, before
 	}
 	anchored := strings.Contains(line, "/")
 	line = strings.TrimPrefix(line, "/")

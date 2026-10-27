@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -17,6 +16,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"golang.org/x/tools/go/ast/astutil"
@@ -442,14 +443,14 @@ func (b *moveBuilder) ownedByMovedType(obj types.Object) bool {
 			continue
 		}
 		if named, ok := typeName.Type().(*types.Named); ok {
-			for index := 0; index < named.NumMethods(); index++ {
-				if named.Method(index) == obj {
+			for method := range named.Methods() {
+				if method == obj {
 					return true
 				}
 			}
 			if structure, ok := named.Underlying().(*types.Struct); ok {
-				for index := 0; index < structure.NumFields(); index++ {
-					if structure.Field(index) == obj {
+				for field := range structure.Fields() {
+					if field == obj {
 						return true
 					}
 				}

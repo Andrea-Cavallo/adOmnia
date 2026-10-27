@@ -2,6 +2,7 @@ package remote
 
 import (
 	"bufio"
+	"errors"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -99,7 +100,8 @@ func TestGuardScriptRunsAndPropagatesExitCode(t *testing.T) {
 	command := exec.Command(sh, "-c", guardScript(dir, []string{"sh", "-c", "pwd; exit 3"}))
 	command.Stdin = strings.NewReader("")
 	output, err := command.Output()
-	exit, ok := err.(*exec.ExitError)
+	exit := &exec.ExitError{}
+	ok := errors.As(err, &exit)
 	if !ok || exit.ExitCode() != 3 || !strings.Contains(string(output), filepath.Base(dir)) {
 		t.Fatalf("output %q, err %v", output, err)
 	}

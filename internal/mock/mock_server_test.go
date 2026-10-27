@@ -2,12 +2,13 @@ package mock
 
 import (
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestMockServerStartStop(t *testing.T) {
@@ -33,7 +34,7 @@ func TestMockServerStartStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /mock/status failed: %v", err)
 	}
-	var status map[string]interface{}
+	var status map[string]any
 	json.UnmarshalRead(resp.Body, &status)
 	resp.Body.Close()
 	if status["running"] != false {
@@ -54,7 +55,7 @@ func TestMockServerStartStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /mock/start failed: %v", err)
 	}
-	var startRes map[string]interface{}
+	var startRes map[string]any
 	json.UnmarshalRead(resp.Body, &startRes)
 	resp.Body.Close()
 	t.Logf("Start response: %+v", startRes)
@@ -95,7 +96,7 @@ func TestMockServerStartStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /mock/stop failed: %v", err)
 	}
-	var stopRes map[string]interface{}
+	var stopRes map[string]any
 	json.UnmarshalRead(resp.Body, &stopRes)
 	resp.Body.Close()
 	if stopRes["ok"] != true {

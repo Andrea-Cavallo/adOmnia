@@ -119,7 +119,7 @@ func dependencyPathTo(graphOutput, mainModule, target string) []string {
 		return nil
 	}
 	edges := map[string][]string{}
-	for _, line := range strings.Split(graphOutput, "\n") {
+	for line := range strings.SplitSeq(graphOutput, "\n") {
 		from, to, ok := strings.Cut(strings.TrimSpace(line), " ")
 		if !ok {
 			continue

@@ -190,7 +190,7 @@ func (s *StaticServer) resolve(urlPath string) (string, int) {
 // hasForbiddenSegment dice se un percorso URL pulito contiene un segmento nascosto (tranne
 // .well-known) o con separatori/volumi di altri sistemi (backslash e :).
 func hasForbiddenSegment(cleaned string) bool {
-	for _, segment := range strings.Split(cleaned, "/") {
+	for segment := range strings.SplitSeq(cleaned, "/") {
 		if segment == "" {
 			continue
 		}

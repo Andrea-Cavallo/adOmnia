@@ -57,7 +57,7 @@ type projectResponse struct {
 var codeCredential = regexp.MustCompile(`(?i)(-----BEGIN [A-Z ]*PRIVATE KEY-----|vault:[A-Za-z0-9]|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[A-Z0-9]{16}|sk_live_[A-Za-z0-9]{16,}|(?:password|passwd|api_key|apikey|client_secret|access_token)\s*[:=]\s*["'][^"'\s]{4,}["'])`)
 
 func privateProjectPath(path string) bool {
-	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+	for part := range strings.SplitSeq(filepath.ToSlash(path), "/") {
 		lower := strings.ToLower(part)
 		if ideproject.IgnoredDirectory(lower) || lower == ".env" || strings.HasPrefix(lower, ".env.") || lower == ".ssh" || lower == ".aws" || lower == ".adomnia" || lower == "credentials" || lower == "credentials.json" || lower == "id_rsa" || lower == "id_ed25519" {
 			return true

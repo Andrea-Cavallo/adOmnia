@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os/exec"
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 type PublishedPort struct {
@@ -84,8 +85,8 @@ func containerMapping(rawJSON []byte, localRoot string) (ContainerInfo, error) {
 func mountSource(value string) string {
 	value = strings.ReplaceAll(value, `\`, "/")
 	for _, prefix := range []string{"/run/desktop/mnt/host/", "/host_mnt/", "/mnt/"} {
-		if strings.HasPrefix(value, prefix) {
-			rest := strings.TrimPrefix(value, prefix)
+		if after, ok := strings.CutPrefix(value, prefix); ok {
+			rest := after
 			if len(rest) > 1 && rest[1] == '/' {
 				value = rest[:1] + ":" + rest[1:]
 				break

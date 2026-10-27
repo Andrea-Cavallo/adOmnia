@@ -6,6 +6,7 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -162,8 +163,7 @@ func (a *errorAnalysis) collectFlow(fn *errorFunc) {
 		case *ast.ReturnStmt:
 			// Un return senza valori legge i risultati con nome.
 			if len(node.Results) == 0 && fn.signature != nil {
-				for index := 0; index < fn.signature.Results().Len(); index++ {
-					result := fn.signature.Results().At(index)
+				for result := range fn.signature.Results().Variables() {
 					fn.reads[result] = append(fn.reads[result], node.Pos())
 				}
 			}
@@ -198,9 +198,9 @@ func identVar(info *types.Info, ident *ast.Ident) (*types.Var, bool) {
 }
 
 func innermostLoop(loops []ast.Node, node ast.Node) ast.Node {
-	for index := len(loops) - 1; index >= 0; index-- {
-		if loops[index].Pos() <= node.Pos() && node.End() <= loops[index].End() {
-			return loops[index]
+	for _, loop := range slices.Backward(loops) {
+		if loop.Pos() <= node.Pos() && node.End() <= loop.End() {
+			return loop
 		}
 	}
 	return nil
@@ -269,10 +269,10 @@ func contains(outer, inner ast.Node) bool {
 
 // enclosingBlock è il blocco di istruzioni più interno nello stack (corpo, ramo, case).
 func enclosingBlock(stack []ast.Node) ast.Node {
-	for index := len(stack) - 1; index >= 0; index-- {
-		switch stack[index].(type) {
+	for _, s := range slices.Backward(stack) {
+		switch s.(type) {
 		case *ast.BlockStmt, *ast.CaseClause, *ast.CommClause:
-			return stack[index]
+			return s
 		}
 	}
 	return nil

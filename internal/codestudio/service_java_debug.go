@@ -221,7 +221,7 @@ func retryJavaCommand(ctx context.Context, what string, attempt func() error) er
 	var lastErr error
 	for {
 		if ctx.Err() != nil {
-			return fmt.Errorf("JDT LS could not prepare %s for debugging (the project may still be importing, or it does not compile): %v", what, lastErr)
+			return fmt.Errorf("JDT LS could not prepare %s for debugging (the project may still be importing, or it does not compile): %w", what, lastErr)
 		}
 		if lastErr = attempt(); lastErr == nil {
 			return nil

@@ -137,7 +137,7 @@ func TestAnnotateConnectionsWithRealSockets(t *testing.T) {
 			accepted <- connection
 		}
 	}()
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		c, err := net.Dial("tcp", db.Addr().String())
 		if err != nil {
 			t.Fatal(err)

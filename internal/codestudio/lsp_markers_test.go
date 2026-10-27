@@ -70,7 +70,7 @@ func TestImplementationTargetsKeepGoSemanticsWithoutACapability(t *testing.T) {
 func TestImplementationTargetsStayWithinTheLimit(t *testing.T) {
 	semantics, _ := any(java.New()).(language.ImplementationMarkers)
 	var symbols []SymbolNode
-	for index := 0; index < maxImplementationTargets+25; index++ {
+	for index := range maxImplementationTargets + 25 {
 		symbols = append(symbols, symbol(symbolKindMethod, index+1, "m"))
 	}
 	if got := implementationTargets(symbols, semantics); len(got) != maxImplementationTargets {

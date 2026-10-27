@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -66,7 +67,7 @@ func TestWriteTarGzRoundTripsEveryEntry(t *testing.T) {
 	contents := make(map[string]string, len(names))
 	for {
 		header, err := archive.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

@@ -990,7 +990,7 @@ func (h *lspHandler) HandleNotification(method string, params jsonv1.RawMessage)
 // contenuto della sezione (gopls, i server web) continuano a funzionare come prima.
 func sectionSettings(settings any, section string) any {
 	current := settings
-	for _, part := range strings.Split(section, ".") {
+	for part := range strings.SplitSeq(section, ".") {
 		if part == "" {
 			continue
 		}

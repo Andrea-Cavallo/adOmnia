@@ -2,6 +2,7 @@ package golang
 
 import (
 	"bytes"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,9 +13,7 @@ import (
 
 func graphFixture() map[string]string {
 	files := map[string]string{}
-	for name, content := range architectureFixture {
-		files[name] = content
-	}
+	maps.Copy(files, architectureFixture)
 	files["store/orders.go"] = `package store
 
 func (r *OrderRepository) Open(id string) error {

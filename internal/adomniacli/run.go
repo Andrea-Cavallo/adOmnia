@@ -9,8 +9,10 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -243,9 +245,7 @@ func executeCollection(collection collectionfs.Collection, bail bool, vars map[s
 			result = RequestResult{ID: req.Request.ID, Name: req.Request.Name, Method: strings.ToUpper(req.Request.Method), URL: req.Request.URL, Outcome: "failed", Message: vaultErr.Error()}
 		} else {
 			result = executeRequest(req.Request, resolvedVars, jarID, contractValidator)
-			for key, value := range resolvedVars {
-				vars[key] = value
-			}
+			maps.Copy(vars, resolvedVars)
 		}
 		summary.Results = append(summary.Results, result)
 		switch result.Outcome {
@@ -281,11 +281,8 @@ func filterRequests(requests []collectionresolve.ResolvedRequest, folderFilter s
 			}
 		}
 		candidates = append(candidates, normalizeFolderFilter(strings.Join(pathParts, "/")))
-		for _, candidate := range candidates {
-			if candidate == needle {
-				out = append(out, req)
-				break
-			}
+		if slices.Contains(candidates, needle) {
+			out = append(out, req)
 		}
 	}
 	return out
@@ -293,12 +290,8 @@ func filterRequests(requests []collectionresolve.ResolvedRequest, folderFilter s
 
 func mergeRunVars(inherited map[string]string, overrides map[string]string) map[string]string {
 	out := map[string]string{}
-	for key, value := range inherited {
-		out[key] = value
-	}
-	for key, value := range overrides {
-		out[key] = value
-	}
+	maps.Copy(out, inherited)
+	maps.Copy(out, overrides)
 	return out
 }
 
@@ -407,9 +400,7 @@ func loadEnvironmentVars(root, envName string) (map[string]string, error) {
 	if err := json.Unmarshal(data, &flat); err != nil {
 		return nil, fmt.Errorf("decode environment %q: %w", envName, err)
 	}
-	for key, value := range flat {
-		vars[key] = value
-	}
+	maps.Copy(vars, flat)
 	return vars, nil
 }
 

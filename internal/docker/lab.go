@@ -6,13 +6,14 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -440,7 +441,7 @@ func (d *DockerLab) LabStatus(projectName string) ([]ContainerStatus, error) {
 	}
 
 	var result []ContainerStatus
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		if line == "" {
 			continue
 		}

@@ -3,11 +3,12 @@ package mock
 import (
 	"bytes"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TestMockStartWithMaxBytesReader simulates the WithSecurity middleware
@@ -75,7 +76,7 @@ func TestMockStartWithMaxBytesReader(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	var startRes map[string]interface{}
+	var startRes map[string]any
 	if err := json.UnmarshalRead(resp.Body, &startRes); err != nil {
 		t.Fatalf("failed to decode start response: %v", err)
 	}
@@ -99,7 +100,7 @@ func TestMockStartWithMaxBytesReader(t *testing.T) {
 		t.Errorf("expected 200, got %d", mockResp.StatusCode)
 	}
 
-	var body map[string]interface{}
+	var body map[string]any
 	json.UnmarshalRead(mockResp.Body, &body)
 	t.Logf("Mock response: %+v", body)
 
@@ -127,7 +128,7 @@ func TestMockStartWithMaxBytesReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /mock/status failed: %v", err)
 	}
-	var status map[string]interface{}
+	var status map[string]any
 	json.UnmarshalRead(resp.Body, &status)
 	resp.Body.Close()
 	if status["running"] != false {

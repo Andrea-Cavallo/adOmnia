@@ -198,11 +198,11 @@ func inlineSuppression(lines []string, line int, rule string) (string, bool) {
 			continue
 		}
 		text := lines[candidate-1]
-		index := strings.Index(text, InlineMarker)
-		if index < 0 {
+		_, after, ok := strings.Cut(text, InlineMarker)
+		if !ok {
 			continue
 		}
-		directive := strings.TrimSpace(text[index+len(InlineMarker):])
+		directive := strings.TrimSpace(after)
 		rules, reason, found := strings.Cut(directive, ":")
 		reason = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(reason), "*/"))
 		if !found || reason == "" {

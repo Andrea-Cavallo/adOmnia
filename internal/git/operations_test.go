@@ -342,7 +342,7 @@ func TestBisect_FindsFirstBad(t *testing.T) {
 		t.Fatalf("bisect start: %s", r.Error)
 	}
 	// Mark current as bad until git concludes; small history converges fast.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		r := BisectMark(dir, "bad")
 		if FirstBadCommit(r.Stdout) != "" {
 			break

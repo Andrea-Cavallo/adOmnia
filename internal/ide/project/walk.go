@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 )
@@ -91,7 +92,7 @@ func WalkDirectories(ctx context.Context, root string, maxDirectories int, visit
 	for index := range active {
 		active[index] = true
 	}
-	if err := walk(root, "", 0, active); err != nil && err != filepath.SkipAll {
+	if err := walk(root, "", 0, active); err != nil && !errors.Is(err, filepath.SkipAll) {
 		return err
 	}
 	return nil

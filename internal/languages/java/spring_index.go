@@ -254,8 +254,8 @@ func inSpringResources(path string) bool {
 func isSpringConfigFile(name string) bool {
 	lower := strings.ToLower(name)
 	for _, suffix := range []string{".properties", ".yml", ".yaml"} {
-		if strings.HasSuffix(lower, suffix) {
-			return strings.TrimSuffix(lower, suffix) == "application" || strings.HasPrefix(strings.TrimSuffix(lower, suffix), "application-")
+		if before, ok := strings.CutSuffix(lower, suffix); ok {
+			return before == "application" || strings.HasPrefix(strings.TrimSuffix(lower, suffix), "application-")
 		}
 	}
 	return false

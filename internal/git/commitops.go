@@ -1,6 +1,9 @@
 package git
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // branchExists reports whether a local branch ref is already present.
 func branchExists(repoPath, branch string) bool {
@@ -26,12 +29,7 @@ func validRefName(kind, name string) bool {
 
 func hasOrigin(repoPath string) bool {
 	out, _ := runGit(repoPath, "remote")
-	for _, r := range splitLines(out) {
-		if r == "origin" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(splitLines(out), "origin")
 }
 
 // CheckoutCommit checks out a commit. When newBranch is empty it enters detached

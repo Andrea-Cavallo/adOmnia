@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"context"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net"
+	"slices"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // fakeAdapter risponde alle richieste nell'ordine inverso e invia eventi e una richiesta inversa.
@@ -34,8 +37,8 @@ func fakeAdapter(t *testing.T, conn net.Conn) {
 				send(map[string]any{"seq": 1, "type": "event", "event": "output", "body": map[string]any{"output": "one"}})
 				send(map[string]any{"seq": 2, "type": "event", "event": "output", "body": map[string]any{"output": "two"}})
 				send(map[string]any{"seq": 3, "type": "request", "command": "runInTerminal"})
-				for index := len(held) - 1; index >= 0; index-- {
-					send(map[string]any{"seq": 10 + index, "type": "response", "request_seq": held[index]["seq"], "success": true, "command": held[index]["command"], "body": map[string]any{"name": held[index]["command"]}})
+				for index, h := range slices.Backward(held) {
+					send(map[string]any{"seq": 10 + index, "type": "response", "request_seq": h["seq"], "success": true, "command": h["command"], "body": map[string]any{"name": h["command"]}})
 				}
 			}
 		case "evaluate":
@@ -91,7 +94,7 @@ func TestClientCorrelatesResponsesOrdersEventsAndRefusesReverseRequests(t *testi
 	}
 	_ = adapterSide.Close()
 	<-client.Done()
-	if err := client.Call(context.Background(), "first", nil, nil); err != ErrClosed {
+	if err := client.Call(context.Background(), "first", nil, nil); !errors.Is(err, ErrClosed) {
 		t.Fatalf("una chiamata su connessione chiusa deve fallire subito: %v", err)
 	}
 }

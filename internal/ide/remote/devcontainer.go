@@ -39,7 +39,7 @@ func ParseDevContainerResult(output string) (Target, error) {
 		Description           string `json:"description"`
 	}
 	found := false
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		var candidate = result
 		if json.Unmarshal([]byte(strings.TrimSpace(line)), &candidate) == nil && candidate.Outcome != "" {
 			result = candidate

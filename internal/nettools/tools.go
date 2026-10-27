@@ -3,13 +3,14 @@ package nettools
 import (
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/miekg/dns"
@@ -265,7 +266,7 @@ func dnsTraceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"host":    req.Host,
 		"type":    req.Type,
 		"trace":   trace,
@@ -275,7 +276,7 @@ func dnsTraceHandler(w http.ResponseWriter, r *http.Request) {
 
 func mathRound(v float64, decimals int) float64 {
 	pow := 1.0
-	for i := 0; i < decimals; i++ {
+	for range decimals {
 		pow *= 10
 	}
 	return float64(int(v*pow+0.5)) / pow
@@ -350,7 +351,7 @@ func dnsCompareHandler(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"host":    req.Host,
 		"type":    req.Type,
 		"results": results,
@@ -379,12 +380,12 @@ func dnsCacheGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !ok || time.Since(entry.CachedAt).Seconds() > float64(entry.TTL) {
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"cached": false})
+		jsonutil.MarshalWrite(w, map[string]any{"cached": false})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"cached":   true,
 		"host":     host,
 		"records":  entry.Records,
@@ -399,7 +400,7 @@ func dnsCacheClearHandler(w http.ResponseWriter, r *http.Request) {
 	dnsCacheMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 // In the dnsLookupHandler, cache results
@@ -478,8 +479,8 @@ func parsePorts(spec string) ([]int, error) {
 	}
 
 	ports := make([]int, 0)
-	parts := strings.Split(spec, ",")
-	for _, part := range parts {
+	parts := strings.SplitSeq(spec, ",")
+	for part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
@@ -692,7 +693,7 @@ func corsTestHandler(w http.ResponseWriter, r *http.Request) {
 		acam := preflightResp.Header.Get("Access-Control-Allow-Methods")
 		if acam != "" {
 			methodAllowed := false
-			for _, m := range strings.Split(acam, ",") {
+			for m := range strings.SplitSeq(acam, ",") {
 				if strings.TrimSpace(strings.ToUpper(m)) == strings.ToUpper(req.Method) {
 					methodAllowed = true
 					break
@@ -709,7 +710,7 @@ func corsTestHandler(w http.ResponseWriter, r *http.Request) {
 			// Some servers only respond to actual allowed headers
 		} else if acah != "" && acah != "*" {
 			headerAllowed := false
-			for _, h := range strings.Split(acah, ",") {
+			for h := range strings.SplitSeq(acah, ",") {
 				if strings.TrimSpace(strings.ToLower(h)) == "content-type" {
 					headerAllowed = true
 					break

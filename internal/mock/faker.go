@@ -2,12 +2,13 @@ package mock
 
 import (
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"math"
 	"math/rand" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used -- non-security randomness (fake data / jitter)
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 var (
@@ -22,7 +23,7 @@ var tlds = []string{"com", "org", "net", "io", "dev"}
 
 const maxSchemaDepth = 5
 
-func GenerateFromSchema(schema map[string]interface{}) (string, error) {
+func GenerateFromSchema(schema map[string]any) (string, error) {
 	fakerMu.Lock()
 	defer fakerMu.Unlock()
 
@@ -37,11 +38,11 @@ func GenerateFromSchema(schema map[string]interface{}) (string, error) {
 	return string(raw), nil
 }
 
-func generateSchemaValue(schema map[string]interface{}, depth int) (interface{}, error) {
+func generateSchemaValue(schema map[string]any, depth int) (any, error) {
 	if depth > maxSchemaDepth {
 		return nil, nil
 	}
-	if values, ok := schema["enum"].([]interface{}); ok && len(values) > 0 {
+	if values, ok := schema["enum"].([]any); ok && len(values) > 0 {
 		return values[fakerR.Intn(len(values))], nil
 	}
 	if value, ok := schema["const"]; ok {
@@ -74,11 +75,11 @@ func generateSchemaValue(schema map[string]interface{}, depth int) (interface{},
 	}
 }
 
-func schemaType(schema map[string]interface{}) string {
+func schemaType(schema map[string]any) string {
 	switch raw := schema["type"].(type) {
 	case string:
 		return raw
-	case []interface{}:
+	case []any:
 		for _, item := range raw {
 			if value, ok := item.(string); ok && value != "null" {
 				return value
@@ -88,13 +89,13 @@ func schemaType(schema map[string]interface{}) string {
 	return ""
 }
 
-func generateSchemaObject(schema map[string]interface{}, depth int) (interface{}, error) {
-	props, _ := schema["properties"].(map[string]interface{})
+func generateSchemaObject(schema map[string]any, depth int) (any, error) {
+	props, _ := schema["properties"].(map[string]any)
 	required := requiredSet(schema)
-	obj := map[string]interface{}{}
+	obj := map[string]any{}
 
 	for key, rawProp := range props {
-		prop, ok := rawProp.(map[string]interface{})
+		prop, ok := rawProp.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -109,9 +110,9 @@ func generateSchemaObject(schema map[string]interface{}, depth int) (interface{}
 	return obj, nil
 }
 
-func requiredSet(schema map[string]interface{}) map[string]bool {
+func requiredSet(schema map[string]any) map[string]bool {
 	required := map[string]bool{}
-	if items, ok := schema["required"].([]interface{}); ok {
+	if items, ok := schema["required"].([]any); ok {
 		for _, item := range items {
 			if key, ok := item.(string); ok {
 				required[key] = true
@@ -121,8 +122,8 @@ func requiredSet(schema map[string]interface{}) map[string]bool {
 	return required
 }
 
-func generateSchemaArray(schema map[string]interface{}, depth int) (interface{}, error) {
-	items, _ := schema["items"].(map[string]interface{})
+func generateSchemaArray(schema map[string]any, depth int) (any, error) {
+	items, _ := schema["items"].(map[string]any)
 	minItems := intValue(schema["minItems"], 2)
 	maxItems := intValue(schema["maxItems"], 4)
 	if minItems > maxItems {
@@ -136,10 +137,10 @@ func generateSchemaArray(schema map[string]interface{}, depth int) (interface{},
 		count += fakerR.Intn(maxItems - minItems + 1)
 	}
 
-	result := make([]interface{}, 0, count)
+	result := make([]any, 0, count)
 	for i := 0; i < count; i++ {
 		if items == nil {
-			result = append(result, fakeString(map[string]interface{}{}))
+			result = append(result, fakeString(map[string]any{}))
 			continue
 		}
 		value, err := generateSchemaValue(items, depth+1)
@@ -151,7 +152,7 @@ func generateSchemaArray(schema map[string]interface{}, depth int) (interface{},
 	return result, nil
 }
 
-func fakeString(schema map[string]interface{}) string {
+func fakeString(schema map[string]any) string {
 	switch strings.ToLower(stringValue(schema["format"])) {
 	case "email":
 		return fakeEmail()
@@ -184,7 +185,7 @@ func fakeString(schema map[string]interface{}) string {
 	return base[:length]
 }
 
-func fakeNumber(schema map[string]interface{}, integer bool) interface{} {
+func fakeNumber(schema map[string]any, integer bool) any {
 	min := numberValue(schema["minimum"], 0)
 	max := numberValue(schema["maximum"], 1000)
 	if min > max {
@@ -215,12 +216,12 @@ func randChoice[T any](items []T) T {
 	return items[fakerR.Intn(len(items))]
 }
 
-func stringValue(value interface{}) string {
+func stringValue(value any) string {
 	text, _ := value.(string)
 	return text
 }
 
-func intValue(value interface{}, fallback int) int {
+func intValue(value any, fallback int) int {
 	switch typed := value.(type) {
 	case int:
 		return typed
@@ -233,7 +234,7 @@ func intValue(value interface{}, fallback int) int {
 	}
 }
 
-func numberValue(value interface{}, fallback float64) float64 {
+func numberValue(value any, fallback float64) float64 {
 	switch typed := value.(type) {
 	case int:
 		return float64(typed)
