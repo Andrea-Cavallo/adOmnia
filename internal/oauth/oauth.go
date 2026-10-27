@@ -1,3 +1,4 @@
+// Package oauth runs OAuth 2.0 authorization flows for requests, using a loopback redirect on the local sidecar.
 package oauth
 
 import (

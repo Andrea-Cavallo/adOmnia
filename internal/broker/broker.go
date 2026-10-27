@@ -1,3 +1,4 @@
+// Package broker implements the Broker Studio clients for RabbitMQ, MQTT, Redis Pub/Sub and NATS, plus locally persisted message presets.
 package broker
 
 import (

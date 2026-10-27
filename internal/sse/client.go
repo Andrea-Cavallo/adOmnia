@@ -1,3 +1,4 @@
+// Package sse implements adOmnia's Server-Sent Events client sessions.
 package sse
 
 import (

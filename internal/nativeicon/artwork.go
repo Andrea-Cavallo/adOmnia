@@ -1,3 +1,4 @@
+// Package nativeicon renders the embedded application icon and artwork in the platform palette and provides it to the native icon theme on each operating system.
 package nativeicon
 
 import (

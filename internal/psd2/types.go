@@ -1,3 +1,4 @@
+// Package psd2 supports Open Banking PSD2 (Berlin Group) requests: certificate management, signature headers and JWS signing.
 package psd2
 
 import (

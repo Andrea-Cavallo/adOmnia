@@ -1,3 +1,4 @@
+// Package database backs adOmnia's database client: connection lifecycle, query execution, local SQLite files and sealed credential references.
 package database
 
 import (

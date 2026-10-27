@@ -1,3 +1,4 @@
+// Package ws implements adOmnia's WebSocket client sessions.
 package ws
 
 import (

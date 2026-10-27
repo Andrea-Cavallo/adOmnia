@@ -1,3 +1,4 @@
+// Package httpexec executes HTTP requests for the frontend with full control of the transport: per-request cookie jars, cancellation and DNS overrides from the hosts map.
 package httpexec
 
 import (

@@ -1,3 +1,4 @@
+// Package git wraps the git command line for adOmnia's Git integration: status, staging and commits, branches, history search, rebase and cherry-pick, stash, conflict resolution and pull requests on GitHub and other hosts.
 package git
 
 import (

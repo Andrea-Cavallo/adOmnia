@@ -1,7 +1,4 @@
-// storage.go — embedded bbolt key/value storage engine for adOmnia.
-// Replaces localStorage for workspace, history, mock config, and proxy config.
-// Single-file DB, ACID transactions, zero runtime deps.
-
+// Package storage is adOmnia's embedded bbolt key/value store, replacing localStorage for workspaces, history and mock and proxy configuration: a single-file database with ACID transactions and no runtime dependencies.
 package storage
 
 import (

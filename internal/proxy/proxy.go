@@ -1,3 +1,4 @@
+// Package proxy implements adOmnia's intercepting HTTP(S) proxy: traffic capture, breakpoints, map local and map remote rules, and the local certificate authority used for HTTPS interception.
 package proxy
 
 import (

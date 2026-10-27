@@ -1,3 +1,4 @@
+// Package loadtest runs HTTP load tests from the sidecar: configurable workers, latency histograms and timelines, saved scenarios, result comparison and HTML, Markdown or JSON reports.
 package loadtest
 
 import (

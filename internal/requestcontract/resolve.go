@@ -1,3 +1,4 @@
+// Package requestcontract turns a saved adOmnia request into an executable HTTP request without the UI: variable substitution, body encoding, authentication and assertion evaluation. The command-line runner and collection tools share it.
 package requestcontract
 
 import (

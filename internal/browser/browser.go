@@ -1,3 +1,4 @@
+// Package browser drives Chromium-based browsers through the Chrome DevTools Protocol: target discovery, network capture, console evaluation and JavaScript debugging for adOmnia's browser debugging panel.
 package browser
 
 import (

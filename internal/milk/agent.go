@@ -1,3 +1,4 @@
+// Package milk hosts ACP (Agent Client Protocol) coding agents for Code Studio over stdio, starting with milk and the OpenAI-compatible providers found in the environment.
 package milk
 
 import (

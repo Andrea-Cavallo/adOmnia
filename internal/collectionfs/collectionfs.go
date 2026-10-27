@@ -1,3 +1,4 @@
+// Package collectionfs stores request collections as a folder of files: export, import, drift detection against the in-app collection, and canonical snapshots shared by Git and LAN transfers.
 package collectionfs
 
 import (

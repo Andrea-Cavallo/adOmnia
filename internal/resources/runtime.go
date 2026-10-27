@@ -1,3 +1,4 @@
+// Package resources measures and bounds adOmnia's own resource use: sampling of the application's process tree, a memory budget that releases reconstructible resources, and the backend's GC limit. Nothing is transmitted or persisted.
 package resources
 
 import (

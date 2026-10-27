@@ -1,3 +1,4 @@
+// Package ai is adOmnia's AI provider layer: provider configuration, credential resolution from the Vault or the process environment, model discovery and requests to OpenAI, Anthropic, Gemini, Hugging Face and OpenAI-compatible endpoints.
 package ai
 
 import (

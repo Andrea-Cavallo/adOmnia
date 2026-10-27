@@ -1,6 +1,4 @@
-// jsontools_go.go — server-side JSON tools powered by gjson, sjson, jsondiff.
-// Exposes fast JSON path queries, mutations, and RFC 6902 diffing.
-
+// Package jsonutil provides adOmnia's JSON tools: path queries, mutations and RFC 6902 diffing (gjson, sjson, jsondiff) served to the frontend, and deterministic encoding/json/v2 marshaling with sorted map keys.
 package jsonutil
 
 import (

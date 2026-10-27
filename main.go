@@ -1,3 +1,6 @@
+// Command adomnia is the adOmnia desktop application, a local-first API development toolbox and IDE built on Wails 3.
+//
+// The root package only wires Wails services and their bindings; feature logic lives in the internal packages.
 package main
 
 import (

@@ -1,3 +1,4 @@
+// Package grpc serves the sidecar endpoints of adOmnia's gRPC client: unary and streaming calls, including interactive streams that keep the send side open.
 package grpc
 
 import (

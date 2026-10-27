@@ -1,3 +1,4 @@
+// Package mock implements adOmnia's local mock server: HTTP and WebSocket endpoints matched by path and conditions, schema-based fake data and AI-assisted endpoint generation.
 package mock
 
 import (

@@ -1,3 +1,4 @@
+// Package oaslint lints OpenAPI documents with configurable rules and severities.
 package oaslint
 
 import (

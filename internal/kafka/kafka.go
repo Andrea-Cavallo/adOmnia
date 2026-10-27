@@ -1,3 +1,4 @@
+// Package kafka implements adOmnia's Kafka client: producing and consuming messages, with TLS and SASL authentication including SCRAM.
 package kafka
 
 import (

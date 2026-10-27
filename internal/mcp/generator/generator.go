@@ -1,3 +1,4 @@
+// Package generator writes a standalone MCP server project from a set of adOmnia requests, exposing each request as an MCP tool.
 package generator
 
 import (

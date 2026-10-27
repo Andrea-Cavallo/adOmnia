@@ -1,3 +1,4 @@
+// Package adomniacli implements the adomnia command-line subcommands: running and stress-testing request collections, linting OpenAPI documents and serving adOmnia as an MCP server over stdio.
 package adomniacli
 
 import (

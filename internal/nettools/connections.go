@@ -1,3 +1,4 @@
+// Package nettools collects local networking and certificate utilities, such as the established TCP connections with their owning process and OpenSSL-compatible encryption of PEM private keys.
 package nettools
 
 import (

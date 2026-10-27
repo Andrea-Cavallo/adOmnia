@@ -1,3 +1,4 @@
+// Package docker controls the adOmnia Lab, a Docker Compose set of local services (databases, brokers and more) that adOmnia starts, monitors and restarts. Only containers that belong to the lab are touched.
 package docker
 
 import (

@@ -1,3 +1,4 @@
+// Package sidecar runs adOmnia's loopback-only HTTP server used by the frontend for long-running features, protected by a random per-launch token and origin checks.
 package sidecar
 
 import (

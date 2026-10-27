@@ -1,3 +1,4 @@
+// Package oascontract checks an HTTP response against the matching operation of an OpenAPI document and reports contract violations.
 package oascontract
 
 import (

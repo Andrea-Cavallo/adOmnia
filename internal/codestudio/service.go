@@ -1,3 +1,4 @@
+// Package codestudio is the host of Code Studio, adOmnia's integrated IDE: it composes the language-agnostic core in internal/ide with the language adapters in internal/languages and exposes them to the frontend through a single Service facade.
 package codestudio
 
 import (

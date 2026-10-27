@@ -1,6 +1,4 @@
-// plugins.go — Plugin system with JSON manifests, hook registration, event bus, and lifecycle management.
-// Plugins are directories containing a manifest.json + optional scripts/assets.
-
+// Package plugins is adOmnia's plugin system: directories with a manifest.json and optional scripts or assets, run in a sandboxed JavaScript or WebAssembly runtime, with hook registration, an event bus, signature checks, IDE contributions and lifecycle management.
 package plugins
 
 import (

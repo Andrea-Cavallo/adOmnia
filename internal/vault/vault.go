@@ -1,7 +1,4 @@
-// vault.go - local secret vault using age encryption.
-// Tokens, API keys, and passwords are encrypted at rest with a passphrase.
-// In-memory key is held only while the vault is unlocked.
-
+// Package vault is adOmnia's local secret vault: tokens, API keys and passwords are encrypted at rest with age and a passphrase, and the key stays in memory only while the vault is unlocked.
 package vault
 
 import (
