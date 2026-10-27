@@ -76,7 +76,7 @@ type PluginManifest struct {
 	UISlots       []string        `json:"ui_slots,omitempty"`
 	Actions       []PluginAction  `json:"actions,omitempty"`
 	// Contributes is the IDE extension API: commands, code actions, analyzers, templates, languages, adapters.
-	Contributes PluginContributes `json:"contributes"`
+	Contributes PluginContributes `json:"contributes,omitempty"`
 }
 
 // UnmarshalJSON accepts both entryPoint and entrypoint for compatibility with

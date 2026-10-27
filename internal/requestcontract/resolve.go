@@ -90,11 +90,11 @@ type Request struct {
 	Bodies        []Body            `json:"bodies"`
 	ActiveBodyIdx int               `json:"activeBodyIdx"`
 	Auth          Auth              `json:"auth"`
-	Inheritance   InheritancePolicy `json:"inheritance"`
+	Inheritance   InheritancePolicy `json:"inheritance,omitempty"`
 	Timeout       int               `json:"timeout"`
 	Follow        *bool             `json:"followRedirects"`
 	Assertions    []Assertion       `json:"assertions"`
-	Scripts       Scripts           `json:"scripts"`
+	Scripts       Scripts           `json:"scripts,omitempty"`
 	OpenAPIPath   string            `json:"_openapiPath,omitempty"`
 }
 
