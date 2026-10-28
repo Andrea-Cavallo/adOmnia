@@ -1,4 +1,4 @@
-package codestudio
+package golang
 
 import (
 	"bytes"
@@ -17,6 +17,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/langserver"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
@@ -27,7 +30,7 @@ import (
 // Move symbol: sposta una dichiarazione di primo livello (func, type con i suoi metodi, var, const)
 // in un altro package dello stesso modulo, riscrive riferimenti e import in tutto il modulo e verifica
 // che i package toccati compilino ancora (go test -run=^$ con -overlay) prima di proporre le modifiche.
-// Nulla viene scritto su disco: il risultato è un WorkspaceChange da mostrare in anteprima.
+// Nulla viene scritto su disco: il risultato è un langserver.WorkspaceChange da mostrare in anteprima.
 
 const moveSymbolTimeout = 5 * time.Minute
 
@@ -39,47 +42,6 @@ type MoveSymbolRequest struct {
 	Column int `json:"column"`
 	// TargetDirectory è relativa al progetto; può non esistere ancora (nuovo package).
 	TargetDirectory string `json:"targetDirectory"`
-}
-
-// MoveSymbol calcola lo spostamento e lo restituisce come anteprima di modifiche multi-file.
-func (s *Service) MoveSymbol(sessionID string, request MoveSymbolRequest) (WorkspaceChange, error) {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return WorkspaceChange{}, err
-	}
-	if session.Project.Authorization != AuthorizationPermitted {
-		return WorkspaceChange{}, errors.New("explicitly authorize the tools for this project")
-	}
-	root := session.Project.RealPath
-	sourcePath := filepath.Join(root, filepath.FromSlash(request.RelativePath))
-	if err := ensureWithinRoot(root, sourcePath); err != nil {
-		return WorkspaceChange{}, err
-	}
-	targetDirectory := filepath.Join(root, filepath.FromSlash(strings.TrimSpace(request.TargetDirectory)))
-	if strings.TrimSpace(request.TargetDirectory) == "" || ensureWithinRoot(root, targetDirectory) != nil {
-		return WorkspaceChange{}, errors.New("invalid destination folder")
-	}
-	moduleRelative := moduleForDir(root, goLayoutOf(session.Project).Modules, path.Dir(filepath.ToSlash(request.RelativePath)))
-	moduleDir := filepath.Join(root, filepath.FromSlash(moduleRelative))
-	environment, err := s.toolchain.Environment(SessionID(sessionID), nil)
-	if err != nil {
-		return WorkspaceChange{}, err
-	}
-	binary, err := s.toolchain.GoBinary(SessionID(sessionID))
-	if err != nil {
-		return WorkspaceChange{}, err
-	}
-	environment = withGoFirstInPath(environment, binary)
-	ctx, cancel := context.WithTimeout(context.Background(), moveSymbolTimeout)
-	defer cancel()
-	plan, err := planMove(ctx, environment, moduleDir, sourcePath, request.Line, request.Column, targetDirectory)
-	if err != nil {
-		return WorkspaceChange{}, err
-	}
-	if err := verifyMove(ctx, binary, environment, moduleDir, plan); err != nil {
-		return WorkspaceChange{}, err
-	}
-	return plan.workspaceChange(root), nil
 }
 
 type movedFile struct {
@@ -96,14 +58,14 @@ type movePlan struct {
 	packages []string // directory dei package da ricompilare
 }
 
-func (p movePlan) workspaceChange(root string) WorkspaceChange {
-	change := WorkspaceChange{Label: fmt.Sprintf("Move %s to %s", p.symbol, p.target), Files: []FileChange{}}
+func (p movePlan) workspaceChange(root string) langserver.WorkspaceChange {
+	change := langserver.WorkspaceChange{Label: fmt.Sprintf("Move %s to %s", p.symbol, p.target), Files: []langserver.FileChange{}}
 	for _, file := range p.files {
-		relative := filepath.ToSlash(relativeWithin(root, file.path))
-		item := FileChange{URI: "file://" + filepath.ToSlash(file.path), Path: file.path, RelativePath: relative, NewContent: file.content, OriginalContent: file.original, Created: file.created, Edits: []EditorTextEdit{}}
+		relative := filepath.ToSlash(project.RelativeWithin(root, file.path))
+		item := langserver.FileChange{URI: "file://" + filepath.ToSlash(file.path), Path: file.path, RelativePath: relative, NewContent: file.content, OriginalContent: file.original, Created: file.created, Edits: []langserver.EditorTextEdit{}}
 		if !file.created {
-			end := editorPositionAt(file.original, len(file.original))
-			item.Edits = []EditorTextEdit{{Range: EditorRange{StartLine: 1, StartColumn: 1, EndLine: end.line, EndColumn: end.column}, Text: file.content}}
+			endLine, endColumn := langserver.EditorPositionAt(file.original, len(file.original))
+			item.Edits = []langserver.EditorTextEdit{{Range: langserver.EditorRange{StartLine: 1, StartColumn: 1, EndLine: endLine, EndColumn: endColumn}, Text: file.content}}
 		}
 		change.Files = append(change.Files, item)
 	}
@@ -198,15 +160,15 @@ func planMove(ctx context.Context, environment []string, moduleDir, sourcePath s
 	if filepath.Clean(filepath.Dir(sourcePath)) == targetDirectory {
 		return movePlan{}, errors.New("the destination is the source package")
 	}
-	if ensureWithinRoot(moduleDir, targetDirectory) != nil || hasNestedModule(moduleDir, targetDirectory) {
+	if project.EnsureWithin(moduleDir, targetDirectory) != nil || hasNestedModule(moduleDir, targetDirectory) {
 		return movePlan{}, errors.New("the destination must be in the same Go module")
 	}
 	target := module.byDir[targetDirectory]
-	targetPath := module.modulePath + "/" + filepath.ToSlash(relativeWithin(moduleDir, targetDirectory))
+	targetPath := module.modulePath + "/" + filepath.ToSlash(project.RelativeWithin(moduleDir, targetDirectory))
 	targetName := packageNameForDir(targetDirectory)
 	if target != nil {
 		targetPath, targetName = target.PkgPath, target.Name
-	} else if hasGoFiles(targetDirectory) {
+	} else if HasGoFiles(targetDirectory) {
 		return movePlan{}, errors.New("the destination folder contains Go files that are not part of a valid package")
 	}
 	if targetName == "main" {
@@ -276,7 +238,7 @@ func movedDecls(module *moveContext, sourcePkg *types.Package, decl ast.Decl, pr
 			if !ok || function.Recv == nil || len(function.Recv.List) == 0 {
 				continue
 			}
-			if _, isType := primary.(*types.TypeName); isType && receiverTypeName(function.Recv.List[0].Type) == primary.Name() && !strings.HasSuffix(filePath, "_test.go") {
+			if _, isType := primary.(*types.TypeName); isType && astReceiverTypeName(function.Recv.List[0].Type) == primary.Name() && !strings.HasSuffix(filePath, "_test.go") {
 				result = append(result, movedDecl{info: info, path: filePath, decl: candidate})
 			}
 		}
@@ -284,14 +246,14 @@ func movedDecls(module *moveContext, sourcePkg *types.Package, decl ast.Decl, pr
 	return result
 }
 
-func receiverTypeName(expression ast.Expr) string {
+func astReceiverTypeName(expression ast.Expr) string {
 	switch value := expression.(type) {
 	case *ast.StarExpr:
-		return receiverTypeName(value.X)
+		return astReceiverTypeName(value.X)
 	case *ast.IndexExpr:
-		return receiverTypeName(value.X)
+		return astReceiverTypeName(value.X)
 	case *ast.IndexListExpr:
-		return receiverTypeName(value.X)
+		return astReceiverTypeName(value.X)
 	case *ast.Ident:
 		return value.Name
 	}
@@ -705,7 +667,7 @@ func verifyMove(ctx context.Context, binary string, environment []string, module
 	}
 	arguments := []string{"test", "-vet=off", "-overlay", overlayFile, "-count=1", "-run=^$"}
 	for _, directory := range plan.packages {
-		relative := filepath.ToSlash(relativeWithin(moduleDir, directory))
+		relative := filepath.ToSlash(project.RelativeWithin(moduleDir, directory))
 		if relative == "" || relative == "." {
 			arguments = append(arguments, ".")
 		} else if !strings.HasPrefix(relative, "..") {
@@ -715,10 +677,35 @@ func verifyMove(ctx context.Context, binary string, environment []string, module
 	command := procutil.CommandContext(ctx, binary, arguments...)
 	command.Dir = moduleDir
 	command.Env = environment
-	configureProcess(command, false)
+	process.Configure(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("the move would break the build, no change applied:\n%s", cleanToolError(output, 0))
+		return fmt.Errorf("the move would break the build, no change applied:\n%s", process.CleanToolError(output, 0))
 	}
 	return nil
+}
+
+// MoveRequest is a symbol move resolved by the host: absolute paths inside the project, the Go binary and the
+// session environment.
+type MoveRequest struct {
+	Root, ModuleDir, SourcePath, TargetDirectory string
+	Line, Column                                 int
+	GoBinary                                     string
+	Environment                                  []string
+}
+
+// MoveSymbol plans the move with go/packages, checks that the module still builds and returns the change as a
+// multi-file preview. Nothing is written to disk.
+func MoveSymbol(request MoveRequest) (langserver.WorkspaceChange, error) {
+	environment := WithGoFirstInPath(request.Environment, request.GoBinary)
+	ctx, cancel := context.WithTimeout(context.Background(), moveSymbolTimeout)
+	defer cancel()
+	plan, err := planMove(ctx, environment, request.ModuleDir, request.SourcePath, request.Line, request.Column, request.TargetDirectory)
+	if err != nil {
+		return langserver.WorkspaceChange{}, err
+	}
+	if err := verifyMove(ctx, request.GoBinary, environment, request.ModuleDir, plan); err != nil {
+		return langserver.WorkspaceChange{}, err
+	}
+	return plan.workspaceChange(request.Root), nil
 }

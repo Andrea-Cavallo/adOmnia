@@ -1,4 +1,4 @@
-package codestudio
+package golang
 
 import (
 	"errors"
@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"golang.org/x/exp/trace"
 )
 
@@ -110,94 +111,6 @@ type TraceReport struct {
 	Events        []TraceEvent     `json:"events"`
 	Stats         TraceStats       `json:"stats"`
 	Truncated     bool             `json:"truncated,omitzero"`
-}
-
-// ListTraceFiles cerca i file di esecuzione trace (`trace.out`, `trace-*.out`, `*.trace`) dentro il progetto.
-func (s *Service) ListTraceFiles(sessionID string) ([]ProfileFile, error) {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return nil, err
-	}
-	root := session.Project.RealPath
-	files := make([]ProfileFile, 0)
-	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		if entry.IsDir() {
-			name := entry.Name()
-			if path != root && (name == ".git" || name == "node_modules" || name == ".adomnia") {
-				return filepath.SkipDir
-			}
-			if strings.Count(relativeWithin(root, path), "/") >= profileScanDepth {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		base := strings.ToLower(entry.Name())
-		if base != "trace.out" && (!strings.HasPrefix(base, "trace-") || !strings.HasSuffix(base, ".out")) && !strings.HasSuffix(base, ".trace") {
-			return nil
-		}
-		info, err := entry.Info()
-		if err != nil || info.Size() == 0 || info.Size() > maxTraceSize {
-			return nil
-		}
-		files = append(files, ProfileFile{
-			Path:     path,
-			Relative: relativeWithin(root, path),
-			Name:     entry.Name(),
-			Kind:     "trace",
-			Size:     info.Size(),
-			Modified: info.ModTime().UTC().Format(time.RFC3339),
-		})
-		if len(files) >= maxProfileFiles {
-			return fs.SkipAll
-		}
-		return nil
-	})
-	sort.SliceStable(files, func(i, j int) bool { return files[i].Modified > files[j].Modified })
-	return files, nil
-}
-
-// LoadTrace interpreta un file trace del progetto in una timeline per il viewer.
-func (s *Service) LoadTrace(sessionID, relativePath string) (TraceReport, error) {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return TraceReport{}, err
-	}
-	root := session.Project.RealPath
-	candidate := filepath.FromSlash(strings.TrimSpace(relativePath))
-	if candidate == "" {
-		return TraceReport{}, fmt.Errorf("no trace selected")
-	}
-	if !filepath.IsAbs(candidate) {
-		candidate = filepath.Join(root, candidate)
-	}
-	candidate = filepath.Clean(candidate)
-	if err := ensureWithinRoot(root, candidate); err != nil {
-		return TraceReport{}, fmt.Errorf("trace outside the project: %w", err)
-	}
-	info, err := os.Stat(candidate)
-	if err != nil {
-		return TraceReport{}, fmt.Errorf("trace not found: %s", relativePath)
-	}
-	if info.IsDir() || info.Size() == 0 || info.Size() > maxTraceSize {
-		return TraceReport{}, fmt.Errorf("trace invalid or too large (max 512 MB)")
-	}
-	file, err := os.Open(candidate)
-	if err != nil {
-		return TraceReport{}, fmt.Errorf("opening the trace failed: %w", err)
-	}
-	defer file.Close()
-	reader, err := trace.NewReader(file)
-	if err != nil {
-		return TraceReport{}, fmt.Errorf("invalid Go trace: %w", err)
-	}
-	report, err := buildTraceReport(root, candidate, reader)
-	if err != nil {
-		return TraceReport{}, err
-	}
-	return report, nil
 }
 
 type traceGoroutineState struct {
@@ -556,7 +469,7 @@ func traceFrames(stack trace.Stack, root string) []TraceFrame {
 		frames = append(frames, TraceFrame{
 			Function: frame.Func,
 			File:     frame.File,
-			Relative: relativeWithin(root, frame.File),
+			Relative: project.RelativeWithin(root, frame.File),
 			Line:     int(frame.Line),
 		})
 		if len(frames) >= 64 {
@@ -595,4 +508,82 @@ func isSyncReason(reason string) bool {
 
 func isGCReason(reason string) bool {
 	return strings.Contains(strings.ToLower(reason), "gc")
+}
+
+// ListTraceFiles cerca i file di esecuzione trace (`trace.out`, `trace-*.out`, `*.trace`) dentro il progetto.
+func ListTraceFiles(root string) ([]ProfileFile, error) {
+	files := make([]ProfileFile, 0)
+	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
+		}
+		if entry.IsDir() {
+			name := entry.Name()
+			if path != root && (name == ".git" || name == "node_modules" || name == ".adomnia") {
+				return filepath.SkipDir
+			}
+			if strings.Count(project.RelativeWithin(root, path), "/") >= profileScanDepth {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		base := strings.ToLower(entry.Name())
+		if base != "trace.out" && (!strings.HasPrefix(base, "trace-") || !strings.HasSuffix(base, ".out")) && !strings.HasSuffix(base, ".trace") {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil || info.Size() == 0 || info.Size() > maxTraceSize {
+			return nil
+		}
+		files = append(files, ProfileFile{
+			Path:     path,
+			Relative: project.RelativeWithin(root, path),
+			Name:     entry.Name(),
+			Kind:     "trace",
+			Size:     info.Size(),
+			Modified: info.ModTime().UTC().Format(time.RFC3339),
+		})
+		if len(files) >= MaxProfileFiles {
+			return fs.SkipAll
+		}
+		return nil
+	})
+	sort.SliceStable(files, func(i, j int) bool { return files[i].Modified > files[j].Modified })
+	return files, nil
+}
+
+// LoadTrace interpreta un file trace del progetto in una timeline per il viewer.
+func LoadTrace(root string, relativePath string) (TraceReport, error) {
+	candidate := filepath.FromSlash(strings.TrimSpace(relativePath))
+	if candidate == "" {
+		return TraceReport{}, fmt.Errorf("no trace selected")
+	}
+	if !filepath.IsAbs(candidate) {
+		candidate = filepath.Join(root, candidate)
+	}
+	candidate = filepath.Clean(candidate)
+	if err := project.EnsureWithin(root, candidate); err != nil {
+		return TraceReport{}, fmt.Errorf("trace outside the project: %w", err)
+	}
+	info, err := os.Stat(candidate)
+	if err != nil {
+		return TraceReport{}, fmt.Errorf("trace not found: %s", relativePath)
+	}
+	if info.IsDir() || info.Size() == 0 || info.Size() > maxTraceSize {
+		return TraceReport{}, fmt.Errorf("trace invalid or too large (max 512 MB)")
+	}
+	file, err := os.Open(candidate)
+	if err != nil {
+		return TraceReport{}, fmt.Errorf("opening the trace failed: %w", err)
+	}
+	defer file.Close()
+	reader, err := trace.NewReader(file)
+	if err != nil {
+		return TraceReport{}, fmt.Errorf("invalid Go trace: %w", err)
+	}
+	report, err := buildTraceReport(root, candidate, reader)
+	if err != nil {
+		return TraceReport{}, err
+	}
+	return report, nil
 }

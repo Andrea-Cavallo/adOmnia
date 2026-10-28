@@ -1,4 +1,4 @@
-package codestudio
+package golang
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 	"github.com/google/pprof/profile"
@@ -47,40 +48,6 @@ type LiveProfileRequest struct {
 	URL       string `json:"url"`
 	Kind      string `json:"kind"`
 	Seconds   int    `json:"seconds,omitzero"`
-}
-
-// CaptureLiveProfile scarica un profilo da /debug/pprof di un servizio locale, verifica che sia pprof
-// valido e lo salva nella radice del progetto, pronto per il Performance Studio.
-func (s *Service) CaptureLiveProfile(ctx context.Context, request LiveProfileRequest) (ProfileFile, error) {
-	session, err := s.session(request.SessionID)
-	if err != nil {
-		return ProfileFile{}, err
-	}
-	if session.Project.Authorization != AuthorizationPermitted {
-		return ProfileFile{}, fmt.Errorf("authorize the project before saving profiles inside it")
-	}
-	prefix, ok := liveProfileFiles[request.Kind]
-	if !ok {
-		return ProfileFile{}, fmt.Errorf("unsupported profile type: %q", request.Kind)
-	}
-	endpoint, timeout, err := liveProfileEndpoint(request)
-	if err != nil {
-		return ProfileFile{}, err
-	}
-	data, err := fetchLiveProfile(ctx, endpoint, timeout)
-	if err != nil {
-		return ProfileFile{}, err
-	}
-	if _, err := profile.ParseData(data); err != nil {
-		return ProfileFile{}, fmt.Errorf("the response from %s is not a pprof profile: %w", endpoint, err)
-	}
-	root := session.Project.RealPath
-	name := fmt.Sprintf("%s-%s.pprof", prefix, time.Now().Format("20060102-150405"))
-	path := filepath.Join(root, name)
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return ProfileFile{}, fmt.Errorf("saving the profile failed: %w", err)
-	}
-	return ProfileFile{Path: path, Relative: relativeWithin(root, path), Name: name, Kind: profileKind(name), Size: int64(len(data)), Modified: time.Now().UTC().Format(time.RFC3339)}, nil
 }
 
 // liveProfileEndpoint costruisce l'URL /debug/pprof/<kind> accettando sia la radice del servizio sia
@@ -147,4 +114,30 @@ func fetchLiveProfile(ctx context.Context, endpoint string, timeout time.Duratio
 		return nil, fmt.Errorf("profile too large (max 512 MB)")
 	}
 	return data, nil
+}
+
+// CaptureLiveProfile downloads a profile from /debug/pprof of a local service, checks it is pprof and saves it
+// in the project root.
+func CaptureLiveProfile(ctx context.Context, root string, request LiveProfileRequest) (ProfileFile, error) {
+	prefix, ok := liveProfileFiles[request.Kind]
+	if !ok {
+		return ProfileFile{}, fmt.Errorf("unsupported profile type: %q", request.Kind)
+	}
+	endpoint, timeout, err := liveProfileEndpoint(request)
+	if err != nil {
+		return ProfileFile{}, err
+	}
+	data, err := fetchLiveProfile(ctx, endpoint, timeout)
+	if err != nil {
+		return ProfileFile{}, err
+	}
+	if _, err := profile.ParseData(data); err != nil {
+		return ProfileFile{}, fmt.Errorf("the response from %s is not a pprof profile: %w", endpoint, err)
+	}
+	name := fmt.Sprintf("%s-%s.pprof", prefix, time.Now().Format("20060102-150405"))
+	path := filepath.Join(root, name)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return ProfileFile{}, fmt.Errorf("saving the profile failed: %w", err)
+	}
+	return ProfileFile{Path: path, Relative: project.RelativeWithin(root, path), Name: name, Kind: profileKind(name), Size: int64(len(data)), Modified: time.Now().UTC().Format(time.RFC3339)}, nil
 }

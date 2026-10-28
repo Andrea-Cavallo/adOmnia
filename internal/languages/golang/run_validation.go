@@ -2,9 +2,10 @@ package golang
 
 import (
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"path/filepath"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 func ValidateGoArguments(root, workingDirectory string, arguments []string) error {

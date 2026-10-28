@@ -1,4 +1,4 @@
-package codestudio
+package golang
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"github.com/google/pprof/profile"
 )
 
@@ -24,7 +25,7 @@ const (
 	maxProfileFlame  = 20000
 	maxProfileEdges  = 20000
 	maxProfileLines  = 4000
-	maxProfileFiles  = 200
+	MaxProfileFiles  = 200
 	maxProfileSize   = 512 << 20 // 512 MB: oltre, non è un profilo ragionevole
 	profileScanDepth = 8
 )
@@ -103,89 +104,6 @@ type ProfileFile struct {
 	Kind     string `json:"kind"`
 	Size     int64  `json:"size"`
 	Modified string `json:"modified"`
-}
-
-// ListProfileFiles cerca i profili pprof (*.pprof) dentro il progetto, ignorando .git e node_modules.
-func (s *Service) ListProfileFiles(sessionID string) ([]ProfileFile, error) {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return nil, err
-	}
-	root := session.Project.RealPath
-	files := make([]ProfileFile, 0)
-	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		if entry.IsDir() {
-			name := entry.Name()
-			if path != root && (name == ".git" || name == "node_modules" || name == ".adomnia") {
-				return filepath.SkipDir
-			}
-			if strings.Count(relativeWithin(root, path), "/") >= profileScanDepth {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.EqualFold(filepath.Ext(path), ".pprof") {
-			return nil
-		}
-		info, err := entry.Info()
-		if err != nil || info.Size() == 0 || info.Size() > maxProfileSize {
-			return nil
-		}
-		files = append(files, ProfileFile{
-			Path:     path,
-			Relative: relativeWithin(root, path),
-			Name:     entry.Name(),
-			Kind:     profileKind(entry.Name()),
-			Size:     info.Size(),
-			Modified: info.ModTime().UTC().Format(time.RFC3339),
-		})
-		if len(files) >= maxProfileFiles {
-			return fs.SkipAll
-		}
-		return nil
-	})
-	sort.SliceStable(files, func(i, j int) bool { return files[i].Modified > files[j].Modified })
-	return files, nil
-}
-
-// LoadProfile interpreta un file pprof del progetto. relativePath può essere relativo o assoluto,
-// ma deve restare dentro il progetto.
-func (s *Service) LoadProfile(sessionID, relativePath string) (ProfileReport, error) {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return ProfileReport{}, err
-	}
-	root := session.Project.RealPath
-	candidate := filepath.FromSlash(strings.TrimSpace(relativePath))
-	if candidate == "" {
-		return ProfileReport{}, fmt.Errorf("no profile selected")
-	}
-	if !filepath.IsAbs(candidate) {
-		candidate = filepath.Join(root, candidate)
-	}
-	candidate = filepath.Clean(candidate)
-	if err := ensureWithinRoot(root, candidate); err != nil {
-		return ProfileReport{}, fmt.Errorf("profile outside the project: %w", err)
-	}
-	info, err := os.Stat(candidate)
-	if err != nil {
-		return ProfileReport{}, fmt.Errorf("profile not found: %s", relativePath)
-	}
-	if info.IsDir() || info.Size() == 0 || info.Size() > maxProfileSize {
-		return ProfileReport{}, fmt.Errorf("profile invalid or too large (max 512 MB)")
-	}
-	data, err := os.ReadFile(candidate)
-	if err != nil {
-		return ProfileReport{}, fmt.Errorf("reading the profile failed: %w", err)
-	}
-	parsed, err := profile.ParseData(data)
-	if err != nil {
-		return ProfileReport{}, fmt.Errorf("invalid pprof profile: %w", err)
-	}
-	return buildProfileReport(root, candidate, parsed), nil
 }
 
 func profileKind(name string) string {
@@ -491,7 +409,7 @@ func describeProfileFunction(fn *profile.Function, root string) ProfileFunction 
 		Short:    short,
 		Package:  pkg,
 		File:     fn.Filename,
-		Relative: relativeWithin(root, fn.Filename),
+		Relative: project.RelativeWithin(root, fn.Filename),
 		Line:     int(fn.StartLine),
 		Runtime:  isRuntimeProfileFunction(fn),
 	}
@@ -509,4 +427,77 @@ func isRuntimeProfileFunction(fn *profile.Function) bool {
 	cleanRoot := filepath.Clean(goRoot)
 	cleanFile := filepath.Clean(fn.Filename)
 	return cleanFile == cleanRoot || strings.HasPrefix(cleanFile, cleanRoot+string(filepath.Separator))
+}
+
+// ListProfileFiles cerca i profili pprof (*.pprof) dentro il progetto, ignorando .git e node_modules.
+func ListProfileFiles(root string) ([]ProfileFile, error) {
+	files := make([]ProfileFile, 0)
+	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
+		}
+		if entry.IsDir() {
+			name := entry.Name()
+			if path != root && (name == ".git" || name == "node_modules" || name == ".adomnia") {
+				return filepath.SkipDir
+			}
+			if strings.Count(project.RelativeWithin(root, path), "/") >= profileScanDepth {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.EqualFold(filepath.Ext(path), ".pprof") {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil || info.Size() == 0 || info.Size() > maxProfileSize {
+			return nil
+		}
+		files = append(files, ProfileFile{
+			Path:     path,
+			Relative: project.RelativeWithin(root, path),
+			Name:     entry.Name(),
+			Kind:     profileKind(entry.Name()),
+			Size:     info.Size(),
+			Modified: info.ModTime().UTC().Format(time.RFC3339),
+		})
+		if len(files) >= MaxProfileFiles {
+			return fs.SkipAll
+		}
+		return nil
+	})
+	sort.SliceStable(files, func(i, j int) bool { return files[i].Modified > files[j].Modified })
+	return files, nil
+}
+
+// LoadProfile interpreta un file pprof del progetto. relativePath può essere relativo o assoluto,
+// ma deve restare dentro il progetto.
+func LoadProfile(root string, relativePath string) (ProfileReport, error) {
+	candidate := filepath.FromSlash(strings.TrimSpace(relativePath))
+	if candidate == "" {
+		return ProfileReport{}, fmt.Errorf("no profile selected")
+	}
+	if !filepath.IsAbs(candidate) {
+		candidate = filepath.Join(root, candidate)
+	}
+	candidate = filepath.Clean(candidate)
+	if err := project.EnsureWithin(root, candidate); err != nil {
+		return ProfileReport{}, fmt.Errorf("profile outside the project: %w", err)
+	}
+	info, err := os.Stat(candidate)
+	if err != nil {
+		return ProfileReport{}, fmt.Errorf("profile not found: %s", relativePath)
+	}
+	if info.IsDir() || info.Size() == 0 || info.Size() > maxProfileSize {
+		return ProfileReport{}, fmt.Errorf("profile invalid or too large (max 512 MB)")
+	}
+	data, err := os.ReadFile(candidate)
+	if err != nil {
+		return ProfileReport{}, fmt.Errorf("reading the profile failed: %w", err)
+	}
+	parsed, err := profile.ParseData(data)
+	if err != nil {
+		return ProfileReport{}, fmt.Errorf("invalid pprof profile: %w", err)
+	}
+	return buildProfileReport(root, candidate, parsed), nil
 }

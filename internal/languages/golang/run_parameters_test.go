@@ -1,10 +1,11 @@
 package golang
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestOpaqueRunOptionsApplyGoFlagsAndEnvironment(t *testing.T) {

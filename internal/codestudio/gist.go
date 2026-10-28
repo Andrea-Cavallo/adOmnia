@@ -3,12 +3,14 @@ package codestudio
 import (
 	"context"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 func gistArguments(path, description string, public bool) []string {
@@ -58,7 +60,7 @@ func (s *Service) CreateGist(sessionID, relativePath, description string, public
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("create gist: %s", cleanToolError(output, 0))
+		return "", fmt.Errorf("create gist: %s", process.CleanToolError(output, 0))
 	}
 	url := strings.TrimSpace(string(output))
 	if !strings.HasPrefix(url, "https://gist.github.com/") {

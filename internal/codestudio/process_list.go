@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 	"encoding/csv"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (

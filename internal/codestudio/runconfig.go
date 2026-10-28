@@ -5,8 +5,9 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // normalizeConfiguration valida e ripulisce una configurazione prima di salvarla o avviarla.

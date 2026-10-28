@@ -1,4 +1,4 @@
-package codestudio
+package golang
 
 import (
 	"bytes"
@@ -11,17 +11,9 @@ import (
 	"golang.org/x/exp/trace"
 )
 
-// CaptureLiveTrace registra per qualche secondo /debug/pprof/trace di un servizio su questa macchina
-// (anche un pod o un host remoto raggiunto con un port forward su 127.0.0.1), verifica che sia una trace
-// Go leggibile e la salva nel progetto, pronta per il Trace viewer.
-func (s *Service) CaptureLiveTrace(ctx context.Context, request LiveProfileRequest) (ProfileFile, error) {
-	session, err := s.session(request.SessionID)
-	if err != nil {
-		return ProfileFile{}, err
-	}
-	if session.Project.Authorization != AuthorizationPermitted {
-		return ProfileFile{}, fmt.Errorf("authorize the project before saving traces inside it")
-	}
+// CaptureLiveTrace records /debug/pprof/trace of a local service for a few seconds, checks it is a Go trace
+// and saves it in the project root.
+func CaptureLiveTrace(ctx context.Context, root string, request LiveProfileRequest) (ProfileFile, error) {
 	request.Kind = "trace"
 	endpoint, timeout, err := liveProfileEndpoint(request)
 	if err != nil {
@@ -35,7 +27,7 @@ func (s *Service) CaptureLiveTrace(ctx context.Context, request LiveProfileReque
 		return ProfileFile{}, fmt.Errorf("the response from %s is not a Go trace: %w", endpoint, err)
 	}
 	name := fmt.Sprintf("trace-%s.out", time.Now().Format("20060102-150405"))
-	path := filepath.Join(session.Project.RealPath, name)
+	path := filepath.Join(root, name)
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return ProfileFile{}, fmt.Errorf("saving the trace failed: %w", err)
 	}

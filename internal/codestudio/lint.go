@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode/utf16"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/langserver"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
@@ -580,10 +581,7 @@ func editorEditsForBytes(text string, edits []byteEdit) ([]EditorTextEdit, bool)
 
 type editorPosition struct{ line, column int }
 
-// editorPositionAt restituisce riga e colonna Monaco (1-based, UTF-16) dell'offset in byte.
 func editorPositionAt(text string, offset int) editorPosition {
-	prefix := text[:offset]
-	line := strings.Count(prefix, "\n") + 1
-	lineStart := strings.LastIndexByte(prefix, '\n') + 1
-	return editorPosition{line: line, column: len(utf16.Encode([]rune(prefix[lineStart:]))) + 1}
+	line, column := langserver.EditorPositionAt(text, offset)
+	return editorPosition{line: line, column: column}
 }

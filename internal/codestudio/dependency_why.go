@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
@@ -62,7 +63,7 @@ func (s *Service) DependencyWhy(sessionID, module string) (DependencyWhy, error)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	command := procutil.CommandContext(ctx, binary, "mod", "why", "-m", module)
-	command.Dir, command.Env = directory, append(withGoFirstInPath(environment, binary), "GOPROXY=off")
+	command.Dir, command.Env = directory, append(golang.WithGoFirstInPath(environment, binary), "GOPROXY=off")
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {

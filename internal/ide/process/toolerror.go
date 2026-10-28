@@ -1,4 +1,4 @@
-package codestudio
+package process
 
 import (
 	"fmt"
@@ -14,9 +14,9 @@ const (
 
 var ansiSequence = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*(?:\x07|\x1b\\)`)
 
-// cleanToolError rende l'output di uno strumento adatto a un messaggio d'errore per l'utente: senza codici ANSI,
+// CleanToolError rende l'output di uno strumento adatto a un messaggio d'errore per l'utente: senza codici ANSI,
 // con le prime e le ultime righe (di solito la causa è in coda) e un tetto di caratteri.
-func cleanToolError(output []byte, limit int) string {
+func CleanToolError(output []byte, limit int) string {
 	if limit <= 0 {
 		limit = toolErrorMaxChars
 	}

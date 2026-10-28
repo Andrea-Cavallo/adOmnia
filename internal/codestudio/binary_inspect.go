@@ -58,7 +58,7 @@ func (s *Service) buildExecutable(ctx context.Context, sessionID, root, target s
 	if err != nil {
 		return executable{}, errors.New("go is not available: detect or configure the toolchain")
 	}
-	environment = withGoFirstInPath(environment, binary)
+	environment = golang.WithGoFirstInPath(environment, binary)
 	temp, err := os.MkdirTemp("", "adomnia-bin-")
 	if err != nil {
 		return executable{}, err

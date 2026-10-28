@@ -1,4 +1,4 @@
-package codestudio
+package golang
 
 import (
 	"context"
@@ -11,66 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
-
-// moveGoFile is the semantic counterpart of a Project-tree drag between packages.
-// It moves every declaration in the file, rewrites references and imports, verifies the
-// affected packages with an overlay, then applies the checked plan transactionally.
-func (s *Service) moveGoFile(sessionID, from, to string) error {
-	session, err := s.session(sessionID)
-	if err != nil {
-		return err
-	}
-	if session.Project.Authorization != AuthorizationPermitted {
-		return errors.New("trust this project before moving Go files between packages")
-	}
-	sourcePath, info, err := resolveExistingEntry(session.Project, from)
-	if err != nil {
-		return err
-	}
-	if info.IsDir() || info.Mode()&fs.ModeSymlink != 0 || !strings.EqualFold(filepath.Ext(sourcePath), ".go") {
-		return errors.New("the semantic move requires a regular Go file")
-	}
-	destinationPath, err := resolveNewFilePath(session.Project, to)
-	if err != nil {
-		return err
-	}
-	if !strings.EqualFold(filepath.Ext(destinationPath), ".go") {
-		return errors.New("the destination must be a Go file")
-	}
-	if _, err := os.Lstat(destinationPath); err == nil {
-		return fmt.Errorf("%s already exists", filepath.ToSlash(to))
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-
-	moduleRelative := moduleForDir(session.Project.RealPath, goLayoutOf(session.Project).Modules, filepath.ToSlash(filepath.Dir(from)))
-	moduleDir := filepath.Join(session.Project.RealPath, filepath.FromSlash(moduleRelative))
-	environment, err := s.toolchain.Environment(SessionID(sessionID), nil)
-	if err != nil {
-		return err
-	}
-	binary, err := s.toolchain.GoBinary(SessionID(sessionID))
-	if err != nil {
-		return err
-	}
-	environment = withGoFirstInPath(environment, binary)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	plan, err := planMoveFile(ctx, environment, moduleDir, sourcePath, destinationPath)
-	if err != nil {
-		return err
-	}
-	if err := verifyMove(ctx, binary, environment, moduleDir, plan); err != nil {
-		return err
-	}
-	if err := applyMoveFilePlan(plan, sourcePath); err != nil {
-		return err
-	}
-	return nil
-}
 
 func planMoveFile(ctx context.Context, environment []string, moduleDir, sourcePath, destinationPath string) (movePlan, error) {
 	module, err := loadModule(ctx, environment, moduleDir)
@@ -85,7 +29,7 @@ func planMoveFile(ctx context.Context, environment []string, moduleDir, sourcePa
 	if filepath.Clean(filepath.Dir(sourcePath)) == targetDirectory {
 		return movePlan{}, errors.New("the destination is the source package")
 	}
-	if ensureWithinRoot(moduleDir, targetDirectory) != nil || hasNestedModule(moduleDir, targetDirectory) {
+	if project.EnsureWithin(moduleDir, targetDirectory) != nil || hasNestedModule(moduleDir, targetDirectory) {
 		return movePlan{}, errors.New("the destination must be inside the same Go module")
 	}
 	if _, err := os.Lstat(destinationPath); err == nil {
@@ -96,7 +40,7 @@ func planMoveFile(ctx context.Context, environment []string, moduleDir, sourcePa
 
 	sourcePkg := source.pkg.Types
 	target := module.byDir[targetDirectory]
-	relativeTarget := filepath.ToSlash(relativeWithin(moduleDir, targetDirectory))
+	relativeTarget := filepath.ToSlash(project.RelativeWithin(moduleDir, targetDirectory))
 	targetPath := module.modulePath
 	if relativeTarget != "" && relativeTarget != "." {
 		targetPath += "/" + relativeTarget
@@ -104,7 +48,7 @@ func planMoveFile(ctx context.Context, environment []string, moduleDir, sourcePa
 	targetName := packageNameForDir(targetDirectory)
 	if target != nil {
 		targetPath, targetName = target.PkgPath, target.Name
-	} else if hasGoFiles(targetDirectory) {
+	} else if HasGoFiles(targetDirectory) {
 		return movePlan{}, errors.New("the destination contains Go files that do not form a valid package")
 	}
 	if sourcePkg.Name() == "main" || targetName == "main" {
@@ -276,4 +220,27 @@ func applyMoveFilePlan(plan movePlan, sourcePath string) error {
 		return fmt.Errorf("could not remove the original Go file: %w", err)
 	}
 	return nil
+}
+
+// MoveFileRequest is a Go file move resolved by the host: absolute paths, the Go binary and the environment.
+type MoveFileRequest struct {
+	ModuleDir, SourcePath, DestinationPath string
+	GoBinary                               string
+	Environment                            []string
+}
+
+// MoveGoFile moves every declaration of a file to another package, rewrites references and imports, checks
+// the affected packages with an overlay, then applies the plan transactionally.
+func MoveGoFile(request MoveFileRequest) error {
+	environment := WithGoFirstInPath(request.Environment, request.GoBinary)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	plan, err := planMoveFile(ctx, environment, request.ModuleDir, request.SourcePath, request.DestinationPath)
+	if err != nil {
+		return err
+	}
+	if err := verifyMove(ctx, request.GoBinary, environment, request.ModuleDir, plan); err != nil {
+		return err
+	}
+	return applyMoveFilePlan(plan, request.SourcePath)
 }

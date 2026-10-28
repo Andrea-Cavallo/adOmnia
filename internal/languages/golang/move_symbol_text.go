@@ -1,4 +1,4 @@
-package codestudio
+package golang
 
 // Helper di testo e percorsi per Move symbol.
 
@@ -14,6 +14,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf16"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 func declStart(decl ast.Decl) token.Pos {
@@ -35,6 +37,12 @@ func extendOverNewlines(text []byte, end int) int {
 		end++
 	}
 	return end
+}
+
+// byteEdit replaces text[start:end] with text.
+type byteEdit struct {
+	start, end int
+	text       string
 }
 
 func applyByteEdits(text string, edits []byteEdit) (string, error) {
@@ -117,7 +125,7 @@ func snakeCase(name string) string {
 }
 
 func hasNestedModule(moduleDir, directory string) bool {
-	for current := directory; ensureWithinRoot(moduleDir, current) == nil && filepath.Clean(current) != filepath.Clean(moduleDir); current = filepath.Dir(current) {
+	for current := directory; project.EnsureWithin(moduleDir, current) == nil && filepath.Clean(current) != filepath.Clean(moduleDir); current = filepath.Dir(current) {
 		if _, err := os.Stat(filepath.Join(current, "go.mod")); err == nil {
 			return true
 		}
@@ -125,7 +133,8 @@ func hasNestedModule(moduleDir, directory string) bool {
 	return false
 }
 
-func withGoFirstInPath(environment []string, binary string) []string {
+// WithGoFirstInPath puts the directory of the selected Go binary first in PATH.
+func WithGoFirstInPath(environment []string, binary string) []string {
 	result := append([]string(nil), environment...)
 	directory := filepath.Dir(binary)
 	for index, entry := range result {
@@ -150,4 +159,18 @@ func firstN(values []string, count int) []string {
 		return values[:count]
 	}
 	return values
+}
+
+// HasGoFiles reports whether directory directly contains a .go file.
+func HasGoFiles(directory string) bool {
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") {
+			return true
+		}
+	}
+	return false
 }

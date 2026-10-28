@@ -3,11 +3,12 @@ package golang
 import (
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 const (

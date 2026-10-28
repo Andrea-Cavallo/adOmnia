@@ -82,7 +82,7 @@ func (s *Service) BaseBranchCoverage(sessionID, base string, packageDirs, buildT
 		if dir == ".." || strings.HasPrefix(dir, "../") || path.IsAbs(dir) {
 			return BaseCoverage{}, fmt.Errorf("package outside the project: %s", dir)
 		}
-		if !hasGoFiles(filepath.Join(baseProject, filepath.FromSlash(dir))) {
+		if !golang.HasGoFiles(filepath.Join(baseProject, filepath.FromSlash(dir))) {
 			result.Missing = append(result.Missing, dir)
 			continue
 		}
@@ -171,19 +171,6 @@ func moduleForDir(projectRoot string, modules []GoModule, dir string) string {
 		}
 	}
 	return best
-}
-
-func hasGoFiles(directory string) bool {
-	entries, err := os.ReadDir(directory)
-	if err != nil {
-		return false
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") {
-			return true
-		}
-	}
-	return false
 }
 
 func gitOutput(ctx context.Context, dir string, arguments ...string) (string, error) {

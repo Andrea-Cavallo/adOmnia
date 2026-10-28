@@ -2,8 +2,9 @@ package codestudio
 
 import (
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // ListRunConfigurations elenca le configurazioni salvate della sessione.

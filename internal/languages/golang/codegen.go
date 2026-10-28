@@ -1,4 +1,4 @@
-package codestudio
+package golang
 
 import (
 	"errors"

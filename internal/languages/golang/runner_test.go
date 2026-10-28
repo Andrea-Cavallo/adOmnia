@@ -1,10 +1,11 @@
 package golang
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"path/filepath"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestRunnerConfinesOpaqueGoOptions(t *testing.T) {

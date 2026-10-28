@@ -1301,6 +1301,83 @@ export class BinarySize {
     }
 }
 
+/**
+ * CodeGenRequest descrive cosa generare e dove.
+ */
+export class CodeGenRequest {
+    /**
+     * Kind: constructor, getters, setters, interface, benchmark, fuzz.
+     */
+    "kind": string;
+    "text": string;
+
+    /**
+     * Line (1-based) seleziona la struct o la funzione che contiene il cursore.
+     */
+    "line": number;
+
+    /**
+     * TestText è il contenuto attuale del file _test.go ("" se non esiste).
+     */
+    "testText": string;
+
+    /** Creates a new CodeGenRequest instance. */
+    constructor($$source: Partial<CodeGenRequest> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("testText" in $$source)) {
+            this["testText"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CodeGenRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CodeGenRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CodeGenRequest($$parsedSource as Partial<CodeGenRequest>);
+    }
+}
+
+/**
+ * CodeGenResult contiene il file sorgente o il file di test aggiornati (vuoto se invariato).
+ */
+export class CodeGenResult {
+    "text"?: string;
+    "testText"?: string;
+
+    /**
+     * Symbol è il nome generato, da mostrare e su cui posizionare il cursore.
+     */
+    "symbol": string;
+
+    /** Creates a new CodeGenResult instance. */
+    constructor($$source: Partial<CodeGenResult> = {}) {
+        if (!("symbol" in $$source)) {
+            this["symbol"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CodeGenResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CodeGenResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CodeGenResult($$parsedSource as Partial<CodeGenResult>);
+    }
+}
+
 export const DebugFrame = dap$0.DebugFrame;
 export type DebugFrame = dap$0.DebugFrame;
 
@@ -2178,6 +2255,84 @@ export class InstalledToolchain {
     }
 }
 
+/**
+ * LiveProfileRequest descrive la cattura: URL del servizio (es. http://localhost:6060), tipo di profilo
+ * (nome dell'endpoint /debug/pprof/<kind>) e durata in secondi solo per il CPU profile.
+ */
+export class LiveProfileRequest {
+    "sessionId": string;
+    "url": string;
+    "kind": string;
+    "seconds"?: number;
+
+    /** Creates a new LiveProfileRequest instance. */
+    constructor($$source: Partial<LiveProfileRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LiveProfileRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LiveProfileRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LiveProfileRequest($$parsedSource as Partial<LiveProfileRequest>);
+    }
+}
+
+/**
+ * MoveSymbolRequest indica la dichiarazione (posizione del cursore nel file) e la cartella di destinazione.
+ */
+export class MoveSymbolRequest {
+    "relativePath": string;
+
+    /**
+     * Line e Column sono 1-based, colonna in unità UTF-16 come nell'editor.
+     */
+    "line": number;
+    "column": number;
+
+    /**
+     * TargetDirectory è relativa al progetto; può non esistere ancora (nuovo package).
+     */
+    "targetDirectory": string;
+
+    /** Creates a new MoveSymbolRequest instance. */
+    constructor($$source: Partial<MoveSymbolRequest> = {}) {
+        if (!("relativePath" in $$source)) {
+            this["relativePath"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("column" in $$source)) {
+            this["column"] = 0;
+        }
+        if (!("targetDirectory" in $$source)) {
+            this["targetDirectory"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MoveSymbolRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MoveSymbolRequest {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new MoveSymbolRequest($$parsedSource as Partial<MoveSymbolRequest>);
+    }
+}
+
 export class PackageDoc {
     "importPath": string;
     "name": string;
@@ -2310,6 +2465,393 @@ export class PendingDefer {
             $$parsedSource["location"] = $$createField1_0($$parsedSource["location"]);
         }
         return new PendingDefer($$parsedSource as Partial<PendingDefer>);
+    }
+}
+
+/**
+ * ProfileEdge è un arco del call graph (Caller chiama Callee) con il valore aggregato.
+ */
+export class ProfileEdge {
+    "caller": ProfileFunction;
+    "callee": ProfileFunction;
+    "value": number[];
+
+    /** Creates a new ProfileEdge instance. */
+    constructor($$source: Partial<ProfileEdge> = {}) {
+        if (!("caller" in $$source)) {
+            this["caller"] = (new ProfileFunction());
+        }
+        if (!("callee" in $$source)) {
+            this["callee"] = (new ProfileFunction());
+        }
+        if (!("value" in $$source)) {
+            this["value"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProfileEdge instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProfileEdge {
+        const $$createField0_0 = $$createType65;
+        const $$createField1_0 = $$createType65;
+        const $$createField2_0 = $$createType66;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("caller" in $$parsedSource) {
+            $$parsedSource["caller"] = $$createField0_0($$parsedSource["caller"]);
+        }
+        if ("callee" in $$parsedSource) {
+            $$parsedSource["callee"] = $$createField1_0($$parsedSource["callee"]);
+        }
+        if ("value" in $$parsedSource) {
+            $$parsedSource["value"] = $$createField2_0($$parsedSource["value"]);
+        }
+        return new ProfileEdge($$parsedSource as Partial<ProfileEdge>);
+    }
+}
+
+/**
+ * ProfileFile è un profilo trovato nel progetto, candidato da aprire nel Performance Studio.
+ */
+export class ProfileFile {
+    "path": string;
+    "relative": string;
+    "name": string;
+    "kind": string;
+    "size": number;
+    "modified": string;
+
+    /** Creates a new ProfileFile instance. */
+    constructor($$source: Partial<ProfileFile> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("relative" in $$source)) {
+            this["relative"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("size" in $$source)) {
+            this["size"] = 0;
+        }
+        if (!("modified" in $$source)) {
+            this["modified"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProfileFile instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProfileFile {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProfileFile($$parsedSource as Partial<ProfileFile>);
+    }
+}
+
+/**
+ * ProfileFlame è il nodo di un flame graph o di una vista icicle; Value è allineato ai sample type.
+ */
+export class ProfileFlame {
+    "function": ProfileFunction;
+    "value": number[];
+    "children"?: (ProfileFlame | null)[];
+
+    /** Creates a new ProfileFlame instance. */
+    constructor($$source: Partial<ProfileFlame> = {}) {
+        if (!("function" in $$source)) {
+            this["function"] = (new ProfileFunction());
+        }
+        if (!("value" in $$source)) {
+            this["value"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProfileFlame instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProfileFlame {
+        const $$createField0_0 = $$createType65;
+        const $$createField1_0 = $$createType66;
+        const $$createField2_0 = $$createType69;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("function" in $$parsedSource) {
+            $$parsedSource["function"] = $$createField0_0($$parsedSource["function"]);
+        }
+        if ("value" in $$parsedSource) {
+            $$parsedSource["value"] = $$createField1_0($$parsedSource["value"]);
+        }
+        if ("children" in $$parsedSource) {
+            $$parsedSource["children"] = $$createField2_0($$parsedSource["children"]);
+        }
+        return new ProfileFlame($$parsedSource as Partial<ProfileFlame>);
+    }
+}
+
+/**
+ * ProfileFunction è una funzione del profilo, già pronta per la UI e per il salto al sorgente.
+ */
+export class ProfileFunction {
+    "name": string;
+    "short": string;
+    "package": string;
+    "file"?: string;
+    "relative"?: string;
+    "line"?: number;
+    "runtime"?: boolean;
+
+    /** Creates a new ProfileFunction instance. */
+    constructor($$source: Partial<ProfileFunction> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("short" in $$source)) {
+            this["short"] = "";
+        }
+        if (!("package" in $$source)) {
+            this["package"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProfileFunction instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProfileFunction {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProfileFunction($$parsedSource as Partial<ProfileFunction>);
+    }
+}
+
+/**
+ * ProfileLine è il costo per riga di sorgente, per la heatmap nel codice.
+ */
+export class ProfileLine {
+    "file": string;
+    "relative"?: string;
+    "line": number;
+    "value": number[];
+
+    /** Creates a new ProfileLine instance. */
+    constructor($$source: Partial<ProfileLine> = {}) {
+        if (!("file" in $$source)) {
+            this["file"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+        if (!("value" in $$source)) {
+            this["value"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProfileLine instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProfileLine {
+        const $$createField3_0 = $$createType66;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("value" in $$parsedSource) {
+            $$parsedSource["value"] = $$createField3_0($$parsedSource["value"]);
+        }
+        return new ProfileLine($$parsedSource as Partial<ProfileLine>);
+    }
+}
+
+/**
+ * ProfileNode è una riga della vista Top: valore piatto (flat) e cumulativo (cum) per ogni sample type.
+ */
+export class ProfileNode {
+    "function": ProfileFunction;
+    "flat": number[];
+    "cum": number[];
+
+    /** Creates a new ProfileNode instance. */
+    constructor($$source: Partial<ProfileNode> = {}) {
+        if (!("function" in $$source)) {
+            this["function"] = (new ProfileFunction());
+        }
+        if (!("flat" in $$source)) {
+            this["flat"] = [];
+        }
+        if (!("cum" in $$source)) {
+            this["cum"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProfileNode instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProfileNode {
+        const $$createField0_0 = $$createType65;
+        const $$createField1_0 = $$createType66;
+        const $$createField2_0 = $$createType66;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("function" in $$parsedSource) {
+            $$parsedSource["function"] = $$createField0_0($$parsedSource["function"]);
+        }
+        if ("flat" in $$parsedSource) {
+            $$parsedSource["flat"] = $$createField1_0($$parsedSource["flat"]);
+        }
+        if ("cum" in $$parsedSource) {
+            $$parsedSource["cum"] = $$createField2_0($$parsedSource["cum"]);
+        }
+        return new ProfileNode($$parsedSource as Partial<ProfileNode>);
+    }
+}
+
+/**
+ * ProfileReport è il profilo interpretato, pronto per le viste del Performance Studio.
+ */
+export class ProfileReport {
+    "path": string;
+    "name": string;
+    "kind": string;
+    "durationNanos": number;
+    "periodType": ProfileSampleType;
+    "period": number;
+    "time": string;
+    "sampleTypes": ProfileSampleType[];
+    "totals": number[];
+    "samples": number;
+    "topFlat": ProfileNode[];
+    "topCum": ProfileNode[];
+    "flame": ProfileFlame | null;
+    "edges": ProfileEdge[];
+    "lines": ProfileLine[];
+    "truncated"?: boolean;
+
+    /** Creates a new ProfileReport instance. */
+    constructor($$source: Partial<ProfileReport> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("durationNanos" in $$source)) {
+            this["durationNanos"] = 0;
+        }
+        if (!("periodType" in $$source)) {
+            this["periodType"] = (new ProfileSampleType());
+        }
+        if (!("period" in $$source)) {
+            this["period"] = 0;
+        }
+        if (!("time" in $$source)) {
+            this["time"] = "";
+        }
+        if (!("sampleTypes" in $$source)) {
+            this["sampleTypes"] = [];
+        }
+        if (!("totals" in $$source)) {
+            this["totals"] = [];
+        }
+        if (!("samples" in $$source)) {
+            this["samples"] = 0;
+        }
+        if (!("topFlat" in $$source)) {
+            this["topFlat"] = [];
+        }
+        if (!("topCum" in $$source)) {
+            this["topCum"] = [];
+        }
+        if (!("flame" in $$source)) {
+            this["flame"] = null;
+        }
+        if (!("edges" in $$source)) {
+            this["edges"] = [];
+        }
+        if (!("lines" in $$source)) {
+            this["lines"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProfileReport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProfileReport {
+        const $$createField4_0 = $$createType70;
+        const $$createField7_0 = $$createType71;
+        const $$createField8_0 = $$createType66;
+        const $$createField10_0 = $$createType73;
+        const $$createField11_0 = $$createType73;
+        const $$createField12_0 = $$createType68;
+        const $$createField13_0 = $$createType75;
+        const $$createField14_0 = $$createType77;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("periodType" in $$parsedSource) {
+            $$parsedSource["periodType"] = $$createField4_0($$parsedSource["periodType"]);
+        }
+        if ("sampleTypes" in $$parsedSource) {
+            $$parsedSource["sampleTypes"] = $$createField7_0($$parsedSource["sampleTypes"]);
+        }
+        if ("totals" in $$parsedSource) {
+            $$parsedSource["totals"] = $$createField8_0($$parsedSource["totals"]);
+        }
+        if ("topFlat" in $$parsedSource) {
+            $$parsedSource["topFlat"] = $$createField10_0($$parsedSource["topFlat"]);
+        }
+        if ("topCum" in $$parsedSource) {
+            $$parsedSource["topCum"] = $$createField11_0($$parsedSource["topCum"]);
+        }
+        if ("flame" in $$parsedSource) {
+            $$parsedSource["flame"] = $$createField12_0($$parsedSource["flame"]);
+        }
+        if ("edges" in $$parsedSource) {
+            $$parsedSource["edges"] = $$createField13_0($$parsedSource["edges"]);
+        }
+        if ("lines" in $$parsedSource) {
+            $$parsedSource["lines"] = $$createField14_0($$parsedSource["lines"]);
+        }
+        return new ProfileReport($$parsedSource as Partial<ProfileReport>);
+    }
+}
+
+/**
+ * ProfileSampleType è una grandezza campionata dal profilo (cpu/nanoseconds, inuse_space/bytes…).
+ */
+export class ProfileSampleType {
+    "name": string;
+    "unit": string;
+
+    /** Creates a new ProfileSampleType instance. */
+    constructor($$source: Partial<ProfileSampleType> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("unit" in $$source)) {
+            this["unit"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProfileSampleType instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProfileSampleType {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ProfileSampleType($$parsedSource as Partial<ProfileSampleType>);
     }
 }
 
@@ -2574,7 +3116,7 @@ export class ToolchainInfo {
      * Creates a new ToolchainInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainInfo {
-        const $$createField23_0 = $$createType66;
+        const $$createField23_0 = $$createType79;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("timings" in $$parsedSource) {
             $$parsedSource["timings"] = $$createField23_0($$parsedSource["timings"]);
@@ -2699,8 +3241,8 @@ export class ToolchainSettings {
      * Creates a new ToolchainSettings instance from a string or object.
      */
     static createFrom($$source: any = {}): ToolchainSettings {
-        const $$createField0_0 = $$createType68;
-        const $$createField1_0 = $$createType67;
+        const $$createField0_0 = $$createType81;
+        const $$createField1_0 = $$createType80;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("project" in $$parsedSource) {
             $$parsedSource["project"] = $$createField0_0($$parsedSource["project"]);
@@ -2738,6 +3280,385 @@ export class ToolchainTiming {
     static createFrom($$source: any = {}): ToolchainTiming {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new ToolchainTiming($$parsedSource as Partial<ToolchainTiming>);
+    }
+}
+
+/**
+ * TraceEvent è un evento puntuale della timeline (log, task, regione, metrica).
+ */
+export class TraceEvent {
+    "time": number;
+    "category": string;
+    "label": string;
+    "goroutine"?: number;
+    "stack"?: TraceFrame[];
+
+    /** Creates a new TraceEvent instance. */
+    constructor($$source: Partial<TraceEvent> = {}) {
+        if (!("time" in $$source)) {
+            this["time"] = 0;
+        }
+        if (!("category" in $$source)) {
+            this["category"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TraceEvent instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TraceEvent {
+        const $$createField4_0 = $$createType83;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("stack" in $$parsedSource) {
+            $$parsedSource["stack"] = $$createField4_0($$parsedSource["stack"]);
+        }
+        return new TraceEvent($$parsedSource as Partial<TraceEvent>);
+    }
+}
+
+/**
+ * TraceFrame è un frame di stack navigabile verso il sorgente.
+ */
+export class TraceFrame {
+    "function": string;
+    "file"?: string;
+    "relative"?: string;
+    "line"?: number;
+
+    /** Creates a new TraceFrame instance. */
+    constructor($$source: Partial<TraceFrame> = {}) {
+        if (!("function" in $$source)) {
+            this["function"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TraceFrame instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TraceFrame {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TraceFrame($$parsedSource as Partial<TraceFrame>);
+    }
+}
+
+/**
+ * TraceGoroutine raccoglie la timeline di una goroutine e i tempi per stato.
+ */
+export class TraceGoroutine {
+    "id": number;
+    "start": number;
+    "end": number;
+    "alive": boolean;
+    "startStack"?: TraceFrame[];
+    "spans": TraceSpan[];
+    "running": number;
+    "runnable": number;
+    "waiting": number;
+    "syscall": number;
+
+    /** Creates a new TraceGoroutine instance. */
+    constructor($$source: Partial<TraceGoroutine> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("start" in $$source)) {
+            this["start"] = 0;
+        }
+        if (!("end" in $$source)) {
+            this["end"] = 0;
+        }
+        if (!("alive" in $$source)) {
+            this["alive"] = false;
+        }
+        if (!("spans" in $$source)) {
+            this["spans"] = [];
+        }
+        if (!("running" in $$source)) {
+            this["running"] = 0;
+        }
+        if (!("runnable" in $$source)) {
+            this["runnable"] = 0;
+        }
+        if (!("waiting" in $$source)) {
+            this["waiting"] = 0;
+        }
+        if (!("syscall" in $$source)) {
+            this["syscall"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TraceGoroutine instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TraceGoroutine {
+        const $$createField4_0 = $$createType83;
+        const $$createField5_0 = $$createType85;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("startStack" in $$parsedSource) {
+            $$parsedSource["startStack"] = $$createField4_0($$parsedSource["startStack"]);
+        }
+        if ("spans" in $$parsedSource) {
+            $$parsedSource["spans"] = $$createField5_0($$parsedSource["spans"]);
+        }
+        return new TraceGoroutine($$parsedSource as Partial<TraceGoroutine>);
+    }
+}
+
+/**
+ * TraceProc è l'attività di un P dello scheduler: i suoi intervalli di esecuzione.
+ */
+export class TraceProc {
+    "id": number;
+    "running": number;
+    "spans": TraceSpan[];
+
+    /** Creates a new TraceProc instance. */
+    constructor($$source: Partial<TraceProc> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("running" in $$source)) {
+            this["running"] = 0;
+        }
+        if (!("spans" in $$source)) {
+            this["spans"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TraceProc instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TraceProc {
+        const $$createField2_0 = $$createType85;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("spans" in $$parsedSource) {
+            $$parsedSource["spans"] = $$createField2_0($$parsedSource["spans"]);
+        }
+        return new TraceProc($$parsedSource as Partial<TraceProc>);
+    }
+}
+
+/**
+ * TraceRange è un intervallo globale (GC, stop-the-world o una regione utente).
+ */
+export class TraceRange {
+    "kind": string;
+    "name": string;
+    "start": number;
+    "end": number;
+    "goroutine"?: number;
+    "stack"?: TraceFrame[];
+
+    /** Creates a new TraceRange instance. */
+    constructor($$source: Partial<TraceRange> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("start" in $$source)) {
+            this["start"] = 0;
+        }
+        if (!("end" in $$source)) {
+            this["end"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TraceRange instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TraceRange {
+        const $$createField5_0 = $$createType83;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("stack" in $$parsedSource) {
+            $$parsedSource["stack"] = $$createField5_0($$parsedSource["stack"]);
+        }
+        return new TraceRange($$parsedSource as Partial<TraceRange>);
+    }
+}
+
+/**
+ * TraceReport è la traccia interpretata, pronta per il viewer del Performance Studio.
+ */
+export class TraceReport {
+    "path": string;
+    "name": string;
+    "durationNanos": number;
+    "goroutines": TraceGoroutine[];
+    "procs": TraceProc[];
+    "gc": TraceRange[];
+    "events": TraceEvent[];
+    "stats": TraceStats;
+    "truncated"?: boolean;
+
+    /** Creates a new TraceReport instance. */
+    constructor($$source: Partial<TraceReport> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("durationNanos" in $$source)) {
+            this["durationNanos"] = 0;
+        }
+        if (!("goroutines" in $$source)) {
+            this["goroutines"] = [];
+        }
+        if (!("procs" in $$source)) {
+            this["procs"] = [];
+        }
+        if (!("gc" in $$source)) {
+            this["gc"] = [];
+        }
+        if (!("events" in $$source)) {
+            this["events"] = [];
+        }
+        if (!("stats" in $$source)) {
+            this["stats"] = (new TraceStats());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TraceReport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TraceReport {
+        const $$createField3_0 = $$createType87;
+        const $$createField4_0 = $$createType89;
+        const $$createField5_0 = $$createType91;
+        const $$createField6_0 = $$createType93;
+        const $$createField7_0 = $$createType94;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("goroutines" in $$parsedSource) {
+            $$parsedSource["goroutines"] = $$createField3_0($$parsedSource["goroutines"]);
+        }
+        if ("procs" in $$parsedSource) {
+            $$parsedSource["procs"] = $$createField4_0($$parsedSource["procs"]);
+        }
+        if ("gc" in $$parsedSource) {
+            $$parsedSource["gc"] = $$createField5_0($$parsedSource["gc"]);
+        }
+        if ("events" in $$parsedSource) {
+            $$parsedSource["events"] = $$createField6_0($$parsedSource["events"]);
+        }
+        if ("stats" in $$parsedSource) {
+            $$parsedSource["stats"] = $$createField7_0($$parsedSource["stats"]);
+        }
+        return new TraceReport($$parsedSource as Partial<TraceReport>);
+    }
+}
+
+/**
+ * TraceSpan è un intervallo in cui una risorsa è in uno stato (running, runnable, waiting, syscall).
+ */
+export class TraceSpan {
+    "state": string;
+    "reason"?: string;
+    "start": number;
+    "end": number;
+    "stack"?: TraceFrame[];
+
+    /** Creates a new TraceSpan instance. */
+    constructor($$source: Partial<TraceSpan> = {}) {
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("start" in $$source)) {
+            this["start"] = 0;
+        }
+        if (!("end" in $$source)) {
+            this["end"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TraceSpan instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TraceSpan {
+        const $$createField4_0 = $$createType83;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("stack" in $$parsedSource) {
+            $$parsedSource["stack"] = $$createField4_0($$parsedSource["stack"]);
+        }
+        return new TraceSpan($$parsedSource as Partial<TraceSpan>);
+    }
+}
+
+/**
+ * TraceStats riassume la durata totale per categoria.
+ */
+export class TraceStats {
+    "goroutines": number;
+    "events": number;
+    "running": number;
+    "runnable": number;
+    "waiting": number;
+    "syscall": number;
+    "gc": number;
+    "gcWait": number;
+    "networkWait": number;
+    "syncWait": number;
+
+    /** Creates a new TraceStats instance. */
+    constructor($$source: Partial<TraceStats> = {}) {
+        if (!("goroutines" in $$source)) {
+            this["goroutines"] = 0;
+        }
+        if (!("events" in $$source)) {
+            this["events"] = 0;
+        }
+        if (!("running" in $$source)) {
+            this["running"] = 0;
+        }
+        if (!("runnable" in $$source)) {
+            this["runnable"] = 0;
+        }
+        if (!("waiting" in $$source)) {
+            this["waiting"] = 0;
+        }
+        if (!("syscall" in $$source)) {
+            this["syscall"] = 0;
+        }
+        if (!("gc" in $$source)) {
+            this["gc"] = 0;
+        }
+        if (!("gcWait" in $$source)) {
+            this["gcWait"] = 0;
+        }
+        if (!("networkWait" in $$source)) {
+            this["networkWait"] = 0;
+        }
+        if (!("syncWait" in $$source)) {
+            this["syncWait"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TraceStats instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TraceStats {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TraceStats($$parsedSource as Partial<TraceStats>);
     }
 }
 
@@ -2807,7 +3728,33 @@ const $$createType61 = $Create.Array($$createType60);
 const $$createType62 = $Create.Map($Create.Any, $$createType1);
 const $$createType63 = DocProblem.createFrom;
 const $$createType64 = $Create.Array($$createType63);
-const $$createType65 = ToolchainTiming.createFrom;
-const $$createType66 = $Create.Array($$createType65);
-const $$createType67 = ToolchainConfiguration.createFrom;
+const $$createType65 = ProfileFunction.createFrom;
+const $$createType66 = $Create.Array($Create.Any);
+const $$createType67 = ProfileFlame.createFrom;
 const $$createType68 = $Create.Nullable($$createType67);
+const $$createType69 = $Create.Array($$createType68);
+const $$createType70 = ProfileSampleType.createFrom;
+const $$createType71 = $Create.Array($$createType70);
+const $$createType72 = ProfileNode.createFrom;
+const $$createType73 = $Create.Array($$createType72);
+const $$createType74 = ProfileEdge.createFrom;
+const $$createType75 = $Create.Array($$createType74);
+const $$createType76 = ProfileLine.createFrom;
+const $$createType77 = $Create.Array($$createType76);
+const $$createType78 = ToolchainTiming.createFrom;
+const $$createType79 = $Create.Array($$createType78);
+const $$createType80 = ToolchainConfiguration.createFrom;
+const $$createType81 = $Create.Nullable($$createType80);
+const $$createType82 = TraceFrame.createFrom;
+const $$createType83 = $Create.Array($$createType82);
+const $$createType84 = TraceSpan.createFrom;
+const $$createType85 = $Create.Array($$createType84);
+const $$createType86 = TraceGoroutine.createFrom;
+const $$createType87 = $Create.Array($$createType86);
+const $$createType88 = TraceProc.createFrom;
+const $$createType89 = $Create.Array($$createType88);
+const $$createType90 = TraceRange.createFrom;
+const $$createType91 = $Create.Array($$createType90);
+const $$createType92 = TraceEvent.createFrom;
+const $$createType93 = $Create.Array($$createType92);
+const $$createType94 = TraceStats.createFrom;
