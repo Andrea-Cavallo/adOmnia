@@ -134,6 +134,23 @@ fn main() {
 	}
 }
 
+// RS-3.4 con cargo vero: un `[alias]` del progetto viene davvero espanso da cargo.
+func TestRealCargoAliasRuns(t *testing.T) {
+	requireRealCargo(t)
+	if _, err := exec.LookPath("cargo"); err != nil {
+		t.Skip("cargo is not installed (set up Rust to run this check)")
+	}
+	root := writeCrate(t, "fn main() {}\n")
+	writeFile(t, root, ".cargo/config.toml", "[alias]\nqcheck = \"check\"\n")
+	execution, console := runReal(t, root, "alias", `{"alias":"qcheck"}`)
+	if execution.Status != "exited" {
+		t.Fatalf("status = %q console =\n%s", execution.Status, console)
+	}
+	if !strings.Contains(console, "Finished") {
+		t.Fatalf("cargo did not run the alias:\n%s", console)
+	}
+}
+
 // RS-2.2/RS-M10 con cargo vero: un build che non trova il linker MSVC deve arrivare in console già
 // spiegato (Build Tools + Windows SDK), non come errore grezzo. RUSTFLAGS è per comando, non tocca
 // la macchina.

@@ -95,6 +95,21 @@ func rustAnalyzerTargetDir(projectRoot string) string {
 	return filepath.Join(cache, "adomnia", "rust-analyzer-target", strconv.FormatUint(hash.Sum64(), 16))
 }
 
+// cargoAliases unisce gli `[alias]` del `.cargo/config.toml` del progetto e di quello dell'unità
+// (l'unità vince, come fa cargo risalendo le cartelle). Nessuna esecuzione: solo filesystem.
+func cargoAliases(projectRoot, unitRoot string) map[string]string {
+	aliases := map[string]string{}
+	for _, root := range []string{projectRoot, unitRoot} {
+		if root == "" {
+			continue
+		}
+		for name, command := range RustEnvironmentOf(root).Aliases {
+			aliases[name] = command
+		}
+	}
+	return aliases
+}
+
 // cargoHome restituisce CARGO_HOME se impostato, altrimenti il default `~/.cargo`.
 func cargoHome() string {
 	if home := os.Getenv("CARGO_HOME"); home != "" {
