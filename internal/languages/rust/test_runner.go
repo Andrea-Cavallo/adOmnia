@@ -92,12 +92,17 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	if pkg == "" {
 		pkg = filepath.Base(request.WorkingDirectory)
 	}
+	// Lo stesso canale della Run (RS-0.2/RS-2.1): `cargo test` non deve usare una toolchain diversa
+	// da quella scelta per il progetto, e rustup non deve scaricarne una mancante.
+	environment := rustupEnvironment(request.Environment)
+	if toolchain.Channel != "" && !hasEnvironment(environment, "RUSTUP_TOOLCHAIN") {
+		environment = append(environment, "RUSTUP_TOOLCHAIN="+toolchain.Channel)
+	}
 	spec := run.CommandSpec{
 		Executable: toolchain.Cargo, Arguments: arguments,
 		WorkingDirectory: request.WorkingDirectory,
-		// RS-2.1: mai una toolchain scaricata da rustup durante i test.
-		Environment:    rustupEnvironment(request.Environment),
-		DisplayCommand: "cargo " + strings.Join(arguments, " "),
+		Environment:      environment,
+		DisplayCommand:   "cargo " + strings.Join(arguments, " "),
 		// Anche `cargo test` aspetta il lock di `target/`: la stessa spiegazione della Run (RS-3.5).
 		ConsoleLine: runConsole(workspacePaths{directory: request.WorkingDirectory, root: request.Root}),
 	}

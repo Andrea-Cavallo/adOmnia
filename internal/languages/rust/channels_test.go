@@ -5,8 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
+
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // L'elenco di `rustup toolchain list` ha il suffisso ` (default)` e la forma completa della tripla:
@@ -131,5 +135,24 @@ func TestDiscoverToolchainsWithoutChannelAndWithoutOverride(t *testing.T) {
 	found := DiscoverToolchains(root, root)
 	if len(found) != 1 || found[0].Channel != "" || found[0].Source != "PATH" {
 		t.Fatalf("candidates = %+v", found)
+	}
+}
+
+// `cargo test` usa lo stesso canale della Run e non lascia che rustup scarichi una toolchain
+// mancante (RS-0.2, RS-2.1).
+func TestTestCommandPinsTheProjectChannel(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "rust-toolchain.toml", "[toolchain]\nchannel = \"1.80.0\"\n")
+	cargo := writeFile(t, root, "cargo.exe", "")
+	options := `{"toolchain":` + strconv.Quote(cargo) + `}`
+	spec, _, err := New().TestCommand(idetesting.Request{Root: root, WorkingDirectory: root, LanguageOptions: []byte(options)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(spec.Environment, "RUSTUP_TOOLCHAIN=1.80.0") {
+		t.Fatalf("the test command does not pin the project channel: %v", spec.Environment)
+	}
+	if !slices.Contains(spec.Environment, "RUSTUP_AUTO_INSTALL=0") {
+		t.Fatalf("the test command allows an implicit download: %v", spec.Environment)
 	}
 }
