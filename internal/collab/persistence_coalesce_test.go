@@ -2,6 +2,7 @@ package collab
 
 import (
 	"encoding/base64"
+	"errors"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -15,10 +16,49 @@ type countingStore struct {
 }
 
 func (s *countingStore) saveJSON(key string, value any) error {
+	if err := s.recoveryStore.saveJSON(key, value); err != nil {
+		return err
+	}
 	if strings.HasPrefix(key, recoveryDocumentKey) {
 		s.documents.Add(1)
 	}
-	return s.recoveryStore.saveJSON(key, value)
+	return nil
+}
+
+type checkpointWriteProbe struct {
+	recoveryStore
+	save func() error
+}
+
+func (s checkpointWriteProbe) saveJSON(string, any) error { return s.save() }
+
+func TestCountingStoreWaitsForSuccessfulWrite(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	counter := &countingStore{recoveryStore: checkpointWriteProbe{save: func() error {
+		close(started)
+		<-release
+		return nil
+	}}}
+	done := make(chan error, 1)
+	go func() { done <- counter.saveJSON(recoveryDocumentKey+"test", nil) }()
+	<-started
+	before := counter.count()
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if before != 0 || counter.count() != 1 {
+		t.Fatalf("write counts: pending=%d completed=%d", before, counter.count())
+	}
+
+	wantErr := errors.New("write failed")
+	counter.recoveryStore = checkpointWriteProbe{save: func() error { return wantErr }}
+	if err := counter.saveJSON(recoveryDocumentKey+"test", nil); !errors.Is(err, wantErr) {
+		t.Fatalf("write error = %v, want %v", err, wantErr)
+	}
+	if counter.count() != 1 {
+		t.Fatalf("failed write was counted: %d", counter.count())
+	}
 }
 
 // count legge il contatore: il timer di flush scrive da un'altra goroutine.

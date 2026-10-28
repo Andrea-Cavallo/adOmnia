@@ -344,7 +344,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   ]
 
   return (
-    <div className="nothing-studio settings-studio flex h-full w-full min-w-0 bg-surface-0">
+    <div className="nothing-studio settings-studio bg-surface-0">
       {/* Sidebar */}
       <aside aria-label={tu('Settings')} className="settings-sidebar flex w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border-1 bg-surface-1/35 px-3 py-4 max-lg:w-52">
         <h1 className="nothing-studio-title settings-title">{tu('Settings')}</h1>
