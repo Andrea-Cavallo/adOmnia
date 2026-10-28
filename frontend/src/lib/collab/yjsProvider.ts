@@ -13,6 +13,12 @@ export interface DocumentTransport {
   subscribe: (handler: (message: DocumentMessage, from?: string) => void) => () => void
 }
 
+export interface DocumentRecovery {
+  load: () => Promise<string>
+  save: (data: string) => Promise<void>
+  clear: () => Promise<void>
+}
+
 export function encodeBytes(bytes: Uint8Array): string {
   let binary = ''
   for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
@@ -34,22 +40,26 @@ export class CollabYjsProvider {
   private unsubscribe: () => void
   private pending: Uint8Array[] = []
   private timer: ReturnType<typeof setTimeout> | undefined
+  private baselineTimer: ReturnType<typeof setTimeout> | undefined
   private awarenessTimer: ReturnType<typeof setTimeout> | undefined
   private awarenessClients = new Map<string, Set<number>>()
   private destroyed = false
   private paused = false
+  private preserveBaseline = true
   private chain = Promise.resolve()
+  private baselineChain = Promise.resolve()
+  private restoring: Promise<void> | undefined
 
-  constructor(readonly id: string, private transport: DocumentTransport, private onError: (message: string) => void) {
+  constructor(readonly id: string, private transport: DocumentTransport, private onError: (message: string) => void, private recovery?: DocumentRecovery) {
     this.doc.on('update', this.onUpdate)
     this.awareness.on('update', this.onAwareness)
     this.unsubscribe = transport.subscribe((message, from) => {
       if (message.id !== id || this.destroyed) return
       try {
         if (message.action === 'sync' || message.action === 'open') {
-          for (const update of message.updates ?? []) Y.applyUpdate(this.doc, decodeBytes(update), this.remote)
+          this.applyUpdates(message.updates ?? [])
         } else if (message.action === 'update' && message.data) {
-          Y.applyUpdate(this.doc, decodeBytes(message.data), this.remote)
+          this.applyUpdate(message.data)
         } else if (message.action === 'awareness' && message.data) {
           const before = new Set(this.awareness.getStates().keys())
           applyAwarenessUpdate(this.awareness, decodeBytes(message.data), this.remote)
@@ -60,6 +70,8 @@ export class CollabYjsProvider {
           }
         } else if (message.action === 'close') {
           this.paused = true
+          this.preserveBaseline = false
+          if (this.recovery) void this.recovery.clear().catch(error => this.onError(`Cancellazione recovery non riuscita: ${String(error)}`))
           this.onError('L’host ha chiuso la condivisione. Il testo locale resta disponibile.')
         }
       } catch {
@@ -75,11 +87,27 @@ export class CollabYjsProvider {
     return encodeBytes(Y.encodeStateAsUpdate(this.doc))
   }
 
+  applyUpdate(update: string) { Y.applyUpdate(this.doc, decodeBytes(update), this.remote) }
+
+  applyUpdates(updates: string[]) {
+    for (const update of updates) this.applyUpdate(update)
+  }
+
+  restore(): Promise<void> {
+    this.restoring ??= (async () => {
+      if (!this.recovery) return
+      const baseline = await this.recovery.load()
+      if (baseline) this.applyUpdate(baseline)
+    })()
+    return this.restoring
+  }
+
   sync(): Promise<void> { return this.transport.send({ id: this.id, action: 'sync' }) }
 
   suspend(message: string) { this.paused = true; this.onError(message) }
 
   async resume(canEdit: boolean) {
+    await this.restore()
     await this.chain
     this.paused = false
     try {
@@ -106,9 +134,21 @@ export class CollabYjsProvider {
   }
 
   private onUpdate = (update: Uint8Array, origin: unknown) => {
-    if (origin === this.remote || this.destroyed || this.paused) return
+    if (origin === this.remote || this.destroyed) return
+    if (this.recovery && this.preserveBaseline) this.baselineTimer ??= setTimeout(() => this.saveBaseline(), 150)
+    if (this.paused) return
     this.pending.push(update)
     this.timer ??= setTimeout(() => this.flush(), 150)
+  }
+
+  private saveBaseline() {
+    if (this.baselineTimer) clearTimeout(this.baselineTimer)
+    this.baselineTimer = undefined
+    if (!this.recovery || !this.preserveBaseline) return
+    const data = encodeBytes(Y.encodeStateAsUpdate(this.doc))
+    this.baselineChain = this.baselineChain.then(() => this.recovery!.save(data)).catch(error => {
+      this.onError(`Salvataggio recovery non riuscito: ${String(error)}`)
+    })
   }
 
   private flush() {
@@ -132,6 +172,7 @@ export class CollabYjsProvider {
   destroy() {
     if (this.destroyed) return
     this.flush()
+    this.saveBaseline()
     this.destroyed = true
     if (this.awarenessTimer) clearTimeout(this.awarenessTimer)
     this.awareness.setLocalState(null)

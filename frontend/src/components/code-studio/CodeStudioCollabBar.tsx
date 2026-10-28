@@ -10,6 +10,27 @@ import './codeStudioCollab.css'
 
 const rooms = new Map<string, { provider: CollabYjsProvider; binding: MonacoBinding; stop: () => void }>()
 
+function hostProvider(id: string) {
+  return new CollabYjsProvider(id, {
+    send: message => collabApi.document(message),
+    subscribe: handler => subscribeCollabEvents(event => { if (event.type === 'document') handler(event.payload as DocumentMessage, event.from) }),
+  }, message => useCollabStore.setState({ notice: message }))
+}
+
+function attachRoom(id: string, path: string, documentID: string, editor: editor.IStandaloneCodeEditor, provider: CollabYjsProvider, name: string) {
+  const model = editor.getModel()
+  if (!model) throw new Error('Editor non disponibile per la ripresa del documento.')
+  const binding = new MonacoBinding(provider.text, model, new Set([editor]), provider.awareness)
+  provider.awareness.setLocalStateField('user', { name, file: path })
+  const update = () => {
+    const current = useCodeStudioStore.getState().documents.find(d => d.document.id === documentID)
+    if (current && current.buffer !== provider.text.toString()) useCodeStudioStore.getState().updateDocument(current.document.id, provider.text.toString())
+  }
+  provider.text.observe(update)
+  const stop = () => { binding.destroy(); provider.text.unobserve(update); provider.destroy(); rooms.delete(id) }
+  return { provider, binding, stop }
+}
+
 export default function CodeStudioCollabBar({ document, editor }: { document: GoIDEEditorDocument; editor: editor.IStandaloneCodeEditor | null }) {
   const status = useCollabStore(state => state.status)
   const [error, setError] = useState('')
@@ -19,7 +40,7 @@ export default function CodeStudioCollabBar({ document, editor }: { document: Go
   const shared = status?.documents?.includes(id)
   useEffect(() => { useCollabStore.getState().init() }, [])
   const eligible = status?.mode === 'host' && status.project?.sourceSessionId === document.document.sessionId && !document.document.external && !document.document.readOnly
-  if (!eligible) return null
+  const hostName = status?.participants.find(p => p.id === status.self)?.name ?? 'Host'
 
   const share = async () => {
     const model = editor?.getModel()
@@ -33,26 +54,16 @@ export default function CodeStudioCollabBar({ document, editor }: { document: Go
       if (maskSecretValues(content) !== content) throw new Error('Il file contiene un possibile segreto: spostalo nel vault prima di condividerlo.')
       await collabApi.validateProjectDocument(path, content)
       if(model.isDisposed() || model.getVersionId()!==version) throw new Error('Il buffer è cambiato durante la verifica. Ripeti la condivisione: il testo locale è conservato.')
-      provider = new CollabYjsProvider(id, {
-        send: message => collabApi.document(message),
-        subscribe: handler => subscribeCollabEvents(event => { if (event.type === 'document') handler(event.payload as DocumentMessage, event.from) }),
-      }, message => useCollabStore.setState({ notice: message }))
+      provider = hostProvider(id)
       const initial = provider.seed(content)
       await collabApi.openDocument(id, initial)
       opened=true
       if(model.isDisposed() || model.getVersionId()!==version) throw new Error('Il buffer è cambiato durante l’apertura live. Ripeti la condivisione: il testo locale è conservato.')
-      const binding = new MonacoBinding(provider.text, model, new Set([editor!]), provider.awareness)
-      provider.awareness.setLocalStateField('user', { name: status?.participants.find(p => p.id === status.self)?.name ?? 'Host', file: path })
-      const update = () => {
-        const current = useCodeStudioStore.getState().documents.find(d => d.document.id === document.document.id)
-        if (current && current.buffer !== provider!.text.toString()) useCodeStudioStore.getState().updateDocument(current.document.id, provider!.text.toString())
-      }
-      provider.text.observe(update)
-      const stop = () => { binding.destroy(); provider!.text.unobserve(update); provider!.destroy(); rooms.delete(id) }
-      rooms.set(id, { provider, binding, stop })
+      rooms.set(id, attachRoom(id, path, document.document.id, editor!, provider, hostName))
       await useCollabStore.getState().refresh()
     } catch (err) {
       if(opened) void collabApi.document({id,action:'close'}).catch(closeError=>useCollabStore.setState({notice:String(closeError)}))
+      rooms.get(id)?.stop()
       provider?.destroy()
       setError(String(err))
     } finally { setBusy(false) }
@@ -63,6 +74,32 @@ export default function CodeStudioCollabBar({ document, editor }: { document: Go
     catch (err) { setError(String(err)) }
     finally { setBusy(false) }
   }
+  useEffect(() => {
+    if (!eligible || !shared || !editor || rooms.has(id)) return
+    let cancelled = false
+    let provider: CollabYjsProvider | undefined
+    const recover = async () => {
+      setBusy(true); setError('')
+      try {
+        provider = hostProvider(id)
+        const history = await collabApi.documentUpdates(id)
+        if (cancelled) return
+        provider.applyUpdates(history.updates ?? [])
+        if (provider.text.toString() !== editor.getModel()?.getValue()) throw new Error('Il buffer locale e il testo condiviso sono diversi. Nessuna copia è stata modificata: salva o chiudi la condivisione e riallinea i contenuti.')
+        rooms.set(id, attachRoom(id, path, document.document.id, editor, provider, hostName))
+      } catch (err) {
+        if (!cancelled) setError(String(err))
+      } finally {
+        if (!cancelled) setBusy(false)
+      }
+    }
+    void recover()
+    return () => {
+      cancelled = true
+      if (!rooms.has(id)) provider?.destroy()
+    }
+  }, [eligible, shared, id, editor, path, document.document.id, hostName])
+  if (!eligible) return null
   return <div className="flex items-center gap-2 border-b border-border-1 bg-surface-1 px-3 py-1 text-xs">
     <span className="min-w-0 flex-1 text-text-3">{shared ? 'Live · le modifiche dei partecipanti restano nel buffer. Salva per scrivere sul disco.' : 'Progetto condiviso · abilita esplicitamente questo file per la modifica live.'}</span>
     <button type="button" disabled={busy} className="shrink-0 rounded border border-border-2 px-2 py-1 text-accent disabled:opacity-50" onClick={() => void (shared ? stop() : share())}>{shared ? 'Interrompi live' : 'Condividi file live'}</button>

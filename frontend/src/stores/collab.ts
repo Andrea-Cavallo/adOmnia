@@ -41,6 +41,10 @@ interface CollabState {
 
 const MAX_INBOX = 50
 let unsubscribe: (() => void) | null = null
+// Stato di modulo dell'idratazione dell'inbox: la lettura dal backend è asincrona e può arrivare
+// dopo un comando che ha azzerato l'inbox. `inboxReset` lo ricorda; `inboxWrite` accoda i salvataggi.
+let inboxReset = false
+let inboxWrite: Promise<void> = Promise.resolve()
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
@@ -60,6 +64,31 @@ function applyReceived(content: ReceivedContent) {
   }
 }
 
+function persistInbox(inbox: CollabInboxItem[], set: SetState) {
+  // I salvataggi sono accodati: due dismiss ravvicinati non devono scrivere per ultima la lista
+  // vecchia (ogni scrittura sovrascrive quella precedente).
+  inboxWrite = inboxWrite
+    .then(() => collabApi.saveInbox(JSON.stringify(inbox)))
+    .catch(error => { set({ notice: `Recovery inbox non salvato: ${errorText(error)}` }) })
+}
+
+function hydrateInbox(set: SetState, get: () => CollabState) {
+  void collabApi.inbox().then(data => {
+    const parsed: unknown = JSON.parse(data)
+    if (!Array.isArray(parsed)) throw new Error('recovery inbox non valido')
+    // La lettura è partita prima: se nel frattempo l'utente ha aperto una sessione nuova (che azzera
+    // l'inbox) o l'ha già svuotata, la copia salvata non deve risuscitare i vecchi elementi.
+    if (inboxReset) return
+    const local = get().inbox
+    const persisted = (parsed as CollabInboxItem[])
+      .filter((item) => !local.some((entry) => entry.id === item.id))
+      .slice(0, MAX_INBOX)
+    if (persisted.length === 0) return
+    // Un elemento arrivato durante la lettura resta: si aggiunge la copia salvata, non la si impone.
+    set({ inbox: [...local, ...persisted].slice(0, MAX_INBOX) })
+  }).catch(error => set({ notice: `Recovery inbox non disponibile: ${errorText(error)}` }))
+}
+
 export const useCollabStore = create<CollabState>((set, get) => ({
   status: null,
   invites: [],
@@ -70,6 +99,7 @@ export const useCollabStore = create<CollabState>((set, get) => ({
   init: () => {
     if (unsubscribe) return
     unsubscribe = subscribeCollabEvents((event) => handleEvent(event, set, get))
+    hydrateInbox(set, get)
     void get().refresh()
   },
 
@@ -82,16 +112,19 @@ export const useCollabStore = create<CollabState>((set, get) => ({
   },
 
   host: async (ip, port, name) => {
-    set({ status: await collabApi.host(ip, port, name), invites: [], notice: null })
+    set({ status: await collabApi.host(ip, port, name), invites: [], inbox: [], notice: null })
+    inboxReset = true
   },
 
   join: async (code, name) => {
-    set({ status: await collabApi.join(code, name), notice: null })
+    set({ status: await collabApi.join(code, name), inbox: [], notice: null })
+    inboxReset = true
   },
 
   stop: async () => {
     await collabApi.stop()
-    set({ invites: [] })
+    set({ invites: [], inbox: [] })
+    inboxReset = true
     await get().refresh()
   },
 
@@ -118,10 +151,16 @@ export const useCollabStore = create<CollabState>((set, get) => ({
     const item = get().inbox.find((entry) => entry.id === id)
     if (!item?.content) return
     applyReceived(item.content)
-    set((s) => ({ inbox: s.inbox.filter((entry) => entry.id !== id), notice: `Importato: ${item.title}` }))
+    const inbox = get().inbox.filter(entry => entry.id !== id)
+    set({ inbox, notice: `Importato: ${item.title}` })
+    persistInbox(inbox, set)
   },
 
-  dismiss: (id) => set((s) => ({ inbox: s.inbox.filter((entry) => entry.id !== id) })),
+  dismiss: (id) => {
+    const inbox = get().inbox.filter(entry => entry.id !== id)
+    set({ inbox })
+    persistInbox(inbox, set)
+  },
   clearNotice: () => set({ notice: null }),
 }))
 
@@ -142,7 +181,8 @@ function handleEvent(event: CollabEvent, set: SetState, get: () => CollabState) 
     return
   }
   if (event.type === 'closed') {
-    set({ invites: [], notice: typeof event.payload === 'string' ? event.payload : 'Sessione chiusa' })
+    inboxReset = true
+    set({ invites: [], inbox: [], notice: typeof event.payload === 'string' ? event.payload : 'Sessione chiusa' })
     void get().refresh()
     return
   }
@@ -163,6 +203,8 @@ function handleEvent(event: CollabEvent, set: SetState, get: () => CollabState) 
     } catch (error) {
       item.error = errorText(error)
     }
-    set((s) => ({ inbox: [item, ...s.inbox.filter(entry=>entry.id!==item.id && !(item.sourceId && entry.sourceId===item.sourceId && entry.senderId===item.senderId))].slice(0, MAX_INBOX), notice: `${from} ha condiviso ${item.title}` }))
+    const inbox = [item, ...get().inbox.filter(entry => entry.id !== item.id && !(item.sourceId && entry.sourceId === item.sourceId && entry.senderId === item.senderId))].slice(0, MAX_INBOX)
+    set({ inbox, notice: `${from} ha condiviso ${item.title}` })
+    persistInbox(inbox, set)
   }
 }
