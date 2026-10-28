@@ -4,6 +4,7 @@ import (
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -33,6 +34,7 @@ func (s *Service) GetRunSuggestions(sessionID string) ([]run.Suggestion, error) 
 	}
 	suggestions = append(suggestions, scriptSuggestions(session.Project.RealPath)...)
 	suggestions = append(suggestions, procfileSuggestions(session.Project.RealPath)...)
+	suggestions = append(suggestions, buildToolSuggestions(session.Project.RealPath, exec.LookPath)...)
 	return finalizeSuggestions(session.Project.RealPath, suggestions, s.runConfigs.List(SessionID(sessionID))), nil
 }
 
