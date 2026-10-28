@@ -115,6 +115,14 @@ Same IDE, another language: a Maven/Spring project with Eclipse JDT LS, Javadoc 
   <img src="assets/screenshots/code-studio-java.png" alt="Code Studio editing a Java Maven project with Eclipse JDT LS" width="100%">
 </p>
 
+### How Code Studio is built
+
+The UI calls one stable Wails service (`GoIDE`). The host in `internal/codestudio` keeps the sessions and the trust check and wires a language-agnostic IDE core (`internal/ide/*`). Each language plugs into that core as an adapter (`internal/languages/*`) and publishes its routes to Developer Context, so API Workspace, Mock and Live Session see them. Language servers, debuggers and toolchains start as child processes only for trusted projects, and events come back to the UI by session. Details: [Code Studio technical reference](docs/CODE-STUDIO-REFERENCE.md).
+
+<p align="center">
+  <img src="assets/images/code-studio-interactions.svg" alt="Code Studio architecture: React UI, Wails GoIDE service, codestudio host, IDE core, language adapters, language servers, debuggers and toolchains, local state and Developer Context" width="100%">
+</p>
+
 ### Debugger
 
 Stop on a breakpoint and inspect goroutines, call stack, locals and globals, with inline values in the editor, breakpoints, memory, disassembly and an evaluate console.
