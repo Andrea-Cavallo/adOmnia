@@ -48,7 +48,7 @@ function CallTree({
   direction: CallDirection
   expand: ExpandCalls
   selected: string
-  onSelect: (item: GoIDEHierarchyItem) => void
+  onSelect: (item: GoIDEHierarchyItem, direction: CallDirection) => void
   onOpen: (item: GoIDEHierarchyItem) => void
   ancestors?: Set<string>
   query: string
@@ -100,7 +100,7 @@ function CallTree({
         </button>
         <button
           type="button"
-          onClick={() => onSelect(item)}
+          onClick={() => onSelect(item, direction)}
           onDoubleClick={() => onOpen(item)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
@@ -198,6 +198,12 @@ export function CodeStudioFunctionExplorer({ view, side, onSideChange, onClose }
   }
 
   const [selected, setSelected] = useState(view.root)
+  // Incoming call sites are lines inside the selected caller: the preview highlights them.
+  const [callSiteLines, setCallSiteLines] = useState<number[]>([])
+  const select = useCallback((item: GoIDEHierarchyItem, direction?: CallDirection) => {
+    setSelected(item)
+    setCallSiteLines(direction === 'incoming' ? (item.callSites ?? []).map((site) => site.startLine) : [])
+  }, [])
   const [query, setQuery] = useState('')
   const [depth, setDepth] = useState(2)
   const [preview, setPreview] = useState<GoIDEQuickDefinition | null>(null)
@@ -318,18 +324,18 @@ export function CodeStudioFunctionExplorer({ view, side, onSideChange, onClose }
       item: view.root,
       expand,
       selected: selectionKey,
-      onSelect: setSelected,
+      onSelect: select,
       onOpen: open,
       query,
     }),
-    [view.root, expand, selectionKey, query],
+    [view.root, expand, selectionKey, select, query],
   )
   const content = (
     <div ref={contentPane} className="fe-content" style={{ '--fe-source-share': sourceShare } as CSSProperties}>
       <div className="fe-current">
         <p className="fe-current-label">Current function</p>
         <button
-          onClick={() => setSelected(view.root)}
+          onClick={() => select(view.root)}
           onDoubleClick={() => open(view.root)}
           className="fe-current-name"
         >
@@ -379,7 +385,7 @@ export function CodeStudioFunctionExplorer({ view, side, onSideChange, onClose }
                   subtitle: node.data.location.relativePath,
                   color: 'var(--color-text-2)',
                 })}
-                onSelect={(node) => setSelected(node.data)}
+                onSelect={(node) => select(node.data)}
                 onOpen={(node) => open(node.data)}
               />
               {graph.limited && (
@@ -492,6 +498,7 @@ export function CodeStudioFunctionExplorer({ view, side, onSideChange, onClose }
             path={preview.location.path || selected.location.path}
             startLine={preview.startLine || selected.location.range.startLine}
             truncated={preview.truncated}
+            highlightLines={callSiteLines}
           />
         )}
       </section>

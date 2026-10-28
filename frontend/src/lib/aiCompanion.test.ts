@@ -15,7 +15,8 @@ describe('a0 companion protocol', () => {
 
     expect(prompt.system).toContain('Mock Server')
     expect(prompt.system).toContain('Database Studio')
-    expect(prompt.system).toContain('MCP')
+    // The MCP Server Generator panel was removed: the capability map must not advertise it.
+    expect(prompt.system).not.toContain('MCP Server Generator')
     expect(prompt.system).toContain('generate-mock')
     expect(prompt.user).toContain('Relevant adOmnia capabilities')
   })

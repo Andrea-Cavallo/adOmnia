@@ -45,6 +45,12 @@ export interface IdeLanguageContribution {
    * restano spenti finché JDT LS non li serve davvero.
    */
   codeVision?: boolean
+  /**
+   * Inlay hints del language server (nomi dei parametri, tipi dedotti) anche con `heavyFeatures:
+   * false`: il provider è generico (LSP `textDocument/inlayHint`) e parte solo se il server li
+   * annuncia nelle sue capability. Falso per default sui linguaggi non-Go finché non sono provati.
+   */
+  inlayHints?: boolean
   /** Colori semantici (semantic tokens del language server) anche con `heavyFeatures: false`: sono generici, non tarati su gopls. */
   semanticTokens?: boolean
   /**
@@ -91,6 +97,14 @@ export function languageServerEditorLanguages(): string[] {
 /** ID Monaco su cui registrare le funzioni pesanti (colori semantici, inlay hints, Code Vision). */
 export function heavyFeatureEditorLanguages(): string[] {
   return IDE_LANGUAGES.filter((language) => language.heavyFeatures !== false).flatMap((language) => language.editorLanguages)
+}
+
+/**
+ * ID Monaco su cui registrare il provider degli inlay hints: le funzioni pesanti più i linguaggi che
+ * li chiedono da soli (il provider è generico e parte solo se il server li annuncia).
+ */
+export function inlayHintEditorLanguages(): string[] {
+  return IDE_LANGUAGES.filter((language) => language.heavyFeatures !== false || language.inlayHints).flatMap((language) => language.editorLanguages)
 }
 
 /** ID Monaco su cui registrare i colori semantici: le funzioni pesanti più i linguaggi che li chiedono da soli. */

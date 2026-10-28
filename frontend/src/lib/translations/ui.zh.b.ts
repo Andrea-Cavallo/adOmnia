@@ -507,7 +507,6 @@ export const ZH_NAVIGATION_MESSAGES: Record<string, string> = {
   "Design": "设计",
   "Mock & Intercept": "Mock 与拦截",
   "Protocols": "协议",
-  "MCP Server Generator": "MCP 服务器生成器",
   "Streaming": "流式传输",
   "Enterprise": "企业",
   "Infrastructure": "基础设施",

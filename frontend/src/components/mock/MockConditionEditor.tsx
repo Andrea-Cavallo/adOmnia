@@ -62,7 +62,7 @@ export function MockConditionEditor({ conditions, onChange }: MockConditionEdito
   return (
     <div className="flex flex-col gap-2">
       {conditions.length === 0 && (
-        <div className="rounded border border-dashed border-border-2 bg-surface-1 px-2 py-2 text-[10px] text-text-4">
+        <div className="rounded border border-dashed border-border-2 bg-surface-1 px-2 py-2 text-[12px] text-text-3">
           No conditions. This response always matches and can be used as a fallback.
         </div>
       )}
@@ -72,7 +72,7 @@ export function MockConditionEditor({ conditions, onChange }: MockConditionEdito
           <select
             value={condition.source}
             onChange={(event) => update(index, { source: event.target.value as MockCondition['source'] })}
-            className="h-6 px-1.5 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 outline-none focus:border-accent"
+            className="h-8 px-1.5 bg-surface-2 border border-border-2 rounded text-[12px] text-text-1 outline-none focus:border-accent"
           >
             {SOURCE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -83,13 +83,13 @@ export function MockConditionEditor({ conditions, onChange }: MockConditionEdito
             value={condition.field}
             onChange={(event) => update(index, { field: event.target.value })}
             placeholder={fieldPlaceholder(condition.source)}
-            className="h-6 px-2 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4"
+            className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-[12px] text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-3"
           />
 
           <select
             value={condition.operator}
             onChange={(event) => update(index, { operator: event.target.value as MockCondition['operator'] })}
-            className="h-6 px-1.5 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 outline-none focus:border-accent"
+            className="h-8 px-1.5 bg-surface-2 border border-border-2 rounded text-[12px] text-text-1 outline-none focus:border-accent"
           >
             {OPERATOR_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -97,7 +97,7 @@ export function MockConditionEditor({ conditions, onChange }: MockConditionEdito
           </select>
 
           {hidesValue(condition.operator) ? (
-            <div className="h-6 rounded border border-border-1 bg-surface-1 px-2 text-[10px] text-text-4 flex items-center">
+            <div className="h-8 rounded border border-border-1 bg-surface-1 px-2 text-[12px] text-text-3 flex items-center">
               no value
             </div>
           ) : (
@@ -105,13 +105,13 @@ export function MockConditionEditor({ conditions, onChange }: MockConditionEdito
               value={condition.value}
               onChange={(event) => update(index, { value: event.target.value })}
               placeholder="expected"
-              className="h-6 px-2 bg-surface-2 border border-border-2 rounded text-[10px] text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-4"
+              className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-[12px] text-text-1 font-mono outline-none focus:border-accent placeholder:text-text-3"
             />
           )}
 
           <button
             onClick={() => remove(index)}
-            className="w-6 h-6 flex items-center justify-center rounded text-text-4 hover:text-error hover:bg-surface-3"
+            className="w-6 h-8 flex items-center justify-center rounded text-text-3 hover:text-error hover:bg-surface-3"
             type="button"
           >
             <Trash2 size={10} />
@@ -122,13 +122,13 @@ export function MockConditionEditor({ conditions, onChange }: MockConditionEdito
       <div className="flex items-center justify-between gap-2">
         <button
           onClick={add}
-          className="flex items-center gap-1 text-[10px] text-accent hover:text-accent-light"
+          className="flex items-center gap-1 text-[12px] text-accent hover:text-accent-light"
           type="button"
         >
           <Plus size={10} /> Add condition
         </button>
         {conditions.length > 0 && (
-          <span className="text-[9px] text-text-4">All rows must match. Empty conditions always match.</span>
+          <span className="text-[12px] text-text-3">All rows must match. Empty conditions always match.</span>
         )}
       </div>
     </div>

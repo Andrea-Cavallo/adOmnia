@@ -1,4 +1,4 @@
-import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUnitDependencies, RustToolchainReport, ServerInstallPreview } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUnitDependencies, RustCacheCleanReport, RustEnvironmentReport, RustToolchainReport, ServerInstallPreview } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/python/models'
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
@@ -889,6 +889,16 @@ export async function previewRustToolchainInstall(sessionId: string, channel: st
 /** Albero delle dipendenze dal Cargo.lock (offline) con i duplicati di versione in evidenza. */
 export async function getRustDependencyTree(sessionId: string): Promise<CargoTreeNode[]> {
   return GoIDEBindings.RustDependencyTree(sessionId)
+}
+
+/** Ambiente Rust del progetto: variabili, `.cargo/config.toml`, cache di rust-analyzer, Low resources (RS-2). */
+export async function getRustEnvironment(sessionId: string): Promise<RustEnvironmentReport> {
+  return GoIDEBindings.RustEnvironment(sessionId)
+}
+
+/** Cancella la cache target di rust-analyzer dopo una conferma esplicita; mai la cartella dell'utente. */
+export async function cleanRustAnalyzerCache(sessionId: string, confirmed: boolean): Promise<RustCacheCleanReport> {
+  return GoIDEBindings.CleanRustAnalyzerCache(sessionId, confirmed)
 }
 
 /** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */

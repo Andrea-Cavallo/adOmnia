@@ -90,19 +90,24 @@ var pathCargo = func() string {
 }
 
 // DiscoverToolchains elenca i candidati statici: cargo del PATH più il canale dichiarato dal
-// progetto. Non esegue nulla: versione e host arrivano dal probe separato.
+// progetto o, se il progetto non ne dichiara uno, l'override `RUSTUP_TOOLCHAIN` dell'ambiente
+// (RS-2.1). Non esegue nulla: versione, host e canali installati arrivano dai probe separati.
 func DiscoverToolchains(boundary, start string) []Toolchain {
 	var found []Toolchain
-	channel := ToolchainChannel(boundary, start)
-	if cargo := pathCargo(); cargo != "" {
-		source := "PATH"
-		if channel != "" {
-			source = "project"
+	channel, source := ToolchainChannel(boundary, start), "project"
+	if channel == "" {
+		// Il progetto non dichiara un canale: vale l'override esplicito dell'ambiente.
+		if override := strings.TrimSpace(os.Getenv("RUSTUP_TOOLCHAIN")); override != "" {
+			channel, source = override, "RUSTUP_TOOLCHAIN"
+		} else {
+			source = "PATH"
 		}
+	}
+	if cargo := pathCargo(); cargo != "" {
 		found = append(found, Toolchain{Cargo: filepath.Clean(cargo), Channel: channel, Source: source})
 	} else if channel != "" {
 		// Un canale dichiarato senza cargo nel PATH: la toolchain esiste solo come canale.
-		found = append(found, Toolchain{Channel: channel, Source: "project",
+		found = append(found, Toolchain{Channel: channel, Source: source,
 			Problem: "the declared toolchain is not available: no cargo in PATH"})
 	}
 	return found
@@ -150,6 +155,8 @@ func readToolchainInfo(cargo string) (host, version string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), toolchainProbeTimeout)
 	defer cancel()
 	command := procutil.CommandContext(ctx, rustc, "-vV")
+	// RS-2.1: il probe non deve mai far scaricare una toolchain a rustup.
+	command.Env = rustupEnvironment(os.Environ())
 	process.Configure(command, false)
 	stdout, err := command.StdoutPipe()
 	if err != nil {

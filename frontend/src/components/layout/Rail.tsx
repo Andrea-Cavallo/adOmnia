@@ -14,7 +14,7 @@ import { canDetachPanel } from '@/lib/panel-windows-api'
 import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindows'
 import './Rail.css'
 import {
-  Send, LayoutList, Shield, ShieldAlert, Server, Radio, Bug, Container, Network,
+  Send, LayoutList, Shield, ShieldAlert, Server, Radio, Bug, Container,
   Wrench, FileText, FileCode, FileBox, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
@@ -62,7 +62,6 @@ export const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   broker: Server,
   grpc: Send,
   soap: FileBox,
-  mcp: Network,
   mock: Server,
   proxy: Shield,
   dockerlab: Container,

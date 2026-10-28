@@ -54,6 +54,23 @@ func validDocumentID(id string) bool {
 	return len(id) > 0 && len(id) <= 160 && !strings.ContainsAny(id, "\x00\r\n")
 }
 
+// DocumentUpdates returns a host document history for reattaching a recovered editor.
+func (m *Manager) DocumentUpdates(id string) (DocumentMessage, error) {
+	if !validDocumentID(id) {
+		return DocumentMessage{}, errors.New("ID documento non valido")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.mode != ModeHost {
+		return DocumentMessage{}, errNotHost
+	}
+	room := m.documents[id]
+	if room == nil {
+		return DocumentMessage{}, errors.New("documento non condiviso")
+	}
+	return DocumentMessage{ID: id, Action: "sync", Updates: append([]string(nil), room.updates...)}, nil
+}
+
 // OpenDocument registers a host-reviewed document with its initial Yjs state.
 // IDs are opaque identifiers, never filesystem paths accepted from a guest.
 func (m *Manager) OpenDocument(id, initial string) error {
@@ -65,17 +82,19 @@ func (m *Manager) OpenDocument(id, initial string) error {
 		return errors.New("ID documento non valido")
 	}
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.mode != ModeHost {
+		m.mu.Unlock()
 		return errNotHost
 	}
 	if m.documents == nil {
 		m.documents = map[string]*documentRoom{}
 	}
 	if _, exists := m.documents[id]; exists {
+		m.mu.Unlock()
 		return errors.New("documento già condiviso")
 	}
 	if len(m.documents) >= maxSharedDocuments {
+		m.mu.Unlock()
 		return errors.New("troppi documenti condivisi")
 	}
 	m.documents[id] = &documentRoom{updates: []string{initial}, bytes: size}
@@ -83,6 +102,9 @@ func (m *Manager) OpenDocument(id, initial string) error {
 	for _, p := range m.peers {
 		p.enqueue(e)
 	}
+	m.mu.Unlock()
+	m.checkpointDocumentNow(id)
+	m.checkpointSession()
 	return nil
 }
 
@@ -162,6 +184,7 @@ func (m *Manager) relayDocument(from string, payload jsonv1.RawMessage) string {
 			p.enqueue(reply)
 		}
 		m.mu.Unlock()
+		m.checkpointSession()
 		if host {
 			m.emit(reply)
 		}
@@ -185,6 +208,16 @@ func (m *Manager) relayDocument(from string, payload jsonv1.RawMessage) string {
 		}
 	}
 	m.mu.Unlock()
+	if message.Action == "close" {
+		m.checkpointSession()
+		m.checkpointDocumentNow(message.ID)
+	} else {
+		if message.Action == "update" {
+			// Accodato: ogni battuta non deve riscrivere l'intera cronologia su bbolt.
+			m.scheduleDocumentCheckpoint(message.ID)
+		}
+		m.checkpointSession()
+	}
 	if !host {
 		m.emit(e)
 	}

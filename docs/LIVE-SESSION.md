@@ -1,10 +1,15 @@
 # Live Development Session
 
-A Go service started from Code Studio (Run or Debug) becomes a **live
+A service started from Code Studio (Run or Debug) becomes a **live
 session** that every adOmnia tool sees: the API Workspace, the Log
 Inspector, Database Studio, Broker Studio, the Interceptor and Browser
 Debug. The developer works on `users-service`, not on "the IDE" and "the
 API client".
+
+Any run whose kind is long-lived qualifies: a Go `go run` or compiled
+binary, a Rust `cargo run` of a `bin` or an `example`, and a Python
+`script`/`module` such as `python -m uvicorn app:app` or
+`python manage.py runserver`. Builds, checks and tests never open a session.
 
 ```text
 code → running service → API request → breakpoint → code → response
@@ -71,7 +76,8 @@ handshake carries both headers, the client shows *Connection logs*, and
 In order: the `PORT` the run configuration injected, an address the service
 prints (`listening on :8080`, `http://localhost:8080`, `addr=[::]:8443`), a
 listening socket that appeared after the start and does not belong to
-tooling (dlv, gopls, go). Click the port in the debug bar to set it by hand.
+tooling (dlv, gopls, go, cargo, rustc, rust-analyzer, CodeLLDB). Click the
+port in the debug bar to set it by hand.
 
 ## SQL and Kafka
 

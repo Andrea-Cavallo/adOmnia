@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { AtSign, Loader2 } from 'lucide-react'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { requestWorkspaceSymbols, type GoIDEWorkspaceSymbol } from '@/lib/code-studio-lsp-api'
+import { languageOfPath } from '@/lib/code-studio/projectUnits'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import { CodeStudioSymbolIcon } from './CodeStudioSymbolIcon'
 import { navigateToLocation } from './codeStudioLanguageFeatures'
 import { CodeStudioPalette } from './CodeStudioModal'
@@ -18,6 +20,9 @@ interface CodeStudioSymbolSearchProps {
 export function CodeStudioSymbolSearch({ open, sessionId, onClose }: CodeStudioSymbolSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GoIDEWorkspaceSymbol[]>([])
+  // Il progetto serve solo alle etichette: dice a quale unità (quindi a quale linguaggio) appartiene
+  // ogni simbolo, così una lista mista non resta ambigua (6.5).
+  const project = useCodeStudioStore(state => state.sessions.find(session => session.id === sessionId)?.project)
   const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,23 +83,27 @@ export function CodeStudioSymbolSearch({ open, sessionId, onClose }: CodeStudioS
       meta={loading ? <Loader2 size={14} className="animate-spin" /> : results.length ? `${results.length} symbols` : 'gopls'}
     >
       <div ref={listRef} role="listbox" aria-label="Symbols">
-        {results.map((symbol, index) => (
-          <button
-            key={`${symbol.location.uri}:${symbol.location.range.startLine}:${symbol.name}`}
-            data-index={index}
-            role="option"
-            aria-selected={index === selected}
-            type="button"
-            onMouseMove={() => setSelected(index)}
-            onClick={() => choose(symbol)}
-            className="gs-palette-item"
-          >
-            <CodeStudioSymbolIcon kind={symbol.kind} size={14} />
-            <span className="gs-palette-item-title">{symbol.name}</span>
-            {symbol.container && <span className="shrink-0 text-[12px] text-text-3">{symbol.container}</span>}
-            <span className="gs-palette-item-detail gs-mono text-right text-[11px]">{symbol.location.relativePath || symbol.location.path}:{symbol.location.range.startLine}{symbol.location.external ? ' · SDK' : ''}</span>
-          </button>
-        ))}
+        {results.map((symbol, index) => {
+          const language = languageOfPath(project, symbol.location.path)
+          return (
+            <button
+              key={`${symbol.location.uri}:${symbol.location.range.startLine}:${symbol.name}`}
+              data-index={index}
+              role="option"
+              aria-selected={index === selected}
+              type="button"
+              onMouseMove={() => setSelected(index)}
+              onClick={() => choose(symbol)}
+              className="gs-palette-item"
+            >
+              <CodeStudioSymbolIcon kind={symbol.kind} size={14} />
+              <span className="gs-palette-item-title">{symbol.name}</span>
+              {symbol.container && <span className="shrink-0 text-[12px] text-text-3">{symbol.container}</span>}
+              {language && <span className="gs-badge shrink-0" title={`Language: ${language.name}`}>{language.name}</span>}
+              <span className="gs-palette-item-detail gs-mono text-right text-[11px]">{symbol.location.relativePath || symbol.location.path}:{symbol.location.range.startLine}{symbol.location.external ? ' · SDK' : ''}</span>
+            </button>
+          )
+        })}
         {error && <p className="gs-palette-empty text-danger">{error}</p>}
         {!error && !loading && query.trim() && results.length === 0 && <p className="gs-palette-empty">No matching symbols.</p>}
         {!query.trim() && <p className="gs-palette-empty">Types, functions, methods and fields across the project and its dependencies.</p>}

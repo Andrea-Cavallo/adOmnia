@@ -143,6 +143,18 @@ func TestRealRustAnalyzerAnalysesWorkspace(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
+	// Le capability annunciate decidono quali provider l'editor registra: semantic tokens, inlay
+	// hints e Code Vision (symbols/references) per Rust dipendono da qui (RS-4).
+	var init struct {
+		Capabilities struct {
+			SemanticTokensProvider *struct {
+				Legend struct {
+					TokenTypes []string `json:"tokenTypes"`
+				} `json:"legend"`
+			} `json:"semanticTokensProvider"`
+			InlayHintProvider jsonv1.RawMessage `json:"inlayHintProvider"`
+		} `json:"capabilities"`
+	}
 	if err := conn.Call(ctx, "initialize", map[string]any{
 		"processId": nil,
 		"rootUri":   analyzerURI(root),
@@ -151,8 +163,14 @@ func TestRealRustAnalyzerAnalysesWorkspace(t *testing.T) {
 			"textDocument": map[string]any{"publishDiagnostics": map[string]any{}, "synchronization": map[string]any{}, "completion": map[string]any{}},
 			"window":       map[string]any{"workDoneProgress": true},
 		},
-	}, nil); err != nil {
+	}, &init); err != nil {
 		t.Fatalf("initialize: %v", err)
+	}
+	if init.Capabilities.SemanticTokensProvider == nil || len(init.Capabilities.SemanticTokensProvider.Legend.TokenTypes) == 0 {
+		t.Fatalf("rust-analyzer did not announce semantic tokens: %+v", init.Capabilities)
+	}
+	if len(init.Capabilities.InlayHintProvider) == 0 || string(init.Capabilities.InlayHintProvider) == "false" {
+		t.Fatalf("rust-analyzer did not announce inlay hints: %s", init.Capabilities.InlayHintProvider)
 	}
 	_ = conn.Notify("initialized", map[string]any{})
 	_ = conn.Notify("workspace/didChangeConfiguration", map[string]any{"settings": spec.Configuration()})
@@ -200,6 +218,30 @@ func TestRealRustAnalyzerAnalysesWorkspace(t *testing.T) {
 		params["newName"] = "sum"
 		answer := call("textDocument/rename", params)
 		return strings.Count(answer, `"sum"`) >= 2, answer
+	})
+
+	// RS-4: token semantici, inlay hints e Code Vision (document symbols + references) sul server vero.
+	eventually(t, "semantic tokens", time.Minute, func() (bool, string) {
+		answer := call("textDocument/semanticTokens/full", map[string]any{"textDocument": map[string]any{"uri": uri}})
+		return strings.Contains(answer, `"data":[`) && !strings.Contains(answer, `"data":[]`), answer
+	})
+	eventually(t, "inlay hints", time.Minute, func() (bool, string) {
+		params := map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+			"range":        map[string]any{"start": map[string]any{"line": 0, "character": 0}, "end": map[string]any{"line": 5, "character": 0}},
+		}
+		answer := call("textDocument/inlayHint", params)
+		return strings.Contains(answer, `"position"`), answer
+	})
+	eventually(t, "document symbols for Code Vision", time.Minute, func() (bool, string) {
+		answer := call("textDocument/documentSymbol", map[string]any{"textDocument": map[string]any{"uri": uri}})
+		return strings.Contains(answer, `"name"`), answer
+	})
+	eventually(t, "references for Code Vision", time.Minute, func() (bool, string) {
+		params := position(1, 24)
+		params["context"] = map[string]any{"includeDeclaration": true}
+		answer := call("textDocument/references", params)
+		return strings.Contains(filepath.ToSlash(answer), "app/src/main.rs"), answer
 	})
 }
 

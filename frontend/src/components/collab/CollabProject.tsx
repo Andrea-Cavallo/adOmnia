@@ -83,11 +83,12 @@ function RemoteCode({id,path,content,live}:{id:string;path:string;content:string
   const status=useCollabStore(state=>state.status)
   const theme=useSettingsStore(state=>state.settings.appearance.theme)
   const [error,setError]=useState('')
+  const [ready,setReady]=useState(false)
   const [editor,setEditor]=useState<Parameters<OnMount>[0] | null>(null)
   const statusRef=useRef(status)
   useEffect(()=>{statusRef.current=status})
   const role=status?.participants.find(p=>p.id===status.self)?.role
-  const editable=live && role!==undefined && role!=='viewer' && status?.mode==='guest' && !status.disconnected
+  const editable=ready && live && role!==undefined && role!=='viewer' && status?.mode==='guest' && !status.disconnected
   useEffect(()=>{
     const model=editor?.getModel()
     if(!live || !editor || !model)return
@@ -105,17 +106,21 @@ function RemoteCode({id,path,content,live}:{id:string;path:string;content:string
           for(const p of statusRef.current?.participants ?? [])if(!active.has(p.id))provider.removeParticipant(p.id)
         }
       }),
-    },setError)
-    // Bind an empty Y.Text, then request host history. Never seed guest disk text.
+    },setError,{
+      load:()=>collabApi.documentBaseline(id),
+      save:data=>collabApi.saveDocumentBaseline(id,data),
+      clear:()=>collabApi.deleteDocumentBaseline(id),
+    })
+    // Restore local Yjs updates before binding and requesting the host history.
     const binding=new MonacoBinding(provider.text,model,new Set([editor]),provider.awareness)
     provider.awareness.setLocalStateField('user',{name:statusRef.current?.participants.find(p=>p.id===statusRef.current?.self)?.name ?? 'Guest',file:path})
-    void provider.sync().catch(err=>setError(String(err)))
+    void provider.restore().then(()=>provider.sync()).then(()=>setReady(true)).catch(err=>setError(String(err)))
     return ()=>{binding.destroy();provider.destroy()}
   },[id,live,editor,path])
   const extension=path.split('.').pop() ?? ''
   const language:Record<string,string>={go:'go',ts:'typescript',tsx:'typescript',js:'javascript',json:'json',md:'markdown',py:'python',rs:'rust',sql:'sql',yaml:'yaml',yml:'yaml'}
   return <div className="space-y-1">
-    <p className="text-xs text-text-3">{live ? editable ? 'Modifica live · il salvataggio su disco spetta all’host.' : 'Live · sola lettura' : 'Snapshot · sola lettura'}</p>
+    <p className="text-xs text-text-3">{live ? !ready ? 'Ripristino del documento condiviso…' : editable ? 'Modifica live · il salvataggio su disco spetta all’host.' : 'Live · sola lettura' : 'Snapshot · sola lettura'}</p>
     {error && <p role="alert" className="text-xs text-status-err">{error}</p>}
     <div className="h-80 overflow-hidden rounded border border-border-1">
       <Editor path={`collab://${id}`} defaultValue={live?'':content} language={language[extension] ?? 'plaintext'} theme={theme==='light'?CODE_STUDIO_THEMES.light:CODE_STUDIO_THEMES.dark} beforeMount={applyCodeStudioMonacoThemes} onMount={setEditor} options={{automaticLayout:true,readOnly:!editable || !!error,fontFamily:'var(--font-mono)',fontSize:13,minimap:{enabled:false},scrollBeyondLastLine:false}} />

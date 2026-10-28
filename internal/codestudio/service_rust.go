@@ -43,6 +43,9 @@ func (s *Service) RustToolchains(sessionID string) (RustToolchainReport, error) 
 	}
 	if session.Project.Authorization == AuthorizationPermitted {
 		report.Installed = rust.ProbeToolchains(report.Installed)
+		// RS-2.1: un canale dichiarato e non installato è uno stato esplicito con il comando da
+		// eseguire, non un download silenzioso alla prima Run.
+		report.Installed = rust.MarkMissingChannels(report.Installed)
 		report.Probed = true
 	}
 	return report, nil
@@ -86,6 +89,72 @@ func (s *Service) RustDependencyTree(sessionID string) ([]rust.CargoTreeNode, er
 		return nil, err
 	}
 	return rust.CargoLockTree(root)
+}
+
+// RustEnvironmentReport è la vista dell'ambiente Rust del progetto (RS-2): le variabili e il
+// `.cargo/config.toml` letti dal solo filesystem, la cartella che rust-analyzer usa come target e
+// lo stato dell'opzione "Low resources".
+type RustEnvironmentReport struct {
+	Environment rust.RustEnvironment `json:"environment"`
+	// AnalyzerTargetDir è la cartella target dedicata a rust-analyzer; "" quando è dell'utente
+	// (`CARGO_TARGET_DIR` impostato) o non gestita.
+	AnalyzerTargetDir    string `json:"analyzerTargetDir,omitempty"`
+	AnalyzerCacheBytes   int64  `json:"analyzerCacheBytes"`
+	AnalyzerCacheManaged bool   `json:"analyzerCacheManaged"`
+	LowResources         bool   `json:"lowResources"`
+}
+
+// RustEnvironment legge l'ambiente Rust del progetto senza eseguire nulla (RS-2, RS-2.5).
+func (s *Service) RustEnvironment(sessionID string) (RustEnvironmentReport, error) {
+	root, err := s.SessionRoot(sessionID)
+	if err != nil {
+		return RustEnvironmentReport{}, err
+	}
+	report := RustEnvironmentReport{
+		Environment:  rust.RustEnvironmentOf(root),
+		LowResources: rust.ProjectLowResources(root),
+	}
+	if dir := rust.AnalyzerCacheDir(root); dir != "" {
+		report.AnalyzerTargetDir = dir
+		report.AnalyzerCacheBytes = rust.AnalyzerCacheSize(dir)
+		report.AnalyzerCacheManaged = true
+	}
+	return report, nil
+}
+
+// RustCacheCleanReport dice quanto spazio ha liberato la pulizia della cache dell'analizzatore.
+type RustCacheCleanReport struct {
+	FreedBytes        int64  `json:"freedBytes"`
+	AnalyzerTargetDir string `json:"analyzerTargetDir"`
+}
+
+// CleanRustAnalyzerCache ferma rust-analyzer della sessione e cancella la sua cartella target
+// (RS-2, RS-M9). Mai implicito: richiede la conferma esplicita, e non tocca mai la `target/`
+// dell'utente né una cartella scelta con `CARGO_TARGET_DIR`.
+func (s *Service) CleanRustAnalyzerCache(sessionID string, confirmed bool) (RustCacheCleanReport, error) {
+	if !confirmed {
+		return RustCacheCleanReport{}, fmt.Errorf("explicit confirmation required before cleaning the analyzer cache")
+	}
+	session, err := s.session(sessionID)
+	if err != nil {
+		return RustCacheCleanReport{}, err
+	}
+	if session.Project.Authorization != AuthorizationPermitted {
+		return RustCacheCleanReport{}, fmt.Errorf("trust the project before cleaning the analyzer cache")
+	}
+	root := session.Project.RealPath
+	dir := rust.AnalyzerCacheDir(root)
+	if dir == "" {
+		return RustCacheCleanReport{}, fmt.Errorf("rust-analyzer is using CARGO_TARGET_DIR: that folder is yours, adOmnia does not clean it")
+	}
+	// La cartella è quella di build del server: prima lo si ferma (riparte da solo alla prossima
+	// richiesta dell'editor), altrimenti su Windows i file restano occupati.
+	s.lsp.Stop(SessionID(sessionID), rust.ID)
+	freed, err := rust.CleanAnalyzerCache(root)
+	if err != nil {
+		return RustCacheCleanReport{}, err
+	}
+	return RustCacheCleanReport{FreedBytes: freed, AnalyzerTargetDir: dir}, nil
 }
 
 // PreviewRustComponentInstall dice cosa farebbe l'installazione di un componente rustup (RS-2.3).

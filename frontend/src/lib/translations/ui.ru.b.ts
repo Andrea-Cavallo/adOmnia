@@ -507,7 +507,6 @@ export const RU_NAVIGATION_MESSAGES: Record<string, string> = {
   "Design": "Проектирование",
   "Mock & Intercept": "Mock и перехват",
   "Protocols": "Протоколы",
-  "MCP Server Generator": "Генератор MCP-серверов",
   "Streaming": "Стриминг",
   "Enterprise": "Корпоративные функции",
   "Infrastructure": "Инфраструктура",

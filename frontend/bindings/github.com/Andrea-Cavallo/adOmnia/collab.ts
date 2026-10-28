@@ -21,25 +21,43 @@ export function CreateInvite(role: string, ttlMinutes: number): $CancellableProm
     });
 }
 
+export function DeleteDocumentBaseline(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2989114630, id);
+}
+
 export function Document(message: collab$0.DocumentMessage): $CancellablePromise<void> {
     return $Call.ByID(1252864310, message);
 }
 
-export function Host(ip: string, port: number, name: string): $CancellablePromise<collab$0.Status> {
-    return $Call.ByID(3595113677, ip, port, name).then(($result: any) => {
+export function DocumentBaseline(id: string): $CancellablePromise<string> {
+    return $Call.ByID(2690210033, id);
+}
+
+export function DocumentUpdates(id: string): $CancellablePromise<collab$0.DocumentMessage> {
+    return $Call.ByID(2034560452, id).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
+export function Host(ip: string, port: number, name: string): $CancellablePromise<collab$0.Status> {
+    return $Call.ByID(3595113677, ip, port, name).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+export function Inbox(): $CancellablePromise<string> {
+    return $Call.ByID(409681049);
+}
+
 export function Join(code: string, name: string): $CancellablePromise<collab$0.Status> {
     return $Call.ByID(531703907, code, name).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
 export function LocalAddresses(): $CancellablePromise<string[]> {
     return $Call.ByID(1409115962).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -52,36 +70,44 @@ export function OpenDocument(id: string, initial: string): $CancellablePromise<v
  */
 export function PreviewShare(kind: string, title: string, dataJSON: string): $CancellablePromise<collab$0.Share> {
     return $Call.ByID(1625525704, kind, title, dataJSON).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
 export function PreviewShareWithSecrets(kind: string, title: string, dataJSON: string, variables: string[]): $CancellablePromise<collab$0.Share> {
     return $Call.ByID(3998041709, kind, title, dataJSON, variables).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
 export function ProjectTree(): $CancellablePromise<collab$0.ProjectEntry[]> {
     return $Call.ByID(3258501320).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
 export function ReadProjectFile(path: string): $CancellablePromise<collab$0.ProjectFile> {
     return $Call.ByID(271843090, path).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
 export function Resume(): $CancellablePromise<collab$0.Status> {
     return $Call.ByID(1009749784).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
 export function Revoke(participantID: string): $CancellablePromise<void> {
     return $Call.ByID(3200509673, participantID);
+}
+
+export function SaveDocumentBaseline(id: string, data: string): $CancellablePromise<void> {
+    return $Call.ByID(744730916, id, data);
+}
+
+export function SaveInbox(data: string): $CancellablePromise<void> {
+    return $Call.ByID(986560910, data);
 }
 
 export function SetRole(participantID: string, role: string): $CancellablePromise<void> {
@@ -90,25 +116,25 @@ export function SetRole(participantID: string, role: string): $CancellablePromis
 
 export function Share(kind: string, title: string, dataJSON: string): $CancellablePromise<collab$0.Share> {
     return $Call.ByID(1756118426, kind, title, dataJSON).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
 export function ShareProject(sessionID: string): $CancellablePromise<collab$0.ProjectInfo> {
     return $Call.ByID(2765204267, sessionID).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
 export function ShareWithSecrets(kind: string, title: string, dataJSON: string, variables: string[]): $CancellablePromise<collab$0.Share> {
     return $Call.ByID(3313587255, kind, title, dataJSON, variables).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
 export function Status(): $CancellablePromise<collab$0.Status> {
     return $Call.ByID(3338828213).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
 }
 
@@ -118,7 +144,7 @@ export function Stop(): $CancellablePromise<void> {
 
 export function SyncCollection(sourceID: string, title: string, dataJSON: string): $CancellablePromise<collab$0.Share> {
     return $Call.ByID(448596984, sourceID, title, dataJSON).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -128,10 +154,11 @@ export function ValidateProjectDocument(path: string, content: string): $Cancell
 
 // Private type creation functions
 const $$createType0 = collab$0.Invite.createFrom;
-const $$createType1 = collab$0.Status.createFrom;
-const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = collab$0.Share.createFrom;
-const $$createType4 = collab$0.ProjectEntry.createFrom;
-const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = collab$0.ProjectFile.createFrom;
-const $$createType7 = collab$0.ProjectInfo.createFrom;
+const $$createType1 = collab$0.DocumentMessage.createFrom;
+const $$createType2 = collab$0.Status.createFrom;
+const $$createType3 = $Create.Array($Create.Any);
+const $$createType4 = collab$0.Share.createFrom;
+const $$createType5 = collab$0.ProjectEntry.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = collab$0.ProjectFile.createFrom;
+const $$createType8 = collab$0.ProjectInfo.createFrom;

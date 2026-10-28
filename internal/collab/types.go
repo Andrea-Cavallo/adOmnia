@@ -106,16 +106,18 @@ type welcome struct {
 
 // Status è lo snapshot che il frontend legge all'avvio o dopo ogni evento.
 type Status struct {
-	Mode          string        `json:"mode"` // "idle" | "host" | "guest"
-	SessionID     string        `json:"sessionId,omitempty"`
-	Self          string        `json:"self,omitempty"`
-	Address       string        `json:"address,omitempty"`
-	Fingerprint   string        `json:"fingerprint,omitempty"`
-	Participants  []Participant `json:"participants"`
-	PendingInvite int           `json:"pendingInvites"`
-	Project       *ProjectInfo  `json:"project,omitempty"`
-	Documents     []string      `json:"documents,omitempty"`
-	Disconnected  bool          `json:"disconnected,omitzero"`
+	Mode            string        `json:"mode"` // "idle" | "host" | "guest"
+	SessionID       string        `json:"sessionId,omitempty"`
+	Self            string        `json:"self,omitempty"`
+	Address         string        `json:"address,omitempty"`
+	Fingerprint     string        `json:"fingerprint,omitempty"`
+	Participants    []Participant `json:"participants"`
+	PendingInvite   int           `json:"pendingInvites"`
+	Project         *ProjectInfo  `json:"project,omitempty"`
+	Documents       []string      `json:"documents,omitempty"`
+	Disconnected    bool          `json:"disconnected,omitzero"`
+	RecoveryPending bool          `json:"recoveryPending,omitzero"`
+	RecoveryError   string        `json:"recoveryError,omitempty"`
 }
 
 // Invite è ciò che l'host copia e manda al guest.

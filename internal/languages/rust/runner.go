@@ -15,11 +15,14 @@ import (
 // senza scelta esplicita vale la selezione del progetto, il rust-toolchain del progetto e il PATH
 // (RS-0.4: la macchina non entra nel file condiviso delle configurazioni).
 type Options struct {
-	Toolchain         string   `json:"toolchain,omitempty"`
-	Package           string   `json:"package,omitempty"`
-	Bin               string   `json:"bin,omitempty"`
-	Example           string   `json:"example,omitempty"`
-	Bench             string   `json:"bench,omitempty"`
+	Toolchain string `json:"toolchain,omitempty"`
+	Package   string `json:"package,omitempty"`
+	Bin       string `json:"bin,omitempty"`
+	Example   string `json:"example,omitempty"`
+	Bench     string `json:"bench,omitempty"`
+	// Alias è un alias di cargo (`[alias]` in `.cargo/config.toml`): kind `alias` esegue
+	// `cargo <alias>` con le opzioni di build che seguono.
+	Alias             string   `json:"alias,omitempty"`
 	Features          []string `json:"features,omitempty"`
 	AllFeatures       bool     `json:"allFeatures,omitzero"`
 	NoDefaultFeatures bool     `json:"noDefaultFeatures,omitzero"`
@@ -38,10 +41,12 @@ var (
 	featureName  = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`)
 	profileName  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 	targetTriple = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.-]*-[A-Za-z0-9_]+$`)
+	// Un alias è una chiave di `[alias]`: niente `--`, niente spazi, niente espansioni.
+	aliasName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 )
 
 func (*Language) RunKinds() []string {
-	return []string{"bin", "example", "bench", "build", "check", "clippy"}
+	return []string{"bin", "example", "bench", "build", "check", "clippy", "alias"}
 }
 
 // optionsFor interpreta e valida le opzioni del kind. La validazione è statica: la toolchain si
@@ -95,6 +100,15 @@ func optionsFor(kind string, data jsonv1.RawMessage) (Options, error) {
 			return options, fmt.Errorf("enter a valid bench name")
 		}
 	case "build", "check", "clippy":
+	case "alias":
+		// L'alias deve esistere nel `.cargo/config.toml` del progetto: cargo, senza alias, lo
+		// interpreterebbe come un sottocomando inesistente.
+		if options.Alias == "" {
+			return options, fmt.Errorf("choose a cargo alias")
+		}
+		if !aliasName.MatchString(options.Alias) {
+			return options, fmt.Errorf("enter a valid cargo alias name")
+		}
 	default:
 		return options, fmt.Errorf("unsupported Rust run kind: %s", kind)
 	}
@@ -129,12 +143,19 @@ func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 		args = append(args, "--")
 		args = append(args, request.ProgramArguments...)
 	}
+	if request.Kind == "alias" && len(request.ProgramArguments) > 0 {
+		// Un alias è già un comando: gli argomenti del programma finirebbero dopo `--` di un
+		// sottocomando che potrebbe non accettarli (build, check). Meglio dirlo che indovinare.
+		return run.CommandSpec{}, fmt.Errorf("a cargo alias runs without program arguments: use the bin, example or build kind to pass them")
+	}
 	environment := append([]string(nil), request.Environment...)
 	// RUSTUP_TOOLCHAIN fissa il canale dichiarato dal progetto anche se cargo è un proxy rustup
 	// lanciato fuori dalla cartella (RS-0.2); mai se l'ambiente della run lo imposta già.
 	if toolchain.Channel != "" && !hasEnvironment(environment, "RUSTUP_TOOLCHAIN") {
 		environment = append(environment, "RUSTUP_TOOLCHAIN="+toolchain.Channel)
 	}
+	// RS-2.1: la Run non fa scaricare a rustup una toolchain mancante, la segnala prima.
+	environment = rustupEnvironment(environment)
 	return run.CommandSpec{
 		Executable: toolchain.Cargo, Arguments: args,
 		WorkingDirectory: request.WorkingDirectory,
@@ -152,6 +173,10 @@ func cargoArguments(kind string, options Options) []string {
 		"bin": "run", "example": "run", "bench": "bench",
 		"build": "build", "check": "check", "clippy": "clippy",
 	}[kind]
+	if kind == "alias" {
+		// `cargo <alias>`: cargo espande l'alias da `.cargo/config.toml` e accoda le opzioni.
+		sub = options.Alias
+	}
 	args := []string{sub, "--message-format=json-diagnostic-rendered-ansi"}
 	if options.manifest != "" {
 		args = append(args, "--manifest-path", options.manifest)
@@ -213,6 +238,8 @@ func (*Language) RunSchema(kind string) run.FieldSchema {
 		fields = append(fields, run.Field{Key: "example", Label: "Example", Type: run.FieldText, Section: run.SectionBasic, Help: "The example to run (--example)."})
 	case "bench":
 		fields = append(fields, run.Field{Key: "bench", Label: "Bench", Type: run.FieldText, Section: run.SectionBasic, Help: "The benchmark to run (--bench)."})
+	case "alias":
+		fields = append(fields, run.Field{Key: "alias", Label: "Alias", Type: run.FieldText, Section: run.SectionBasic, Help: "A cargo alias from .cargo/config.toml, run as `cargo <alias>`."})
 	}
 	fields = append(fields,
 		run.Field{Key: "features", Label: "Features", Type: run.FieldList, Section: run.SectionAdvanced, Help: "The features to enable (--features)."},

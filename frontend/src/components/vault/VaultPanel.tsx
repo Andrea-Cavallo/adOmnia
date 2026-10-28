@@ -1,3 +1,5 @@
+import '@/styles/studioNothing.css'
+import './vault.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Clipboard, KeyRound, Lock, ShieldCheck, ShieldOff, Upload, Download } from 'lucide-react'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
@@ -122,154 +124,55 @@ export function VaultPanel() {
   })
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto p-5 gap-5 min-h-0">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/25 flex items-center justify-center">
-            <KeyRound size={15} className="text-accent" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-text-1 leading-none">Encryption status</h2>
-            <p className="text-[10px] text-text-4 mt-0.5">age/scrypt local encryption</p>
-          </div>
-        </div>
-        <div className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border',
-          unlocked
-            ? 'bg-success/10 text-success border-success/25'
-            : 'bg-surface-2 text-text-4 border-border-2',
-        )}>
-          {unlocked ? <ShieldCheck size={10} /> : <ShieldOff size={10} />}
-          {unlocked ? 'Unlocked' : 'Locked'}
-        </div>
-        <div className="flex-1" />
-        {unlocked ? (
-          <button
-            onClick={lock}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-error/80 hover:bg-error text-white rounded-lg text-xs font-medium transition-colors"
-          >
-            <Lock size={12} /> Lock Vault
-          </button>
-        ) : (
-          <button
-            onClick={unlock}
-            disabled={!passphrase}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-medium shadow-[0_0_16px_var(--color-accent-glow)] hover:shadow-accent/30 transition-all disabled:opacity-40 disabled:shadow-none"
-          >
-            <KeyRound size={12} /> Unlock Vault
-          </button>
-        )}
-      </div>
-
-      {/* Feedback banner */}
-      {(message || error) && (
-        <div className={cn(
-          'flex items-center gap-2 px-4 py-2.5 rounded-lg border text-xs',
-          error
-            ? 'bg-error/8 border-error/25 text-error'
-            : 'bg-success/8 border-success/25 text-success',
-        )}>
-          {error || message}
-        </div>
-      )}
-
-      {/* Passphrase */}
-      <div className="bg-surface-1 border border-border-2 rounded-xl p-4 flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Passphrase</span>
-        </div>
-        <input
-          type="password"
-          value={passphrase}
-          onChange={(e) => setPassphrase(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !unlocked && passphrase) void unlock() }}
-          placeholder="Enter your vault passphrase..."
-          className="w-full h-9 px-3 bg-surface-2 border border-border-2 rounded-lg text-sm text-text-1 outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 placeholder:text-text-4 transition-all"
-        />
-        <p className="text-[10px] text-text-4">
-          The passphrase is used locally for age/scrypt encryption. Plaintext typed here is only in memory until you encrypt or clear it; workspace export stores encrypted bbolt data.
-        </p>
-      </div>
-
-      {/* Encrypt / Decrypt */}
-      <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
-        <div className="bg-surface-1 border border-border-2 rounded-xl flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4 flex-1">Plaintext</span>
-            <button
-              onClick={encrypt}
-              disabled={!plain || !passphrase}
-              className="flex items-center gap-1 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded-md text-[10px] font-semibold disabled:opacity-40 transition-colors"
-            >
-              Encrypt &gt;
-            </button>
-          </div>
-          <textarea
-            value={plain}
-            onChange={(e) => setPlain(e.target.value)}
-            className="flex-1 p-4 bg-transparent text-xs text-text-1 font-mono resize-none outline-none min-h-[240px]"
-            placeholder="Paste plaintext here..."
-          />
-        </div>
-
-        <div className="bg-surface-1 border border-border-2 rounded-xl flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4 flex-1">Ciphertext</span>
-            <button
-              onClick={copyEnvRef}
-              disabled={!cipher}
-              className="flex items-center gap-1 px-3 py-1.5 border border-border-2 rounded-md text-[10px] font-semibold text-text-3 hover:text-text-1 hover:border-border-1 disabled:opacity-40 transition-colors"
-              title="Copy vault: reference for environment variables"
-            >
-              <Clipboard size={11} /> Env Ref
-            </button>
-            <button
-              onClick={decrypt}
-              disabled={!cipher || !passphrase}
-              className="flex items-center gap-1 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded-md text-[10px] font-semibold disabled:opacity-40 transition-colors"
-            >
-              &lt; Decrypt
-            </button>
-          </div>
-          <textarea
-            value={cipher}
-            onChange={(e) => setCipher(e.target.value)}
-            className="flex-1 p-4 bg-transparent text-xs text-text-1 font-mono resize-none outline-none min-h-[240px]"
-            placeholder="Paste ciphertext here..."
-          />
-        </div>
-      </div>
-
-      {/* Workspace Import / Export */}
-      <div className="bg-surface-1 border border-border-2 rounded-xl overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4 flex-1">
-            Encrypted Workspace
+    <div className="nothing-studio vault-root">
+      <div className="vault-workbench">
+        <header className="vault-heading">
+          <div><h2 className="nothing-studio-title">Vault</h2><p>Local encryption · age / scrypt</p></div>
+          <span role="status" className={cn('vault-status', unlocked && 'is-unlocked')}>
+            {unlocked ? <ShieldCheck size={16} /> : <ShieldOff size={16} />}
+            {unlocked ? 'Unlocked' : 'Locked'}
           </span>
-          <button
-            onClick={exportVault}
-            disabled={!passphrase}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-border-2 rounded-md text-xs text-text-3 hover:text-text-1 hover:border-border-1 disabled:opacity-40 transition-colors"
-          >
-            <Download size={11} /> Export &amp; Copy
-          </button>
-          <button
-            onClick={() => importRef.current?.click()}
-            disabled={!passphrase}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-border-2 rounded-md text-xs text-text-3 hover:text-text-1 hover:border-border-1 disabled:opacity-40 transition-colors"
-          >
-            <Upload size={11} /> Import File
-          </button>
-          <input ref={importRef} type="file" accept=".json,.adomnia-age" className="hidden" onChange={(e) => importVault(e.target.files?.[0])} />
+        </header>
+
+        <section className="vault-access" aria-label="Vault access">
+          <div className="vault-passphrase-row">
+            <label htmlFor="vault-passphrase">Passphrase
+              <input id="vault-passphrase" type="password" value={passphrase} onChange={event => setPassphrase(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !unlocked && passphrase) void unlock() }} placeholder="Enter your vault passphrase" autoComplete="off" className="vault-input" />
+            </label>
+            {unlocked
+              ? <button type="button" onClick={lock} className="vault-button"><Lock size={14} /> Lock Vault</button>
+              : <button type="button" onClick={unlock} disabled={!passphrase} className="vault-button vault-button-primary"><KeyRound size={14} /> Unlock Vault</button>}
+          </div>
+          <p>The passphrase is used locally for age/scrypt encryption. Plaintext stays in memory until you encrypt or clear it; workspace exports contain encrypted data.</p>
+        </section>
+
+        {(message || error) && <div role={error ? 'alert' : 'status'} className={cn('vault-feedback', error ? 'is-error' : 'is-success')}>{error || message}</div>}
+
+        <div className="vault-editors">
+          <section className="vault-pane" aria-label="Encrypt a value">
+            <header className="vault-pane-heading"><div><h3>Plaintext</h3><p>Value to encrypt</p></div>
+              <button type="button" onClick={encrypt} disabled={!plain || !passphrase} className="vault-button vault-button-primary"><Lock size={13} /> Encrypt</button>
+            </header>
+            <textarea aria-label="Plaintext value" value={plain} onChange={event => setPlain(event.target.value)} className="vault-editor" placeholder="Paste plaintext here…" spellCheck={false} />
+          </section>
+          <section className="vault-pane" aria-label="Decrypt a value">
+            <header className="vault-pane-heading"><div><h3>Ciphertext</h3><p>Encrypted payload</p></div><div className="vault-pane-actions">
+              <button type="button" onClick={copyEnvRef} disabled={!cipher} className="vault-button" title="Copy the encrypted value with its vault: prefix"><Clipboard size={13} /> Copy ref</button>
+              <button type="button" onClick={decrypt} disabled={!cipher || !passphrase} className="vault-button"><KeyRound size={13} /> Decrypt</button>
+            </div></header>
+            <textarea aria-label="Encrypted value" value={cipher} onChange={event => setCipher(event.target.value)} className="vault-editor" placeholder="Encrypted value appears here…" spellCheck={false} />
+          </section>
         </div>
-        <textarea
-          value={exportData}
-          onChange={(e) => setExportData(e.target.value)}
-          rows={5}
-          className="w-full p-4 bg-surface-0 text-[10px] text-text-2 font-mono resize-none outline-none"
-          placeholder="Encrypted workspace export appears here and is copied to clipboard automatically..."
-        />
+
+        <details className="vault-transfer">
+          <summary>Workspace import / export</summary>
+          <div className="vault-transfer-heading"><p>Move encrypted workspace data as a file.</p><div className="vault-pane-actions">
+            <button type="button" onClick={exportVault} disabled={!passphrase} className="vault-button"><Download size={14} /> Export &amp; Copy</button>
+            <button type="button" onClick={() => importRef.current?.click()} disabled={!passphrase} className="vault-button"><Upload size={14} /> Import File</button>
+          </div></div>
+          <input ref={importRef} type="file" accept=".json,.adomnia-age" className="hidden" aria-label="Import encrypted workspace file" onChange={event => { void importVault(event.target.files?.[0]) }} />
+          <textarea aria-label="Encrypted workspace export" value={exportData} onChange={event => setExportData(event.target.value)} rows={5} className="vault-editor vault-export" placeholder="Encrypted workspace export appears here and is copied to the clipboard…" spellCheck={false} />
+        </details>
       </div>
     </div>
   )

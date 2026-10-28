@@ -134,6 +134,48 @@ fn main() {
 	}
 }
 
+// RS-3.4 con cargo vero: un `[alias]` del progetto viene davvero espanso da cargo.
+func TestRealCargoAliasRuns(t *testing.T) {
+	requireRealCargo(t)
+	if _, err := exec.LookPath("cargo"); err != nil {
+		t.Skip("cargo is not installed (set up Rust to run this check)")
+	}
+	root := writeCrate(t, "fn main() {}\n")
+	writeFile(t, root, ".cargo/config.toml", "[alias]\nqcheck = \"check\"\n")
+	execution, console := runReal(t, root, "alias", `{"alias":"qcheck"}`)
+	if execution.Status != "exited" {
+		t.Fatalf("status = %q console =\n%s", execution.Status, console)
+	}
+	if !strings.Contains(console, "Finished") {
+		t.Fatalf("cargo did not run the alias:\n%s", console)
+	}
+}
+
+// RS-2.2/RS-M10 con cargo vero: un build che non trova il linker MSVC deve arrivare in console già
+// spiegato (Build Tools + Windows SDK), non come errore grezzo. RUSTFLAGS è per comando, non tocca
+// la macchina.
+func TestRealCargoBuildExplainsAMissingLinker(t *testing.T) {
+	requireRealCargo(t)
+	if _, err := exec.LookPath("cargo"); err != nil {
+		t.Skip("cargo is not installed (set up Rust to run this check)")
+	}
+	root := writeCrate(t, "fn main() {}\n")
+	t.Setenv("RUSTFLAGS", "-C linker=absent/link.exe")
+	execution, console := runReal(t, root, "build", `{}`)
+	if execution.Status != "failed" {
+		t.Fatalf("the build was expected to fail, status = %q\n%s", execution.Status, console)
+	}
+	if !strings.Contains(console, "not found") {
+		t.Fatalf("the real rustc error is missing from the console:\n%s", console)
+	}
+	if !strings.Contains(console, missingLinkerExplanation) {
+		t.Fatalf("the missing linker is not explained in the console:\n%s", console)
+	}
+	if strings.Count(console, missingLinkerExplanation) != 1 {
+		t.Fatalf("the explanation must appear once:\n%s", console)
+	}
+}
+
 // Con cargo vero: l'errore di tipo diventa un diagnostico strutturato, la console mostra il testo
 // leggibile di rustc e nessun JSON di cargo; una build pulita pubblica una lista vuota (non nil).
 func TestRealCargoBuildErrorsBecomeDiagnosticsAndReadableConsole(t *testing.T) {

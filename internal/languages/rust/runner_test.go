@@ -139,19 +139,37 @@ func TestCommandSpecPinsProjectChannelAndKeepsExplicitEnvironment(t *testing.T) 
 	if err != nil || !slices.Contains(spec.Environment, "RUSTUP_TOOLCHAIN=1.80.0") {
 		t.Fatalf("env = %v, err = %v", spec.Environment, err)
 	}
+	// RS-2.1: ogni Run porta RUSTUP_AUTO_INSTALL=0 accanto al canale fissato.
+	if !slices.Contains(spec.Environment, "RUSTUP_AUTO_INSTALL=0") {
+		t.Fatalf("the run does not disable rustup auto install: %v", spec.Environment)
+	}
 	request.Environment = []string{"RUSTUP_TOOLCHAIN=nightly"}
 	spec, _ = New().CommandSpec(request)
-	if len(spec.Environment) != 1 {
+	if kept := withoutAutoInstall(spec.Environment); len(kept) != 1 || kept[0] != "RUSTUP_TOOLCHAIN=nightly" {
 		t.Fatalf("user RUSTUP_TOOLCHAIN overridden: %v", spec.Environment)
 	}
 	// I nomi delle variabili sono case-insensitive solo su Windows.
 	request.Environment = []string{"rustup_toolchain=nightly"}
 	spec, _ = New().CommandSpec(request)
+	kept := withoutAutoInstall(spec.Environment)
 	want := 2
 	if runtime.GOOS == "windows" {
 		want = 1
 	}
-	if len(spec.Environment) != want {
+	if len(kept) != want {
 		t.Fatalf("case-insensitive environment on %s: %v", runtime.GOOS, spec.Environment)
 	}
+}
+
+// withoutAutoInstall toglie la variabile aggiunta dall'adapter per far vedere solo ciò che viene
+// dall'ambiente della run.
+func withoutAutoInstall(environment []string) []string {
+	var kept []string
+	for _, entry := range environment {
+		if strings.HasPrefix(strings.ToLower(entry), "rustup_auto_install=") {
+			continue
+		}
+		kept = append(kept, entry)
+	}
+	return kept
 }

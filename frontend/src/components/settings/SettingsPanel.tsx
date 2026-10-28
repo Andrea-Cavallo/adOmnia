@@ -1,3 +1,5 @@
+import '@/styles/studioNothing.css'
+import './settingsNothing.css'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { PersonalAppearance } from './PersonalAppearance'
 import { lazy, Suspense, useState, useRef, useCallback, useEffect, useMemo } from 'react'
@@ -47,7 +49,7 @@ const ThemePanel = lazy(() => import('@/components/themes/ThemePanel').then((mod
 const TemplatesWorkspace = lazy(() => import('@/components/templates/TemplatesWorkspace').then((module) => ({ default: module.TemplatesWorkspace })))
 
 function SettingsExtensionFallback() {
-  return <div className="flex min-h-48 items-center justify-center text-xs text-text-4">Loading settings section…</div>
+  return <div className="flex min-h-48 items-center justify-center text-xs text-text-3">Loading settings section…</div>
 }
 
 // Wails 3 has no `window.go` global; the App service is reached through the
@@ -342,46 +344,51 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
   ]
 
   return (
-    <div className="flex h-full min-w-0 bg-surface-0">
+    <div className="nothing-studio settings-studio flex h-full w-full min-w-0 bg-surface-0">
       {/* Sidebar */}
-      <aside className="flex w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border-1 bg-surface-1/35 px-3 py-4 max-lg:w-52">
+      <aside aria-label={tu('Settings')} className="settings-sidebar flex w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border-1 bg-surface-1/35 px-3 py-4 max-lg:w-52">
+        <h1 className="nothing-studio-title settings-title">{tu('Settings')}</h1>
         {/* Search */}
         <div className="relative mb-3">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-4" />
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3" />
           <input
             type="text"
+            aria-label="Search settings"
             placeholder="Search settings..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 w-full rounded-md border border-border-2 bg-surface-2 pl-8 pr-2 text-xs text-text-1 outline-none placeholder:text-text-4 focus:border-accent"
+            className="h-8 w-full rounded-md border border-border-2 bg-surface-2 pl-8 pr-2 text-xs text-text-1 outline-none placeholder:text-text-3 focus:border-accent"
           />
         </div>
+        <nav className="settings-navigation" aria-label={tu('Settings')}>
         {sectionDefs.map((sec) => (
           <button
             key={sec.id}
+            aria-current={section === sec.id ? 'page' : undefined}
             onClick={() => setSection(sec.id)}
             className={cn(
               'flex min-h-8 w-full items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors',
               section === sec.id
-                ? 'border-border-2 bg-surface-2 text-text-1 shadow-sm'
+                ? 'border-border-2 bg-surface-2 text-text-1'
                 : 'border-transparent text-text-3 hover:bg-surface-2 hover:text-text-1'
             )}
           >
-            <span className={cn('shrink-0', section === sec.id ? 'text-accent' : 'text-text-4')}>{sec.icon}</span>
+            <span className={cn('shrink-0', section === sec.id ? 'text-accent' : 'text-text-3')}>{sec.icon}</span>
             <span className="min-w-0 flex-1 truncate">{sec.label}</span>
             {settingsModified && section === sec.id && (
               <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
             )}
           </button>
         ))}
+        </nav>
         {sectionDefs.length === 0 && (
-          <p className="px-3 py-2 text-[10px] leading-relaxed text-text-4">No setting matches "{search.trim()}".</p>
+          <p className="px-3 py-2 text-[12px] leading-relaxed text-text-3">No setting matches "{search.trim()}".</p>
         )}
-        <p className="mt-auto px-2.5 pt-4 text-[10px] leading-relaxed text-text-4">© {tu('All rights reserved · Developed by Andrea Cavallo')}</p>
+        <p className="mt-auto px-2.5 pt-4 text-[12px] leading-relaxed text-text-3">© {tu('All rights reserved · Developed by Andrea Cavallo')}</p>
       </aside>
 
       {/* Content */}
-      <div className="min-w-0 flex-1 overflow-y-auto">
+      <div className="settings-content min-w-0 flex-1 overflow-y-auto">
         <div className={cn(
           'w-full',
           section === 'workspace' || section === 'themes' || section === 'templates' || section === 'plugins'
@@ -496,7 +503,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 }
               />
               {startupWindowChromeValue !== null && startupWindowChromeValue !== windowChromeValue && (
-                <div className="mx-1 mb-1 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-200">
+                <div className="mx-1 mb-1 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
                   {s.appearance.windowChromeRestart}
                 </div>
               )}
@@ -563,7 +570,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div className="py-2 px-1 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-text-1">{s.appearance.themeEditorLink}</div>
-                  <div className="text-[10px] text-text-4">{s.appearance.themeEditorLinkDesc}</div>
+                  <div className="text-[12px] text-text-3">{s.appearance.themeEditorLinkDesc}</div>
                 </div>
                 <button
                   onClick={() => {
@@ -719,7 +726,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 <div className="py-2 px-1 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-text-1">{s.proxy.exportCA}</div>
-                    <div className="text-[10px] text-text-4">{s.proxy.exportCADesc}</div>
+                    <div className="text-[12px] text-text-3">{s.proxy.exportCADesc}</div>
                   </div>
                   <button
                     onClick={async () => {
@@ -926,7 +933,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div className="py-2 px-1 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-text-1">{s.privacy.storageUsage}</div>
-                  <div className="text-[10px] text-text-4">{s.privacy.storageUsageDesc}</div>
+                  <div className="text-[12px] text-text-3">{s.privacy.storageUsageDesc}</div>
                 </div>
                 <span className="text-xs text-text-2 bg-surface-2 px-2 py-0.5 rounded">
                   ~{storageEstimate} KB
@@ -937,7 +944,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div className="py-2 px-1 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-text-1">{s.privacy.exportSettings}</div>
-                  <div className="text-[10px] text-text-4">{s.privacy.exportSettingsDesc}</div>
+                  <div className="text-[12px] text-text-3">{s.privacy.exportSettingsDesc}</div>
                 </div>
                 <button
                   onClick={handleExportSettings}
@@ -949,7 +956,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div className="py-2 px-1 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-text-1">{s.privacy.importSettings}</div>
-                  <div className="text-[10px] text-text-4">{s.privacy.importSettingsDesc}</div>
+                  <div className="text-[12px] text-text-3">{s.privacy.importSettingsDesc}</div>
                 </div>
                 <button
                   onClick={handleImportSettings}
@@ -969,7 +976,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 <div className="py-2 px-1 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-text-1">{s.privacy.clearResponseHistory}</div>
-                    <div className="text-[10px] text-text-4">{s.privacy.clearResponseHistoryDesc}</div>
+                    <div className="text-[12px] text-text-3">{s.privacy.clearResponseHistoryDesc}</div>
                   </div>
                   <button
                     onClick={() => setConfirmClearHistory(true)}
@@ -981,7 +988,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 <div className="py-2 px-1 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-text-1">{s.privacy.resetDefaults}</div>
-                    <div className="text-[10px] text-text-4">{s.privacy.resetDefaultsDesc}</div>
+                    <div className="text-[12px] text-text-3">{s.privacy.resetDefaultsDesc}</div>
                   </div>
                   <button
                     onClick={() => setConfirmResetDefaults(true)}
@@ -993,7 +1000,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 <div className="py-2 px-1 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-text-1">{s.privacy.clearAllData}</div>
-                    <div className="text-[10px] text-text-4">{s.privacy.clearAllDataDesc}</div>
+                    <div className="text-[12px] text-text-3">{s.privacy.clearAllDataDesc}</div>
                   </div>
                   <button
                     onClick={() => setConfirmClearAll(true)}
@@ -1043,7 +1050,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
           <>
             <SectionHeader title={s.shortcuts.title} subtitle={s.shortcuts.subtitle} />
             <SettingsCard>
-              <div className="grid grid-cols-[1fr_120px_120px] gap-2 px-1 pb-2 text-[10px] uppercase tracking-wider text-text-4">
+              <div className="grid grid-cols-[1fr_120px_120px] gap-2 px-1 pb-2 text-[12px] uppercase tracking-wider text-text-3">
                 <span>Action</span>
                 <span>Windows</span>
                 <span>macOS</span>
@@ -1053,10 +1060,10 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                   <span className="text-xs text-text-1">
                     {(s.shortcuts as Record<string, string>)[sc.labelKey]}
                   </span>
-                  <kbd className="px-2 py-0.5 bg-surface-3 border border-border-2 rounded text-[10px] text-text-2 font-mono">
+                  <kbd className="px-2 py-0.5 bg-surface-3 border border-border-2 rounded text-[12px] text-text-2 font-mono">
                     {sc.win}
                   </kbd>
-                  <kbd className="px-2 py-0.5 bg-surface-3 border border-border-2 rounded text-[10px] text-text-2 font-mono">
+                  <kbd className="px-2 py-0.5 bg-surface-3 border border-border-2 rounded text-[12px] text-text-2 font-mono">
                     {sc.mac}
                   </kbd>
                 </div>
@@ -1074,8 +1081,8 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <AppLogo className="w-12 h-12 rounded-lg" />
               <div>
                 <div className="text-sm font-bold text-text-1">adOmnia</div>
-                <div className="text-[10px] text-text-4">A local-first API development toolbox</div>
-                <div className="mt-1 text-[10px] text-text-3">Andrea Cavallo</div>
+                <div className="text-[12px] text-text-3">A local-first API development toolbox</div>
+                <div className="mt-1 text-[12px] text-text-3">Andrea Cavallo</div>
               </div>
             </div>
             <SettingsCard>
@@ -1127,7 +1134,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                   <summary className="cursor-pointer hover:text-text-1">
                     {s.about.openSourceLicenses}
                   </summary>
-                  <div className="mt-2 text-[10px] text-text-4 space-y-1">
+                  <div className="mt-2 text-[12px] text-text-3 space-y-1">
                     <p>React — MIT License</p>
                     <p>Vite — MIT License</p>
                     <p>Zustand — MIT License</p>
@@ -1162,7 +1169,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div className="py-2 px-1 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-text-1">{s.developer.openDevLogsFolder}</div>
-                  <div className="text-[10px] text-text-4">{s.developer.openDevLogsFolderDesc}</div>
+                  <div className="text-[12px] text-text-3">{s.developer.openDevLogsFolderDesc}</div>
                 </div>
                 <button
                   onClick={() => safeOpenDevLogsFolder().catch(console.error)}
@@ -1174,7 +1181,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div className="py-2 px-1 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-text-1">{s.developer.clearDevLogs}</div>
-                  <div className="text-[10px] text-text-4">{s.developer.clearDevLogsDesc}</div>
+                  <div className="text-[12px] text-text-3">{s.developer.clearDevLogsDesc}</div>
                 </div>
                 <button
                   onClick={async () => {

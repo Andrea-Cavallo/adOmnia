@@ -44,6 +44,94 @@ export class CargoTreeNode {
 }
 
 /**
+ * RustEnvironment è la configurazione d'ambiente di un progetto Rust letta solo dal filesystem
+ * (RS-2.5): le variabili d'ambiente e il `.cargo/config.toml` del progetto. Non esegue mai
+ * cargo/rustc; `[alias]`, `[env]`, `[build].target-dir` e `[target.*]` sono letti staticamente.
+ */
+export class RustEnvironment {
+    "cargoHome": string;
+    "rustupHome": string;
+
+    /**
+     * TargetDir è la target directory dell'utente risolta ("" = default `target/`).
+     */
+    "targetDir": string;
+    "rustFlags": string;
+    "aliases": { [_ in string]?: string };
+    "env": { [_ in string]?: string };
+    "targets": { [_ in string]?: TargetConfig };
+
+    /** Creates a new RustEnvironment instance. */
+    constructor($$source: Partial<RustEnvironment> = {}) {
+        if (!("cargoHome" in $$source)) {
+            this["cargoHome"] = "";
+        }
+        if (!("rustupHome" in $$source)) {
+            this["rustupHome"] = "";
+        }
+        if (!("targetDir" in $$source)) {
+            this["targetDir"] = "";
+        }
+        if (!("rustFlags" in $$source)) {
+            this["rustFlags"] = "";
+        }
+        if (!("aliases" in $$source)) {
+            this["aliases"] = {};
+        }
+        if (!("env" in $$source)) {
+            this["env"] = {};
+        }
+        if (!("targets" in $$source)) {
+            this["targets"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RustEnvironment instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RustEnvironment {
+        const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType0;
+        const $$createField6_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("aliases" in $$parsedSource) {
+            $$parsedSource["aliases"] = $$createField4_0($$parsedSource["aliases"]);
+        }
+        if ("env" in $$parsedSource) {
+            $$parsedSource["env"] = $$createField5_0($$parsedSource["env"]);
+        }
+        if ("targets" in $$parsedSource) {
+            $$parsedSource["targets"] = $$createField6_0($$parsedSource["targets"]);
+        }
+        return new RustEnvironment($$parsedSource as Partial<RustEnvironment>);
+    }
+}
+
+/**
+ * TargetConfig sono i campi `[target.<tripla>]` del `.cargo/config.toml` (runner/linker).
+ */
+export class TargetConfig {
+    "runner"?: string;
+    "linker"?: string;
+
+    /** Creates a new TargetConfig instance. */
+    constructor($$source: Partial<TargetConfig> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TargetConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TargetConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TargetConfig($$parsedSource as Partial<TargetConfig>);
+    }
+}
+
+/**
  * Toolchain è una toolchain Rust candidata per un progetto o un'unità: il `cargo` che la esegue e
  * il canale dichiarato. La scoperta è statica (solo filesystem); versione e host arrivano da un
  * probe `rustc -vV` che l'host esegue solo con il progetto autorizzato (RS-2.2).
@@ -101,3 +189,8 @@ export class Toolchain {
         return new Toolchain($$parsedSource as Partial<Toolchain>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = $Create.Map($Create.Any, $Create.Any);
+const $$createType1 = TargetConfig.createFrom;
+const $$createType2 = $Create.Map($Create.Any, $$createType1);

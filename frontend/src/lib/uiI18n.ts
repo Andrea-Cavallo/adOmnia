@@ -1050,7 +1050,6 @@ export const ITALIAN_NAVIGATION_MESSAGES: Record<string, string> = {
   'Infrastructure': 'Infrastruttura',
   'Local Runtime': 'Runtime locale',
   'Browser Debug': 'Debug browser',
-  'MCP Server Generator': 'Generatore server MCP',
   'Debugging': 'Debug',
   'Local Data': 'Dati locali',
   'Data': 'Dati',

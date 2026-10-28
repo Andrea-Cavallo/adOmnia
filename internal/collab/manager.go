@@ -46,17 +46,24 @@ type pendingInvite struct {
 // Manager possiede l'unica sessione di collaborazione di questa istanza:
 // o host (listener TLS + peers) o guest (una connessione verso l'host).
 type Manager struct {
-	mu        sync.Mutex
-	emit      func(Event)
-	mode      string
-	sessionID string
-	self      Participant
-	seq       uint64
+	mu           sync.Mutex
+	checkpointMu sync.Mutex
+	emit         func(Event)
+	store        recoveryStore
+	// pendingDocs e docFlush raggruppano le scritture dei documenti (scheduleDocumentCheckpoint).
+	pendingDocs map[string]bool
+	docFlush    *time.Timer
+	mode        string
+	sessionID   string
+	self        Participant
+	seq         uint64
 
 	// host
 	server   *http.Server
 	address  string
 	fp       string
+	certPEM  string
+	keyPEM   string
 	invites  map[string]pendingInvite
 	peers    map[string]*peer
 	guard    *bruteGuard
@@ -79,6 +86,9 @@ type Manager struct {
 	replay          []Event
 	replayBytes     int
 	replayFloor     uint64
+
+	recoveryPending bool
+	recoveryError   string
 }
 
 func NewManager(emit func(Event)) *Manager {
@@ -86,6 +96,13 @@ func NewManager(emit func(Event)) *Manager {
 		emit = func(Event) {}
 	}
 	return &Manager{emit: emit, mode: ModeIdle, guard: newBruteGuard()}
+}
+
+// NewPersistentManager enables encrypted recovery snapshots in the application bbolt store.
+func NewPersistentManager(emit func(Event)) *Manager {
+	m := NewManager(emit)
+	m.store = &boltRecoveryStore{}
+	return m
 }
 
 // Host apre il listener TLS su ip:port (port 0 = casuale). Mai su tutte le interfacce:
@@ -102,9 +119,13 @@ func (m *Manager) Host(ip string, port int, name string) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	certPEM, keyPEM, err := encodeSessionCert(cert)
+	if err != nil {
+		return Status{}, err
+	}
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.mode != ModeIdle {
+		m.mu.Unlock()
 		return Status{}, errBusy
 	}
 	ln, err := tls.Listen("tcp", net.JoinHostPort(parsed.String(), strconv.Itoa(port)), &tls.Config{
@@ -112,12 +133,15 @@ func (m *Manager) Host(ip string, port int, name string) (Status, error) {
 		Certificates: []tls.Certificate{cert},
 	})
 	if err != nil {
+		m.mu.Unlock()
 		return Status{}, fmt.Errorf("impossibile aprire la porta di collaborazione: %w", err)
 	}
 	m.mode, m.sessionID, m.fp, m.address = ModeHost, randomToken(8), fp, ln.Addr().String()
+	m.certPEM, m.keyPEM = certPEM, keyPEM
 	m.self = Participant{ID: randomToken(8), Name: cleanName(name), Role: RoleController, Host: true, JoinedAt: time.Now()}
 	m.invites, m.peers, m.seq = map[string]pendingInvite{}, map[string]*peer{}, 0
 	m.resumes = map[string]resumeTicket{}
+	m.recoveryPending, m.recoveryError = false, ""
 	m.upgrader = websocket.Upgrader{
 		HandshakeTimeout: handshakeTimeout,
 		// I guest sono client Go, non browser: un Origin presente vuol dire una pagina web sulla LAN.
@@ -128,7 +152,10 @@ func (m *Manager) Host(ip string, port int, name string) (Status, error) {
 	m.server = &http.Server{Handler: mux, ReadHeaderTimeout: handshakeTimeout}
 	go func(srv *http.Server) { _ = srv.Serve(ln) }(m.server)
 	audit("session.hosted", m.sessionID, m.self.ID, m.self.Role, "")
-	return m.statusLocked(), nil
+	m.mu.Unlock()
+	m.clearRecovery()
+	m.checkpointSession()
+	return m.Status(), nil
 }
 
 // CreateInvite genera un token monouso a scadenza per un ruolo.
@@ -229,6 +256,7 @@ func (m *Manager) admit(h hello, ip string, p *peer) (Participant, string) {
 	p.enqueue(welcomeEvent)
 	events := m.broadcastParticipantsLocked()
 	m.mu.Unlock()
+	m.checkpointSession()
 	m.emitAll(events)
 	return participant, ""
 }
@@ -297,6 +325,8 @@ func (m *Manager) relayShare(from string, payload jsonv1.RawMessage) string {
 		}
 	}
 	m.mu.Unlock()
+	m.checkpointReplay()
+	m.checkpointSession()
 	m.emit(event)
 	return ""
 }
@@ -375,24 +405,33 @@ func (m *Manager) SyncCollection(sourceID, title string, data jsonv1.RawMessage)
 
 func (m *Manager) publishShare(clean Share) (Share, error) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	hostPublished := false
 	switch m.mode {
 	case ModeHost:
 		event := m.nextLocked(Event{Type: EventShare, From: m.self.ID, Payload: mustJSON(clean)})
 		for _, p := range m.peers {
 			p.enqueue(event)
 		}
+		hostPublished = true
 	case ModeGuest:
 		if !m.self.Role.Can(PermShare) {
+			m.mu.Unlock()
 			return Share{}, errors.New("il tuo ruolo non permette di condividere")
 		}
 		if m.host == nil || !m.host.enqueue(Event{Type: EventShare, From: m.self.ID, Payload: mustJSON(clean)}) {
+			m.mu.Unlock()
 			return Share{}, errors.New("connessione con l'host persa")
 		}
 	default:
+		m.mu.Unlock()
 		return Share{}, errors.New("nessuna sessione di collaborazione attiva")
 	}
 	audit("content.shared", m.sessionID, m.self.ID, m.self.Role, clean.Kind)
+	m.mu.Unlock()
+	if hostPublished {
+		m.checkpointReplay()
+		m.checkpointSession()
+	}
 	return clean, nil
 }
 
@@ -421,6 +460,7 @@ func (m *Manager) SetRole(participantID string, role Role) error {
 	audit("participant.role_changed", m.sessionID, participantID, role, "")
 	events := m.broadcastParticipantsLocked()
 	m.mu.Unlock()
+	m.checkpointSession()
 	m.emitAll(events)
 	return nil
 }
@@ -444,6 +484,9 @@ func (m *Manager) Revoke(participantID string) error {
 		audit("participant.revoked", m.sessionID, participantID, "", "")
 	}
 	m.mu.Unlock()
+	if found {
+		m.checkpointSession()
+	}
 	if p == nil {
 		if found {
 			return nil
@@ -472,6 +515,7 @@ func (m *Manager) dropPeer(id string, expected ...*peer) {
 	p.close()
 	events := m.broadcastParticipantsLocked()
 	m.mu.Unlock()
+	m.checkpointSession()
 	m.emitAll(events)
 }
 
@@ -548,18 +592,22 @@ func (m *Manager) dialHost(inv parsedInvite, name, resume string, lastSeq, gener
 	m.guestDocuments = w.Documents
 	m.resumeToken, m.guestInvite = w.Resume, inv
 	m.connecting = false
+	m.recoveryPending, m.recoveryError = false, ""
 	for _, part := range w.Participants {
 		if part.ID == w.ParticipantID {
 			m.self = part
 		}
 	}
-	status := m.statusLocked()
 	audit("session.joined", m.sessionID, m.self.ID, m.self.Role, "")
 	m.mu.Unlock()
+	if resume == "" {
+		m.clearRecovery()
+	}
+	m.checkpointSession()
 	go p.writeLoop()
 	p.keepAlive()
 	go m.guestReadLoop(p)
-	return status, nil
+	return m.Status(), nil
 }
 
 func (m *Manager) guestReadLoop(p *peer) {
@@ -635,10 +683,14 @@ func (m *Manager) guestReadLoop(p *peer) {
 			_ = json.Unmarshal(e.Payload, &reason)
 		}
 		m.mu.Lock()
-		if m.host == p && e.Seq > m.lastSeq {
+		advanced := m.host == p && e.Seq > m.lastSeq
+		if advanced {
 			m.lastSeq = e.Seq
 		}
 		m.mu.Unlock()
+		if advanced {
+			m.checkpointSession()
+		}
 		if e.Type == EventClosed {
 			break
 		}
@@ -654,6 +706,9 @@ func (m *Manager) guestReadLoop(p *peer) {
 		}
 	}
 	m.mu.Unlock()
+	if closed && lost {
+		m.clearRecovery()
+	}
 	if lost {
 		eventType := EventDisconnected
 		if closed {
@@ -690,6 +745,7 @@ func (m *Manager) Stop() {
 		defer cancel()
 		_ = server.Shutdown(ctx)
 	}
+	m.clearRecovery()
 }
 
 func (m *Manager) Status() Status {
@@ -702,6 +758,7 @@ func (m *Manager) resetLocked() {
 	m.generation++
 	m.connecting = false
 	m.mode, m.sessionID, m.address, m.fp = ModeIdle, "", "", ""
+	m.certPEM, m.keyPEM = "", ""
 	m.self, m.server, m.host = Participant{}, nil, nil
 	m.invites, m.peers, m.participants = nil, nil, nil
 	m.documents = nil
@@ -709,13 +766,21 @@ func (m *Manager) resetLocked() {
 	m.guestDocuments = nil
 	m.resumes, m.resumeToken, m.guestInvite, m.lastSeq = nil, "", parsedInvite{}, 0
 	m.replay, m.replayBytes, m.replayFloor = nil, 0, 0
+	m.recoveryPending, m.recoveryError = false, ""
+	// Un timer di checkpoint ancora attivo scriverebbe documenti di una sessione che non esiste più.
+	m.pendingDocs = nil
+	if m.docFlush != nil {
+		m.docFlush.Stop()
+		m.docFlush = nil
+	}
 }
 
 func (m *Manager) statusLocked() Status {
 	s := Status{Mode: m.mode, SessionID: m.sessionID, Self: m.self.ID, Address: m.address, Fingerprint: m.fp, Participants: []Participant{}}
 	s.Project = m.projectInfo
 	s.Documents = m.documentIDsLocked()
-	s.Disconnected = m.mode == ModeGuest && m.host == nil && m.resumeToken != ""
+	s.Disconnected = m.recoveryPending || (m.mode == ModeGuest && m.host == nil && m.resumeToken != "")
+	s.RecoveryPending, s.RecoveryError = m.recoveryPending, m.recoveryError
 	switch m.mode {
 	case ModeHost:
 		s.Participants = m.participantsLocked()

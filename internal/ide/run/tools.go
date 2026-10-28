@@ -81,6 +81,10 @@ func NormalizeMakeArguments(values []string) ([]string, error) {
 
 var composeServicePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 
+// ValidComposeService dice se un nome è un servizio compose valido: le proposte della UI usano la
+// stessa regola della configurazione, così non offrono un nome che il runner rifiuterebbe.
+func ValidComposeService(name string) bool { return composeServicePattern.MatchString(name) }
+
 // NormalizeComposeArguments: "up" o "down" (default up) seguito da nomi di servizio, nient'altro.
 func NormalizeComposeArguments(values []string) ([]string, error) {
 	arguments := trimArguments(values)

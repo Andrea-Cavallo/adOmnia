@@ -1,0 +1,33 @@
+.protocol-studio { background: var(--color-surface-0); color: var(--color-text-1); }
+.protocol-heading { flex-shrink: 0; padding: 18px 20px; border-bottom: 1px solid var(--color-border-1); }
+.protocol-heading p { margin-top: 4px; font-size: 12px; color: var(--color-text-3); }
+.protocol-studio :is(button, input:not([type=checkbox]), select) { min-height: 32px; }
+.protocol-studio :is(button, input, select, textarea) { border-radius: 3px; }
+.protocol-studio :is(input, textarea, pre) { line-height: 1.65; }
+.protocol-studio textarea { font-size: 13px; }
+.protocol-studio .bg-accent { color: var(--color-on-accent); }
+.protocol-studio .bg-accent\/20 { background: var(--color-accent); color: var(--color-on-accent); }
+.sse-studio > div:nth-child(2) > div:first-child { flex-wrap: wrap; }
+.sse-studio > div:nth-child(2) > div:first-child > div:first-child { min-width: min(320px, 100%); min-height: 36px; }
+.sse-studio > div:nth-child(3) { flex-wrap: wrap; gap: 8px; padding: 10px 16px; }
+.sse-event { border-left: 0; border-radius: 0; background: transparent; }
+.sse-event pre { font-size: 13px; line-height: 1.65; }
+.sse-event > div > div:first-child { width: 210px; flex-wrap: wrap; }
+.sse-studio aside { padding: 16px; }
+.sse-studio aside > div > div { border-radius: 0; border-width: 0 0 1px; background: transparent; padding: 12px 0; }
+.soap-start { overflow: auto; }
+.soap-start > .nothing-studio-title { font-size: 28px; }
+.soap-start textarea { min-height: 180px; }
+.soap-start input[type=file]:focus-visible { outline: auto; }
+.soap-services { background: var(--color-surface-1); }
+.soap-workspace > .flex-1 { min-width: 0; }
+.soap-workspace > .flex-1 > div:first-child { flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .sse-studio .sse-workspace { grid-template-columns: minmax(0, 1fr); overflow: auto; grid-template-rows: minmax(300px, 1fr) auto; }
+  .sse-studio aside { border-left: 0; border-top: 1px solid var(--color-border-1); max-height: 260px; }
+  .sse-event > div { flex-wrap: wrap; }
+  .sse-event > div > div:first-child { width: 100%; }
+  .soap-workspace { flex-direction: column; overflow: auto; }
+  .soap-services { width: 100%; max-height: 220px; border-right: 0; border-bottom: 1px solid var(--color-border-1); }
+  .soap-workspace > .flex-1 { min-height: 600px; flex-shrink: 0; }
+}

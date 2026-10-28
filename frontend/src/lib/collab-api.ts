@@ -33,6 +33,12 @@ export const collabApi = {
   readProjectFile: (path: string) => CollabBindings.ReadProjectFile(path),
   validateProjectDocument: (path: string, content: string) => CollabBindings.ValidateProjectDocument(path, content),
   document: (message: { id: string; action: string; data?: string; updates?: string[] }) => CollabBindings.Document({ data: '', updates: [], ...message }),
+  documentUpdates: (id: string) => CollabBindings.DocumentUpdates(id),
+  saveInbox: (data: string) => CollabBindings.SaveInbox(data),
+  inbox: () => CollabBindings.Inbox(),
+  saveDocumentBaseline: (id: string, data: string) => CollabBindings.SaveDocumentBaseline(id, data),
+  documentBaseline: (id: string) => CollabBindings.DocumentBaseline(id),
+  deleteDocumentBaseline: (id: string) => CollabBindings.DeleteDocumentBaseline(id),
   /** Ciò che lascerebbe davvero la macchina: i segreti sono già rimossi dal backend. */
   preview: (kind: CollabShareKind, title: string, data: unknown, secretVariables: string[] = []) => CollabBindings.PreviewShareWithSecrets(kind, title, JSON.stringify(data), secretVariables),
   share: (kind: CollabShareKind, title: string, data: unknown, secretVariables: string[] = []) => CollabBindings.ShareWithSecrets(kind, title, JSON.stringify(data), secretVariables),

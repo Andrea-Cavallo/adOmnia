@@ -1,6 +1,6 @@
 import { previewLanguage } from './codeStudioSourcePreviewLanguage'
 import './codeStudioFunctionExplorer.css'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, WrapText } from 'lucide-react'
 import { monaco } from '@/lib/monacoSetup'
 import { useSettingsStore } from '@/stores/settings'
@@ -10,12 +10,18 @@ export function CodeStudioSourcePreview({
   path,
   startLine,
   truncated = false,
+  highlightLines,
 }: {
   code: string
   path: string
   startLine: number
   truncated?: boolean
+  /** Absolute line numbers to mark (e.g. call sites); the first one is scrolled into view. */
+  highlightLines?: number[]
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const firstLine = Math.max(1, startLine)
+  const highlighted = useMemo(() => new Set(highlightLines), [highlightLines])
   const theme = useSettingsStore((state) => state.settings.appearance.theme)
   const [themeEpoch, setThemeEpoch] = useState(0)
   const [wrap, setWrap] = useState(true)
@@ -49,6 +55,11 @@ export function CodeStudioSourcePreview({
       stale = true
     }
   }, [code, path, key])
+  useEffect(() => {
+    scrollRef.current
+      ?.querySelector('.is-call-site')
+      ?.scrollIntoView?.({ block: 'center' })
+  }, [highlighted, code, colored])
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(code)
@@ -80,6 +91,7 @@ export function CodeStudioSourcePreview({
         </button>
       </div>
       <div
+        ref={scrollRef}
         className="cs-source-scroll"
         role="region"
         aria-label="Source code"
@@ -88,9 +100,12 @@ export function CodeStudioSourcePreview({
         <pre className="cs-source-code">
           <code>
             {lines.map((line, index) => (
-              <span className="cs-source-line" key={index}>
+              <span
+                className={`cs-source-line ${highlighted.has(firstLine + index) ? 'is-call-site' : ''}`}
+                key={index}
+              >
                 <span className="cs-source-number" aria-hidden="true">
-                  {Math.max(1, startLine) + index}
+                  {firstLine + index}
                 </span>
                 {colored?.key === key && colored.lines[index] !== undefined ? (
                   <span

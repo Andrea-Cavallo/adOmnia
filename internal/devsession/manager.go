@@ -243,9 +243,14 @@ func (m *Manager) GoSessionClosed(goSessionID string) []string {
 	return ids
 }
 
-// serviceRunKinds sono i kind di Run che avviano un programma di lunga durata: Go (run, binary) e
-// Rust (cargo run di un bin o di un example). Build, check, test e simili non sono servizi.
-var serviceRunKinds = map[string]bool{"run": true, "binary": true, "bin": true, "example": true}
+// serviceRunKinds sono i kind di Run che avviano un programma di lunga durata: Go (run, binary),
+// Rust (cargo run di un bin o di un example) e Python (script e module, es. `python -m uvicorn`).
+// Build, check, test e simili non sono servizi.
+var serviceRunKinds = map[string]bool{
+	"run": true, "binary": true,
+	"bin": true, "example": true,
+	"script": true, "module": true,
+}
 
 // RunStarted registers a long-running gO execution (go run, compiled binary).
 func (m *Manager) RunStarted(goSessionID, runID, kind, command string, pid int) {

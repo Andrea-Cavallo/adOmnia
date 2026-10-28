@@ -4,6 +4,7 @@ import { installRustDebugger, previewRustDebuggerInstall } from '@/lib/code-stud
 import { beginToolInstall, endToolInstall } from '@/stores/codeStudioToolInstall'
 import { studioToast } from '@/stores/codeStudioToast'
 import type { CodeStudioCommandId } from './codeStudioCommands'
+import { openRustEnvironmentDialog } from './CodeStudioRustEnvironment'
 import { openRustToolchainDialog } from './CodeStudioRustToolchain'
 import { openRustDependencyTree } from './CodeStudioRustTree'
 
@@ -35,6 +36,7 @@ export function runRustCommand(id: CodeStudioCommandId, sessionId: string | null
   if (!id.startsWith('rust.')) return false
   if (sessionId && id === 'rust.installDebugger') void installDebugger(sessionId)
   if (sessionId && id === 'rust.selectToolchain') openRustToolchainDialog(sessionId)
+  if (sessionId && id === 'rust.environment') openRustEnvironmentDialog(sessionId)
   if (sessionId && id === 'rust.dependencyTree') openRustDependencyTree(sessionId)
   return true
 }

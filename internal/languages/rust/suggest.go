@@ -36,8 +36,27 @@ func (*Language) Suggest(ctx context.Context, projectRoot string, unit project.U
 		cargoSuggestion(unit, "build-release", "Rust · cargo build --release", "build", "build", Options{Profile: "release"}),
 		cargoSuggestion(unit, "check", "Rust · cargo check", "build", "check", Options{}),
 	)
+	// Alias di cargo (RS-3.4): `[alias]` del `.cargo/config.toml` sono comandi già pronti. In
+	// ordine alfabetico e limitati, così il pannello resta leggibile.
+	aliases := cargoAliases(projectRoot, unit.Root)
+	names := make([]string, 0, len(aliases))
+	for name := range aliases {
+		if aliasName.MatchString(name) {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	if len(names) > maxAliasSuggestions {
+		names = names[:maxAliasSuggestions]
+	}
+	for _, name := range names {
+		suggestions = append(suggestions, cargoSuggestion(unit, "alias:"+name, "Rust · cargo "+name, "run", "alias", Options{Alias: name}))
+	}
 	return suggestions
 }
+
+// maxAliasSuggestions limita gli alias proposti: un `.cargo/config.toml` può averne molti.
+const maxAliasSuggestions = 8
 
 func cargoSuggestion(unit project.Unit, id, title, action, kind string, options Options) run.Suggestion {
 	data, _ := jsonutil.Marshal(options)

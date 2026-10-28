@@ -59,6 +59,10 @@ adOmnia puts that loop in one window. It reads your routes from the code, so the
 
 ## Try it in 2 minutes
 
+<p align="center">
+  <img src="assets/images/adomnia-demo.gif" alt="adOmnia demo" width="100%">
+</p>
+
 1. **Download and open it.** See [Download and install](#download-and-install) for the SmartScreen / Gatekeeper prompt on first launch.
 2. In **Code Studio**, choose **File → Open Project** and pick a Go service. Trust the folder when asked.
 3. Press `Ctrl+K` and search for one of your routes.

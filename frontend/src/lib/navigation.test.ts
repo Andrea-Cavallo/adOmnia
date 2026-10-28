@@ -9,6 +9,7 @@ describe('normalizeRailItem', () => {
   it('keeps older aliases and rejects unknown ids', () => {
     expect(normalizeRailItem('kafka')).toBe('broker')
     expect(normalizeRailItem('nope')).toBeNull()
+    expect(normalizeRailItem('mcp')).toBeNull()
     expect(normalizeRailItem(42)).toBeNull()
   })
 })

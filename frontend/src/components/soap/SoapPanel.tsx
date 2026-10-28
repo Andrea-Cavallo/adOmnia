@@ -1,3 +1,5 @@
+import '@/styles/studioNothing.css'
+import '@/styles/protocolNothing.css'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { withContentKeys } from '@/lib/contentKeys'
 import { withActiveEnv } from '@/lib/activeEnv'
@@ -270,26 +272,27 @@ export function SoapPanel() {
 
   if (!wsdl) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
-        <img src="/icon95.png" alt="" className="h-10 w-10 object-contain" />
+      <div className="nothing-studio protocol-studio soap-studio soap-start flex-1 flex flex-col items-center justify-center gap-4 p-6">
+        <h1 className="nothing-studio-title">SOAP Studio</h1>
         <div className="text-center max-w-md">
-          <p className="text-xs text-text-3">SOAP / WSDL Studio</p>
-          <p className="text-[10px] text-text-4 mt-1">Import a WSDL file or URL to get started.</p>
+          <p className="text-xs text-text-3">WSDL · operations · XML requests</p>
+          <p className="text-[12px] text-text-3 mt-1">Import a WSDL file or URL to get started.</p>
         </div>
 
         {wsdlError && (
-          <div className="px-3 py-2 bg-error/10 border border-error/20 rounded text-[10px] text-error">{wsdlError}</div>
+          <div className="px-3 py-2 bg-error/10 border border-error/20 rounded text-[12px] text-error">{wsdlError}</div>
         )}
 
-        <div className="flex flex-col gap-3 w-full max-w-sm">
+        <div className="flex flex-col gap-3 w-full max-w-xl">
           <label className="flex items-center gap-2 px-3 py-2 bg-surface-2 border border-border-1 rounded cursor-pointer hover:border-border-2">
-            <Upload size={14} className="text-text-4" />
+            <Upload size={14} className="text-text-3" />
             <span className="text-xs text-text-2">Import WSDL file</span>
             <input type="file" accept=".wsdl,.xml" onChange={handleFile} className="hidden" />
           </label>
 
           <div className="flex items-center gap-1">
             <input
+              aria-label="WSDL URL"
               value={wsdlUrl}
               onChange={(e) => setWsdlUrl(e.target.value)}
               placeholder="https://example.com/service?wsdl"
@@ -307,15 +310,16 @@ export function SoapPanel() {
 
           <div className="flex items-center gap-2">
             <div className="h-px flex-1 bg-border-1" />
-            <span className="text-[10px] text-text-4">or paste WSDL</span>
+            <span className="text-[12px] text-text-3">or paste WSDL</span>
             <div className="h-px flex-1 bg-border-1" />
           </div>
 
           <textarea
+            aria-label="WSDL XML"
             value={wsdlText}
             onChange={(e) => setWsdlText(e.target.value)}
             placeholder="<definitions xmlns=...>"
-            className="h-32 p-2 text-[10px] font-mono bg-surface-2 border border-border-1 rounded resize-none outline-none focus:border-border-2 text-text-2 placeholder-text-4"
+            className="h-32 p-2 text-[12px] font-mono bg-surface-2 border border-border-1 rounded resize-none outline-none focus:border-border-2 text-text-2 placeholder-text-4"
           />
           <button
             onClick={loadWsdlFromText}
@@ -330,23 +334,25 @@ export function SoapPanel() {
   }
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="nothing-studio protocol-studio soap-studio flex min-w-0 flex-1 flex-col overflow-hidden">
+      <header className="protocol-heading"><h1 className="nothing-studio-title">SOAP Studio</h1><p>WSDL · operations · XML requests</p></header>
+      <div className="soap-workspace flex min-h-0 flex-1 overflow-hidden">
       {/* Sidebar: Services / Ports / Operations */}
-      <div className="w-60 flex-shrink-0 border-r border-border-1 flex flex-col overflow-auto">
+      <div className="soap-services w-64 flex-shrink-0 border-r border-border-1 flex flex-col overflow-auto">
         {wsdl.services.length === 0 && <div className="space-y-2 p-3 text-xs text-text-2"><label className="block">SOAP endpoint<input className="mt-1 w-full rounded border border-border-2 bg-surface-2 p-1" value={standaloneEndpoint} onChange={event => setStandaloneEndpoint(event.target.value)} placeholder="https://localhost/service" /></label><label className="block">SOAPAction<input className="mt-1 w-full rounded border border-border-2 bg-surface-2 p-1" value={standaloneAction} onChange={event => setStandaloneAction(event.target.value)} /></label></div>}
         <div className="px-3 py-2 border-b border-border-1 flex items-center gap-1">
-          <button onClick={() => setWsdl(null)} className="text-[10px] text-accent hover:text-accent-light">New WSDL</button>
-          <span className="text-text-4 text-[10px]">|</span>
-          <span className="text-[10px] text-text-4 truncate">{wsdl.targetNamespace || 'WSDL'}</span>
+          <button onClick={() => setWsdl(null)} className="text-[12px] text-accent hover:text-accent-light">New WSDL</button>
+          <span className="text-text-3 text-[12px]">|</span>
+          <span className="text-[12px] text-text-3 truncate">{wsdl.targetNamespace || 'WSDL'}</span>
         </div>
 
         {wsdl.services.length === 0 && (
-          <div className="px-3 py-2 text-[10px] text-text-4">No services found</div>
+          <div className="px-3 py-2 text-[12px] text-text-3">No services found</div>
         )}
 
         {wsdl.services.map((svc) => (
           <div key={svc.name}>
-            <div className="px-3 py-1.5 text-[11px] font-medium text-text-2 bg-surface-2">{svc.name}</div>
+            <div className="px-3 py-1.5 text-[12px] font-medium text-text-2 bg-surface-2">{svc.name}</div>
             {svc.ports.map((port) => {
               const pt = wsdl.portTypes.find((p) => p.name === wsdl.bindings.find((b) => b.name === port.bindingName)?.portTypeName)
               return (
@@ -354,7 +360,7 @@ export function SoapPanel() {
                   <button
                     onClick={() => { setSelectedService(svc.name); setSelectedPort(port.name) }}
                     className={cn(
-                      'w-full text-left px-3 py-2 text-[11px] hover:bg-surface-2 transition-colors',
+                      'w-full text-left px-3 py-2 text-[12px] hover:bg-surface-2 transition-colors',
                       selectedService === svc.name && selectedPort === port.name ? 'text-accent bg-accent/5' : 'text-text-3'
                     )}
                   >
@@ -362,7 +368,7 @@ export function SoapPanel() {
                       <Globe size={10} className="flex-shrink-0" />
                       <span className="truncate">{port.name}</span>
                     </div>
-                    <div className="text-[9px] text-text-4 truncate mt-0.5">{port.location}</div>
+                    <div className="text-[12px] text-text-3 truncate mt-0.5">{port.location}</div>
                   </button>
 
                   {pt && selectedService === svc.name && selectedPort === port.name && (
@@ -376,14 +382,14 @@ export function SoapPanel() {
                             setSelectedOp(op.name)
                           }}
                           className={cn(
-                            'w-full text-left flex items-center gap-2 px-3 py-1.5 text-[10px] hover:bg-surface-2 transition-colors',
+                            'w-full text-left flex items-center gap-2 px-3 py-1.5 text-[12px] hover:bg-surface-2 transition-colors',
                             selectedOp === op.name ? 'text-accent bg-accent/5' : 'text-text-3'
                           )}
                         >
                           <ChevronRight size={8} />
                           <span className={cn(
-                            'px-1 py-0.5 rounded text-[9px] font-medium flex-shrink-0',
-                            op.soapAction ? 'bg-blue-500/10 text-blue-400' : 'bg-surface-3 text-text-4'
+                            'px-1 py-0.5 rounded text-[12px] font-medium flex-shrink-0',
+                            op.soapAction ? 'bg-surface-2 text-text-2' : 'bg-surface-3 text-text-3'
                           )}>POST</span>
                           <span className="truncate">{op.name}</span>
                         </button>
@@ -401,11 +407,11 @@ export function SoapPanel() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Config bar */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border-1 bg-surface-1">
-          <span className="text-[10px] font-medium text-text-3 uppercase">SOAP</span>
+          <span className="text-[12px] font-medium text-text-3 uppercase">SOAP</span>
           <select
             value={soapVersion}
             onChange={(e) => setSoapVersion(e.target.value as '1.1' | '1.2')}
-            className="h-6 px-1.5 text-[10px] bg-surface-2 border border-border-1 rounded text-text-1"
+            className="h-6 px-1.5 text-[12px] bg-surface-2 border border-border-1 rounded text-text-1"
           >
             <option value="1.1">SOAP 1.1</option>
             <option value="1.2">SOAP 1.2</option>
@@ -414,7 +420,7 @@ export function SoapPanel() {
           <button
             onClick={() => setShowSecurity((v) => !v)}
             className={cn(
-              'flex items-center gap-1 px-2 py-1 text-[10px] rounded border transition-colors',
+              'flex items-center gap-1 px-2 py-1 text-[12px] rounded border transition-colors',
               showSecurity || wssConfig.mode !== 'none'
                 ? 'bg-surface-3 border-border-2 text-text-1'
                 : 'bg-surface-2 border-border-1 text-text-3 hover:text-text-2',
@@ -431,10 +437,10 @@ export function SoapPanel() {
           {showCustomHeaders && (
             <div className="flex flex-col gap-1 px-3 py-2 border-b border-border-1 bg-surface-0">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-medium text-text-3 uppercase">Custom SOAP Headers</span>
+                <span className="text-[12px] font-medium text-text-3 uppercase">Custom SOAP Headers</span>
                 <button
                   onClick={() => setCustomHeaders((h) => [...h, { id: uid(), key: '', value: '' }])}
-                  className="text-[10px] text-accent hover:text-accent-light"
+                  className="text-[12px] text-accent hover:text-accent-light"
                 >
                   <Plus size={10} className="inline" /> Add
                 </button>
@@ -445,17 +451,17 @@ export function SoapPanel() {
                     value={h.key}
                     onChange={(e) => setCustomHeaders((hs) => hs.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
                     placeholder="Header name"
-                    className="flex-1 h-6 px-1.5 text-[10px] bg-surface-2 border border-border-1 rounded text-text-1 outline-none placeholder:text-text-4"
+                    className="flex-1 h-6 px-1.5 text-[12px] bg-surface-2 border border-border-1 rounded text-text-1 outline-none placeholder:text-text-3"
                   />
                   <input
                     value={h.value}
                     onChange={(e) => setCustomHeaders((hs) => hs.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
                     placeholder="Value"
-                    className="flex-1 h-6 px-1.5 text-[10px] bg-surface-2 border border-border-1 rounded text-text-1 outline-none placeholder:text-text-4"
+                    className="flex-1 h-6 px-1.5 text-[12px] bg-surface-2 border border-border-1 rounded text-text-1 outline-none placeholder:text-text-3"
                   />
                   <button
                     onClick={() => setCustomHeaders((hs) => hs.filter((_, j) => j !== i))}
-                    className="text-text-4 hover:text-error"
+                    className="text-text-3 hover:text-error"
                   >
                     <X size={10} />
                   </button>
@@ -466,14 +472,14 @@ export function SoapPanel() {
 
           <button
             onClick={genEnvelope}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-surface-2 border border-border-1 text-text-2 hover:text-text-1"
+            className="flex items-center gap-1 px-2 py-1 text-[12px] rounded bg-surface-2 border border-border-1 text-text-2 hover:text-text-1"
           >
             <RefreshCw size={10} /> Generate
           </button>
 
           <button
             onClick={() => setShowCustomHeaders((v) => !v)}
-            className={cn('flex items-center gap-1 px-2 py-1 text-[10px] rounded border transition-colors',
+            className={cn('flex items-center gap-1 px-2 py-1 text-[12px] rounded border transition-colors',
               showCustomHeaders ? 'bg-surface-3 border-border-2 text-text-1' : 'bg-surface-2 border-border-1 text-text-3 hover:text-text-2'
             )}
           >
@@ -504,7 +510,7 @@ export function SoapPanel() {
               colStore.save()
             }}
             disabled={!currentOp || !currentPort}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 disabled:opacity-40 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-[12px] rounded bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 disabled:opacity-40 transition-colors"
             title="Save operation to collection"
           >
             <BookmarkPlus size={10} /> Save
@@ -513,7 +519,7 @@ export function SoapPanel() {
           <button
             onClick={sendRequest}
             disabled={sending || !currentPort?.location || !envelope}
-            className="flex items-center gap-1 px-3 py-1 text-[10px] rounded bg-accent/20 text-accent hover:bg-accent/30 disabled:opacity-50 ml-auto"
+            className="flex items-center gap-1 px-3 py-1 text-[12px] rounded bg-accent/20 text-accent hover:bg-accent/30 disabled:opacity-50 ml-auto"
           >
             <Send size={10} /> {sending ? 'Sending...' : 'Send'}
           </button>
@@ -521,13 +527,13 @@ export function SoapPanel() {
 
         {/* WS-Security panel */}
         {showSecurity && (
-          <div className="border-b border-border-1 bg-surface-0 px-3 py-2 flex flex-col gap-2 text-[10px]">
+          <div className="border-b border-border-1 bg-surface-0 px-3 py-2 flex flex-col gap-2 text-[12px]">
             <div className="flex items-center gap-3">
-              <span className="text-text-4 w-14 flex-shrink-0">Mode</span>
+              <span className="text-text-3 w-14 flex-shrink-0">Mode</span>
               <select
                 value={wssConfig.mode}
                 onChange={(e) => setWssConfig((c) => ({ ...c, mode: e.target.value as WssMode }))}
-                className="h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[10px]"
+                className="h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[12px]"
               >
                 <option value="none">None</option>
                 <option value="username_text">UsernameToken (PasswordText)</option>
@@ -539,20 +545,20 @@ export function SoapPanel() {
 
             {(wssConfig.mode === 'username_text' || wssConfig.mode === 'username_digest') && (
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-text-4 w-14 flex-shrink-0">Username</span>
+                <span className="text-text-3 w-14 flex-shrink-0">Username</span>
                 <input
                   value={wssConfig.username}
                   onChange={(e) => setWssConfig((c) => ({ ...c, username: e.target.value }))}
                   placeholder="username"
-                  className="w-36 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[10px] outline-none"
+                  className="w-36 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[12px] outline-none"
                 />
-                <span className="text-text-4">Password</span>
+                <span className="text-text-3">Password</span>
                 <input
                   value={wssConfig.password}
                   onChange={(e) => setWssConfig((c) => ({ ...c, password: e.target.value }))}
                   type="password"
                   placeholder="password"
-                  className="w-36 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[10px] outline-none"
+                  className="w-36 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[12px] outline-none"
                 />
               </div>
             )}
@@ -561,7 +567,7 @@ export function SoapPanel() {
               <>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <FileText size={10} className="text-text-4" />
+                    <FileText size={10} className="text-text-3" />
                     <span className="text-text-3 font-medium">PEM Certificate</span>
                     <label className="ml-auto text-accent hover:text-accent-light cursor-pointer flex items-center gap-1">
                       <Upload size={9} /> Load file
@@ -574,12 +580,12 @@ export function SoapPanel() {
                     placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
                     rows={3}
                     spellCheck={false}
-                    className="w-full p-1.5 font-mono text-[10px] bg-surface-2 border border-border-1 rounded resize-none outline-none text-text-2 placeholder-text-4"
+                    className="w-full p-1.5 font-mono text-[12px] bg-surface-2 border border-border-1 rounded resize-none outline-none text-text-2 placeholder-text-4"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <FileText size={10} className="text-text-4" />
+                    <FileText size={10} className="text-text-3" />
                     <span className="text-text-3 font-medium">PEM Private Key (PKCS#8)</span>
                     <label className="ml-auto text-accent hover:text-accent-light cursor-pointer flex items-center gap-1">
                       <Upload size={9} /> Load file
@@ -592,7 +598,7 @@ export function SoapPanel() {
                     placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
                     rows={3}
                     spellCheck={false}
-                    className="w-full p-1.5 font-mono text-[10px] bg-surface-2 border border-border-1 rounded resize-none outline-none text-text-2 placeholder-text-4"
+                    className="w-full p-1.5 font-mono text-[12px] bg-surface-2 border border-border-1 rounded resize-none outline-none text-text-2 placeholder-text-4"
                   />
                 </div>
               </>
@@ -611,23 +617,23 @@ export function SoapPanel() {
                 </label>
                 {wssConfig.includeTimestamp && (
                   <>
-                    <span className="text-text-4">TTL</span>
+                    <span className="text-text-3">TTL</span>
                     <input
                       type="number"
                       min={30}
                       max={86400}
                       value={wssConfig.ttlSeconds}
                       onChange={(e) => setWssConfig((c) => ({ ...c, ttlSeconds: Number(e.target.value) }))}
-                      className="w-16 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[10px] outline-none"
+                      className="w-16 h-6 px-1.5 bg-surface-2 border border-border-1 rounded text-text-1 text-[12px] outline-none"
                     />
-                    <span className="text-text-4">sec</span>
+                    <span className="text-text-3">sec</span>
                   </>
                 )}
               </div>
             )}
 
             {wssError && (
-              <div className="px-2 py-1 rounded bg-error/10 border border-error/20 text-error text-[10px]">{wssError}</div>
+              <div className="px-2 py-1 rounded bg-error/10 border border-error/20 text-error text-[12px]">{wssError}</div>
             )}
           </div>
         )}
@@ -635,33 +641,33 @@ export function SoapPanel() {
         {/* Envelope editor + Response */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-3 py-1.5 border-b border-border-1 flex items-center gap-3">
-            <span className="text-[10px] font-medium text-text-3">Request Envelope</span>
+            <span className="text-[12px] font-medium text-text-3">Request Envelope</span>
             {currentPort && (
-              <span className="text-[9px] text-text-4 truncate">{currentPort.location}</span>
+              <span className="text-[12px] text-text-3 truncate">{currentPort.location}</span>
             )}
             {currentPort && (
               <button
                 onClick={() => void testCurrentEndpoint()}
                 disabled={probingEndpoint}
-                className="rounded border border-border-1 px-2 py-0.5 text-[9px] font-medium text-text-3 hover:border-accent/50 hover:text-text-1 disabled:opacity-50"
+                className="rounded border border-border-1 px-2 py-0.5 text-[12px] font-medium text-text-3 hover:border-accent/50 hover:text-text-1 disabled:opacity-50"
               >
                 {probingEndpoint ? 'Testing...' : 'Test'}
               </button>
             )}
             {endpointProbe && (
               <span className={cn(
-                'rounded px-2 py-0.5 text-[9px] font-semibold',
+                'rounded px-2 py-0.5 text-[12px] font-semibold',
                 endpointProbe.reachable ? 'bg-success/15 text-success' : 'bg-error/15 text-error',
               )}>
                 {endpointProbe.reachable ? `Endpoint OK ${endpointProbe.status}` : `Endpoint ${endpointProbe.status || 'ERR'}`}
               </span>
             )}
             {currentOp?.soapAction && (
-              <span className="text-[9px] text-accent truncate">SOAPAction: {currentOp.soapAction}</span>
+              <span className="text-[12px] text-accent truncate">SOAPAction: {currentOp.soapAction}</span>
             )}
           </div>
           {endpointProbe?.problem && (
-            <div className="border-b border-warning/20 bg-warning/10 px-3 py-2 text-[10px] text-warning">
+            <div className="border-b border-warning/20 bg-warning/10 px-3 py-2 text-[12px] text-warning">
               {endpointProbe.problem}
             </div>
           )}
@@ -669,7 +675,7 @@ export function SoapPanel() {
             value={envelope}
             onChange={(e) => setEnvelope(e.target.value)}
             placeholder="Click Generate to create SOAP envelope..."
-            className="flex-1 p-3 text-[11px] font-mono bg-surface-1 resize-none outline-none text-text-2 placeholder-text-4 border-b border-border-1"
+            className="flex-1 p-3 text-[12px] font-mono bg-surface-1 resize-none outline-none text-text-2 placeholder-text-4 border-b border-border-1"
             spellCheck={false}
           />
 
@@ -677,36 +683,36 @@ export function SoapPanel() {
           {responseInfo && (
             <div className="flex items-center gap-3 px-3 py-1.5 border-b border-border-1 bg-surface-2">
               <span className={cn(
-                'px-2 py-0.5 rounded text-[10px] font-medium',
+                'px-2 py-0.5 rounded text-[12px] font-medium',
                 responseInfo.status >= 500 ? 'bg-error/20 text-error' :
                 responseInfo.status >= 400 ? 'bg-warning/20 text-warning' :
                 responseInfo.status >= 200 ? 'bg-success/20 text-success' : 'bg-surface-3 text-text-3'
               )}>
                 {responseInfo.status}
               </span>
-              <span className="text-[10px] text-text-4">{responseInfo.ms} ms</span>
-              <span className="text-[10px] text-text-4">{responseInfo.size} B</span>
+              <span className="text-[12px] text-text-3">{responseInfo.ms} ms</span>
+              <span className="text-[12px] text-text-3">{responseInfo.size} B</span>
               <div className="flex items-center gap-1 ml-auto">
                 <button
                   onClick={() => setViewMode('xml')}
-                  className={cn('px-2 py-0.5 text-[10px] rounded', viewMode === 'xml' ? 'bg-surface-3 text-text-1' : 'text-text-4')}
+                  className={cn('px-2 py-0.5 text-[12px] rounded', viewMode === 'xml' ? 'bg-surface-3 text-text-1' : 'text-text-3')}
                 >
                   XML
                 </button>
                 <button
                   onClick={() => setViewMode('json')}
-                  className={cn('px-2 py-0.5 text-[10px] rounded', viewMode === 'json' ? 'bg-surface-3 text-text-1' : 'text-text-4')}
+                  className={cn('px-2 py-0.5 text-[12px] rounded', viewMode === 'json' ? 'bg-surface-3 text-text-1' : 'text-text-3')}
                 >
                   JSON
                 </button>
                 <button
                   onClick={() => navigator.clipboard.writeText(response)}
-                  className="px-2 py-0.5 text-[10px] text-text-4 hover:text-text-1"
+                  className="px-2 py-0.5 text-[12px] text-text-3 hover:text-text-1"
                 >
                   <Copy size={10} />
                 </button>
 
-                <span className="text-text-4 text-[9px]">|</span>
+                <span className="text-text-3 text-[12px]">|</span>
 
                 <button
                   onClick={() => {
@@ -714,14 +720,14 @@ export function SoapPanel() {
                     setXmlValid(v.valid)
                     setXmlValidationError(v.error ?? '')
                   }}
-                  className="px-2 py-0.5 text-[10px] text-text-4 hover:text-text-1"
+                  className="px-2 py-0.5 text-[12px] text-text-3 hover:text-text-1"
                 >
                   Validate
                 </button>
 
                 {xmlValid !== null && (
                   <span className={cn(
-                    'px-2 py-0.5 rounded text-[10px] font-medium',
+                    'px-2 py-0.5 rounded text-[12px] font-medium',
                     xmlValid ? 'bg-success/20 text-success' : 'bg-error/20 text-error'
                   )}>
                     {xmlValid ? '✓ Valid' : '✗ Invalid'}
@@ -739,7 +745,7 @@ export function SoapPanel() {
                     })
                     void navigator.clipboard.writeText(curl).catch(() => undefined)
                   }}
-                  className="px-2 py-0.5 text-[10px] text-text-4 hover:text-text-2"
+                  className="px-2 py-0.5 text-[12px] text-text-3 hover:text-text-2"
                   title="Copy cURL"
                 >
                   cURL
@@ -747,7 +753,7 @@ export function SoapPanel() {
 
                 <button
                   onClick={() => setShowCodeGen(true)}
-                  className="px-2 py-0.5 text-[10px] text-text-4 hover:text-text-2"
+                  className="px-2 py-0.5 text-[12px] text-text-3 hover:text-text-2"
                   title="Generate client code"
                 >
                   Code
@@ -758,7 +764,7 @@ export function SoapPanel() {
           {response && (
             <div className="flex-1 overflow-auto p-3">
               {(responseIssue || xmlValidationError) && (
-                <div className="mb-3 rounded border border-warning/30 bg-warning/10 px-3 py-2 text-[11px] text-warning">
+                <div className="mb-3 rounded border border-warning/30 bg-warning/10 px-3 py-2 text-[12px] text-warning">
                   {responseIssue || xmlValidationError}
                 </div>
               )}
@@ -771,19 +777,19 @@ export function SoapPanel() {
           )}
           {!response && !sending && (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-xs text-text-4">Response will appear here</p>
+              <p className="text-xs text-text-3">Response will appear here</p>
             </div>
           )}
           {sending && !response && (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-xs text-text-4">Sending request...</p>
+              <p className="text-xs text-text-3">Sending request...</p>
             </div>
           )}
         </div>
 
         {/* Documentation */}
         {currentOp?.documentation && (
-          <div className="border-t border-border-1 p-2 text-[10px] text-text-3 italic max-h-16 overflow-auto">
+          <div className="border-t border-border-1 p-2 text-[12px] text-text-3 italic max-h-16 overflow-auto">
             {currentOp.documentation}
           </div>
         )}
@@ -795,7 +801,7 @@ export function SoapPanel() {
           <div className="w-[600px] max-h-[80vh] bg-surface-1 border border-border-1 rounded-lg shadow-xl flex flex-col" role="presentation" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 px-4 py-2 border-b border-border-1">
               <span className="text-xs font-semibold text-text-1">Client Code — {currentOp.name}</span>
-              <button onClick={() => setShowCodeGen(false)} className="ml-auto text-text-4 hover:text-text-1">✕</button>
+              <button onClick={() => setShowCodeGen(false)} className="ml-auto text-text-3 hover:text-text-1">✕</button>
             </div>
             <div className="flex-1 overflow-auto p-3 flex flex-col gap-3">
               {(() => {
@@ -808,12 +814,12 @@ export function SoapPanel() {
                 return (
                   <>
                     <div>
-                      <div className="text-[10px] font-medium text-text-3 mb-1">Python</div>
-                      <pre className="text-[10px] font-mono bg-surface-2 p-2 rounded text-text-2 overflow-auto max-h-48">{python}</pre>
+                      <div className="text-[12px] font-medium text-text-3 mb-1">Python</div>
+                      <pre className="text-[12px] font-mono bg-surface-2 p-2 rounded text-text-2 overflow-auto max-h-48">{python}</pre>
                     </div>
                     <div>
-                      <div className="text-[10px] font-medium text-text-3 mb-1">Node.js</div>
-                      <pre className="text-[10px] font-mono bg-surface-2 p-2 rounded text-text-2 overflow-auto max-h-48">{node}</pre>
+                      <div className="text-[12px] font-medium text-text-3 mb-1">Node.js</div>
+                      <pre className="text-[12px] font-mono bg-surface-2 p-2 rounded text-text-2 overflow-auto max-h-48">{node}</pre>
                     </div>
                   </>
                 )
@@ -826,7 +832,7 @@ export function SoapPanel() {
       {/* History panel */}
       {history.length > 0 && (
         <div className="border-t border-border-1 max-h-32 overflow-auto">
-          <div className="px-3 py-1.5 text-[10px] font-medium text-text-4 bg-surface-2">History</div>
+          <div className="px-3 py-1.5 text-[12px] font-medium text-text-3 bg-surface-2">History</div>
           {withContentKeys(history.slice(0, 10), (entry) => `${entry.timestamp}-${entry.operation}`).map(({ key, item: h }) => (
             <button
               key={key}
@@ -839,18 +845,19 @@ export function SoapPanel() {
                 setXmlValid(null)
                 setEnvelope(h.envelope)
               }}
-              className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-[10px] hover:bg-surface-2 border-b border-border-1/50"
+              className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-[12px] hover:bg-surface-2 border-b border-border-1/50"
             >
-              <span className={cn('px-1 py-0.5 rounded text-[9px]',
+              <span className={cn('px-1 py-0.5 rounded text-[12px]',
                 h.status >= 200 && h.status < 300 ? 'bg-success/20 text-success' :
                 h.status >= 400 ? 'bg-error/20 text-error' : 'bg-surface-3 text-text-3'
               )}>{h.status}</span>
               <span className="text-text-2 truncate flex-1">{h.operation}</span>
-              <span className="text-text-4">{h.durationMs}ms</span>
+              <span className="text-text-3">{h.durationMs}ms</span>
             </button>
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }
