@@ -507,7 +507,6 @@ export const JA_NAVIGATION_MESSAGES: Record<string, string> = {
   "Design": "デザイン",
   "Mock & Intercept": "Mock とインターセプト",
   "Protocols": "プロトコル",
-  "MCP Server Generator": "MCP サーバージェネレーター",
   "Streaming": "ストリーミング",
   "Enterprise": "エンタープライズ",
   "Infrastructure": "インフラ",

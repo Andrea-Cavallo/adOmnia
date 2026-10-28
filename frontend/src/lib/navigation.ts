@@ -32,7 +32,6 @@ export const RAIL_ITEMS = [
   'settings',
   'welcome',
   'collab',
-  'mcp',
   'apidocs',
   'codestudio',
   'kube',
