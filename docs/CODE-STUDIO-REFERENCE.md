@@ -10,7 +10,7 @@ This document is organized by area and covers everything implemented so far. It 
 | --- | --- |
 | **This document** | Architecture, modules, adapters, UI surface, bindings, invariants, status |
 | [`CODE-STUDIO.md`](CODE-STUDIO.md) | User-facing guide: how to use Code Studio feature by feature |
-| [`architecture/ide-multilanguage-refactor.md`](architecture/ide-multilanguage-refactor.md) | The migration plan "Code Studio → adOmnia IDE Platform" (Phases 1–12, complete) |
+| [`architecture/ide-package-rules.md`](architecture/ide-package-rules.md) | Package layout and rules of the IDE platform (where code goes, a new language) |
 | [`LIVE-PREVIEW.md`](LIVE-PREVIEW.md) | Live Preview / web projects deep dive |
 | [`adomnia-feature-catalog.en.md`](adomnia-feature-catalog.en.md) (section J) | Feature checklist of the Code Studio |
 | [`../internal/ide/CLAUDE.md`](../internal/ide/CLAUDE.md) | Hard rules and placement decision tree for IDE code |
@@ -671,7 +671,7 @@ are code-presence verified only.
   debugging needs identical source paths; Fix with AI requires a verified provider and a
   user click.
 
-Historical notes: ADR 0001 is **superseded** by `ide-multilanguage-refactor.md` (cite it
+Historical notes: ADR 0001 is **superseded** by the multi-language IDE platform (cite it
 only for rationale); the web action plan is historical for status but remains the roadmap
 source. When citing counts or budgets (frontend tests, startup JS budget — gate `check:startup`
 **650 kB** — tool versions: Go 1.26.5, gopls v0.23.0, Delve 1.27.2), attach the date.

@@ -16,7 +16,6 @@ Read before non-trivial work:
 |------|-----|
 | `docs/architecture/go-coding-rules.md` | **Go code rules**: KISS/YAGNI, DRY, fail fast, naming, errors, concurrency, comments, tests |
 | `docs/architecture/ide-package-rules.md` | **Package layout and rules**: where code goes, how to move code out of codestudio, shared test setup, a new language |
-| `docs/architecture/ide-multilanguage-refactor.md` | GENERIC/MIXED/GO_SPECIFIC map, interfaces, migration (12 phases, complete), non-goals, manual smoke checklist |
 | `docs/CODE-STUDIO.md` | Usage, trust model, optional tools, persistence schema, shortcuts, limits |
 | `mds/MANUAL-CHECK.md` | In-app checks still to tick (local, may be absent) |
 | `docs/SOUL.md` | Any UX / visual decision |
@@ -121,7 +120,7 @@ npm run check:startup     # whenever imports around the entrypoint change
 
 - **Never `go build .` in the repo root** (overwrites `adomnia.exe` with a console exe without icon): use `go vet` or `go build -o NUL`.
 - Final integration of a big change: `npm run build`, then try it for real (`wails3 task dev`) — open the IDE, open a Go project, edit, run, debug, test. Verify the actual user flow, not just green tests.
-- Manual smoke checklist: section 23 of the refactor doc.
+- Manual smoke checklist: the Code Studio items in `mds/MANUAL-CHECK.md` (local).
 
 ---
 

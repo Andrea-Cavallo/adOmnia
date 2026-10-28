@@ -3,7 +3,7 @@
 // Il core dell'IDE dipende solo da questo package, mai da un adapter concreto: un linguaggio
 // implementa Language più le sole capability che supporta, e il core le scopre per type assertion.
 // Le capability si aggiungono qui quando il core ne ha un consumatore reale (vedi
-// docs/architecture/ide-multilanguage-refactor.md, piano di migrazione).
+// docs/architecture/ide-package-rules.md).
 package language
 
 import (

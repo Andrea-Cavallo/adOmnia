@@ -73,7 +73,6 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/QUALITY.md` | Quality toolchain for adOmnia's own code: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage. |
 | `docs/JSON-V2.md` | JSON marshaling: `encoding/json/v2` migration, where v1 remains and why, behavior changes. |
 | `docs/architecture/ide-package-rules.md` | **Code Studio package rules**: which package a piece of code goes in, how to move code out of `internal/codestudio` without breaking bindings, the shared test setup, the checklist for a new language. Read it before adding a Go file under `internal/codestudio`, `internal/ide` or `internal/languages`. |
-| `docs/architecture/ide-multilanguage-refactor.md` | Code Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration (complete), deliberate non-goals and the manual smoke checklist. Read it before touching anything under `internal/codestudio`, `internal/ide`, `internal/languages` or `frontend/src/components/ide`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
 
@@ -422,7 +421,7 @@ Details and the open queue: `docs/QUALITY.md`. **Go code style** (KISS/YAGNI, DR
 
 ### Multi-language IDE Platform (Code Studio)
 
-Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java (JDT LS, Maven/Gradle, debug) and Python (basedpyright, pytest, debugpy) are delivered adapters; Rust (`internal/languages/rust`) is complete in code and tests — Cargo crate/workspace detection, toolchain selection, run with build diagnostics, `cargo test`, CodeLLDB debug, rust-analyzer and the product entities — and waits only for its manual app checks (RS-M1…RS-M10 in `mds/MANUAL-CHECK.md`, RS-M7 being the integration gate; see `mds/MULTILANGUAGE-IDE.md` §9.6). Rules:
+Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete; the package layout and its rules are in `docs/architecture/ide-package-rules.md`. Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java (JDT LS, Maven/Gradle, debug) and Python (basedpyright, pytest, debugpy) are delivered adapters; Rust (`internal/languages/rust`) is complete in code and tests — Cargo crate/workspace detection, toolchain selection, run with build diagnostics, `cargo test`, CodeLLDB debug, rust-analyzer and the product entities — and waits only for its manual app checks (RS-M1…RS-M10 in `mds/MANUAL-CHECK.md`, RS-M7 being the integration gate; see `mds/MULTILANGUAGE-IDE.md` §9.6). Rules:
 
 - **Dependency direction:** `internal/codestudio` (host) → `internal/ide/*` (core) ← `internal/languages/<lang>` (adapter). The core **never** imports an adapter or Go tooling libraries (`golang.org/x/mod`, `x/tools`, pprof…), **not even from its tests** (`go list -deps -test`); `internal/ide/architecture_test.go` fails the build if it does. Core tests use fake languages; tests that need a real adapter live in the adapter. Adapters never import `internal/codestudio`.
 - **The host only wires.** `internal/codestudio` keeps the session map, the trust check and one-screen `Service` methods; feature logic lives in a core package (`ide/workspace` for the shared Project/Session/Document types, `ide/langserver` for language servers, `ide/terminal`…) or in an adapter. Moved types keep their names and get an alias in a `codestudio/*_aliases.go` file, so the `GoIDE` bindings and their TypeScript models do not change. Server-specific knobs travel in `lsp.ServerSpec` (e.g. `HiddenCodeActionKinds`, `ChangeSignatureCommand`), never as an adapter import in the core. Full rules: `docs/architecture/ide-package-rules.md`.
@@ -572,7 +571,8 @@ Four files live at the root — everything else is under `docs/`:
 
 | File | Purpose |
 |------|---------|
-| `docs/architecture/ide-multilanguage-refactor.md` | IDE Platform + language adapters: architecture, rules, migration plan and status |
+| `docs/architecture/ide-package-rules.md` | IDE Platform + language adapters: package layout, placement rules, moving code, a new language |
+| `docs/architecture/go-coding-rules.md` | Go code rules: KISS/YAGNI, DRY, fail fast, naming, errors, concurrency, tests |
 | `docs/SOUL.md` | Product philosophy, UX principles, long-term vision |
 | `docs/adomnia-feature-catalog.en.md` | Fast complete catalog of product features and modules |
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |
