@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"math/big"
@@ -45,6 +46,39 @@ func newSessionCert() (tls.Certificate, string, error) {
 func fingerprint(der []byte) string {
 	sum := sha256.Sum256(der)
 	return hex.EncodeToString(sum[:])
+}
+
+func encodeSessionCert(cert tls.Certificate) (string, string, error) {
+	if len(cert.Certificate) == 0 {
+		return "", "", errors.New("certificato di sessione mancante")
+	}
+	key, ok := cert.PrivateKey.(*ecdsa.PrivateKey)
+	if !ok {
+		return "", "", errors.New("chiave di sessione non valida")
+	}
+	der, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return "", "", fmt.Errorf("serializza chiave di sessione: %w", err)
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})
+	return string(certPEM), string(keyPEM), nil
+}
+
+func decodeSessionCert(certPEM, keyPEM, expectedFingerprint string) (tls.Certificate, error) {
+	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
+	if err != nil || len(cert.Certificate) == 0 {
+		return tls.Certificate{}, errors.New("certificato recovery non valido")
+	}
+	leaf, err := x509.ParseCertificate(cert.Certificate[0])
+	if err != nil || time.Now().After(leaf.NotAfter) {
+		return tls.Certificate{}, errors.New("certificato recovery scaduto o non valido")
+	}
+	if subtle.ConstantTimeCompare([]byte(fingerprint(leaf.Raw)), []byte(expectedFingerprint)) != 1 {
+		return tls.Certificate{}, errors.New("fingerprint del certificato recovery non corrisponde")
+	}
+	cert.Leaf = leaf
+	return cert, nil
 }
 
 // pinnedTLS accetta solo il certificato con il fingerprint atteso.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -19,7 +20,7 @@ type Collab struct {
 
 func NewCollab(root func(string) (string, error)) *Collab {
 	c := &Collab{sessionRoot: root}
-	c.manager = collab.NewManager(func(event collab.Event) {
+	c.manager = collab.NewPersistentManager(func(event collab.Event) {
 		if c.desktop != nil {
 			c.desktop.Event.Emit("collab:event", event)
 		}
@@ -29,9 +30,15 @@ func NewCollab(root func(string) (string, error)) *Collab {
 
 func (c *Collab) attachDesktop(desktop *application.App) { c.desktop = desktop }
 
-// ServiceShutdown chiude la porta di collaborazione e avvisa i guest.
+// ServiceStartup loads recovery after the application service has opened bbolt.
+func (c *Collab) ServiceStartup(context.Context, application.ServiceOptions) error {
+	c.manager.Restore()
+	return nil
+}
+
+// ServiceShutdown preserves recovery while closing the active transports.
 func (c *Collab) ServiceShutdown() error {
-	c.manager.Stop()
+	c.manager.Shutdown()
 	return nil
 }
 
@@ -81,6 +88,21 @@ func (c *Collab) ShareWithSecrets(kind, title, dataJSON string, variables []stri
 func (c *Collab) OpenDocument(id, initial string) error { return c.manager.OpenDocument(id, initial) }
 
 func (c *Collab) Document(message collab.DocumentMessage) error { return c.manager.Document(message) }
+func (c *Collab) DocumentUpdates(id string) (collab.DocumentMessage, error) {
+	return c.manager.DocumentUpdates(id)
+}
+
+func (c *Collab) SaveInbox(data string) error { return c.manager.SaveInbox(data) }
+func (c *Collab) Inbox() (string, error)      { return c.manager.Inbox() }
+func (c *Collab) SaveDocumentBaseline(id, data string) error {
+	return c.manager.SaveDocumentBaseline(id, data)
+}
+func (c *Collab) DocumentBaseline(id string) (string, error) {
+	return c.manager.DocumentBaseline(id)
+}
+func (c *Collab) DeleteDocumentBaseline(id string) error {
+	return c.manager.DeleteDocumentBaseline(id)
+}
 
 func (c *Collab) ShareProject(sessionID string) (collab.ProjectInfo, error) {
 	root, err := c.sessionRoot(sessionID)

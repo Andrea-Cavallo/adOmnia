@@ -287,6 +287,8 @@ export class Status {
     "project"?: ProjectInfo | null;
     "documents"?: string[];
     "disconnected"?: boolean;
+    "recoveryPending"?: boolean;
+    "recoveryError"?: string;
 
     /** Creates a new Status instance. */
     constructor($$source: Partial<Status> = {}) {

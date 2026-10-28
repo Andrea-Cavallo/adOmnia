@@ -129,11 +129,12 @@ func (m *Manager) ShareProject(root string, sessionIDs ...string) (ProjectInfo, 
 		return ProjectInfo{}, errors.New("progetto non valido")
 	}
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.mode != ModeHost {
+		m.mu.Unlock()
 		return ProjectInfo{}, errNotHost
 	}
 	if m.project != nil {
+		m.mu.Unlock()
 		return ProjectInfo{}, errors.New("chiudi la sessione per cambiare progetto condiviso")
 	}
 	info := ProjectInfo{ID: randomToken(8), Name: filepath.Base(real)}
@@ -147,6 +148,8 @@ func (m *Manager) ShareProject(root string, sessionIDs ...string) (ProjectInfo, 
 		p.enqueue(e)
 	}
 	audit("project.shared", m.sessionID, m.self.ID, m.self.Role, "")
+	m.mu.Unlock()
+	m.checkpointSession()
 	return info, nil
 }
 
@@ -305,9 +308,11 @@ func (m *Manager) serveProject(from string, payload jsonv1.RawMessage) {
 	response := readProject(project, q)
 	// Revalidate after filesystem IO: no publication after revocation/session replacement.
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.mode != ModeHost || m.sessionID != session || m.peers[from] != p {
+		m.mu.Unlock()
 		return
 	}
 	p.enqueue(m.nextLocked(Event{Type: eventProjectResponse, From: m.self.ID, Payload: mustJSON(response)}))
+	m.mu.Unlock()
+	m.checkpointSession()
 }
