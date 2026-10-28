@@ -74,7 +74,7 @@ func makefileTargets(content string) []string {
 		if strings.ContainsAny(rule, "=?+") {
 			continue
 		}
-		for _, field := range strings.Fields(rule) {
+		for field := range strings.FieldsSeq(rule) {
 			if !makeTargetPattern.MatchString(field) || seen[field] {
 				continue
 			}

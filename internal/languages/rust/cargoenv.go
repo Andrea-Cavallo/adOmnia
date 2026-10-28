@@ -3,6 +3,7 @@ package rust
 import (
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -199,9 +200,7 @@ func cargoAliases(projectRoot, unitRoot string) map[string]string {
 		if root == "" {
 			continue
 		}
-		for name, command := range RustEnvironmentOf(root).Aliases {
-			aliases[name] = command
-		}
+		maps.Copy(aliases, RustEnvironmentOf(root).Aliases)
 	}
 	return aliases
 }
