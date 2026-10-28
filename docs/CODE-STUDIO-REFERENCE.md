@@ -42,6 +42,10 @@ code, and the UI never hard-codes the language id `'go'`.
 
 ## 2. Architecture at a glance
 
+<p align="center">
+  <img src="../assets/images/code-studio-interactions.svg" alt="Code Studio interactions: the React UI calls the Wails GoIDE service, which delegates to the internal/codestudio host; the host wires the internal/ide core, language adapters plug into the core, the core drives language servers, debuggers and toolchains for trusted projects, adapters publish routes to Developer Context, and events flow back to the UI by session id." width="100%">
+</p>
+
 ```text
 frontend (React)                         Go / Wails
 ──────────────────────────────────────────────────────────────

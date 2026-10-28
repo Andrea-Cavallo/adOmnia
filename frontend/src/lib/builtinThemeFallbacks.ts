@@ -1,8 +1,10 @@
+import staticCitrineJSON from '../../../internal/themes/skins/static-citrine.json?raw'
 import type { Theme } from '@/stores/themes'
 
 // Local bootstrap when the desktop theme service is unavailable (browser preview).
 // Keep default palettes aligned with internal/themes/themes.go and globals.css.
 export const BUILTIN_THEME_FALLBACKS: Theme[] = [
+  JSON.parse(staticCitrineJSON) as Theme,
   {
     "id": "builtin-dark",
     "name": "adOmnia Dark",

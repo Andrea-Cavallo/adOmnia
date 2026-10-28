@@ -971,8 +971,9 @@ Claude Code and milk chat share filtered live project context and support explic
 
 Call Hierarchy (`Ctrl+Alt+H`, or the editor context menu) now opens Function Explorer. With Code Vision enabled, the **callers · callees** lens opens it directly from a declaration.
 
-- **Quick popup** shows callers and callees together, with a source preview.
-- **Function Explorer** keeps the expandable hierarchy beside the editor. Search filters loaded functions; it does not launch a workspace scan.
+Function Explorer is a docked tool window inside the workspace, next to the editor. Choose **Left** or **Right** in its header and drag the splitter to resize it; side and width are saved locally (`adomnia.codestudio.functionExplorer.dock`). **Esc** or the hide button closes it.
+
+- **Calls** shows callers and callees side by side (stacked when the pane is narrow), with a source preview. Search filters loaded functions; it does not launch a workspace scan.
 - **Visual Graph** uses the same LSP hierarchy and the shared graph renderer. Callers are above the current function, callees below. Depth is 1–3, bounded to 120 functions, 240 edges and 120 expansion requests. Recursive edges retain symbol identity.
 
 A single click previews source, a double click or Enter opens it. **Alt+Left** returns to the previous editor position; explicit function jumps preserve nearby positions instead of merging them. Alt+Right goes forward. Preview reads synchronized unsaved text where available, without opening editor tabs or sending `didOpen`.

@@ -632,6 +632,7 @@ func (tm *ThemeManager) checkForChanges(skinsDir string) {
 // GetExtendedBuiltinThemes returns additional built-in themes beyond the core set.
 func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 	return []Theme{
+		staticCitrineTheme(),
 		{
 			ID:          "builtin-terminal-green",
 			Name:        "Terminal Green",

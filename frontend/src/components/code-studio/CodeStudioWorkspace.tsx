@@ -19,6 +19,8 @@ import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { activeDebugView, useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { isChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
 import { toolKey, useStudioTools, type ToolPlacement } from './studioToolState'
+import { CodeStudioFunctionExplorer } from './CodeStudioFunctionExplorer'
+import { useFunctionExplorerDock } from './useFunctionExplorerDock'
 
 interface CodeStudioWorkspaceProps {
   session: GoIDESession
@@ -47,6 +49,9 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
   const activeDocumentId = useCodeStudioStore((state) => state.activeDocumentBySession[session.id] ?? null)
   const active = documents.find((item) => item.document.id === activeDocumentId) ?? null
   const view = useCodeStudioLspStore((state) => state.toolWindow)
+  const hierarchy = useCodeStudioLspStore((state) => state.hierarchy)
+  const callView = hierarchy?.kind === 'call' && hierarchy.sessionId === session.id ? hierarchy : null
+  const functionDock = useFunctionExplorerDock()
   // Il debug prende il posto dell'area centrale solo con una sessione viva: senza, resta il layout normale.
   const hasDebugSession = useCodeStudioDebugStore((state) => activeDebugView(state, session.id) !== null)
   const debugging = !zen && bottomOpen && view === 'debug' && hasDebugSession
@@ -64,6 +69,7 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
     { id: 'project', key: 'project', position: 'left' as ToolPlacement, open: projectOpen && !debugging, width: projectWidth },
     { id: 'run', key: bottomKey, position: placements[bottomKey] ?? 'bottom', open: bottomOpen && view !== 'find', detached: (view === 'run' || view === 'terminal') && detached.includes(bottomKey), width: Math.max(320, structureWidth) },
     { id: 'side', key: sideKey, position: assistant ? placements[sideKey] ?? 'right' : 'right', open: structureOpen, detached: isChatPane(assistant) && detached.includes(sideKey), width: structureWidth },
+    { id: 'functions', key: 'functions', position: functionDock.side as ToolPlacement, open: !!callView && !zen, width: functionDock.width },
   ]
   const debugPanes = debugging ? panes.map(pane => ({ ...pane, open: false })) : panes
   const { focused, left, centerColumns, gridStyle, styleFor } = studioToolLayout(debugPanes, zen || debugging ? null : maximized, bottomHeight)
@@ -101,6 +107,20 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
               <CodeStudioSidePane session={session} document={active} />
             </div>
             {!focused && (placements[sideKey] ?? 'right') !== 'bottom' && <ResizeHandle variant="splitter" label="Resize structure pane" className="absolute inset-y-0 -left-2" {...onStructureResize} />}
+          </div>
+          <div className="relative" style={styleFor('functions')}>
+            {callView && (
+              <div className="code-studio-island absolute inset-0">
+                <CodeStudioFunctionExplorer
+                  key={`${callView.sessionId}:${callView.root.token}`}
+                  view={callView}
+                  side={functionDock.side}
+                  onSideChange={functionDock.setSide}
+                  onClose={() => useCodeStudioLspStore.setState({ hierarchy: null })}
+                />
+              </div>
+            )}
+            {callView && !focused && <ResizeHandle variant="splitter" label="Resize Function Explorer" className={`absolute inset-y-0 ${functionDock.side === 'right' ? '-left-2' : '-right-2'}`} {...functionDock.resize} />}
           </div>
           <div className="relative" style={styleFor('run')}>
             <div className="code-studio-island absolute inset-0">

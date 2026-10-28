@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ExternalLink, X } from 'lucide-react'
-import { monaco } from '@/lib/monacoSetup'
+import { CodeStudioSourcePreview } from './CodeStudioSourcePreview'
 import type { GoIDEEditorLocation, GoIDEQuickDefinition } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioLspStore, type GoIDECaretPopup } from '@/stores/codeStudioLsp'
 import { navigateToLocation } from './codeStudioLanguageFeatures'
@@ -25,24 +25,7 @@ function closePopup(): void {
 }
 
 function DefinitionBody({ result }: { result: GoIDEQuickDefinition }) {
-  const [html, setHtml] = useState<string | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    void monaco.editor.colorize(result.code, activeCodeStudioEditor()?.getModel()?.getLanguageId() ?? 'plaintext', { tabSize: 4 }).then((colored) => { if (!cancelled) setHtml(colored) })
-    return () => { cancelled = true }
-  }, [result.code])
-  const lines = result.code.split('\n').length
-  return (
-    <div className="flex min-h-0 overflow-auto bg-surface-0 font-mono text-[11px] leading-[18px]">
-      <div aria-hidden="true" className="select-none border-r border-border-1 px-2 py-2 text-right text-text-4">
-        {Array.from({ length: lines }, (_, index) => <div key={index}>{result.startLine + index}</div>)}
-      </div>
-      {/* colorize di Monaco produce HTML con il testo già escapato. */}
-      {html === null
-        ? <pre className="flex-1 whitespace-pre px-3 py-2 text-text-1">{result.code}</pre>
-        : <div className="flex-1 whitespace-pre px-3 py-2" dangerouslySetInnerHTML={{ __html: html }} />}
-    </div>
-  )
+  return <CodeStudioSourcePreview code={result.code} path={result.location.path} startLine={result.startLine} />
 }
 
 function UsagesBody({ locations, onPick, groupLabel }: { locations: GoIDEEditorLocation[]; onPick: (location: GoIDEEditorLocation) => void; groupLabel?: string }) {

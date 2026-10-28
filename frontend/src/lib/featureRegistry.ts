@@ -160,6 +160,23 @@ export function isFeatureVisible(
   return true
 }
 
+/** Rail categories with only the tools the current settings show; empty groups and categories drop out. */
+export function visibleRailCategories(
+  flags: { showAdvancedFeatures: boolean; showLabFeatures: boolean; pluginsEnabled?: boolean; dailyScenariosEnabled?: boolean },
+): FeatureRailCategory[] {
+  const shown = (id: RailItem) => {
+    if (id === 'plugins' && !flags.pluginsEnabled) return false
+    if (id === 'scenarios' && !flags.dailyScenariosEnabled) return false
+    return isFeatureVisible(id, flags)
+  }
+  return RAIL_CATEGORIES.map((cat) => ({
+    ...cat,
+    groups: cat.groups
+      .map((group) => ({ ...group, items: group.items.filter((item) => shown(item.id)) }))
+      .filter((group) => group.items.length > 0),
+  })).filter((cat) => cat.groups.length > 0)
+}
+
 export function getFeatureLabel(id: RailItem): string {
   const feature = FEATURE_BY_ID[id]
   return feature?.railLabel ?? feature?.title ?? id

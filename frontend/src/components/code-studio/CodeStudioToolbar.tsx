@@ -1,10 +1,14 @@
+import { FEATURE_REGISTRY, RAIL_CATEGORIES, getFeatureLabel } from '@/lib/featureRegistry'
+import { canDetachPanel } from '@/lib/panel-windows-api'
+import { codeStudioWindowContext } from '@/lib/code-studio-window-api'
+import { CodeStudioModal } from './CodeStudioModal'
 import { templateFor } from '@/lib/code-studio/runFormSchema'
 import { configurationTestTarget } from '@/lib/code-studio/runToolbarActions'
 import { useEffect, useMemo, useState } from 'react'
 import { useCodeStudioWindowsStore } from '@/stores/codeStudioWindows'
 import { FolderGit2, GitBranch, FolderOpen, FolderPlus, FolderX, History, PackageCheck, PackageSearch, RefreshCw, Settings2, Terminal } from 'lucide-react'
 import { AlertCircle, Bug, Check, ChevronDown, Hammer, Loader2, Maximize2, PanelLeft, PanelBottom, PanelRight, Play, Plus, Search, Square } from 'lucide-react'
-import { Container, Database, LayoutGrid, LayoutList, Send, Server, ServerCog } from 'lucide-react'
+import { Container, Database, Layers, LayoutGrid, LayoutList, Send, Server, ServerCog } from 'lucide-react'
 import type { RailItem } from '@/lib/navigation'
 import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindows'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
@@ -91,6 +95,8 @@ function goVersion(toolchain: GoIDEToolchainInfo | null): string {
 export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
   const { sessions, activeSession, mainMenu, extra, trailing, activeExecution, toolchain, loading, runConfigurations, activeConfigId } = props
   const [menu, setMenu] = useState<OpenMenu | null>(null)
+  const [workspacesOpen, setWorkspacesOpen] = useState(false)
+  const canSwitchWorkspaces = !!trailing && !codeStudioWindowContext().pinnedSessionId
   const detected = useDetectedRunItems(activeSession.id, (menu?.kind === 'config' || menu?.kind === 'more') && runConfigurations.length === 0)
   const detachedStudios = usePanelWindowsStore((state) => state.detached)
   const startPanelWindows = usePanelWindowsStore((state) => state.start)
@@ -133,19 +139,27 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
     if (kind === 'project') return [
       ...sessions.map((session) => ({ id: `${SESSION_PREFIX}${session.id}`, label: session.project.name, icon: FolderGit2, checked: session.id === activeSession.id || undefined, disabled: session.id === activeSession.id })),
       ...recentItems(),
+      ...(canSwitchWorkspaces ? [{ id: 'workspaces', label: 'Code Studio workspaces…', icon: Layers, separatorBefore: true }] : []),
       { id: 'open', label: 'Open Project…', shortcut: 'Ctrl+O', icon: FolderOpen, separatorBefore: true },
       { id: 'new', label: 'New Project…', icon: FolderPlus },
       { id: 'project-window', label: 'Open Project in New Window', icon: Maximize2 },
       { id: 'clone', label: 'Clone Repository…', icon: GitBranch },
       { id: 'close', label: `Close “${activeSession.project.name}”`, icon: FolderX, separatorBefore: true },
     ]
-    if (kind === 'studios') return STUDIOS.map((studio) => ({
-      id: `${STUDIO_PREFIX}${studio.rail}`,
-      label: detachedStudios.includes(studio.rail) ? `${studio.label} · show window` : studio.label,
-      icon: studio.icon,
-      iconClassName: detachedStudios.includes(studio.rail) ? 'text-accent' : undefined,
-      checked: detachedStudios.includes(studio.rail) || undefined,
-    }))
+    if (kind === 'studios') {
+      const item = (rail: RailItem, label: string, icon?: typeof Send): ContextMenuItem => ({
+        id: `${STUDIO_PREFIX}${rail}`, label: detachedStudios.includes(rail) ? `${label} · show window` : label,
+        icon, iconClassName: detachedStudios.includes(rail) ? 'text-accent' : undefined,
+        checked: detachedStudios.includes(rail) || undefined,
+      })
+      const shortcuts = new Set(STUDIOS.map(studio => studio.rail))
+      const more = RAIL_CATEGORIES.flatMap(category => {
+        const rails = [...new Set([...(category.directItem ? [category.directItem] : []), ...category.groups.flatMap(group => group.items.map(entry => entry.id))])]
+          .filter(rail => canDetachPanel(rail) && !shortcuts.has(rail))
+        return rails.length ? [{ id: `tools-group:${category.key}`, label: category.label, submenu: rails.map(rail => item(rail, getFeatureLabel(rail))) }] : []
+      })
+      return [...STUDIOS.map(studio => item(studio.rail, studio.label, studio.icon)), ...(more.length ? [{ id: 'more-adomnia-tools', label: 'More adOmnia tools', icon: LayoutGrid, separatorBefore: true, submenu: more }] : [])]
+    }
     if (kind === 'config') return [
       // Monorepo: le configurazioni sono raggruppate per unità ("orders · Go") e l'unità è scritta a destra della voce.
       ...groupConfigurationsByUnit(runConfigurations, activeSession.project, IDE_LANGUAGE_NAMES).flatMap((group, groupIndex) => group.items.map((config, index) => ({
@@ -179,12 +193,13 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
     if (id.startsWith(SESSION_PREFIX)) return props.onSelect(id.slice(SESSION_PREFIX.length))
     if (id.startsWith(RECENT_PREFIX)) return props.onOpenRecent?.(id.slice(RECENT_PREFIX.length))
     if (id.startsWith(STUDIO_PREFIX)) {
-      const studio = STUDIOS.find((item) => `${STUDIO_PREFIX}${item.rail}` === id)
-      return studio ? openRailItemInWindow(studio.rail, studio.label) : undefined
+      const studio = FEATURE_REGISTRY.find(item => `${STUDIO_PREFIX}${item.id}` === id)
+      return studio && canDetachPanel(studio.id) ? openRailItemInWindow(studio.id, getFeatureLabel(studio.id)) : undefined
     }
     if (id.startsWith(DETECTED_PREFIX)) return void detected.add(id.slice(DETECTED_PREFIX.length))
     if (id.startsWith(CONFIG_PREFIX)) return props.onSelectConfiguration(id.slice(CONFIG_PREFIX.length) || null)
     switch (id) {
+      case 'workspaces': return setWorkspacesOpen(true)
       case 'build': return props.onBuild()
       case 'debug': return props.onDebug()
       case 'test': return props.onTest()
@@ -240,10 +255,11 @@ export function CodeStudioToolbar(props: CodeStudioToolbarProps) {
       <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
       <button type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={menu?.kind === 'more'} onClick={(event) => openMenu('more', event.currentTarget)} title={`Run configuration: ${activeConfig?.name ?? (profile.hasGo ? 'go run .' : 'Choose a configuration')} · Build, debug and tools`} className={`code-studio-icon-button h-8 w-8 ${menu?.kind === 'more' ? 'is-active' : ''}`}><Settings2 size={16} /></button>
       <span className="mx-1 h-5 w-px shrink-0 bg-border-1" aria-hidden="true" />
-      {trailing && <div className="code-studio-workspace-picker">{trailing}</div>}
+      <button type="button" aria-label="adOmnia tools" aria-haspopup="menu" aria-expanded={menu?.kind === 'studios'} onClick={event => openMenu('studios', event.currentTarget)} title="adOmnia tools · API, Database, Broker and more" className={`code-studio-icon-button h-8 w-8 ${menu?.kind === 'studios' ? 'is-active' : ''}`}><Layers size={16} /></button>
       {/* Nella barra della finestra la X è quella della finestra: Close Project resta nel menu File. */}
       <CodeStudioWindowControls />
       </div>
+      {workspacesOpen && canSwitchWorkspaces && <CodeStudioModal open onClose={() => setWorkspacesOpen(false)} size="sm" title="Code Studio workspaces"><p className="mb-3 text-xs text-text-3">Switch, create or manage Code Studio workspaces.</p>{trailing}</CodeStudioModal>}
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={menuItems(menu.kind)} onSelect={select} onClose={() => setMenu(null)} />}
     </div>
   )

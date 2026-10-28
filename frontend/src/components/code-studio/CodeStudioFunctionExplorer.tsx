@@ -1,8 +1,19 @@
+import { ResizeHandle } from '@/components/ui/ResizeHandle'
+import type { CSSProperties } from 'react'
+import './codeStudioFunctionExplorer.css'
+import { CodeStudioSourcePreview } from './CodeStudioSourcePreview'
 import { activeCodeStudioEditor } from './codeStudioEditorRegistry'
 import { documentForModel } from './codeStudioLanguageFeatures'
 import { useCodeStudioNavigationStore } from '@/stores/codeStudioNavigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Network, X } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Minus,
+} from 'lucide-react'
 import {
   requestExpandHierarchy,
   requestHierarchyPreview,
@@ -12,7 +23,8 @@ import {
 import type { GoIDEHierarchyView } from '@/stores/codeStudioLsp'
 import { navigateToLocation } from './codeStudioNavigation'
 import { CodeStudioGraphView } from './CodeStudioGraphView'
-import { CodeStudioModal } from './CodeStudioModal'
+import { CodeStudioToolbarSelect } from './CodeStudioToolbarSelect'
+import type { FunctionExplorerSide } from './useFunctionExplorerDock'
 import {
   functionGraph,
   hierarchyKey,
@@ -20,7 +32,7 @@ import {
   type ExpandCalls,
 } from './functionExplorerGraph'
 
-type Mode = 'quick' | 'explorer' | 'graph'
+type Mode = 'explorer' | 'graph'
 function CallTree({
   item,
   direction,
@@ -66,12 +78,14 @@ function CallTree({
     `${item.name} ${item.detail} ${item.location.relativePath}`
       .toLowerCase()
       .includes(query.toLowerCase())
+  const path = item.location.relativePath || item.location.path
+  const filename = path.replace(/\\/g, '/').split('/').pop()
   const next = new Set(ancestors).add(hierarchyKey(item))
   return (
     <li>
       <div
-        hidden={!matches}
-        className={`${!matches ? 'hidden' : 'flex'} items-center gap-1 py-1 ${selected === hierarchyKey(item) ? 'bg-surface-2' : ''}`}
+        hidden={!matches || level === 0}
+        className={`fe-node ${!matches || level === 0 ? 'hidden' : 'flex'} items-center gap-1 ${selected === hierarchyKey(item) ? 'is-selected' : ''}`}
         style={{ paddingLeft: Math.min(level, 12) * 12 }}
       >
         <button
@@ -80,7 +94,7 @@ function CallTree({
           aria-expanded={open}
           disabled={recursive || level >= 12}
           onClick={() => setOpen(!open)}
-          className="grid h-7 w-7 shrink-0 place-items-center"
+          className="grid h-8 w-7 shrink-0 place-items-center"
         >
           {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
@@ -94,16 +108,17 @@ function CallTree({
               onOpen(item)
             }
           }}
+          aria-pressed={selected === hierarchyKey(item)}
           className="min-w-0 flex-1 pr-2 text-left"
-          title={item.detail || item.location.path}
+          title={`${item.detail || item.name}\n${path}:${item.location.range.startLine}`}
         >
-          <span className="block truncate text-xs text-text-1">
+          <span className="fe-node-name">
             {item.name}
             {recursive ? ' ↻' : ''}
           </span>
-          <span className="block truncate font-mono text-[10px] text-text-3">
-            {item.location.relativePath || item.location.path}:
-            {item.location.range.startLine}
+          <span className="fe-node-path">
+            {filename}:{item.location.range.startLine} ·{' '}
+            {item.location.external ? 'External source' : path}
           </span>
         </button>
       </div>
@@ -155,14 +170,33 @@ function CallTree({
   )
 }
 
-export function CodeStudioFunctionExplorer({
-  view,
-  onClose,
-}: {
+interface CodeStudioFunctionExplorerProps {
   view: GoIDEHierarchyView
+  side: FunctionExplorerSide
+  onSideChange: (side: FunctionExplorerSide) => void
   onClose: () => void
-}) {
-  const [mode, setMode] = useState<Mode>('quick')
+}
+
+/** Docked tool window: lives in the workspace grid next to the editor, like Run or Chat. */
+export function CodeStudioFunctionExplorer({ view, side, onSideChange, onClose }: CodeStudioFunctionExplorerProps) {
+  const [mode, setMode] = useState<Mode>('explorer')
+  const [sourceShare, setSourceShare] = useState(0.55)
+  const sourcePane = useRef<HTMLElement>(null)
+  const contentPane = useRef<HTMLDivElement>(null)
+  const stopResize = useRef<(() => void) | null>(null)
+  useEffect(() => () => { stopResize.current?.() }, [mode])
+  const paneSizes = () => {
+    const source = sourcePane.current?.getBoundingClientRect().height ?? 0
+    const browser = contentPane.current?.querySelector('.fe-browser')?.getBoundingClientRect().height ?? 0
+    return { source, total: source + browser }
+  }
+  const updateSourceSize = (height: number, total: number) => {
+    if (total <= 0) return
+    const minimum = Math.min(160, total * 0.4)
+    const maximum = total - Math.min(100, total * 0.25)
+    setSourceShare(Math.min(maximum, Math.max(minimum, height)) / total)
+  }
+
   const [selected, setSelected] = useState(view.root)
   const [query, setQuery] = useState('')
   const [depth, setDepth] = useState(2)
@@ -237,51 +271,43 @@ export function CodeStudioFunctionExplorer({
       position &&
       document.document.sessionId === view.sessionId
     ) {
-      useCodeStudioNavigationStore
-        .getState()
-        .recordJump(
-          view.sessionId,
-          {
-            relativePath: document.document.relativePath,
-            externalPath: document.document.external
-              ? document.document.path
+      useCodeStudioNavigationStore.getState().recordJump(
+        view.sessionId,
+        {
+          relativePath: document.document.relativePath,
+          externalPath: document.document.external
+            ? document.document.path
+            : undefined,
+          line: position.lineNumber,
+          column: position.column,
+        },
+        {
+          relativePath: item.location.relativePath ?? '',
+          externalPath:
+            item.location.external || !item.location.relativePath
+              ? item.location.path
               : undefined,
-            line: position.lineNumber,
-            column: position.column,
-          },
-          {
-            relativePath: item.location.relativePath ?? '',
-            externalPath:
-              item.location.external || !item.location.relativePath
-                ? item.location.path
-                : undefined,
-            line: item.location.range.startLine,
-            column: item.location.range.startColumn,
-          },
-        )
+          line: item.location.range.startLine,
+          column: item.location.range.startColumn,
+        },
+      )
     }
     navigateToLocation({ ...item.location, targetSessionId: view.sessionId })
-    if (mode === 'quick') onClose()
   }
   const actions = (
     <div
-      className="gs-segmented"
+      className="fe-modes"
       role="group"
       aria-label="Function navigation mode"
     >
-      {(['quick', 'explorer', 'graph'] as const).map((value) => (
+      {(['explorer', 'graph'] as const).map((value) => (
         <button
           key={value}
           type="button"
           aria-pressed={mode === value}
           onClick={() => setMode(value)}
-          className="gs-segment"
         >
-          {value === 'quick'
-            ? 'Quick popup'
-            : value === 'explorer'
-              ? 'Function Explorer'
-              : 'Visual Graph'}
+          {value === 'explorer' ? 'Calls' : 'Visual Graph'}
         </button>
       ))}
     </div>
@@ -296,28 +322,25 @@ export function CodeStudioFunctionExplorer({
       onOpen: open,
       query,
     }),
-    [view.root, expand, selectionKey, query, mode],
+    [view.root, expand, selectionKey, query],
   )
   const content = (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-border-1 px-3 py-2">
-        <p className="text-[10px] text-text-3">CURRENT FUNCTION</p>
+    <div ref={contentPane} className="fe-content" style={{ '--fe-source-share': sourceShare } as CSSProperties}>
+      <div className="fe-current">
+        <p className="fe-current-label">Current function</p>
         <button
           onClick={() => setSelected(view.root)}
           onDoubleClick={() => open(view.root)}
-          className="text-left text-sm text-text-1"
+          className="fe-current-name"
         >
           {view.root.name}
         </button>
-        <p
-          className="truncate font-mono text-[10px] text-text-3"
-          title={view.root.detail}
-        >
+        <p className="fe-current-path" title={view.root.detail}>
           {view.root.detail || view.root.location.relativePath}
         </p>
       </div>
       {mode === 'graph' ? (
-        <div className="min-h-0 flex-1 overflow-auto p-3">
+        <div className="fe-browser p-4">
           <label className="text-xs text-text-2">
             Depth{' '}
             <select
@@ -369,8 +392,8 @@ export function CodeStudioFunctionExplorer({
           )}
         </div>
       ) : (
-        <>
-          <label className="px-3 py-2 text-[11px] text-text-3">
+        <div className="fe-browser">
+          <label className="fe-search">
             Filter loaded functions
             <input
               className="gs-input mt-1 w-full"
@@ -379,15 +402,15 @@ export function CodeStudioFunctionExplorer({
               placeholder="Name, package or file"
             />
           </label>
-          <div
-            className={`grid min-h-0 flex-1 overflow-auto ${mode === 'quick' ? 'grid-cols-2' : 'grid-cols-1'}`}
-          >
+          <div className="fe-tree-columns">
             {(['incoming', 'outgoing'] as const).map((direction) => (
-              <section
-                key={direction}
-                className="min-w-0 border-b border-border-1 p-2"
-              >
-                <h3 className="mb-2 text-xs font-semibold text-text-2">
+              <section key={direction}>
+                <h3>
+                  {direction === 'incoming' ? (
+                    <ArrowUpRight size={15} />
+                  ) : (
+                    <ArrowDownLeft size={15} />
+                  )}
                   {direction === 'incoming'
                     ? 'Callers · who calls'
                     : 'Callees · what it calls'}
@@ -398,22 +421,59 @@ export function CodeStudioFunctionExplorer({
               </section>
             ))}
           </div>
-        </>
+        </div>
       )}
-      <section
-        aria-label="Function source preview"
-        className="max-h-[32vh] shrink-0 overflow-auto border-t border-border-1 p-3"
-      >
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="truncate text-xs text-text-2">
-            {selected.name} · {selected.location.range.startLine}
-          </span>
-          <button className="gs-button text-xs" onClick={() => open(selected)}>
-            Open source
+      <ResizeHandle
+        label="Resize source preview · drag up to enlarge · double-click to reset"
+        orientation="horizontal"
+        withLine={false}
+        className="fe-preview-resize"
+        onDoubleClick={() => setSourceShare(0.55)}
+        onArrow={delta => {
+          const { source, total } = paneSizes()
+          updateSourceSize(source - delta, total)
+        }}
+        onMouseDown={event => {
+          if (event.button !== 0) return
+          event.preventDefault()
+          event.currentTarget.focus()
+          stopResize.current?.()
+          const { source, total } = paneSizes()
+          const origin = event.clientY
+          const previousCursor = document.body.style.cursor
+          const previousSelect = document.body.style.userSelect
+          document.body.style.cursor = 'row-resize'
+          document.body.style.userSelect = 'none'
+          const move = (next: MouseEvent) => updateSourceSize(source + origin - next.clientY, total)
+          const stop = () => {
+            window.removeEventListener('mousemove', move)
+            window.removeEventListener('mouseup', stop)
+            window.removeEventListener('blur', stop)
+            document.body.style.cursor = previousCursor
+            document.body.style.userSelect = previousSelect
+            stopResize.current = null
+          }
+          stopResize.current = stop
+          window.addEventListener('mousemove', move)
+          window.addEventListener('mouseup', stop)
+          window.addEventListener('blur', stop)
+        }}
+      />
+      <section ref={sourcePane} aria-label="Function source preview" className="fe-source">
+        <div className="fe-source-header">
+          <div className="fe-source-heading">
+            {selected.name}
+            <small>
+              {selected.location.relativePath || selected.location.path}:
+              {selected.location.range.startLine}
+            </small>
+          </div>
+          <button className="fe-open-source" onClick={() => open(selected)}>
+            <ExternalLink size={13} /> Open source
           </button>
         </div>
         {previewError ? (
-          <p role="alert" className="text-xs text-error">
+          <p role="alert" className="fe-source-message text-error">
             {previewError}
             <button
               onClick={() => setPreviewEpoch((value) => value + 1)}
@@ -423,58 +483,50 @@ export function CodeStudioFunctionExplorer({
             </button>
           </p>
         ) : !preview ? (
-          <p role="status" className="text-xs text-text-3">
+          <p role="status" className="fe-source-message">
             Loading source…
           </p>
         ) : (
-          <pre className="whitespace-pre font-mono text-[11px] text-text-2">
-            {preview.code || 'Source not available.'}
-            {preview.truncated ? '\n… preview truncated' : ''}
-          </pre>
+          <CodeStudioSourcePreview
+            code={preview.code || 'Source not available.'}
+            path={preview.location.path || selected.location.path}
+            startLine={preview.startLine || selected.location.range.startLine}
+            truncated={preview.truncated}
+          />
         )}
       </section>
     </div>
   )
-  if (mode === 'quick')
-    return (
-      <CodeStudioModal
-        open
-        onClose={onClose}
-        size="lg"
-        top
-        divided
-        flush
-        icon={Network}
-        title="Function Explorer"
-        actions={actions}
-        footerStart="Click previews · double-click or Enter opens source · Alt+← returns to the previous editor position."
-      >
-        {content}
-      </CodeStudioModal>
-    )
   return (
-    <aside
-      role="region"
+    <section
       aria-label="Function Explorer"
-      className="absolute inset-y-0 right-0 z-40 flex w-[min(860px,70%)] min-w-[360px] flex-col border-l border-border-2 bg-surface-0 shadow-lg"
+      className="function-explorer fe-pane"
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose()
       }}
     >
-      <header className="flex flex-wrap items-center gap-2 border-b border-border-1 p-3">
-        <h2 className="mr-auto text-sm font-semibold text-text-1">
-          Function Explorer
-        </h2>
-        <button
-          aria-label="Close Function Explorer"
-          className="gs-button"
-          onClick={onClose}
-        >
-          <X size={14} />
-        </button>
+      <header className="code-studio-tool-header fe-header">
+        <span className="code-studio-tool-title">Function Explorer</span>
         {actions}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <CodeStudioToolbarSelect
+            label="Tool position"
+            value={side}
+            options={[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }]}
+            onChange={(value) => onSideChange(value === 'left' ? 'left' : 'right')}
+          />
+          <button
+            type="button"
+            aria-label="Hide Function Explorer"
+            title="Hide · Esc"
+            className="code-studio-icon-button h-7 w-7"
+            onClick={onClose}
+          >
+            <Minus size={14} />
+          </button>
+        </div>
       </header>
       {content}
-    </aside>
+    </section>
   )
 }

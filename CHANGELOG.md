@@ -16,6 +16,19 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Build diagnostics in the core.** Any language can now hand compiler output to the Problems panel (`CommandSpec.Diagnostics` / `ConsoleLine`); Rust is the first consumer.
 - **Fixes found along the way.** rust-analyzer's lower-case drive letters no longer drop diagnostics on Windows; `.cargo/config.toml` is read by the project scan; axum `.nest()` prefixes no longer leak onto routes written after them; Live Session no longer ignores Rust runs.
 
+## [1.0.19] — 2026-10-28
+
+Release notes: [docs/releases/v1.0.19.md](docs/releases/v1.0.19.md).
+
+- **JavaScript/TypeScript debugging** in Code Studio with js-debug (pinned v1.140.0, SHA-256 verified, installed only on explicit confirmation), for project files and package-manager runs.
+- **Function Explorer is a docked tool window** beside the editor: Left/Right position and a resizable splitter, both remembered (`adomnia.codestudio.functionExplorer.dock`), IDE-density layout, Calls and Visual Graph views. The Quick popup is removed. New symbol origin lens.
+- **Find Usages** groups results by file with file icons, collapsible groups, a highlighted selection and the shared source preview.
+- **Home Hub menu reaches every tool**: it reads the same categories as the navigation rail (`visibleRailCategories`), categories expand in place, the Home entry is removed.
+- **Swagger Editor / API Docs resolve `$ref` responses** under `components.responses`, with description, content, examples and headers ([#228](https://github.com/Andrea-Cavallo/adOmnia/issues/228)); referenced parameters, request bodies, headers and path items too.
+- **Static Citrine skin.** The Code Studio *Studios* menu lists every detachable adOmnia tool by category.
+- **Removed: the MCP client panel.** The local `adomnia mcp` server is unchanged.
+- **Developers:** Go module renamed to `github.com/Andrea-Cavallo/adOmnia`; standard MIT `LICENSE` with `NOTICE.md`; terminal and language server manager moved into `internal/ide`, Go tools into the Go adapter; Go 1.27 modernizers; Codecov upload; Code Studio interactions diagram in the technical reference.
+
 ## [1.0.18] — 2026-10-25
 
 Release notes: [docs/releases/v1.0.18.md](docs/releases/v1.0.18.md).

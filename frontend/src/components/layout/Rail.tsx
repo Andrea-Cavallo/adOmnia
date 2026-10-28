@@ -5,7 +5,7 @@ import { TOOL_TAB_LABELS, type ToolTabId } from '@/lib/types'
 import { useSettingsStore } from '@/stores/settings'
 import { cn } from '@/lib/utils'
 import { useAppIcon } from '@/lib/brandAssets'
-import { RAIL_CATEGORIES, getFeatureLabel, isFeatureVisible } from '@/lib/featureRegistry'
+import { RAIL_CATEGORIES, getFeatureLabel, visibleRailCategories } from '@/lib/featureRegistry'
 import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
 import { nextRovingFocusIndex } from '@/lib/accessibility'
 import { safeSetItem } from '@/lib/safeLocalStorage'
@@ -40,7 +40,7 @@ interface CategoryDef {
   groups: SubGroup[]
 }
 
-const CATEGORY_ICONS: Record<string, React.ElementType> = {
+export const CATEGORY_ICONS: Record<string, React.ElementType> = {
   api: Send,
   protocols: Radio,
   data: Database,
@@ -386,18 +386,7 @@ export function Rail() {
     data:      false,
   }
 
-  const visibleCategories = CATEGORIES.map((cat) => ({
-    ...cat,
-    groups: cat.groups.map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
-        if (item.id === 'plugins' && !features.pluginsEnabled) return false
-        if (item.id === 'scenarios' && !features.dailyScenariosEnabled) return false
-        if (!isFeatureVisible(item.id, features)) return false
-        return true
-      }),
-    })).filter((group) => group.items.length > 0),
-  })).filter((cat) => cat.groups.length > 0)
+  const visibleCategories = visibleRailCategories(features)
 
   return (
     <nav

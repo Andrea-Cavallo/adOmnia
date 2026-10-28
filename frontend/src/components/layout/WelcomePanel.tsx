@@ -1,13 +1,14 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Code2, Database, FileText, Hexagon, House, Info, Radio, Send, Settings, type LucideIcon } from 'lucide-react'
-import { isFeatureVisible } from '@/lib/featureRegistry'
+import { ArrowRight, ChevronRight, Code2, Database, FileText, Info, Send, Settings, Wrench, type LucideIcon } from 'lucide-react'
+import { getFeatureLabel, isFeatureVisible, visibleRailCategories } from '@/lib/featureRegistry'
 import { minuteAlignedTimeout } from '@/lib/visiblePolling'
 import { loadRecentFiles, recentFileFolder, timeAgo, type RecentFile } from '@/lib/recentFiles'
 import { recentRequests, type RecentRequest } from '@/lib/recentRequests'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import { useTabsStore } from '@/stores/tabs'
-import { useUiTranslation, type UiMessage } from '@/lib/uiI18n'
+import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
+import { CATEGORY_ICONS, FEATURE_ICONS } from './Rail'
 import { loadHubPhrase } from './hubPhrases'
 import '@fontsource/doto/latin-800.css'
 import '@fontsource/geist-mono/latin-400.css'
@@ -19,12 +20,11 @@ const Threads = lazy(() => import('./react-bits/Threads'))
 // Code Studio stays lazy: the file icon set loads only when the Hub shows a recent file.
 const FileIcon = lazy(() => import('@/components/code-studio/CodeStudioFileIcon').then((module) => ({ default: module.CodeStudioFileIcon })))
 
-const NAV: ReadonlyArray<{ id: RailItem; label: string; icon: LucideIcon }> = [
+// Start actions on the Hub page; the sidebar reads the full rail registry.
+const START_ACTIONS: ReadonlyArray<{ id: RailItem; label: string; icon: LucideIcon }> = [
   { id: 'codestudio', label: 'Code Studio', icon: Code2 },
   { id: 'collections', label: 'API Client', icon: Send },
   { id: 'database', label: 'Database', icon: Database },
-  { id: 'broker', label: 'Messaging', icon: Radio },
-  { id: 'powertools', label: 'Tools', icon: Hexagon },
 ]
 const RECENT_ROWS = 5
 
@@ -66,18 +66,46 @@ function openRecentRequest(entry: RecentRequest) {
   useAppStore.getState().setActiveRail('collections')
 }
 
+/** Same categories and tools as the app rail, so every feature is reachable from the Hub too. */
 function HubSidebar() {
   const tr = useUiTranslation()
   const t = (text: string) => tr(text as UiMessage) || text
+  const nav = useNavigationTranslation()
   const open = useAppStore((state) => state.setActiveRail)
   const flags = useSettingsStore((state) => state.settings.features)
+  const categories = useMemo(() => visibleRailCategories(flags), [flags])
+  const [expanded, setExpanded] = useState<string | null>(null)
   return (
     <aside className="hub-side">
       <nav className="hub-nav" aria-label={t('Primary navigation')}>
-        <button type="button" aria-current="page"><House size={20} strokeWidth={1.6} />{t('Home')}</button>
-        {NAV.filter((item) => isFeatureVisible(item.id, flags)).map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button" onClick={() => open(id)}><Icon size={20} strokeWidth={1.6} />{t(label)}</button>
-        ))}
+        {categories.map((cat) => {
+          const Icon = CATEGORY_ICONS[cat.key] ?? Wrench
+          const items = cat.groups.flatMap((group) => group.items)
+          const direct = cat.directItem ?? (items.length === 1 ? items[0].id : undefined)
+          if (direct) return (
+            <button key={cat.key} type="button" onClick={() => open(direct)}><Icon size={20} strokeWidth={1.6} />{nav(cat.label)}</button>
+          )
+          const isOpen = expanded === cat.key
+          return (
+            <div key={cat.key} className="hub-nav-group">
+              <button type="button" aria-expanded={isOpen} aria-controls={`hub-nav-${cat.key}`} onClick={() => setExpanded(isOpen ? null : cat.key)}>
+                <Icon size={20} strokeWidth={1.6} />{nav(cat.label)}<ChevronRight aria-hidden="true" size={14} className="hub-nav-chevron" />
+              </button>
+              {isOpen && (
+                <ul id={`hub-nav-${cat.key}`} className="hub-nav-items">
+                  {items.map((item) => {
+                    const ItemIcon = FEATURE_ICONS[item.id] ?? Wrench
+                    return (
+                      <li key={item.id}>
+                        <button type="button" onClick={() => open(item.id)}><ItemIcon size={15} strokeWidth={1.6} />{nav(item.label ?? getFeatureLabel(item.id))}</button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )
+        })}
       </nav>
       <nav className="hub-nav hub-nav-foot" aria-label={t('Settings')}>
         <button type="button" onClick={() => openSettings()}><Settings size={20} strokeWidth={1.6} />{t('Settings')}</button>
@@ -142,7 +170,7 @@ export function WelcomePanel() {
         {recent.length === 0 && <section className="hub-start" aria-labelledby="hub-start-title">
           <h2 id="hub-start-title" className="hub-eyebrow">{t('Start here')}</h2>
           <div className="hub-start-actions">
-            {NAV.filter((item) => ['codestudio', 'collections', 'database'].includes(item.id) && isFeatureVisible(item.id, flags)).map(({ id, label, icon: Icon }) => (
+            {START_ACTIONS.filter((item) => isFeatureVisible(item.id, flags)).map(({ id, label, icon: Icon }) => (
               <button type="button" key={id} onClick={() => open(id)}>
                 <Icon size={22} strokeWidth={1.5} />
                 <span><strong>{t(label)}</strong><small>{t(id === 'codestudio' ? 'Open a folder or create a project.' : id === 'collections' ? 'Send a request or import a collection.' : 'Connect to a database.')}</small></span>

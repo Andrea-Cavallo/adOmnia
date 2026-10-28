@@ -1,4 +1,3 @@
-import { CodeStudioFunctionExplorer } from './CodeStudioFunctionExplorer'
 import { useEffect, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, Boxes, ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-react'
 import { requestExpandHierarchy, type GoIDEHierarchyItem } from '@/lib/code-studio-lsp-api'
@@ -76,7 +75,8 @@ export function CodeStudioHierarchyDialog() {
   const close = () => useCodeStudioLspStore.setState({ hierarchy: null })
   const [picked, setPicked] = useState<{ view: GoIDEHierarchyView; id: string } | null>(null)
   if (!view) return null
-  if (view.kind === 'call') return <CodeStudioFunctionExplorer key={`${view.sessionId}:${view.root.token}`} view={view} onClose={close} />
+  // Call hierarchy is the docked Function Explorer, rendered by CodeStudioWorkspace.
+  if (view.kind === 'call') return null
   const direction = picked?.view === view ? picked.id : DIRECTIONS[view.kind][0].id
   const title = 'Type Hierarchy'
   return (
