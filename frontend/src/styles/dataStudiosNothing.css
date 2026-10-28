@@ -1,0 +1,32 @@
+.data-studio-heading { padding: 18px 20px; border-bottom: 1px solid var(--color-border-1); flex-shrink: 0; }
+.data-studio-heading p { margin-top: 4px; font-size: 12px; color: var(--color-text-3); }
+:is(.grpc-studio, .storage-studio) :is(button, input:not([type=checkbox]), select) { min-height: 32px; }
+:is(.grpc-studio, .storage-studio) :is(input, select, textarea, button) { border-radius: 3px; }
+:is(.grpc-studio, .storage-studio) :is(pre, textarea) { font-size: 13px; line-height: 1.65; }
+:is(.grpc-studio, .storage-studio) .bg-accent { color: var(--color-on-accent); }
+.grpc-connection > div { flex-wrap: wrap; gap: 8px; }
+.grpc-connection > div > div:first-child { border: 0; background: transparent; padding-left: 0; }
+.grpc-workspace > * { min-width: 0; }
+.grpc-services { width: 250px; background: var(--color-surface-0); }
+.grpc-inspector { width: 280px; background: var(--color-surface-0); }
+.grpc-inspector > div:nth-child(2) { flex-wrap: wrap; gap: 4px; padding-left: 8px; padding-right: 8px; }
+.grpc-inspector > div:nth-child(2) button { padding-left: 6px; padding-right: 6px; }
+.grpc-footer { min-height: 34px; flex-shrink: 0; flex-wrap: wrap; padding-top: 6px; padding-bottom: 6px; gap: 8px 16px; }
+.grpc-studio section.rounded { border-radius: 0; background: transparent; }
+.storage-studio .storage-summary { flex-wrap: wrap; background: transparent; border-radius: 0; padding: 4px 0 12px; }
+.storage-workspace > * { min-width: 0; }
+@media (max-width: 1200px) {
+  .grpc-workspace { flex-wrap: wrap; overflow-y: auto; }
+  .grpc-workspace > .grpc-services { flex: 0 0 220px; min-height: 420px; }
+  .grpc-workspace > div { flex: 1 1 calc(100% - 220px); min-height: 600px; }
+  .grpc-workspace > .grpc-inspector { width: 100%; min-height: 180px; border-left: 0; border-top: 1px solid var(--color-border-1); }
+  .grpc-method-controls { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .storage-workspace { flex-direction: column; }
+  .storage-workspace > div:first-child { width: 100%; min-height: 180px; max-height: 300px; }
+  .storage-workspace > div:last-child { min-height: 360px; flex-shrink: 0; }
+  .grpc-workspace > .grpc-services { flex: 0 0 100%; min-height: 180px; max-height: 300px; border-right: 0; border-bottom: 1px solid var(--color-border-1); }
+  .grpc-workspace > div { flex-basis: 100%; }
+  .grpc-connection > div > div:nth-child(2) { min-width: 0; flex-basis: 100%; }
+}

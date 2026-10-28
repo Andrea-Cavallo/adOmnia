@@ -6,6 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.21] — 2026-10-28
+
+Release notes: [docs/releases/v1.0.21.md](docs/releases/v1.0.21.md).
+
+- **Settings layout fix.** Keep navigation and content in explicit columns with independent scrolling, so selecting a section does not place its content below the menu.
+- **gRPC Client and Storage Explorer.** Apply the shared Nothing-style typography, readable controls and responsive layouts.
+- **Code Studio documentation.** Include the interaction diagrams in HTML and SVG.
+
+
 ## [1.0.20] — 2026-10-28
 
 Release notes: [docs/releases/v1.0.20.md](docs/releases/v1.0.20.md).

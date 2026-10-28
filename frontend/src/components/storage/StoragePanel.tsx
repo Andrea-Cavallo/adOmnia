@@ -1,3 +1,5 @@
+import '@/styles/studioNothing.css'
+import '@/styles/dataStudiosNothing.css'
 import { isDesktopRuntime } from '@/lib/desktopRuntime'
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Download, Upload, Trash2, Copy, Plus, RefreshCw, Eraser, AlertTriangle } from 'lucide-react'
@@ -331,25 +333,26 @@ export function StoragePanel() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="nothing-studio storage-studio min-w-0 flex-1 flex flex-col min-h-0 overflow-hidden">
+      <header className="data-studio-heading"><h1 className="nothing-studio-title">Storage Explorer</h1><p>Local buckets · keys and values · snapshots</p></header>
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-auto">
         {/* Status bar */}
-        <div className="flex items-center gap-4 text-[10px] text-text-3 bg-surface-1 border border-border-1 rounded-md px-3 py-2 font-mono">
+        <div className="flex items-center gap-4 text-[12px] text-text-3 storage-summary border-b border-border-1 px-3 py-2 font-mono">
             {status ? <>
               <span>buckets: <span className="text-text-2">{String(status.buckets ?? '?')}</span></span>
               <span>total keys: <span className="text-text-2">{String(status.totalKeys ?? '?')}</span></span>
               <span>size: <span className="text-text-2">{String(status.sizeBytes ?? '?')}</span></span>
-            </> : <span className="text-text-4">Storage backend not connected</span>}
+            </> : <span className="text-text-3">Storage backend not connected</span>}
             <button onClick={() => void handleSnapshot()} disabled={!port} className="ml-auto flex items-center gap-1 text-accent hover:text-accent-light disabled:opacity-40"><Download size={11} /> Full snapshot</button>
             <button onClick={chooseRestore} disabled={!port} className="flex items-center gap-1 text-text-3 hover:text-text-1 disabled:opacity-40"><Upload size={11} /> Restore</button>
             <button onClick={() => void migrateLegacyStorage()} disabled={!port} className="text-text-3 hover:text-text-1 disabled:opacity-40">Migrate legacy</button>
-            <button onClick={loadStatus} className="text-accent hover:text-accent-light"><RefreshCw size={11} /></button>
+            <button aria-label="Refresh storage status" onClick={loadStatus} className="text-accent hover:text-accent-light"><RefreshCw size={11} /></button>
         </div>
 
         {/* Local app cache (localStorage) maintenance */}
-        <div className="flex items-center gap-3 text-[10px] text-text-3 bg-surface-1 border border-border-1 rounded-md px-3 py-2 font-mono">
+        <div className="flex items-center gap-3 text-[12px] text-text-3 storage-summary border-b border-border-1 px-3 py-2 font-mono">
           <span>local cache: <span className="text-text-2">{formatBytes(localBytes)}</span></span>
-          <span className="text-text-4">histories · caches · UI state</span>
+          <span className="text-text-3">histories · caches · UI state</span>
           <button
             onClick={() => { const f = freeUpSpace(); setLocalBytes(localUsageBytes()); setMsg(`Freed ${formatBytes(f)} of local cache`) }}
             className="ml-auto flex items-center gap-1 text-accent hover:text-accent-light"
@@ -367,7 +370,7 @@ export function StoragePanel() {
         </div>
 
         {(error || msg) && (
-          <div className={cn('px-3 py-2 rounded-md text-xs', error ? 'bg-error/10 text-error border border-error/30' : 'bg-success/10 text-success border border-success/30')}>
+          <div className={cn('px-3 py-2 rounded text-xs', error ? 'bg-error/10 text-error border border-error/30' : 'bg-success/10 text-success border border-success/30')}>
             {error || msg}
           </div>
         )}
@@ -379,32 +382,32 @@ export function StoragePanel() {
         </div>
 
         {tab === 'browse' && (
-          <div className="flex gap-3 flex-1 min-h-0">
+          <div className="storage-workspace flex gap-4 flex-1 min-h-0">
             {/* Left: bucket + keys */}
             <div className="w-56 shrink-0 flex flex-col gap-2">
               <div className="flex gap-1">
-                <select value={bucket} onChange={(e) => setBucket(e.target.value)} className="flex-1 h-7 px-2 bg-surface-1 border border-border-2 rounded text-[11px] text-text-1 outline-none">
+                <select aria-label="Storage bucket" value={bucket} onChange={(e) => setBucket(e.target.value)} className="flex-1 h-8 px-2 bg-surface-1 border border-border-2 rounded text-[12px] text-text-1 outline-none">
                   {['workspace', 'collections', 'environments', 'history', 'mock', 'proxy'].map(b => <option key={b}>{b}</option>)}
                 </select>
-                <button onClick={loadEntries} disabled={loading} className="w-7 h-7 flex items-center justify-center bg-surface-1 border border-border-2 rounded text-text-3 hover:text-text-1">
+                <button aria-label="Refresh bucket entries" onClick={loadEntries} disabled={loading} className="w-7 h-8 flex items-center justify-center bg-surface-1 border border-border-2 rounded text-text-3 hover:text-text-1">
                   <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
                 </button>
               </div>
               <div className="flex gap-1">
-                <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] text-text-3 border border-border-2 rounded hover:text-text-1">
+                <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[12px] text-text-3 border border-border-2 rounded hover:text-text-1">
                   <Download size={10} /> Export
                 </button>
-                <button onClick={handleImport} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] text-text-3 border border-border-2 rounded hover:text-text-1">
+                <button onClick={handleImport} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[12px] text-text-3 border border-border-2 rounded hover:text-text-1">
                   <Upload size={10} /> Import
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto bg-surface-1 border border-border-1 rounded-md">
+              <div className="flex-1 overflow-y-auto bg-surface-1 border border-border-1 rounded">
                 {entries.length === 0 ? (
-                  <div className="px-3 py-4 text-xs text-text-4 text-center">{loading ? 'Loading…' : 'No entries'}</div>
+                  <div className="px-3 py-4 text-xs text-text-3 text-center">{loading ? 'Loading…' : 'No entries'}</div>
                 ) : (
                   entries.map((e) => (
                     <button key={e.key} onClick={() => handleSelect(e.key, e.value)}
-                      className={cn('w-full text-left px-3 py-1.5 text-[10px] border-b border-border-1/30 truncate font-mono',
+                      className={cn('w-full text-left px-3 py-1.5 text-[12px] border-b border-border-1/30 truncate font-mono',
                         selectedKey === e.key ? 'bg-accent/10 text-text-1' : 'text-text-3 hover:bg-surface-2')}>
                       {e.key}
                     </button>
@@ -420,28 +423,28 @@ export function StoragePanel() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono text-text-1 truncate">{bucket}/{selectedKey}</span>
                     <div className="flex-1" />
-                    <button onClick={handleSave} className="px-2 py-1 bg-accent text-white rounded text-[10px] font-medium hover:bg-accent-hover">Save</button>
-                    <button onClick={handleDelete} className="px-2 py-1 border border-border-2 rounded text-[10px] text-text-3 hover:text-error flex items-center gap-1"><Trash2 size={10} /> Delete</button>
-                    <button onClick={() => navigator.clipboard.writeText(editValue)} className="px-2 py-1 border border-border-2 rounded text-[10px] text-text-3 hover:text-text-1"><Copy size={10} /></button>
+                    <button onClick={handleSave} className="px-2 py-1 bg-accent text-[var(--color-on-accent)] rounded text-[12px] font-medium hover:bg-accent-hover">Save</button>
+                    <button onClick={handleDelete} className="px-2 py-1 border border-border-2 rounded text-[12px] text-text-3 hover:text-error flex items-center gap-1"><Trash2 size={10} /> Delete</button>
+                    <button aria-label="Copy entry value" onClick={() => navigator.clipboard.writeText(editValue)} className="px-2 py-1 border border-border-2 rounded text-[12px] text-text-3 hover:text-text-1"><Copy size={10} /></button>
                   </div>
-                  <div className="rounded border border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning">
+                  <div className="rounded border border-warning/30 bg-warning/10 px-2 py-1.5 text-[12px] text-warning">
                     Editing raw storage can change workspace, collection, mock, proxy or environment data immediately. Export a backup before destructive edits.
                   </div>
-                  <textarea value={editValue} onChange={(e) => setEditValue(e.target.value)}
-                    className="flex-1 min-h-[200px] p-3 bg-surface-1 border border-border-2 rounded-md text-xs text-text-1 font-mono outline-none focus:border-accent resize-none"
+                  <textarea aria-label="Storage entry value" value={editValue} onChange={(e) => setEditValue(e.target.value)}
+                    className="flex-1 min-h-[200px] p-3 bg-surface-1 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent resize-none"
                     spellCheck={false} />
                 </>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <div className="text-[10px] text-text-4">Add new entry</div>
+                  <div className="text-[12px] text-text-3">Add new entry</div>
                   <div className="flex gap-2">
-                    <input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="key" className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
-                    <input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="value (JSON)" className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
-                    <button onClick={handleAdd} disabled={!newKey.trim()} className="px-3 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40 flex items-center gap-1">
+                    <input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="key" className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
+                    <input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="value (JSON)" className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
+                    <button onClick={handleAdd} disabled={!newKey.trim()} className="px-3 py-1.5 bg-accent text-[var(--color-on-accent)] rounded text-xs font-medium disabled:opacity-40 flex items-center gap-1">
                       <Plus size={11} /> Add
                     </button>
                   </div>
-                  <div className="flex-1 flex items-center justify-center text-xs text-text-4">Select a key to view/edit</div>
+                  <div className="flex-1 flex items-center justify-center text-xs text-text-3">Select a key to view/edit</div>
                 </div>
               )}
             </div>
@@ -453,18 +456,18 @@ export function StoragePanel() {
             <div className="flex gap-2">
               <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void handleSearch() }}
                 placeholder="Search across all storage..." className="flex-1 h-8 px-3 bg-surface-1 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent" />
-              <button onClick={handleSearch} disabled={!searchQuery} className="flex items-center gap-1 px-3 py-1.5 bg-accent text-white rounded text-xs font-medium disabled:opacity-40">
+              <button onClick={handleSearch} disabled={!searchQuery} className="flex items-center gap-1 px-3 py-1.5 bg-accent text-[var(--color-on-accent)] rounded text-xs font-medium disabled:opacity-40">
                 <Search size={11} /> Search
               </button>
             </div>
             {searchResults && (
-              <div className="bg-surface-1 border border-border-1 rounded-md overflow-hidden">
-                <div className="px-3 py-1.5 border-b border-border-1 text-[10px] text-text-4 uppercase tracking-wider flex items-center justify-between">
+              <div className="bg-surface-1 border border-border-1 rounded overflow-hidden">
+                <div className="px-3 py-1.5 border-b border-border-1 text-[12px] text-text-3 uppercase tracking-wider flex items-center justify-between">
                   Results
                   <button onClick={() => navigator.clipboard.writeText(JSON.stringify(searchResults, null, 2))}
                     className="flex items-center gap-1 text-accent hover:text-accent-light"><Copy size={10} /> Copy</button>
                 </div>
-                <pre className="p-3 text-xs text-text-2 font-mono whitespace-pre-wrap overflow-auto max-h-72">
+                <pre className="p-3 text-xs text-text-2 font-mono whitespace-pre-wrap overflow-auto max-h-82">
                   {JSON.stringify(searchResults, null, 2)}
                 </pre>
               </div>
@@ -476,7 +479,7 @@ export function StoragePanel() {
       {confirmDeleteOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="presentation" onClick={() => setConfirmDeleteOpen(false)}>
           <div
-            className="bg-surface-1 border border-border-2 rounded-lg shadow-xl p-4 max-w-xs w-full mx-4"
+            className="bg-surface-1 border border-border-2 rounded shadow-xl p-4 max-w-xs w-full mx-4"
             role="presentation" onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm text-text-1 mb-4">Delete &quot;{selectedKey}&quot;?</p>
@@ -500,7 +503,7 @@ export function StoragePanel() {
 
       {confirmResetOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="presentation" onClick={() => setConfirmResetOpen(false)}>
-          <div className="w-full max-w-sm rounded-lg border border-error/40 bg-surface-1 p-4 shadow-xl" role="presentation" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded border border-error/40 bg-surface-1 p-4 shadow-xl" role="presentation" onClick={(e) => e.stopPropagation()}>
             <p className="flex items-center gap-2 text-sm font-semibold text-text-1"><AlertTriangle size={15} className="text-error" /> Reset all local data?</p>
             <p className="mt-2 text-xs leading-5 text-text-3">
               This wipes every local adOmnia setting, collection, environment, tab, history and cache stored in this browser, then reloads. Backend storage (bbolt) is not touched. <strong className="text-text-2">Export a workspace or snapshot first if you might need it back.</strong>
@@ -515,7 +518,7 @@ export function StoragePanel() {
 
       {restoreFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="presentation" onClick={() => setRestoreFile(null)}>
-          <div className="w-full max-w-sm rounded-lg border border-border-2 bg-surface-1 p-4 shadow-xl" role="presentation" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded border border-border-2 bg-surface-1 p-4 shadow-xl" role="presentation" onClick={(e) => e.stopPropagation()}>
             <p className="text-sm font-semibold text-text-1">Restore full storage snapshot?</p>
             <p className="mt-2 text-xs leading-5 text-text-3"><span className="font-mono text-text-2">{restoreFile.name}</span> will replace matching local bbolt entries. Export a current snapshot first if you may need to roll back.</p>
             <div className="mt-4 flex justify-end gap-2"><button onClick={() => setRestoreFile(null)} className="rounded border border-border-2 px-3 py-1 text-xs text-text-2">Cancel</button><button onClick={() => void confirmRestore()} className="rounded border border-warning/40 bg-warning/20 px-3 py-1 text-xs font-medium text-warning">Restore snapshot</button></div>

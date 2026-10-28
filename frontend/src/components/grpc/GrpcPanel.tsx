@@ -1,3 +1,5 @@
+import '@/styles/studioNothing.css'
+import '@/styles/dataStudiosNothing.css'
 import { beginGrpcCapture, endGrpcCapture } from '@/lib/devsession/grpcCapture'
 import { LiveResponseFrame } from '@/components/devsession/LiveResponseFrame'
 import type { RequestRun } from '@/lib/devsession-api'
@@ -287,7 +289,7 @@ async function postGrpcStream(port: number | null, body: unknown, signal: AbortS
 function StatusPill({ connected, loading }: { connected: boolean; loading: boolean }) {
   return (
     <div className={cn(
-      'h-8 px-3 rounded-md border flex items-center gap-2 text-xs font-medium shrink-0',
+      'h-8 px-3 rounded border flex items-center gap-2 text-xs font-medium shrink-0',
       connected
         ? 'bg-success/10 border-success/30 text-success'
         : 'bg-surface-2 border-border-2 text-text-3',
@@ -300,7 +302,7 @@ function StatusPill({ connected, loading }: { connected: boolean; loading: boole
 
 function RpcBadge({ method }: { method?: MethodInfo }) {
   return (
-    <span className={cn('rounded px-2 py-0.5 text-[10px] font-semibold border whitespace-nowrap', methodTone(method))}>
+    <span className={cn('rounded px-2 py-0.5 text-[12px] font-semibold border whitespace-nowrap', methodTone(method))}>
       {methodType(method)}
     </span>
   )
@@ -325,9 +327,9 @@ function IconButton({
       disabled={disabled}
       title={title}
       className={cn(
-        'h-8 px-3 rounded-md border text-xs font-medium flex items-center gap-2 transition-colors disabled:opacity-45 disabled:cursor-not-allowed',
+        'h-8 px-3 rounded border text-xs font-medium flex items-center gap-2 transition-colors disabled:opacity-45 disabled:cursor-not-allowed',
         primary
-          ? 'bg-accent text-white border-accent hover:bg-accent-hover'
+          ? 'bg-accent text-[var(--color-on-accent)] border-accent hover:bg-accent-hover'
           : 'bg-surface-2 text-text-2 border-border-2 hover:border-accent/45 hover:text-text-1',
       )}
     >
@@ -382,19 +384,20 @@ function GrpcConnectionBar({
   onCancel: () => void
 }) {
   return (
-    <div className="border-b border-border-1 bg-surface-0/95 px-4 py-3">
+    <div className="grpc-connection border-b border-border-1 bg-surface-0 px-4 py-3">
       <div className="flex items-center gap-3 min-w-0">
         <StatusPill connected={connected} loading={loading} />
-        <div className="h-9 flex-1 min-w-[220px] bg-surface-2 border border-border-2 rounded-md flex items-center gap-2 px-3 focus-within:border-accent/60">
+        <div className="h-9 flex-1 min-w-[220px] bg-surface-2 border border-border-2 rounded flex items-center gap-2 px-3 focus-within:border-accent/60">
           <Server size={14} className="text-accent shrink-0" />
           <input
+            aria-label="gRPC server address"
             value={address}
             onChange={(event) => onAddressChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') onReflect()
             }}
             placeholder="localhost:50051"
-            className="flex-1 bg-transparent outline-none text-sm text-text-1 font-mono placeholder:text-text-4 min-w-0"
+            className="flex-1 bg-transparent outline-none text-sm text-text-1 font-mono placeholder:text-text-3 min-w-0"
           />
           {profiles.length > 0 && (
             <select
@@ -404,7 +407,7 @@ function GrpcConnectionBar({
                 if (profile) onLoadProfile(profile)
                 event.currentTarget.value = ''
               }}
-              className="w-36 h-7 bg-surface-1 border border-border-2 rounded text-[11px] text-text-3 outline-none"
+              className="w-36 h-8 bg-surface-1 border border-border-2 rounded text-[12px] text-text-3 outline-none"
               defaultValue=""
             >
               <option value="">Recent</option>
@@ -414,7 +417,7 @@ function GrpcConnectionBar({
             </select>
           )}
         </div>
-        <label className="h-8 px-3 rounded-md border border-border-2 bg-surface-2 text-xs text-text-2 flex items-center gap-2 cursor-pointer">
+        <label className="h-8 px-3 rounded border border-border-2 bg-surface-2 text-xs text-text-2 flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
             checked={useTls}
@@ -423,9 +426,9 @@ function GrpcConnectionBar({
           />
           TLS
         </label>
-        <label className="flex h-8 items-center gap-1 rounded-md border border-border-2 bg-surface-2 px-2 text-[10px] text-text-4" title="RPC timeout in milliseconds">
+        <label className="flex h-8 items-center gap-1 rounded border border-border-2 bg-surface-2 px-2 text-[12px] text-text-3" title="RPC timeout in milliseconds">
           Timeout
-          <input type="number" min={100} max={300000} value={timeoutMs} onChange={(event) => onTimeoutChange(Number(event.target.value))} className="w-16 bg-transparent text-right font-mono text-[10px] text-text-2 outline-none" />
+          <input type="number" min={100} max={300000} value={timeoutMs} onChange={(event) => onTimeoutChange(Number(event.target.value))} className="w-16 bg-transparent text-right font-mono text-[12px] text-text-2 outline-none" />
         </label>
         <IconButton onClick={onToggleTls} title="TLS and mTLS settings">
           <Shield size={13} />
@@ -488,11 +491,11 @@ function GrpcTlsSettingsDrawer({
 }) {
   if (!open) return null
   return (
-    <div className="mx-4 mt-3 rounded-md border border-border-1 bg-surface-1 p-3">
+    <div className="mx-4 mt-3 rounded border border-border-1 bg-surface-1 p-3">
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-xs font-semibold text-text-1">TLS / mTLS</p>
-          <p className="text-[11px] text-text-4">Plaintext, TLS, custom CA and client certificates are applied to reflection, invocation and load tests.</p>
+          <p className="text-[12px] text-text-3">Plaintext, TLS, custom CA and client certificates are applied to reflection, invocation and load tests.</p>
         </div>
         <label className="flex items-center gap-2 text-xs text-text-3">
           <input type="checkbox" checked={useTls} onChange={(event) => onUseTlsChange(event.target.checked)} className="accent-accent" />
@@ -510,15 +513,15 @@ function GrpcTlsSettingsDrawer({
 
 function PathInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
   return (
-    <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-text-4">
+    <label className="flex flex-col gap-1 text-[12px] uppercase tracking-wider text-text-3">
       {label}
       <div className="h-8 bg-surface-2 border border-border-2 rounded flex items-center gap-2 px-2">
-        <FolderOpen size={12} className="text-text-4" />
+        <FolderOpen size={12} className="text-text-3" />
         <input
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent outline-none text-[11px] normal-case tracking-normal text-text-2 font-mono placeholder:text-text-4"
+          className="min-w-0 flex-1 bg-transparent outline-none text-[12px] normal-case tracking-normal text-text-2 font-mono placeholder:text-text-3"
         />
       </div>
     </label>
@@ -564,46 +567,46 @@ function GrpcServicesExplorer({
   }, [search, services])
 
   return (
-    <aside className="w-[300px] shrink-0 border-r border-border-1 bg-surface-1/80 flex flex-col min-h-0">
+    <aside className="grpc-services w-[300px] shrink-0 border-r border-border-1 bg-surface-1/80 flex flex-col min-h-0">
       <div className="p-3 border-b border-border-1">
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-sm font-semibold text-text-1">Services</p>
-            <p className="text-[11px] text-text-4">{services.length} services discovered</p>
+            <p className="text-[12px] text-text-3">{services.length} services discovered</p>
           </div>
-          <button onClick={onRefresh} className="h-7 w-7 rounded border border-border-2 bg-surface-2 text-text-3 hover:text-accent" title="Refresh reflection">
+          <button onClick={onRefresh} className="h-8 w-7 rounded border border-border-2 bg-surface-2 text-text-3 hover:text-accent" title="Refresh reflection">
             <RefreshCw size={13} className="mx-auto" />
           </button>
         </div>
-        <div className="h-8 rounded-md border border-border-2 bg-surface-2 flex items-center gap-2 px-2">
-          <Search size={13} className="text-text-4" />
+        <div className="h-8 rounded border border-border-2 bg-surface-2 flex items-center gap-2 px-2">
+          <Search size={13} className="text-text-3" />
           <input
             value={search}
             onChange={(event) => onSearch(event.target.value)}
             placeholder="Search services..."
-            className="min-w-0 flex-1 bg-transparent outline-none text-xs text-text-2 placeholder:text-text-4"
+            className="min-w-0 flex-1 bg-transparent outline-none text-xs text-text-2 placeholder:text-text-3"
           />
         </div>
       </div>
       <div className="flex-1 overflow-auto py-2">
         {filtered.length === 0 ? (
-          <div className="p-4 text-xs text-text-4">No services match the current search.</div>
+          <div className="p-4 text-xs text-text-3">No services match the current search.</div>
         ) : (
           filtered.map((service) => (
             <div key={service.name} className="px-2 py-1">
               <button
                 onClick={() => onSelect(service.name, service.methods[0]?.name ?? '')}
                 className={cn(
-                  'w-full min-w-0 flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-surface-2',
+                  'w-full min-w-0 flex items-center gap-2 rounded px-2 py-2 text-left hover:bg-surface-2',
                   selectedService === service.name && 'bg-accent/10',
                 )}
               >
-                <ChevronRight size={13} className={cn('shrink-0 text-text-4 transition-transform', selectedService === service.name && 'rotate-90 text-accent')} />
+                <ChevronRight size={13} className={cn('shrink-0 text-text-3 transition-transform', selectedService === service.name && 'rotate-90 text-accent')} />
                 <div className="min-w-0 flex-1">
                   <p className={cn('truncate text-xs font-semibold', selectedService === service.name ? 'text-accent-light' : 'text-text-2')}>
                     {service.name}
                   </p>
-                  <p className="text-[10px] text-text-4">{service.methods.length} methods</p>
+                  <p className="text-[12px] text-text-3">{service.methods.length} methods</p>
                 </div>
               </button>
               {(selectedService === service.name || search) && (
@@ -627,21 +630,21 @@ function GrpcServicesExplorer({
           ))
         )}
       </div>
-      <div className="m-3 rounded-md border border-border-1 bg-surface-2 p-3">
+      <div className="m-3 rounded border border-border-1 bg-surface-2 p-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-text-1">Proto Source</p>
           <span className={cn(
-            'rounded px-2 py-0.5 text-[10px] font-semibold',
-            connected ? 'bg-success/10 text-success' : 'bg-surface-3 text-text-4',
+            'rounded px-2 py-0.5 text-[12px] font-semibold',
+            connected ? 'bg-success/10 text-success' : 'bg-surface-3 text-text-3',
           )}>
             {connected ? 'Live' : 'Offline'}
           </span>
         </div>
-        <p className="mt-2 text-[11px] text-text-3">
+        <p className="mt-2 text-[12px] text-text-3">
           {sourceKind === 'reflection' ? 'Server reflection' : sourceKind === 'proto' ? sourceName || 'Uploaded .proto' : sourceKind === 'protoset' ? 'Uploaded protoset' : 'No descriptors loaded'}
         </p>
-        <p className="text-[10px] text-text-4 mt-1">Last refreshed: {connected ? 'just now' : 'not connected'}</p>
-        <button onClick={onUploadProto} className="mt-3 h-8 w-full rounded-md border border-border-2 bg-surface-1 text-xs text-text-2 hover:border-accent/45 hover:text-accent flex items-center justify-center gap-2">
+        <p className="text-[12px] text-text-3 mt-1">Last refreshed: {connected ? 'just now' : 'not connected'}</p>
+        <button onClick={onUploadProto} className="mt-3 h-8 w-full rounded border border-border-2 bg-surface-1 text-xs text-text-2 hover:border-accent/45 hover:text-accent flex items-center justify-center gap-2">
           <Upload size={13} />
           Upload .proto File
         </button>
@@ -652,21 +655,21 @@ function GrpcServicesExplorer({
 
 function GrpcRequestMetadataTable({ metadata, onChange }: { metadata: MetadataRow[]; onChange: (rows: MetadataRow[]) => void }) {
   return (
-    <section className="rounded-md border border-border-1 bg-surface-1 p-3">
+    <section className="rounded border border-border-1 bg-surface-1 p-3">
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-text-1">Request Metadata</p>
-          <p className="text-[11px] text-text-4">Headers are preserved for this workspace session.</p>
+          <p className="text-[12px] text-text-3">Headers are preserved for this workspace session.</p>
         </div>
         <button
           onClick={() => onChange([...metadata, { id: newId(), key: '', value: '' }])}
-          className="h-7 px-2 rounded border border-border-2 bg-surface-2 text-xs text-accent hover:border-accent/45 flex items-center gap-1.5"
+          className="h-8 px-2 rounded border border-border-2 bg-surface-2 text-xs text-accent hover:border-accent/45 flex items-center gap-1.5"
         >
           <Plus size={12} />
           Add Metadata
         </button>
       </div>
-      <div className="grid grid-cols-[24px_1fr_1fr_30px] gap-1 text-[10px] uppercase tracking-wider text-text-4 mb-1 px-1">
+      <div className="grid grid-cols-[24px_1fr_1fr_30px] gap-1 text-[12px] uppercase tracking-wider text-text-3 mb-1 px-1">
         <span />
         <span>Key</span>
         <span>Value</span>
@@ -675,7 +678,7 @@ function GrpcRequestMetadataTable({ metadata, onChange }: { metadata: MetadataRo
       <div className="space-y-1">
         {metadata.map((row, index) => (
           <div key={row.id} className="grid grid-cols-[24px_1fr_1fr_30px] gap-1 items-center">
-            <span className="text-center text-text-4 text-xs">-</span>
+            <span className="text-center text-text-3 text-xs">-</span>
             <input
               value={row.key}
               onChange={(event) => {
@@ -724,20 +727,20 @@ function LiveStreamBar({ live }: { live: LiveStreamProps }) {
         onClick={live.onOpen}
         disabled={!live.available}
         title={live.available ? 'Open the stream and send messages one at a time (duplex)' : 'Connect to the server first'}
-        className="ml-auto mr-2 flex h-7 items-center gap-1.5 rounded border border-accent/50 px-2 text-xs text-accent hover:bg-accent/10 disabled:opacity-40"
+        className="ml-auto mr-2 flex h-8 items-center gap-1.5 rounded border border-accent/50 px-2 text-xs text-accent hover:bg-accent/10 disabled:opacity-40"
       >
         <Radio size={12} /> Open live stream
       </button>
     )
   }
   return (
-    <div className="ml-auto mr-2 flex items-center gap-2 text-[11px]">
+    <div className="ml-auto mr-2 flex items-center gap-2 text-[12px]">
       <span className={cn('flex items-center gap-1.5 rounded px-2 py-0.5 font-semibold', live.state === 'open' ? 'bg-success/10 text-success' : 'bg-surface-3 text-text-3')}>
         <span className={cn('h-1.5 w-1.5 rounded-full', live.state === 'open' ? 'animate-pulse bg-success' : 'bg-text-4')} />
         {live.state === 'open' ? 'Live' : 'Send closed'} · {live.sent} sent
       </span>
       {live.state === 'open' && (
-        <button onClick={live.onClose} title="Half-close: the server sees the end of your messages" className="h-7 rounded border border-border-2 px-2 text-text-2 hover:border-accent hover:text-accent">
+        <button onClick={live.onClose} title="Half-close: the server sees the end of your messages" className="h-8 rounded border border-border-2 px-2 text-text-2 hover:border-accent hover:text-accent">
           Close send
         </button>
       )}
@@ -766,18 +769,18 @@ function GrpcDynamicRequestForm({
 }) {
   if (streaming) {
     return (
-      <section className="rounded-md border border-border-1 bg-surface-1 p-3">
+      <section className="rounded border border-border-1 bg-surface-1 p-3">
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-sm font-semibold text-text-1">Streaming Request Messages</p>
-            <p className="text-[11px] text-text-4">
+            <p className="text-[12px] text-text-3">
               {live?.state ? 'Live stream: send messages one at a time and watch the replies arrive.' : 'Invoke sends them all in order; Open live stream sends them one at a time.'}
             </p>
           </div>
           {live && <LiveStreamBar live={live} />}
           <button
             onClick={() => onStreamMessagesChange([...streamMessages, JSON.stringify(buildObjectFromFields(fields, schemas), null, 2)])}
-            className="h-7 px-2 rounded border border-border-2 bg-surface-2 text-xs text-accent hover:border-accent/45 flex items-center gap-1.5"
+            className="h-8 px-2 rounded border border-border-2 bg-surface-2 text-xs text-accent hover:border-accent/45 flex items-center gap-1.5"
           >
             <Plus size={12} />
             Add Message
@@ -793,19 +796,19 @@ function GrpcDynamicRequestForm({
                     <button
                       onClick={() => live.onSend(message)}
                       disabled={!isValidJson(message)}
-                      className="flex h-6 items-center gap-1 rounded bg-accent px-2 text-[11px] font-semibold text-white hover:bg-accent-hover disabled:opacity-40"
+                      className="flex h-6 items-center gap-1 rounded bg-accent px-2 text-[12px] font-semibold text-white hover:bg-accent-hover disabled:opacity-40"
                     >
                       <Send size={11} /> Send
                     </button>
                   )}
-                  <span className={cn('text-[10px]', isValidJson(message) ? 'text-success' : 'text-error')}>{isValidJson(message) ? 'valid' : 'invalid'}</span>
+                  <span className={cn('text-[12px]', isValidJson(message) ? 'text-success' : 'text-error')}>{isValidJson(message) ? 'valid' : 'invalid'}</span>
                   <button
                     onClick={() => {
                       const next = [...streamMessages]
                       try { next[index] = JSON.stringify(JSON.parse(message), null, 2) } catch {}
                       onStreamMessagesChange(next)
                     }}
-                    className="text-[11px] text-text-4 hover:text-accent"
+                    className="text-[12px] text-text-3 hover:text-accent"
                   >
                     Format
                   </button>
@@ -815,12 +818,12 @@ function GrpcDynamicRequestForm({
                       next[index] = JSON.stringify(buildObjectFromFields(fields, schemas), null, 2)
                       onStreamMessagesChange(next)
                     }}
-                    className="text-[11px] text-text-4 hover:text-accent"
+                    className="text-[12px] text-text-3 hover:text-accent"
                   >
                     Clear
                   </button>
-                  <button onClick={() => onStreamMessagesChange([...streamMessages, message])} className="text-[11px] text-text-4 hover:text-accent">Duplicate</button>
-                  <button onClick={() => onStreamMessagesChange(streamMessages.filter((_, i) => i !== index))} className="text-[11px] text-error hover:text-error">Remove</button>
+                  <button onClick={() => onStreamMessagesChange([...streamMessages, message])} className="text-[12px] text-text-3 hover:text-accent">Duplicate</button>
+                  <button onClick={() => onStreamMessagesChange(streamMessages.filter((_, i) => i !== index))} className="text-[12px] text-error hover:text-error">Remove</button>
                 </div>
               </div>
               <textarea
@@ -841,16 +844,16 @@ function GrpcDynamicRequestForm({
   }
 
   return (
-    <section className="rounded-md border border-border-1 bg-surface-1 p-3">
+    <section className="rounded border border-border-1 bg-surface-1 p-3">
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-text-1">Request Data</p>
-          <p className="text-[11px] text-text-4">{fields.length ? 'Generated from protobuf reflection fields.' : 'Schema not described yet; edit JSON in the Raw Request tab.'}</p>
+          <p className="text-[12px] text-text-3">{fields.length ? 'Generated from protobuf reflection fields.' : 'Schema not described yet; edit JSON in the Raw Request tab.'}</p>
         </div>
-        <span className="rounded bg-surface-3 px-2 py-0.5 text-[10px] text-text-4">{fields.length} fields</span>
+        <span className="rounded bg-surface-3 px-2 py-0.5 text-[12px] text-text-3">{fields.length} fields</span>
       </div>
       {fields.length === 0 ? (
-        <div className="rounded border border-dashed border-border-2 p-5 text-xs text-text-4">
+        <div className="rounded border border-dashed border-border-2 p-5 text-xs text-text-3">
           No field descriptor is available. Reflection can describe real server schemas; uploaded proto files currently populate service/method discovery.
         </div>
       ) : (
@@ -898,7 +901,7 @@ function GrpcFieldRenderer({
       <div className="rounded border border-accent/30 bg-accent/5 p-3">
         <div className="flex items-center gap-2 mb-2">
           <p className="text-xs font-semibold text-text-1">{field.name}</p>
-          <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent">oneof</span>
+          <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[12px] text-accent">oneof</span>
         </div>
         <select
           value={selected}
@@ -930,12 +933,12 @@ function GrpcFieldRenderer({
     <div className="rounded border border-border-2 bg-surface-2 p-3">
       <div className="flex items-center gap-2 mb-2">
         <p className="text-xs font-semibold text-text-1">{field.name}</p>
-        <span className="rounded bg-surface-3 px-1.5 py-0.5 text-[10px] font-mono text-text-3">{field.type}</span>
-        {field.repeated && <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent">repeated</span>}
-        {field.map && <span className="rounded bg-info/10 px-1.5 py-0.5 text-[10px] text-info">map</span>}
-        {field.optional && <span className="rounded bg-surface-3 px-1.5 py-0.5 text-[10px] text-text-4">optional</span>}
-        {field.required && <span className="rounded bg-warning/10 px-1.5 py-0.5 text-[10px] text-warning">required</span>}
-        <span className="ml-auto text-[10px] text-text-4">#{field.number}</span>
+        <span className="rounded bg-surface-3 px-1.5 py-0.5 text-[12px] font-mono text-text-3">{field.type}</span>
+        {field.repeated && <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[12px] text-accent">repeated</span>}
+        {field.map && <span className="rounded bg-info/10 px-1.5 py-0.5 text-[12px] text-info">map</span>}
+        {field.optional && <span className="rounded bg-surface-3 px-1.5 py-0.5 text-[12px] text-text-3">optional</span>}
+        {field.required && <span className="rounded bg-warning/10 px-1.5 py-0.5 text-[12px] text-warning">required</span>}
+        <span className="ml-auto text-[12px] text-text-3">#{field.number}</span>
       </div>
       {field.enum_values?.length ? (
         <select
@@ -950,11 +953,11 @@ function GrpcFieldRenderer({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onChange(field.repeated ? [...(Array.isArray(fieldValue) ? fieldValue : []), sampleValueForField({ ...field, repeated: false }, schemas)] : { ...(typeof fieldValue === 'object' && fieldValue && !Array.isArray(fieldValue) ? fieldValue as Record<string, unknown> : {}), key: sampleValueForField({ ...field, repeated: false, map: false, type: field.value_type || 'string', kind: field.value_type || 'string' }, schemas) })}
-              className="h-7 px-2 rounded border border-border-2 bg-surface-1 text-xs text-accent hover:border-accent/45"
+              className="h-8 px-2 rounded border border-border-2 bg-surface-1 text-xs text-accent hover:border-accent/45"
             >
               {field.repeated ? 'Add item' : 'Add key'}
             </button>
-            <span className="text-[10px] text-text-4">{field.map ? `${field.key_type || 'string'} -> ${field.value_type || field.type}` : 'JSON array'}</span>
+            <span className="text-[12px] text-text-3">{field.map ? `${field.key_type || 'string'} -> ${field.value_type || field.type}` : 'JSON array'}</span>
           </div>
           <textarea
             value={JSON.stringify(fieldValue ?? (field.repeated ? [] : {}), null, 2)}
@@ -968,10 +971,10 @@ function GrpcFieldRenderer({
       ) : nestedFields && depth < 4 ? (
         <div className="rounded border border-border-2 bg-surface-1 p-2 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-4 font-mono">{field.message_type}</span>
+            <span className="text-[12px] text-text-3 font-mono">{field.message_type}</span>
             <button
               onClick={() => onChange(buildObjectFromFields(nestedFields, schemas, depth + 1))}
-              className="text-[11px] text-accent hover:text-accent-light"
+              className="text-[12px] text-accent hover:text-accent-light"
             >
               Reset object
             </button>
@@ -1042,18 +1045,18 @@ function GrpcRawJsonEditor({
   onCopy: () => void
 }) {
   return (
-    <section className="rounded-md border border-border-1 bg-surface-1 overflow-hidden">
+    <section className="rounded border border-border-1 bg-surface-1 overflow-hidden">
       <div className="h-10 px-3 border-b border-border-1 flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-text-1">Raw Request JSON</p>
-          <p className="text-[10px] text-text-4">{streaming ? 'Streaming requests are represented as a JSON array.' : 'Uses protobuf JSON mapping.'}</p>
+          <p className="text-[12px] text-text-3">{streaming ? 'Streaming requests are represented as a JSON array.' : 'Uses protobuf JSON mapping.'}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onPrettify} className="h-7 px-2 rounded border border-border-2 bg-surface-2 text-xs text-text-2 hover:text-accent flex items-center gap-1.5">
+          <button onClick={onPrettify} className="h-8 px-2 rounded border border-border-2 bg-surface-2 text-xs text-text-2 hover:text-accent flex items-center gap-1.5">
             <Wand2 size={12} />
             Format
           </button>
-          <button onClick={onCopy} className="h-7 px-2 rounded border border-border-2 bg-surface-2 text-xs text-text-2 hover:text-accent flex items-center gap-1.5">
+          <button onClick={onCopy} className="h-8 px-2 rounded border border-border-2 bg-surface-2 text-xs text-text-2 hover:text-accent flex items-center gap-1.5">
             <Copy size={12} />
             Copy
           </button>
@@ -1089,20 +1092,20 @@ function GrpcMethodInspector({
 }) {
   const [tab, setTab] = useState<InspectorTab>('details')
   return (
-    <aside className="w-[360px] shrink-0 border-l border-border-1 bg-surface-1/80 flex flex-col min-h-0">
+    <aside className="grpc-inspector w-[360px] shrink-0 border-l border-border-1 bg-surface-1/80 flex flex-col min-h-0">
       <div className="h-12 px-4 border-b border-border-1 flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-text-1">Method Inspector</p>
-          <p className="text-[10px] text-text-4">Descriptor and validation context</p>
+          <p className="text-[12px] text-text-3">Descriptor and validation context</p>
         </div>
-        <Settings2 size={14} className="text-text-4" />
+        <Settings2 size={14} className="text-text-3" />
       </div>
       <div className="px-3 pt-3 flex items-center gap-2 border-b border-border-1">
         {(['details', 'request', 'response', 'hints'] as InspectorTab[]).map((item) => (
           <button
             key={item}
             onClick={() => setTab(item)}
-            className={cn('px-2 pb-2 text-xs capitalize border-b-2', tab === item ? 'border-accent text-accent' : 'border-transparent text-text-4 hover:text-text-2')}
+            className={cn('px-2 pb-2 text-xs capitalize border-b-2', tab === item ? 'border-accent text-accent' : 'border-transparent text-text-3 hover:text-text-2')}
           >
             {item}
           </button>
@@ -1110,7 +1113,7 @@ function GrpcMethodInspector({
       </div>
       <div className="flex-1 overflow-auto p-3">
         {!method ? (
-          <div className="rounded border border-dashed border-border-2 p-4 text-xs text-text-4">Select a method to inspect request and response schemas.</div>
+          <div className="rounded border border-dashed border-border-2 p-4 text-xs text-text-3">Select a method to inspect request and response schemas.</div>
         ) : tab === 'details' ? (
           <div className="space-y-3">
             <InspectorRow label="Full Method" value={`/${service}/${method.name}`} />
@@ -1140,7 +1143,7 @@ function GrpcMethodInspector({
 function InspectorRow({ label, value, badge }: { label: string; value: string; badge?: boolean }) {
   return (
     <div>
-      <p className="mb-1 text-[10px] uppercase tracking-wider text-text-4">{label}</p>
+      <p className="mb-1 text-[12px] uppercase tracking-wider text-text-3">{label}</p>
       <div className={cn('rounded border border-border-2 bg-surface-2 px-2 py-2 text-xs font-mono text-text-2 break-all', badge && 'inline-block text-accent')}>
         {value}
       </div>
@@ -1153,9 +1156,9 @@ function SchemaPreview({ title, fields }: { title: string; fields: FieldInfo[] }
     <div>
       <p className="mb-3 text-xs font-semibold text-accent">{title}</p>
       {fields.length === 0 ? (
-        <div className="rounded border border-dashed border-border-2 p-4 text-xs text-text-4">Schema preview is not available for this source yet.</div>
+        <div className="rounded border border-dashed border-border-2 p-4 text-xs text-text-3">Schema preview is not available for this source yet.</div>
       ) : (
-        <pre className="rounded border border-border-2 bg-surface-0 p-3 text-[11px] leading-5 text-text-2 font-mono overflow-auto">{`message ${title.split('.').pop()} {\n${fields.map((field) => `  ${field.repeated ? 'repeated ' : ''}${field.type} ${field.name} = ${field.number};`).join('\n')}\n}`}</pre>
+        <pre className="rounded border border-border-2 bg-surface-0 p-3 text-[12px] leading-5 text-text-2 font-mono overflow-auto">{`message ${title.split('.').pop()} {\n${fields.map((field) => `  ${field.repeated ? 'repeated ' : ''}${field.type} ${field.name} = ${field.number};`).join('\n')}\n}`}</pre>
       )}
     </div>
   )
@@ -1204,13 +1207,13 @@ function GrpcResponsePanel({
             <button
               key={item}
               onClick={() => onTab(item)}
-              className={cn('h-8 px-3 rounded text-xs capitalize', tab === item ? 'bg-accent/15 text-accent' : 'text-text-4 hover:text-text-2 hover:bg-surface-2')}
+              className={cn('h-8 px-3 rounded text-xs capitalize', tab === item ? 'bg-accent/15 text-accent' : 'text-text-3 hover:text-text-2 hover:bg-surface-2')}
             >
               {item === 'raw' ? 'Raw JSON' : item}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3 text-xs text-text-4">
+        <div className="flex items-center gap-3 text-xs text-text-3">
           {result && (
             <>
               <span className={cn('rounded px-2 py-0.5 font-semibold', result.error ? 'bg-error/10 text-error' : 'bg-success/10 text-success')}>
@@ -1220,7 +1223,7 @@ function GrpcResponsePanel({
               <span>{new Date().toLocaleTimeString()}</span>
             </>
           )}
-          <button onClick={onCopy} className="h-7 px-2 rounded border border-border-2 bg-surface-2 text-xs text-text-2 hover:text-accent flex items-center gap-1.5">
+          <button onClick={onCopy} className="h-8 px-2 rounded border border-border-2 bg-surface-2 text-xs text-text-2 hover:text-accent flex items-center gap-1.5">
             <Copy size={12} />
             Copy
           </button>
@@ -1241,7 +1244,7 @@ function GrpcResponsePanel({
         )}
         {tab === 'logs' && (
           <div className="p-4 space-y-1">
-            {logs.length === 0 ? <p className="text-xs text-text-4">No gRPC logs yet.</p> : logs.map((line, index) => (
+            {logs.length === 0 ? <p className="text-xs text-text-3">No gRPC logs yet.</p> : logs.map((line, index) => (
               <p key={index} className="text-xs font-mono text-text-3">{line}</p>
             ))}
           </div>
@@ -1256,12 +1259,12 @@ function GrpcResponsePanel({
 
 function KeyValueBlock({ data, empty }: { data: Record<string, string>; empty: string }) {
   const entries = Object.entries(data)
-  if (entries.length === 0) return <div className="p-4 text-xs text-text-4">{empty}</div>
+  if (entries.length === 0) return <div className="p-4 text-xs text-text-3">{empty}</div>
   return (
     <div className="p-4 grid grid-cols-[220px_1fr] gap-x-4 gap-y-2 text-xs">
       {entries.map(([key, value]) => (
         <div key={key} className="contents">
-          <span className="font-mono text-text-4">{key}</span>
+          <span className="font-mono text-text-3">{key}</span>
           <span className="font-mono text-text-2 break-all">{value}</span>
         </div>
       ))}
@@ -1284,10 +1287,10 @@ function GrpcCallHistory({
     <div className="p-3">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-text-1">Call History</p>
-        <button onClick={onClear} className="h-7 px-2 rounded border border-border-2 bg-surface-2 text-xs text-text-3 hover:text-error">Clear</button>
+        <button onClick={onClear} className="h-8 px-2 rounded border border-border-2 bg-surface-2 text-xs text-text-3 hover:text-error">Clear</button>
       </div>
       <div className="rounded border border-border-1 overflow-hidden">
-        <div className="grid grid-cols-[130px_1fr_120px_90px_90px_140px] bg-surface-2 px-3 py-2 text-[10px] uppercase tracking-wider text-text-4">
+        <div className="grid grid-cols-[130px_1fr_120px_90px_90px_140px] bg-surface-2 px-3 py-2 text-[12px] uppercase tracking-wider text-text-3">
           <span>Time</span>
           <span>Method</span>
           <span>Type</span>
@@ -1296,12 +1299,12 @@ function GrpcCallHistory({
           <span>Actions</span>
         </div>
         {history.length === 0 ? (
-          <div className="p-4 text-xs text-text-4">No calls yet.</div>
+          <div className="p-4 text-xs text-text-3">No calls yet.</div>
         ) : history.map((row) => (
           <div key={row.id} className="grid grid-cols-[130px_1fr_120px_90px_90px_140px] px-3 py-2 border-t border-border-1 text-xs items-center">
-            <span className="text-text-4">{new Date(row.timestamp).toLocaleTimeString()}</span>
+            <span className="text-text-3">{new Date(row.timestamp).toLocaleTimeString()}</span>
             <span className="text-text-2 truncate">{row.service}/{row.method}</span>
-            <span className="text-text-4">{row.rpcType}</span>
+            <span className="text-text-3">{row.rpcType}</span>
             <span className={row.error ? 'text-error' : 'text-success'}>{row.status}</span>
             <span className="text-accent">{row.durationMs} ms</span>
             <span className="flex items-center gap-2">
@@ -1366,27 +1369,27 @@ function GrpcRequestWorkspace({
   return (
     <main className="flex-1 min-w-0 min-h-0 flex flex-col bg-surface-0">
       <div className="border-b border-border-1 bg-surface-1 px-3 py-3">
-        <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 items-end">
-          <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-text-4">
+        <div className="grpc-method-controls grid grid-cols-[1fr_1fr_auto_auto] gap-3 items-end">
+          <label className="flex flex-col gap-1 text-[12px] uppercase tracking-wider text-text-3">
             Service
-            <select value={service} onChange={(event) => onService(event.target.value)} className="h-9 rounded-md border border-border-2 bg-surface-2 px-3 text-xs normal-case tracking-normal text-text-1 outline-none focus:border-accent/60">
+            <select value={service} onChange={(event) => onService(event.target.value)} className="h-9 rounded border border-border-2 bg-surface-2 px-3 text-xs normal-case tracking-normal text-text-1 outline-none focus:border-accent/60">
               <option value="">Select service</option>
               {services.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-text-4">
+          <label className="flex flex-col gap-1 text-[12px] uppercase tracking-wider text-text-3">
             Method
-            <select value={method?.name ?? ''} onChange={(event) => onMethod(event.target.value)} className="h-9 rounded-md border border-border-2 bg-surface-2 px-3 text-xs normal-case tracking-normal text-text-1 outline-none focus:border-accent/60">
+            <select value={method?.name ?? ''} onChange={(event) => onMethod(event.target.value)} className="h-9 rounded border border-border-2 bg-surface-2 px-3 text-xs normal-case tracking-normal text-text-1 outline-none focus:border-accent/60">
               <option value="">Select method</option>
               {currentService?.methods.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
             </select>
           </label>
           <div>
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-text-4">RPC Type</p>
+            <p className="mb-1 text-[12px] uppercase tracking-wider text-text-3">RPC Type</p>
             <div className="h-9 flex items-center"><RpcBadge method={method} /></div>
           </div>
           <div>
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-text-4">Proto</p>
+            <p className="mb-1 text-[12px] uppercase tracking-wider text-text-3">Proto</p>
             <div className="h-9 flex items-center rounded border border-border-2 bg-surface-2 px-3 text-xs font-mono text-text-3">{method ? packageName(service) : '-'}</div>
           </div>
         </div>
@@ -1396,7 +1399,7 @@ function GrpcRequestWorkspace({
           <button
             key={item}
             onClick={() => onTab(item)}
-            className={cn('h-9 px-4 text-xs border-b-2 capitalize', activeTab === item ? 'border-accent text-accent' : 'border-transparent text-text-4 hover:text-text-2')}
+            className={cn('h-9 px-4 text-xs border-b-2 capitalize', activeTab === item ? 'border-accent text-accent' : 'border-transparent text-text-3 hover:text-text-2')}
           >
             {item === 'form' ? 'Request Form' : item === 'raw' ? 'Raw Request JSON' : 'Response'}
           </button>
@@ -1422,7 +1425,7 @@ function GrpcRequestWorkspace({
           <GrpcRawJsonEditor rawJson={rawJson} streaming={Boolean(method?.client_streaming)} jsonError={jsonError} onChange={onRawJson} onPrettify={onPrettify} onCopy={onCopyRaw} />
         )}
         {activeTab === 'response' && (
-          <div className="rounded-md border border-border-1 bg-surface-1 overflow-hidden">
+          <div className="rounded border border-border-1 bg-surface-1 overflow-hidden">
             <div className="h-10 px-3 border-b border-border-1 flex items-center justify-between">
               <p className="text-sm font-semibold text-text-1">Last Response</p>
               {lastResult && <span className={cn('rounded px-2 py-0.5 text-xs', lastResult.error ? 'bg-error/10 text-error' : 'bg-success/10 text-success')}>{lastResult.status}</span>}
@@ -1471,19 +1474,19 @@ function GrpcLoadTestDialog({ port, address, service, method, payload, tls, caCe
   }
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" role="presentation" onClick={closeOnBackdropClick(onClose)}>
-    <div className="w-full max-w-2xl rounded-lg border border-border-2 bg-surface-1 shadow-2xl">
-      <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3"><Gauge size={15} className="text-accent" /><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-text-1">gRPC Load Test</div><div className="truncate font-mono text-[10px] text-text-4">{address} · {service}/{method}</div></div><button onClick={onClose} className="text-text-4 hover:text-text-1"><X size={15} /></button></div>
+    <div className="w-full max-w-2xl rounded border border-border-2 bg-surface-1 shadow-2xl">
+      <div className="flex items-center gap-2 border-b border-border-1 px-4 py-3"><Gauge size={15} className="text-accent" /><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-text-1">gRPC Load Test</div><div className="truncate font-mono text-[12px] text-text-3">{address} · {service}/{method}</div></div><button onClick={onClose} className="text-text-3 hover:text-text-1"><X size={15} /></button></div>
       <div className="flex flex-col gap-4 p-4">
         <div className="grid grid-cols-3 gap-3">{[
           ['Concurrency', concurrency, setConcurrency, 1, 50],
           ['Requests', totalReqs, setTotalReqs, 1, 5000],
           ['Timeout (ms)', timeoutMs, setTimeoutMs, 100, 60000],
-        ].map(([label, value, setter, min, max]) => <label key={String(label)} className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-text-4">{label as string}<input type="number" value={value as number} min={min as number} max={max as number} onChange={(event) => (setter as (value: number) => void)(Number(event.target.value))} className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none focus:border-accent" /></label>)}</div>
+        ].map(([label, value, setter, min, max]) => <label key={String(label)} className="flex flex-col gap-1 text-[12px] uppercase tracking-wider text-text-3">{label as string}<input type="number" value={value as number} min={min as number} max={max as number} onChange={(event) => (setter as (value: number) => void)(Number(event.target.value))} className="h-8 rounded border border-border-2 bg-surface-2 px-2 text-xs text-text-1 outline-none focus:border-accent" /></label>)}</div>
         {error && <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{error}</div>}
         {result && <div className="grid grid-cols-4 gap-2">{[
           ['Total', result.totalRequests], ['Success', result.successful], ['Failed', result.failed], ['Req/s', result.throughput.toFixed(1)],
           ['Avg', `${result.avgMs.toFixed(1)}ms`], ['p50', `${result.p50Ms.toFixed(1)}ms`], ['p95', `${result.p95Ms.toFixed(1)}ms`], ['p99', `${result.p99Ms.toFixed(1)}ms`],
-        ].map(([label, value]) => <div key={String(label)} className="rounded border border-border-1 bg-surface-2 p-2"><div className="text-[9px] uppercase text-text-4">{label}</div><div className="mt-1 font-mono text-xs font-semibold text-text-1">{value}</div></div>)}</div>}
+        ].map(([label, value]) => <div key={String(label)} className="rounded border border-border-1 bg-surface-2 p-2"><div className="text-[12px] uppercase text-text-3">{label}</div><div className="mt-1 font-mono text-xs font-semibold text-text-1">{value}</div></div>)}</div>}
         <div className="flex justify-end gap-2"><button onClick={onClose} className="rounded border border-border-2 px-3 py-1.5 text-xs text-text-2">Close</button><button onClick={() => void run()} disabled={running || !port} className="flex items-center gap-1.5 rounded bg-accent px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40"><Play size={11} />{running ? 'Running…' : 'Run load test'}</button></div>
       </div>
     </div>
@@ -2073,7 +2076,8 @@ export function GrpcPanel() {
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-surface-0 text-text-1">
+    <div className="nothing-studio grpc-studio min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden bg-surface-0 text-text-1">
+      <header className="data-studio-heading"><h1 className="nothing-studio-title">gRPC Client</h1><p>Services · protobuf requests · streaming responses</p></header>
       <input ref={protoInputRef} type="file" accept=".proto" multiple className="hidden" onChange={(event) => handleProtoFiles(event.target.files)} />
       <input ref={protosetInputRef} type="file" accept=".protoset,.pb,.bin,.desc" className="hidden" onChange={(event) => handleProtosetFile(event.target.files?.[0])} />
       <GrpcConnectionBar
@@ -2130,12 +2134,12 @@ export function GrpcPanel() {
       />
       {showLoadTest && currentMethod && !currentMethod.client_streaming && <GrpcLoadTestDialog port={port} address={address} service={selectedService} method={selectedMethod} payload={rawJson} tls={useTls} caCertPath={caCertPath} clientCertPath={clientCertPath} clientKeyPath={clientKeyPath} metadata={metadataObject()} onClose={() => setShowLoadTest(false)} />}
       {error && (
-        <div className="mx-4 mt-3 rounded-md border border-error/30 bg-error/10 px-3 py-2 text-xs text-error flex items-center gap-2">
+        <div className="mx-4 mt-3 rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error flex items-center gap-2">
           <AlertTriangle size={14} />
           <span className="font-mono">{error}</span>
         </div>
       )}
-      <div className="flex-1 min-h-0 flex mt-3 border-t border-border-1">
+      <div className="grpc-workspace flex-1 min-h-0 flex border-t border-border-1">
         <GrpcServicesExplorer
           services={services}
           selectedService={selectedService}
@@ -2151,13 +2155,13 @@ export function GrpcPanel() {
         />
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           {services.length === 0 ? (
-            <div className="flex-1 m-3 rounded-md border border-dashed border-border-2 bg-surface-1/50 flex items-center justify-center">
+            <div className="flex-1 m-3 rounded border border-dashed border-border-2 bg-surface-1/50 flex items-center justify-center">
               <div className="max-w-md text-center">
-                <div className="mx-auto mb-4 h-12 w-12 rounded-lg border border-border-2 bg-surface-2 flex items-center justify-center text-accent">
+                <div className="mx-auto mb-4 h-12 w-12 rounded border border-border-2 bg-surface-2 flex items-center justify-center text-accent">
                   <SplitSquareHorizontal size={22} />
                 </div>
                 <p className="text-sm font-semibold text-text-1">gRPC Studio</p>
-                <p className="mt-2 text-xs leading-5 text-text-4">
+                <p className="mt-2 text-xs leading-5 text-text-3">
                   Reflect a live server or upload a .proto file to browse services, edit metadata, build protobuf JSON requests and inspect responses.
                 </p>
                 <div className="mt-4 flex items-center justify-center gap-2">
@@ -2233,14 +2237,14 @@ export function GrpcPanel() {
           sourceName={sourceName}
         />
       </div>
-      <div className="h-7 px-3 border-t border-border-1 bg-surface-0 flex items-center gap-4 text-[11px] text-text-4">
+      <div className="grpc-footer px-3 border-t border-border-1 bg-surface-0 flex items-center gap-4 text-[12px] text-text-3">
         <span className={cn('font-semibold', connected ? 'text-success' : 'text-error')}>{connected ? 'CONN_OK' : 'CONN_ERR'}</span>
         <span className="flex items-center gap-1"><Clock size={11} /> history {historyRows.length} reqs</span>
         <span className="flex items-center gap-1"><ListTree size={11} /> {services.length} services</span>
         <span className="flex items-center gap-1"><Layers size={11} /> {sourceKind}</span>
         <span className="ml-auto flex items-center gap-1"><History size={11} /> local-first session</span>
-        <Download size={12} className="text-text-4" />
-        <Braces size={12} className="text-text-4" />
+        <Download size={12} className="text-text-3" />
+        <Braces size={12} className="text-text-3" />
       </div>
     </div>
   )

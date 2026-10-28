@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Studio interactions</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:  #080808;
+      --color-ink:    #ffffff;
+      --color-muted:  #a8a8a8;
+      --font-sans:    'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+      --font-serif:   'Instrument Serif', serif;
+      --font-mono:    'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 16px;
+    }
+    .frame { max-width: 1280px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 1248px; display: block; }
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Architecture · adOmnia Code Studio</p>
+    <h1>Come interagiscono i pezzi di Code Studio</h1>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1248 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="code-studio-interactions-title code-studio-interactions-desc">
+        <title id="code-studio-interactions-title">Code Studio interactions</title>
+        <desc id="code-studio-interactions-desc">The React UI calls the Wails GoIDE service, which delegates to the codestudio host; the host wires the language-agnostic IDE core, language adapters plug into the core, the core drives language servers, debuggers and toolchains, adapters publish routes to Developer Context, and events flow back to the UI by session id.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a8a8a8"/></marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#5b9be0"/></marker>
+        </defs>
+
+        <rect width="1248" height="640" fill="#080808"/>
+
+        <!-- ============ ARROWS (before nodes) ============ -->
+        <g fill="none" stroke-width="1.2">
+          <!-- UI -> GoIDE -->
+          <line x1="200" y1="276" x2="263" y2="276" stroke="#a8a8a8" marker-end="url(#arrow)"/>
+          <!-- GoIDE -> Host -->
+          <line x1="428" y1="276" x2="491" y2="276" stroke="#a8a8a8" marker-end="url(#arrow)"/>
+          <!-- Host -> Core -->
+          <line x1="668" y1="276" x2="731" y2="276" stroke="#a8a8a8" marker-end="url(#arrow)"/>
+          <!-- Core -> Language servers -->
+          <line x1="928" y1="188" x2="1015" y2="188" stroke="#5b9be0" marker-end="url(#arrow-link)"/>
+          <!-- Core -> Debuggers & toolchains -->
+          <line x1="928" y1="364" x2="1015" y2="364" stroke="#5b9be0" marker-end="url(#arrow-link)"/>
+          <!-- Adapter -> Core -->
+          <line x1="830" y1="464" x2="830" y2="401" stroke="#a8a8a8" marker-end="url(#arrow)"/>
+          <!-- Host -> Local state -->
+          <line x1="580" y1="316" x2="580" y2="463" stroke="#a8a8a8" marker-end="url(#arrow)"/>
+          <!-- Adapter -> Developer Context -->
+          <line x1="928" y1="504" x2="1015" y2="504" stroke="#a8a8a8" marker-end="url(#arrow)"/>
+          <!-- Events back to UI (async) -->
+          <path d="M780,152 V104 Q780,96 772,96 H124 Q116,96 116,104 V235" stroke="#a8a8a8" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+        </g>
+
+        <!-- ============ ARROW LABELS ============ -->
+        <g font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="8" letter-spacing="0.06em" text-anchor="middle">
+          <rect x="216" y="258" width="32" height="12" fill="#080808"/>
+          <text x="232" y="267" fill="#a8a8a8">CALL</text>
+          <rect x="434" y="258" width="52" height="12" fill="#080808"/>
+          <text x="460" y="267" fill="#a8a8a8">DELEGATE</text>
+          <rect x="680" y="258" width="40" height="12" fill="#080808"/>
+          <text x="700" y="267" fill="#a8a8a8">WIRES</text>
+          <rect x="940" y="170" width="64" height="12" fill="#080808"/>
+          <text x="972" y="179" fill="#5b9be0">LSP · STDIO</text>
+          <rect x="940" y="346" width="64" height="12" fill="#080808"/>
+          <text x="972" y="355" fill="#5b9be0">DAP · EXEC</text>
+          <rect x="840" y="426" width="64" height="12" fill="#080808"/>
+          <text x="872" y="435" fill="#a8a8a8">IMPLEMENTS</text>
+          <rect x="590" y="384" width="48" height="12" fill="#080808"/>
+          <text x="614" y="393" fill="#a8a8a8">PERSIST</text>
+          <rect x="948" y="486" width="48" height="12" fill="#080808"/>
+          <text x="972" y="495" fill="#a8a8a8">ROUTES</text>
+          <rect x="384" y="78" width="128" height="12" fill="#080808"/>
+          <text x="448" y="87" fill="#a8a8a8">EVENTS · SESSION ID</text>
+        </g>
+
+        <!-- ============ NODES ============ -->
+        <g font-family="'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif">
+
+          <!-- Code Studio UI -->
+          <rect x="32" y="236" width="168" height="80" rx="6" fill="#111111" stroke="#707070"/>
+          <rect x="40" y="244" width="52" height="12" rx="2" fill="none" stroke="#909090" stroke-width="0.8"/>
+          <text x="66" y="253" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">FRONTEND</text>
+          <text x="44" y="278" fill="#ffffff" font-size="12" font-weight="600">Code Studio UI</text>
+          <text x="44" y="294" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">CodeStudioPanel</text>
+          <text x="44" y="306" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">stores/codeStudio*</text>
+
+          <!-- GoIDE Wails service -->
+          <rect x="264" y="236" width="164" height="80" rx="6" fill="#111111" stroke="#707070"/>
+          <rect x="272" y="244" width="36" height="12" rx="2" fill="none" stroke="#909090" stroke-width="0.8"/>
+          <text x="290" y="253" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">WAILS</text>
+          <text x="276" y="278" fill="#ffffff" font-size="12" font-weight="600">GoIDE service</text>
+          <text x="276" y="294" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">code_studio_bindings</text>
+          <text x="276" y="306" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">stable contract</text>
+
+          <!-- Host (focal, inverted like the app's accent) -->
+          <rect x="492" y="236" width="176" height="80" rx="6" fill="#ffffff" stroke="#ffffff"/>
+          <rect x="500" y="244" width="32" height="12" rx="2" fill="none" stroke="#303030" stroke-width="0.8"/>
+          <text x="516" y="253" fill="#303030" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">HOST</text>
+          <text x="504" y="278" fill="#000000" font-size="12" font-weight="600">Code Studio host</text>
+          <text x="504" y="294" fill="#303030" font-family="'IBM Plex Mono', monospace" font-size="9">internal/codestudio</text>
+          <text x="504" y="306" fill="#303030" font-family="'IBM Plex Mono', monospace" font-size="9">sessions · trust check</text>
+
+          <!-- IDE core -->
+          <rect x="732" y="152" width="196" height="248" rx="6" fill="#111111" stroke="#707070"/>
+          <rect x="740" y="160" width="32" height="12" rx="2" fill="none" stroke="#909090" stroke-width="0.8"/>
+          <text x="756" y="169" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">CORE</text>
+          <text x="744" y="194" fill="#ffffff" font-size="12" font-weight="600">IDE Platform core</text>
+          <text x="744" y="210" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">internal/ide/*</text>
+          <g fill="#d4d4d4" font-family="'IBM Plex Mono', monospace" font-size="9">
+            <text x="744" y="240">workspace · documents</text>
+            <text x="744" y="256">langserver · lsp</text>
+            <text x="744" y="272">dap · run · testing</text>
+            <text x="744" y="288">terminal · process</text>
+            <text x="744" y="304">sdk · preview</text>
+          </g>
+          <line x1="744" y1="368" x2="916" y2="368" stroke="#363636" stroke-width="0.8"/>
+          <text x="744" y="388" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">language-agnostic</text>
+
+          <!-- Language servers -->
+          <rect x="1016" y="152" width="200" height="72" rx="6" fill="#191919" stroke="#707070"/>
+          <rect x="1024" y="160" width="48" height="12" rx="2" fill="none" stroke="#909090" stroke-width="0.8"/>
+          <text x="1048" y="169" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">PROCESS</text>
+          <text x="1028" y="192" fill="#ffffff" font-size="12" font-weight="600">Language servers</text>
+          <text x="1028" y="206" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">gopls · JDT LS</text>
+          <text x="1028" y="218" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">basedpyright · rust-analyzer</text>
+
+          <!-- Debuggers & toolchains -->
+          <rect x="1016" y="328" width="200" height="72" rx="6" fill="#191919" stroke="#707070"/>
+          <rect x="1024" y="336" width="48" height="12" rx="2" fill="none" stroke="#909090" stroke-width="0.8"/>
+          <text x="1048" y="345" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">PROCESS</text>
+          <text x="1028" y="368" fill="#ffffff" font-size="12" font-weight="600">Debuggers &amp; toolchains</text>
+          <text x="1028" y="382" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">Delve · debugpy · CodeLLDB</text>
+          <text x="1028" y="394" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">go · mvn · pytest · cargo</text>
+
+          <!-- Local state -->
+          <rect x="492" y="464" width="176" height="80" rx="6" fill="#111111" stroke="#707070"/>
+          <rect x="500" y="472" width="36" height="12" rx="2" fill="none" stroke="#909090" stroke-width="0.8"/>
+          <text x="518" y="481" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">STORE</text>
+          <text x="504" y="506" fill="#ffffff" font-size="12" font-weight="600">Local state</text>
+          <text x="504" y="522" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">bbolt goide</text>
+          <text x="504" y="534" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">.adomnia/run-configs</text>
+
+          <!-- Language adapters -->
+          <rect x="732" y="464" width="196" height="80" rx="6" fill="#111111" stroke="#707070"/>
+          <rect x="740" y="472" width="48" height="12" rx="2" fill="none" stroke="#909090" stroke-width="0.8"/>
+          <text x="764" y="481" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">ADAPTER</text>
+          <text x="744" y="506" fill="#ffffff" font-size="12" font-weight="600">Language adapters</text>
+          <text x="744" y="522" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">internal/languages/*</text>
+          <text x="744" y="534" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">go · web · java · py · rust</text>
+
+          <!-- Developer Context -->
+          <rect x="1016" y="464" width="200" height="80" rx="6" fill="#191919" stroke="#707070"/>
+          <rect x="1024" y="472" width="48" height="12" rx="2" fill="none" stroke="#909090" stroke-width="0.8"/>
+          <text x="1048" y="481" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="7" font-weight="500" letter-spacing="0.14em" text-anchor="middle">PRODUCT</text>
+          <text x="1028" y="506" fill="#ffffff" font-size="12" font-weight="600">Developer Context</text>
+          <text x="1028" y="522" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">route entities</text>
+          <text x="1028" y="534" fill="#909090" font-family="'IBM Plex Mono', monospace" font-size="9">API · Mock · Live Session</text>
+        </g>
+
+        <!-- ============ LEGEND ============ -->
+        <line x1="32" y1="580" x2="1216" y2="580" stroke="#242424" stroke-width="0.8"/>
+        <g font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.06em" fill="#a8a8a8">
+          <line x1="32" y1="608" x2="64" y2="608" stroke="#a8a8a8" stroke-width="1.2"/>
+          <text x="72" y="611">IN-PROCESS CALL</text>
+          <line x1="200" y1="608" x2="232" y2="608" stroke="#5b9be0" stroke-width="1.2"/>
+          <text x="240" y="611">CHILD PROCESS (TRUSTED PROJECTS ONLY)</text>
+          <line x1="468" y1="608" x2="500" y2="608" stroke="#a8a8a8" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="508" y="611">ASYNC EVENT</text>
+          <rect x="612" y="602" width="16" height="12" rx="2" fill="#ffffff"/>
+          <text x="636" y="611">COMPOSITION ROOT</text>
+          <rect x="764" y="602" width="16" height="12" rx="2" fill="#191919" stroke="#707070"/>
+          <text x="788" y="611">OUTSIDE CODE STUDIO</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
