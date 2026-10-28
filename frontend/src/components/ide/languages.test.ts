@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandAvailability, type CodeStudioCommandContext } from '@/components/code-studio/codeStudioCommands'
-import { IDE_LANGUAGES, codeVisionEditorLanguages, exceptionFiltersFor, heavyFeatureEditorLanguages, implementationMarkerEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages, semanticTokenEditorLanguages } from './languages'
+import { IDE_LANGUAGES, codeVisionEditorLanguages, exceptionFiltersFor, heavyFeatureEditorLanguages, implementationMarkerEditorLanguages, inlayHintEditorLanguages, isLanguageServerEditorLanguage, languageRequirement, languageServerEditorLanguages, semanticTokenEditorLanguages } from './languages'
 import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 
 describe('IDE language contributions', () => {
@@ -39,7 +39,7 @@ describe('IDE language contributions', () => {
     expect(java.semanticTokens).toBe(true)
     expect(java.codeVision).toBe(true)
     expect(java.implementationMarkers).toBe(true)
-    expect(codeVisionEditorLanguages()).toEqual(['go', 'java'])
+    expect(codeVisionEditorLanguages()).toEqual(['go', 'java', 'rust'])
     expect(implementationMarkerEditorLanguages()).toEqual(['go', 'java'])
     expect(heavyFeatureEditorLanguages()).not.toContain('java')
   })
@@ -59,6 +59,10 @@ describe('IDE language contributions', () => {
     expect(rust.languageServer).toBe('rust-analyzer')
     expect(rust.providedServer).toBe(true)
     expect(rust.heavyFeatures).toBe(false)
+    // Funzioni LSP generiche accese per rust-analyzer (RS-4), non la taratura su gopls.
+    expect(rust.semanticTokens).toBe(true)
+    expect(rust.inlayHints).toBe(true)
+    expect(rust.codeVision).toBe(true)
     expect(rust.runTemplates?.map(template => template.kind)).toEqual(['bin', 'example', 'build', 'check'])
     expect(rust.canDebugRun?.({ kind: 'bin', language: 'rust', languageOptions: { bin: 'app' } } as never)).toBe(true)
     expect(rust.canDebugRun?.({ kind: 'build', language: 'rust', languageOptions: {} } as never)).toBe(false)
@@ -66,7 +70,9 @@ describe('IDE language contributions', () => {
     expect(rust.menu?.id).toBe('rust')
     expect(rust.completionTriggerCharacters).toEqual([':'])
     expect(heavyFeatureEditorLanguages()).not.toContain('rust')
-    expect(semanticTokenEditorLanguages()).not.toContain('rust')
+    expect(semanticTokenEditorLanguages()).toContain('rust')
+    expect(inlayHintEditorLanguages()).toContain('rust')
+    expect(codeVisionEditorLanguages()).toContain('rust')
   })
 
   it('declares the debugpy exception filters and gathers them per project language', () => {

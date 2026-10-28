@@ -1,7 +1,7 @@
 import { featuresForEditor } from './codeStudioServerFeatures'
 import { importColorRanges } from './codeStudioImportColors'
 import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
-import { heavyFeatureEditorLanguages, semanticTokenEditorLanguages } from '@/components/ide/languages'
+import { heavyFeatureEditorLanguages, inlayHintEditorLanguages, semanticTokenEditorLanguages } from '@/components/ide/languages'
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { monaco } from '@/lib/monacoSetup'
@@ -21,7 +21,9 @@ import { prepareDocument, toEditorRange, toMonacoRange } from './codeStudioLangu
 import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, type SemanticRemapContext, semanticRetryDelay, typeInfoFromHover } from './codeStudioSemanticTokens'
 
 // Provider LSP generici: valgono per ogni linguaggio servito da un language server.
-const LANGUAGE = heavyFeatureEditorLanguages()
+const INLAY_LANGUAGES = inlayHintEditorLanguages()
+// Document highlight resta sulle funzioni "pesanti": è tarato su gopls e non è stato provato altrove.
+const HIGHLIGHT_LANGUAGES = heavyFeatureEditorLanguages()
 const INLAY_PARAMETER = 2
 const RECURSION_DEBOUNCE_MS = 800
 
@@ -111,7 +113,7 @@ function registerSemanticTokens(): void {
 }
 
 function registerInlayHints(): void {
-  monaco.languages.registerInlayHintsProvider(LANGUAGE, {
+  monaco.languages.registerInlayHintsProvider(INLAY_LANGUAGES, {
     onDidChangeInlayHints: inlayChanged.event,
     async provideInlayHints(model, range, token) {
       const empty = { hints: [], dispose: () => undefined }
@@ -142,7 +144,7 @@ const HIGHLIGHT_KINDS: Record<string, monaco.languages.DocumentHighlightKind> = 
 }
 
 function registerDocumentHighlights(): void {
-  monaco.languages.registerDocumentHighlightProvider(LANGUAGE, {
+  monaco.languages.registerDocumentHighlightProvider(HIGHLIGHT_LANGUAGES, {
     async provideDocumentHighlights(model, position, token) {
       const prepared = await prepareDocument(model)
       if (!prepared || !featuresForEditor(prepared.sessionId, prepared.document.document.language)?.documentHighlight) return null

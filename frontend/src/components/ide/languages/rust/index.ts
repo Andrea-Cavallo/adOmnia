@@ -6,9 +6,11 @@ export const RUST_LANGUAGE_ID = 'rust'
 
 /**
  * Rust (Cargo). L'adapter rileva crate e workspace, esegue (cargo run/build/check/example/bench,
- * RS-3) e ora serve l'editor con rust-analyzer (RS-4, installato esplicitamente via rustup e avviato
- * dal backend `lsp.ServerProvider`). `heavyFeatures` resta spento: colori semantici, inlay hints e
- * Code Vision vanno verificati con rust-analyzer in app (RS-4.5 / RS-M3) prima di accenderli.
+ * RS-3) e serve l'editor con rust-analyzer (RS-4, installato esplicitamente via rustup e avviato
+ * dal backend `lsp.ServerProvider`). `heavyFeatures` resta spento (è la taratura su gopls), ma
+ * `semanticTokens`, `inlayHints` e `codeVision` sono accesi perché sono funzioni LSP generiche e
+ * rust-analyzer le annuncia: `TestRealRustAnalyzerAnalysesWorkspace` verifica token semantici,
+ * inlay hints, document symbols e references sul server vero (RS-4.5). Resta la prova visiva in app.
  */
 export const RUST_LANGUAGE: IdeLanguageContribution = {
   id: RUST_LANGUAGE_ID,
@@ -31,5 +33,8 @@ export const RUST_LANGUAGE: IdeLanguageContribution = {
   editorLanguages: ['rust'],
   languageServer: 'rust-analyzer',
   heavyFeatures: false,
+  semanticTokens: true,
+  inlayHints: true,
+  codeVision: true,
   providedServer: true,
 }
