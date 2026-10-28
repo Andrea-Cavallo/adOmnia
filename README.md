@@ -1,8 +1,4 @@
 <p align="center">
-  <img src="assets/images/adomnia-demo.gif" alt="adOmnia demo" width="100%">
-</p>
-
-<p align="center">
   <a href="https://github.com/sponsors/Andrea-Cavallo"><img alt="Sponsor Andrea-Cavallo" src="https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86"></a>
 </p>
 
@@ -62,6 +58,10 @@ AI agents now write a large share of backend code. Checking it is the slow part:
 adOmnia puts that loop in one window. It reads your routes from the code, so the API client and the debugger already know which service and handler a request belongs to.
 
 ## Try it in 2 minutes
+
+<p align="center">
+  <img src="assets/images/adomnia-demo.gif" alt="adOmnia demo" width="100%">
+</p>
 
 1. **Download and open it.** See [Download and install](#download-and-install) for the SmartScreen / Gatekeeper prompt on first launch.
 2. In **Code Studio**, choose **File → Open Project** and pick a Go service. Trust the folder when asked.
