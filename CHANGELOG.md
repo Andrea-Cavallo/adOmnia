@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+Release notes for this batch: [docs/releases/v1.0.20.md](docs/releases/v1.0.20.md).
+
 - **Rust in Code Studio (in preparation, not announced yet).** Open a Cargo crate or workspace and Code Studio detects every package without running `cargo` or `build.rs`; each unit picks its toolchain (`rust-toolchain.toml`, a saved choice or the PATH) from a *Select Rust Toolchain* dialog with explicit *Install component / toolchain* actions.
 - **Run, build errors and stop.** Run a binary, example, bench, `build`, `check` or `clippy` with features, profile and target; a ▶ in the gutter sits on `fn main`. rustc errors land in the Problems panel and the console shows rustc's own text instead of cargo's JSON, with `file:line` links that resolve from the crate even in a workspace. Stopping a run ends cargo and the compiled binary.
 - **Editing.** rust-analyzer is installed on request (`rustup component add rust-analyzer`), runs one server per Cargo unit only for trusted projects and builds into its own target folder, so it never fights your `cargo run` for the build lock. `rustfmt` formats on save and completion opens after `::`.
@@ -22,6 +24,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Detected entries beyond language adapters.** The Run bar proposes the processes of a `Procfile` (shell-free when it fits, `sh -c`/`cmd /c` when it needs `$PORT` or a pipe), one entry per `Makefile` rule and one per compose service, only when `make`/`docker` are installed and without new runners.
 - **Build units are visible everywhere in Code Studio.** The project tree labels the folders that are build units with their language, workspace symbol search shows the language of every result (SDK files included), and the Problems panel groups diagnostics by unit with a language badge, a count and a filter on file, unit, message, source or severity; the AI fix targets follow what is visible while the Markdown export still contains everything.
 - **Collaboration survives a restart and a crash.** Recovery is now persistent: an encrypted snapshot in the local bbolt store holds the session (host certificate and address, participants, roles, resume tickets), the replay window, the shared documents, the received-shares inbox and the guest's Yjs baseline. `Restore` runs at startup without opening a listener, a recovered host reopens with *Resume* on the same address and certificate, a guest resumes its identity and unsent text, and expired, revoked, corrupt or out-of-window recovery is reported instead of silently lost. Document checkpoints are coalesced (a write per window, flushed on close and on shutdown) so typing does not rewrite the whole Yjs history.
+- **A sharper, denser layout for six panels.** Mock, Proxy, Settings, SOAP, SSE and Vault share a Nothing-inspired visual language — 3px corners, transparent groups with hairlines, smaller type for dense controls, a sidebar that reads like a list of tools and container queries that reflow the layout in a narrow split or a detached window. Behaviour and bindings are unchanged; each area keeps its own stylesheet.
+- **The MCP Server Generator is gone from the UI.** The panel, its rail entry, the feature-registry and AI capability entries and the legacy Wails v2 binding are removed; the local server is unchanged and `adomnia mcp` still exposes collections as MCP tools from the CLI.
+- **A demo animation in the README**, so the project page opens with the product instead of a paragraph.
 
 ### Tests and verification — 2026-10-28
 
