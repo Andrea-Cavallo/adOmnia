@@ -56,7 +56,7 @@ export function NetworkPrivacySettings() {
           <ShieldCheck size={14} className="mt-0.5 shrink-0 text-status-ok" />
           <div>
             <div className="text-xs font-medium text-text-1">No telemetry</div>
-            <div className="mt-0.5 text-[10px] leading-relaxed text-text-4">
+            <div className="mt-0.5 text-[12px] leading-relaxed text-text-3">
               adOmnia collects no usage data, crash reports or analytics, and has no switch to turn them on. Every connection it opens by itself is listed below.
             </div>
           </div>
@@ -74,7 +74,7 @@ export function NetworkPrivacySettings() {
         <TextInput label="No proxy for" desc="Hosts reached directly (NO_PROXY), separated by commas." value={draft.noProxy} placeholder="git.corp.example,.internal" onChange={(noProxy) => update({ noProxy })} />
         <TextInput label="Corporate CA bundle (PEM)" desc="Absolute path of a PEM file added to the system certificates for TLS inspection. TLS verification is never turned off." value={draft.caBundlePath} placeholder="C:/certs/corporate-ca.pem" onChange={(caBundlePath) => update({ caBundlePath })} />
         <div className="flex items-center justify-end gap-3 px-2 pb-3">
-          <span role="status" aria-live="polite" className={`text-[11px] ${status.kind === 'error' ? 'text-status-err' : 'text-text-3'}`}>
+          <span role="status" aria-live="polite" className={`text-[12px] ${status.kind === 'error' ? 'text-status-err' : 'text-text-3'}`}>
             {status.kind === 'saving' && 'Saving…'}
             {status.kind === 'saved' && 'Saved: new connections use these settings.'}
             {status.kind === 'error' && status.message}
@@ -93,7 +93,7 @@ export function NetworkPrivacySettings() {
         <div className="flex items-center justify-between gap-2 px-2 pt-3">
           <div className="flex items-center gap-1.5 text-xs font-medium text-text-1">
             <Activity size={13} className="text-text-3" /> Network activity
-            <span className="text-[10px] font-normal text-text-4">this session · kept in memory only</span>
+            <span className="text-[12px] font-normal text-text-3">this session · kept in memory only</span>
           </div>
           <div className="flex items-center gap-1">
             <button onClick={refreshActivity} title="Refresh" aria-label="Refresh network activity" className="rounded p-1 text-text-3 hover:bg-surface-3 hover:text-text-1"><RefreshCw size={12} /></button>
@@ -101,12 +101,12 @@ export function NetworkPrivacySettings() {
           </div>
         </div>
         {activity.length === 0 ? (
-          <div className="px-2 py-4 text-[11px] text-text-4">No connections opened by adOmnia in this session.</div>
+          <div className="px-2 py-4 text-[12px] text-text-3">No connections opened by adOmnia in this session.</div>
         ) : (
-          <ul className="max-h-72 overflow-auto px-2 py-2 font-mono text-[11px]">
+          <ul className="max-h-72 overflow-auto px-2 py-2 font-mono text-[12px]">
             {withContentKeys(activity, (e) => `${e.time}-${e.category}-${e.host}-${e.path ?? ''}`).map(({ key, item: event }) => (
               <li key={key} className="grid grid-cols-[64px_120px_minmax(0,1fr)_auto] items-center gap-2 border-b border-border-1 py-1 last:border-0">
-                <span className="text-text-4">{new Date(event.time).toLocaleTimeString()}</span>
+                <span className="text-text-3">{new Date(event.time).toLocaleTimeString()}</span>
                 <span className="truncate text-text-3">{CATEGORY_LABELS[event.category] ?? event.category}</span>
                 <span className="truncate text-text-2" title={event.detail || undefined}>{event.method ? `${event.method} ` : ''}{event.host}{event.path ?? ''}</span>
                 <span className={event.outcome === 'ok' ? 'text-status-ok' : event.outcome === 'blocked' ? 'text-status-warn' : 'text-status-err'}>

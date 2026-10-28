@@ -1,3 +1,5 @@
+import '@/styles/studioNothing.css'
+import '@/styles/protocolNothing.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
@@ -134,12 +136,12 @@ function HeadersEditor({ headers, onChange }: { headers: KVRow[]; onChange: (hea
       {headers.map((h, i) => (
         <div key={i} className="flex items-center gap-1">
           <input type="checkbox" checked={h.enabled} onChange={(e) => update(i, { enabled: e.target.checked })} className="h-3 w-3 accent-accent" />
-          <input value={h.key} onChange={(e) => update(i, { key: e.target.value })} placeholder="Header" className="h-6 flex-1 rounded border border-border-2 bg-surface-0 px-1.5 text-[11px] text-text-1 outline-none focus:border-accent/40" />
-          <input value={h.value} onChange={(e) => update(i, { value: e.target.value })} placeholder="Value" className="h-6 flex-1 rounded border border-border-2 bg-surface-0 px-1.5 text-[11px] text-text-1 outline-none focus:border-accent/40" />
-          <button onClick={() => remove(i)} className="grid h-5 w-5 place-items-center rounded text-text-4 hover:text-error"><X size={10} /></button>
+          <input value={h.key} onChange={(e) => update(i, { key: e.target.value })} placeholder="Header" className="h-8 flex-1 rounded border border-border-2 bg-surface-0 px-1.5 text-[12px] text-text-1 outline-none focus:border-accent/40" />
+          <input value={h.value} onChange={(e) => update(i, { value: e.target.value })} placeholder="Value" className="h-8 flex-1 rounded border border-border-2 bg-surface-0 px-1.5 text-[12px] text-text-1 outline-none focus:border-accent/40" />
+          <button onClick={() => remove(i)} className="grid h-5 w-5 place-items-center rounded text-text-3 hover:text-error"><X size={10} /></button>
         </div>
       ))}
-      <button onClick={() => onChange([...headers, { key: '', value: '', enabled: true }])} className="flex items-center gap-1 self-start text-[10px] text-text-4 hover:text-accent">
+      <button onClick={() => onChange([...headers, { key: '', value: '', enabled: true }])} className="flex items-center gap-1 self-start text-[12px] text-text-3 hover:text-accent">
         <Plus size={10} /> Add header
       </button>
     </div>
@@ -160,26 +162,26 @@ function EventCard({ event }: { event: SSEEventItem }) {
   }
 
   return (
-    <div className={cn('group rounded border-l-2 bg-surface-1 px-2 py-1.5', event.system ? 'border-l-warning/50' : 'border-l-accent/50')}>
+    <div className={cn('sse-event group border-b border-border-1 px-3 py-3', event.system ? 'border-l-warning/50' : 'border-l-accent/50')}>
       <div className="flex items-start gap-2">
         <div className="mt-0.5 flex w-48 shrink-0 items-center gap-1.5">
-          <span className="font-mono text-[9px] text-text-4">{fmt(event.timestamp)}</span>
-          <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase', event.system ? 'bg-warning/10 text-warning' : 'bg-accent/10 text-accent-light')}>
+          <span className="font-mono text-[12px] text-text-3">{fmt(event.timestamp)}</span>
+          <span className={cn('rounded px-1.5 py-0.5 text-[12px] font-semibold uppercase', event.system ? 'bg-warning/10 text-warning' : 'bg-accent/10 text-accent-light')}>
             {event.type || 'message'}
           </span>
-          {event.id && <span className="font-mono text-[9px] text-info">#{event.id}</span>}
-          {event.retry ? <span className="font-mono text-[9px] text-text-4">retry {event.retry}</span> : null}
+          {event.id && <span className="font-mono text-[12px] text-info">#{event.id}</span>}
+          {event.retry ? <span className="font-mono text-[12px] text-text-3">retry {event.retry}</span> : null}
         </div>
         <div className="min-w-0 flex-1">
           {isJson && (
-            <button onClick={() => setExpanded((v) => !v)} className="mb-1 flex items-center gap-1 text-[10px] text-text-4 hover:text-text-2">
+            <button onClick={() => setExpanded((v) => !v)} className="mb-1 flex items-center gap-1 text-[12px] text-text-3 hover:text-text-2">
               <ChevronRight size={10} className={cn('transition-transform', expanded && 'rotate-90')} />
               {expanded ? 'Collapse JSON' : 'Pretty JSON'}
             </button>
           )}
-          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-surface-0 p-2 font-mono text-[11px] leading-4 text-text-2">{payload}{!expanded && event.payload.length > 500 ? '...' : ''}</pre>
+          <pre className="max-h-84 overflow-auto whitespace-pre-wrap break-words rounded bg-surface-0 p-2 font-mono text-[12px] leading-4 text-text-2">{payload}{!expanded && event.payload.length > 500 ? '...' : ''}</pre>
         </div>
-        <button onClick={copyPayload} className="grid h-5 w-5 shrink-0 place-items-center text-text-4 opacity-0 transition-opacity hover:text-text-1 group-hover:opacity-100">
+        <button aria-label="Copy event payload" onClick={copyPayload} className="grid h-5 w-5 shrink-0 place-items-center text-text-3 hover:text-text-1">
           {copied ? <Check size={10} className="text-success" /> : <Copy size={10} />}
         </button>
       </div>
@@ -380,56 +382,58 @@ export function SsePanel() {
   const connected = status === 'connected'
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="nothing-studio protocol-studio sse-studio flex min-w-0 flex-1 flex-col overflow-hidden">
+      <header className="protocol-heading"><h1 className="nothing-studio-title">SSE Client</h1><p>Server-sent events · live stream and replay</p></header>
       <div className="flex shrink-0 flex-col gap-2 border-b border-border-1 bg-surface-1 px-3 py-2">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 flex-1 items-center gap-1 rounded border border-border-2 bg-surface-0 px-2 focus-within:border-accent/40">
-            <span className="shrink-0 text-[9px] font-semibold text-accent">SSE</span>
+          <div className="flex h-9 flex-1 items-center gap-1 rounded border border-border-2 bg-surface-0 px-2 focus-within:border-accent/40">
+            <span className="shrink-0 text-[12px] font-semibold text-accent">SSE</span>
             <input
+              aria-label="Event stream URL"
               value={config.url}
               disabled={connected}
               onChange={(e) => setConfig((c) => ({ ...c, url: e.target.value }))}
               onKeyDown={(e) => { if (e.key === 'Enter' && !connected) void connect() }}
               placeholder="https://api.local/events"
-              className="flex-1 bg-transparent font-mono text-[11px] text-text-1 outline-none placeholder:text-text-4"
+              className="flex-1 bg-transparent font-mono text-[12px] text-text-1 outline-none placeholder:text-text-3"
             />
           </div>
           {connected ? (
-            <button onClick={disconnect} className="flex h-7 items-center gap-1.5 rounded border border-error/30 bg-error/10 px-3 text-[11px] font-semibold text-error hover:bg-error/20">
+            <button onClick={disconnect} className="flex h-9 items-center gap-1.5 rounded border border-error/30 bg-error/10 px-3 text-[12px] font-semibold text-error hover:bg-error/20">
               <ZapOff size={12} /> Disconnect
             </button>
           ) : (
-            <button onClick={() => void connect()} disabled={!port || status === 'connecting'} className="flex h-7 items-center gap-1.5 rounded bg-accent px-3 text-[11px] font-semibold text-white disabled:opacity-40">
+            <button onClick={() => void connect()} disabled={!port || status === 'connecting'} className="flex h-9 items-center gap-1.5 rounded bg-accent px-3 text-[12px] font-semibold text-[var(--color-on-accent)] disabled:opacity-40">
               <Zap size={12} /> Connect
             </button>
           )}
-          <button onClick={() => void refreshSessions()} className="h-7 rounded border border-border-2 bg-surface-0 px-2 text-[10px] text-text-3 hover:text-text-1" title="Refresh active backend sessions">{activeSessions} sessions</button>
-          {activeSessions > 0 && <button onClick={() => void closeAllSessions()} className="h-7 rounded border border-error/30 bg-error/10 px-2 text-[10px] text-error hover:bg-error/20">Close all</button>}
+          <button onClick={() => void refreshSessions()} className="h-9 rounded border border-border-2 bg-surface-0 px-2 text-[12px] text-text-3 hover:text-text-1" title="Refresh active backend sessions">{activeSessions} sessions</button>
+          {activeSessions > 0 && <button onClick={() => void closeAllSessions()} className="h-9 rounded border border-error/30 bg-error/10 px-2 text-[12px] text-error hover:bg-error/20">Close all</button>}
         </div>
 
         <div className="flex items-center gap-3">
-          <button onClick={() => setShowAuth((v) => !v)} className={cn('flex items-center gap-1 text-[10px]', showAuth ? 'text-accent' : 'text-text-4 hover:text-text-2')}>
+          <button onClick={() => setShowAuth((v) => !v)} className={cn('flex items-center gap-1 text-[12px]', showAuth ? 'text-accent' : 'text-text-3 hover:text-text-2')}>
             <ChevronRight size={10} className={cn('transition-transform', showAuth && 'rotate-90')} /> Auth
           </button>
-          <button onClick={() => setShowHeaders((v) => !v)} className={cn('flex items-center gap-1 text-[10px]', showHeaders ? 'text-accent' : 'text-text-4 hover:text-text-2')}>
+          <button onClick={() => setShowHeaders((v) => !v)} className={cn('flex items-center gap-1 text-[12px]', showHeaders ? 'text-accent' : 'text-text-3 hover:text-text-2')}>
             <ChevronRight size={10} className={cn('transition-transform', showHeaders && 'rotate-90')} /> Headers
-            {config.headers.filter((h) => h.enabled && h.key).length > 0 && <span className="rounded bg-accent/20 px-1 text-[9px] text-accent">{config.headers.filter((h) => h.enabled && h.key).length}</span>}
+            {config.headers.filter((h) => h.enabled && h.key).length > 0 && <span className="rounded bg-accent/20 px-1 text-[12px] text-accent">{config.headers.filter((h) => h.enabled && h.key).length}</span>}
           </button>
-          <span className="text-[10px] text-text-4">Supports <span className="font-mono text-accent">{'{{variables}}'}</span></span>
+          <span className="text-[12px] text-text-3">Supports <span className="font-mono text-accent">{'{{variables}}'}</span></span>
         </div>
 
         {showAuth && (
           <div className="flex items-center gap-2 border-t border-border-2 pt-2">
-            <select value={config.authType} onChange={(e) => setConfig((c) => ({ ...c, authType: e.target.value as AuthType }))} className="h-6 rounded border border-border-2 bg-surface-0 px-1.5 text-[11px] text-text-1 outline-none">
+            <select value={config.authType} onChange={(e) => setConfig((c) => ({ ...c, authType: e.target.value as AuthType }))} className="h-8 rounded border border-border-2 bg-surface-0 px-1.5 text-[12px] text-text-1 outline-none">
               <option value="none">No auth</option>
               <option value="bearer">Bearer Token</option>
               <option value="basic">Basic Auth</option>
             </select>
-            {config.authType === 'bearer' && <input value={config.token} onChange={(e) => setConfig((c) => ({ ...c, token: e.target.value }))} type="password" placeholder="Token" className="h-6 flex-1 rounded border border-border-2 bg-surface-0 px-2 text-[11px] text-text-1 outline-none" />}
+            {config.authType === 'bearer' && <input value={config.token} onChange={(e) => setConfig((c) => ({ ...c, token: e.target.value }))} type="password" placeholder="Token" className="h-8 flex-1 rounded border border-border-2 bg-surface-0 px-2 text-[12px] text-text-1 outline-none" />}
             {config.authType === 'basic' && (
               <>
-                <input value={config.username} onChange={(e) => setConfig((c) => ({ ...c, username: e.target.value }))} placeholder="Username" className="h-6 flex-1 rounded border border-border-2 bg-surface-0 px-2 text-[11px] text-text-1 outline-none" />
-                <input value={config.password} onChange={(e) => setConfig((c) => ({ ...c, password: e.target.value }))} type="password" placeholder="Password" className="h-6 flex-1 rounded border border-border-2 bg-surface-0 px-2 text-[11px] text-text-1 outline-none" />
+                <input value={config.username} onChange={(e) => setConfig((c) => ({ ...c, username: e.target.value }))} placeholder="Username" className="h-8 flex-1 rounded border border-border-2 bg-surface-0 px-2 text-[12px] text-text-1 outline-none" />
+                <input value={config.password} onChange={(e) => setConfig((c) => ({ ...c, password: e.target.value }))} type="password" placeholder="Password" className="h-8 flex-1 rounded border border-border-2 bg-surface-0 px-2 text-[12px] text-text-1 outline-none" />
               </>
             )}
           </div>
@@ -444,36 +448,36 @@ export function SsePanel() {
 
       <div className="flex shrink-0 items-center gap-2 border-b border-border-1 bg-surface-0 px-3 py-1">
         <StatusDot status={status} />
-        <span className={cn('text-[10px] font-medium', connected && 'text-success', status === 'connecting' && 'text-warning', status === 'error' && 'text-error', status === 'disconnected' && 'text-text-4')}>{status}</span>
-        {sessionId && <span className="font-mono text-[9px] text-text-4">#{sessionId.slice(0, 8)}</span>}
-        {replayName && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[9px] text-text-4">Replay: {replayName}</span>}
+        <span className={cn('text-[12px] font-medium', connected && 'text-success', status === 'connecting' && 'text-warning', status === 'error' && 'text-error', status === 'disconnected' && 'text-text-3')}>{status}</span>
+        {sessionId && <span className="font-mono text-[12px] text-text-3">#{sessionId.slice(0, 8)}</span>}
+        {replayName && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[12px] text-text-3">Replay: {replayName}</span>}
         <div className="flex-1" />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-6 rounded border border-border-2 bg-surface-1 px-2 text-[10px] text-text-2 outline-none">
+        <select aria-label="Filter event type" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-8 rounded border border-border-2 bg-surface-1 px-2 text-[12px] text-text-2 outline-none">
           <option value="">All types</option>
           {knownTypes.map((type) => <option key={type} value={type}>{type}</option>)}
         </select>
-        <div className="flex h-6 w-48 items-center gap-1 rounded border border-border-2 bg-surface-1 px-2">
-          <Search size={10} className="text-text-4" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payload" className="min-w-0 flex-1 bg-transparent text-[10px] text-text-1 outline-none" />
+        <div className="flex h-8 w-48 items-center gap-1 rounded border border-border-2 bg-surface-1 px-2">
+          <Search size={10} className="text-text-3" />
+          <input aria-label="Search event payload" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payload" className="min-w-0 flex-1 bg-transparent text-[12px] text-text-1 outline-none" />
         </div>
         {paused ? (
-          <button onClick={resume} className="flex h-6 items-center gap-1 rounded bg-accent px-2 text-[10px] font-medium text-white"><Play size={10} /> Resume {buffered ? `(${buffered})` : ''}</button>
+          <button onClick={resume} className="flex h-8 items-center gap-1 rounded bg-accent px-2 text-[12px] font-medium text-[var(--color-on-accent)]"><Play size={10} /> Resume {buffered ? `(${buffered})` : ''}</button>
         ) : (
-          <button onClick={() => setPaused(true)} disabled={!connected} className="flex h-6 items-center gap-1 rounded px-2 text-[10px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Pause size={10} /> Pause</button>
+          <button onClick={() => setPaused(true)} disabled={!connected} className="flex h-8 items-center gap-1 rounded px-2 text-[12px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Pause size={10} /> Pause</button>
         )}
-        <button onClick={saveStream} disabled={events.length === 0} className="flex h-6 items-center gap-1 rounded px-2 text-[10px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Save size={10} /> Save</button>
-        <button onClick={exportJSONL} disabled={events.length === 0} className="flex h-6 items-center gap-1 rounded px-2 text-[10px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Download size={10} /> JSONL</button>
-        <button onClick={() => { setEvents([]); setReplayName('') }} disabled={events.length === 0} className="flex h-6 items-center gap-1 rounded px-2 text-[10px] text-text-3 hover:bg-surface-2 hover:text-error disabled:opacity-30"><Trash2 size={10} /> Clear</button>
+        <button onClick={saveStream} disabled={events.length === 0} className="flex h-8 items-center gap-1 rounded px-2 text-[12px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Save size={10} /> Save</button>
+        <button onClick={exportJSONL} disabled={events.length === 0} className="flex h-8 items-center gap-1 rounded px-2 text-[12px] text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><Download size={10} /> JSONL</button>
+        <button onClick={() => { setEvents([]); setReplayName('') }} disabled={events.length === 0} className="flex h-8 items-center gap-1 rounded px-2 text-[12px] text-text-3 hover:bg-surface-2 hover:text-error disabled:opacity-30"><Trash2 size={10} /> Clear</button>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_240px]">
+      <div className="grid min-h-0 flex-1 sse-workspace grid-cols-[minmax(0,1fr)_260px]">
         <div ref={logRef} className="flex min-h-0 flex-col gap-1 overflow-y-auto px-3 py-2">
           {visibleEvents.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-center">
               <div>
-                <Radio size={34} className="mx-auto mb-2 text-text-4 opacity-30" />
-                <p className="text-xs text-text-4">No SSE events to show</p>
-                <p className="mt-1 text-[10px] text-text-4">Connect to an event-stream endpoint or replay a saved stream.</p>
+                <Radio size={34} className="mx-auto mb-2 text-text-3 opacity-30" />
+                <p className="text-xs text-text-3">No SSE events to show</p>
+                <p className="mt-1 text-[12px] text-text-3">Connect to an event-stream endpoint or replay a saved stream.</p>
               </div>
             </div>
           ) : (
@@ -482,24 +486,24 @@ export function SsePanel() {
         </div>
         <aside className="min-h-0 overflow-y-auto border-l border-border-1 bg-surface-1 p-2">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Saved Streams</span>
-            <span className="text-[10px] text-text-4">{savedStreams.length}</span>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3">Saved Streams</span>
+            <span className="text-[12px] text-text-3">{savedStreams.length}</span>
           </div>
           <div className="flex flex-col gap-1">
-            {savedStreams.length === 0 && <p className="px-2 py-6 text-center text-[10px] text-text-4">No saved streams yet.</p>}
+            {savedStreams.length === 0 && <p className="px-2 py-6 text-center text-[12px] text-text-3">No saved streams yet.</p>}
             {savedStreams.map((stream) => (
               <div key={stream.id} className="rounded border border-border-1 bg-surface-0 p-2">
-                <button onClick={() => replay(stream)} className="block w-full truncate text-left text-[11px] font-medium text-text-2 hover:text-text-1">{stream.name}</button>
-                <p className="mt-1 truncate font-mono text-[9px] text-text-4">{stream.url}</p>
-                <div className="mt-2 flex items-center gap-2 text-[9px] text-text-4">
+                <button onClick={() => replay(stream)} className="block w-full truncate text-left text-[12px] font-medium text-text-2 hover:text-text-1">{stream.name}</button>
+                <p className="mt-1 truncate font-mono text-[12px] text-text-3">{stream.url}</p>
+                <div className="mt-2 flex items-center gap-2 text-[12px] text-text-3">
                   <span>{stream.events.length} events</span>
-                  <button onClick={() => setSavedStreams((prev) => prev.filter((s) => s.id !== stream.id))} className="ml-auto text-text-4 hover:text-error">Delete</button>
+                  <button onClick={() => setSavedStreams((prev) => prev.filter((s) => s.id !== stream.id))} className="ml-auto text-text-3 hover:text-error">Delete</button>
                 </div>
               </div>
             ))}
           </div>
           <div className="mt-3 rounded border border-border-1 bg-surface-0 p-2">
-            <div className="flex items-center gap-2 text-[10px] text-text-4">
+            <div className="flex items-center gap-2 text-[12px] text-text-3">
               <Activity size={11} />
               <span>{events.length} total / {visibleEvents.length} visible</span>
             </div>

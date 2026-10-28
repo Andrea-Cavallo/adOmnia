@@ -1,3 +1,5 @@
+import '@/styles/studioNothing.css'
+import './mockProxyNothing.css'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Play, Square, RefreshCw, Trash2, ChevronDown, ChevronRight,
@@ -80,12 +82,12 @@ function methodColor(m: string) {
 
 function HeaderTable({ headers }: { headers: Record<string, string> }) {
   const entries = Object.entries(headers || {})
-  if (entries.length === 0) return <span className="text-text-4 text-[10px]">none</span>
+  if (entries.length === 0) return <span className="text-text-3 text-[12px]">none</span>
   return (
     <div className="flex flex-col gap-0.5">
       {entries.map(([k, v]) => (
-        <div key={k} className="flex gap-2 text-[10px]">
-          <span className="text-text-4 shrink-0 w-32 truncate font-mono">{k}</span>
+        <div key={k} className="flex gap-2 text-[12px]">
+          <span className="text-text-3 shrink-0 w-32 truncate font-mono">{k}</span>
           <span className="text-text-2 font-mono break-all">{v}</span>
         </div>
       ))}
@@ -96,10 +98,10 @@ function HeaderTable({ headers }: { headers: Record<string, string> }) {
 function DetailSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="border border-border-2 rounded-lg overflow-hidden">
+    <div className="border border-border-2 rounded overflow-hidden">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-2 px-3 py-2 bg-surface-1 text-left hover:bg-surface-2 transition-colors">
-        {open ? <ChevronDown size={11} className="text-text-4" /> : <ChevronRight size={11} className="text-text-4" />}
-        <span className="text-[10px] font-semibold text-text-3 uppercase tracking-wider">{title}</span>
+        {open ? <ChevronDown size={11} className="text-text-3" /> : <ChevronRight size={11} className="text-text-3" />}
+        <span className="text-[12px] font-semibold text-text-3 uppercase tracking-wider">{title}</span>
       </button>
       {open && <div className="p-3 bg-surface-0/60">{children}</div>}
     </div>
@@ -222,34 +224,34 @@ function TrafficTab({
   return (
     <div className="flex flex-col overflow-hidden flex-1 min-h-0">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border-1 shrink-0">
-        <div className="flex items-center gap-1.5 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg flex-1 max-w-xs">
-          <Filter size={11} className="text-text-4" />
-          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter URL…"
-            className="flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4" />
+        <div className="flex items-center gap-1.5 h-8 px-2 bg-surface-2 border border-border-2 rounded flex-1 max-w-xs">
+          <Filter size={11} className="text-text-3" />
+          <input aria-label="Filter traffic URL" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter URL…"
+            className="min-w-0 flex-1 bg-transparent text-xs text-text-1 outline-none placeholder:text-text-3" />
         </div>
         <div className="flex-1" />
-        <button onClick={handleExport} title="Export traffic as JSON" className="flex items-center gap-1 px-2.5 py-1.5 border border-border-2 rounded-lg text-xs text-text-3 hover:text-text-1 transition-colors">
+        <button onClick={handleExport} title="Export traffic as JSON" className="flex items-center gap-1 px-2.5 py-1.5 border border-border-2 rounded text-xs text-text-3 hover:text-text-1 transition-colors">
           <Download size={11} /> Export
         </button>
         <button
           onClick={() => void handleOpenInHarViewer()}
           disabled={traffic.length === 0}
           title="Open current traffic in HAR Viewer"
-          className="flex items-center gap-1 px-2.5 py-1.5 border border-border-2 rounded-lg text-xs text-text-3 hover:text-text-1 hover:border-accent/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-1 px-2.5 py-1.5 border border-border-2 rounded text-xs text-text-3 hover:text-text-1 hover:border-accent/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <BarChart2 size={11} /> HAR Viewer
         </button>
-        <button onClick={refresh} className="w-7 h-7 flex items-center justify-center rounded-lg text-text-4 hover:text-text-1 hover:bg-surface-2 transition-colors">
+        <button aria-label="Refresh traffic" onClick={refresh} className="w-7 h-8 flex items-center justify-center rounded text-text-3 hover:text-text-1 hover:bg-surface-2 transition-colors">
           <RefreshCw size={13} />
         </button>
-        <button onClick={handleClear} className="w-7 h-7 flex items-center justify-center rounded-lg text-text-4 hover:text-error hover:bg-surface-2 transition-colors">
+        <button aria-label="Clear traffic" onClick={handleClear} className="w-7 h-8 flex items-center justify-center rounded text-text-3 hover:text-error hover:bg-surface-2 transition-colors">
           <Trash2 size={13} />
         </button>
       </div>
 
       {pending.length > 0 && (
         <div className="shrink-0 border-b border-warning/25 bg-warning/8 px-3 py-2">
-          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold text-warning">
+          <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold text-warning">
             <PauseCircle size={13} />
             {pending.length} paused request{pending.length === 1 ? '' : 's'} waiting for resume
           </div>
@@ -257,18 +259,18 @@ function TrafficTab({
             {pending.map((item) => {
               const draft = pendingDrafts[item.id] || { url: item.url, body: item.body || '' }
               return (
-                <div key={item.id} className="rounded-lg border border-warning/25 bg-surface-0/70 p-2">
+                <div key={item.id} className="rounded border border-warning/25 bg-surface-0/70 p-2">
                   <div className="mb-2 flex items-center gap-2">
-                    <span className={cn('w-14 shrink-0 font-bold text-[10px]', methodColor(item.method))}>{item.method}</span>
+                    <span className={cn('w-16 shrink-0 font-bold text-[12px]', methodColor(item.method))}>{item.method}</span>
                     <input
                       value={draft.url}
                       onChange={(e) => updatePendingDraft(item.id, { url: e.target.value })}
-                      className="h-7 flex-1 rounded-md border border-border-2 bg-surface-2 px-2 font-mono text-[10px] text-text-1 outline-none focus:border-warning"
+                      className="h-8 flex-1 rounded border border-border-2 bg-surface-2 px-2 font-mono text-[12px] text-text-1 outline-none focus:border-warning"
                     />
-                    <button onClick={() => resumePending(item)} className="h-7 rounded-md bg-warning px-3 text-[10px] font-semibold text-black transition-colors hover:bg-warning/90">
+                    <button onClick={() => resumePending(item)} className="h-8 rounded bg-warning px-3 text-[12px] font-semibold text-black transition-colors hover:bg-warning/90">
                       Resume
                     </button>
-                    <button onClick={() => dropPending(item)} title="Drop request" className="grid h-7 w-7 place-items-center rounded-md border border-error/25 text-error hover:bg-error/10">
+                    <button onClick={() => dropPending(item)} title="Drop request" className="grid h-8 w-7 place-items-center rounded border border-error/25 text-error hover:bg-error/10">
                       <X size={12} />
                     </button>
                   </div>
@@ -276,7 +278,7 @@ function TrafficTab({
                     value={draft.body}
                     onChange={(e) => updatePendingDraft(item.id, { body: e.target.value })}
                     placeholder="Request body"
-                    className="h-16 w-full resize-none rounded-md border border-border-2 bg-surface-2 px-2 py-1 font-mono text-[10px] text-text-2 outline-none focus:border-warning"
+                    className="h-16 w-full resize-none rounded border border-border-2 bg-surface-2 px-2 py-1 font-mono text-[12px] text-text-2 outline-none focus:border-warning"
                   />
                 </div>
               )
@@ -285,57 +287,57 @@ function TrafficTab({
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className="proxy-inspector flex flex-1 overflow-hidden min-h-0">
         <div className="w-[45%] border-r border-border-1 overflow-y-auto flex flex-col">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-1 border-b border-border-1 text-[10px] text-text-4 uppercase tracking-wider sticky top-0">
-            <span className="w-14 shrink-0">Method</span>
-            <span className="w-10 shrink-0">Status</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-1 border-b border-border-1 text-[12px] text-text-3 uppercase tracking-wider sticky top-0">
+            <span className="w-16 shrink-0">Method</span>
+            <span className="w-16 shrink-0">Status</span>
             <span className="flex-1">URL</span>
             <span className="w-12 shrink-0 text-right">ms</span>
           </div>
           {filtered.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 py-12">
-              <Activity size={24} className="text-text-4 opacity-40" />
-              <p className="text-xs text-text-4">{status.running ? 'Waiting for traffic…' : 'Start the proxy to capture traffic'}</p>
+              <Activity size={24} className="text-text-3 opacity-40" />
+              <p className="text-xs text-text-3">{status.running ? 'Waiting for traffic…' : 'Start the proxy to capture traffic'}</p>
             </div>
           ) : filtered.map((t) => (
             <div key={t.id} role="button" tabIndex={0} aria-label={`Inspect ${t.method} ${t.url}`} aria-pressed={selected?.id === t.id} onClick={() => setSelected(t)}
               onKeyDown={(event) => handleKeyboardActivation(event, () => setSelected(t))}
               className={cn('flex items-center gap-2 px-3 py-1.5 border-b border-border-1/30 cursor-pointer hover:bg-surface-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent', selected?.id === t.id ? 'bg-surface-2' : '')}>
-              <span className={cn('w-14 shrink-0 font-bold text-[10px]', methodColor(t.method))}>{t.method}</span>
-              <span className={cn('w-10 shrink-0 font-mono text-[10px]', statusColor(t.status))}>{t.status || 'ERR'}</span>
-              <span className="text-text-2 flex-1 truncate font-mono text-[10px]">{t.url}</span>
-              <span className="text-text-4 text-[10px] shrink-0 w-12 text-right font-mono">{t.durationMs.toFixed(0)}</span>
+              <span className={cn('w-16 shrink-0 font-bold text-[12px]', methodColor(t.method))}>{t.method}</span>
+              <span className={cn('w-16 shrink-0 font-mono text-[12px]', statusColor(t.status))}>{t.status || 'ERR'}</span>
+              <span className="text-text-2 flex-1 truncate font-mono text-[12px]">{t.url}</span>
+              <span className="text-text-3 text-[12px] shrink-0 w-12 text-right font-mono">{t.durationMs.toFixed(0)}</span>
             </div>
           ))}
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
           {!selected ? (
-            <div className="flex items-center justify-center py-12"><p className="text-xs text-text-4">Select a request to inspect</p></div>
+            <div className="flex items-center justify-center py-12"><p className="text-xs text-text-3">Select a request to inspect</p></div>
           ) : (
             <>
               <div className="flex items-center gap-3 pb-2.5 border-b border-border-1 mb-1">
                 <span className={cn('text-sm font-bold', methodColor(selected.method))}>{selected.method}</span>
                 <span className={cn('text-sm font-bold font-mono', statusColor(selected.status))}>{selected.status || 'ERR'}</span>
-                <span className="text-text-4 text-xs font-mono">{selected.durationMs.toFixed(2)}ms</span>
-                <span className="text-text-4 text-[10px] ml-auto">{selected.timestamp}</span>
+                <span className="text-text-3 text-xs font-mono">{selected.durationMs.toFixed(2)}ms</span>
+                <span className="text-text-3 text-[12px] ml-auto">{selected.timestamp}</span>
                 <button onClick={() => handleRepeat(selected.id)} title="Repeat request"
-                  className="flex items-center gap-1 px-2 py-1 border border-border-2 rounded-md text-[10px] text-text-3 hover:text-text-1 transition-colors">
+                  className="flex items-center gap-1 px-2 py-1 border border-border-2 rounded text-[12px] text-text-3 hover:text-text-1 transition-colors">
                   <RotateCcw size={10} /> Repeat
                 </button>
               </div>
-              <div className="text-[10px] text-text-2 font-mono break-all bg-surface-1 rounded-lg px-3 py-2 border border-border-2 flex items-center gap-2">
+              <div className="text-[12px] text-text-2 font-mono break-all bg-surface-1 rounded px-3 py-2 border border-border-2 flex items-center gap-2">
                 <span className="flex-1">{selected.url}</span>
-                <button onClick={() => navigator.clipboard.writeText(selected.url)} className="text-text-4 hover:text-text-1">
+                <button onClick={() => navigator.clipboard.writeText(selected.url)} className="text-text-3 hover:text-text-1">
                   <Copy size={10} />
                 </button>
               </div>
-              {selected.error && <div className="px-3 py-2 bg-error/8 border border-error/25 rounded-lg text-[11px] text-error">{selected.error}</div>}
+              {selected.error && <div className="px-3 py-2 bg-error/8 border border-error/25 rounded text-[12px] text-error">{selected.error}</div>}
               <DetailSection title="Request Headers" defaultOpen><HeaderTable headers={selected.reqHeaders} /></DetailSection>
-              {selected.reqBody && <DetailSection title="Request Body" defaultOpen><pre className="text-[10px] text-text-2 font-mono whitespace-pre-wrap break-all max-h-48 overflow-auto">{selected.reqBody}</pre></DetailSection>}
+              {selected.reqBody && <DetailSection title="Request Body" defaultOpen><pre className="text-[12px] text-text-2 font-mono whitespace-pre-wrap break-all max-h-48 overflow-auto">{selected.reqBody}</pre></DetailSection>}
               <DetailSection title="Response Headers" defaultOpen><HeaderTable headers={selected.respHeaders} /></DetailSection>
-              {selected.respBody && <DetailSection title="Response Body" defaultOpen><pre className="text-[10px] text-text-2 font-mono whitespace-pre-wrap break-all max-h-48 overflow-auto">{selected.respBody}</pre></DetailSection>}
+              {selected.respBody && <DetailSection title="Response Body" defaultOpen><pre className="text-[12px] text-text-2 font-mono whitespace-pre-wrap break-all max-h-48 overflow-auto">{selected.respBody}</pre></DetailSection>}
             </>
           )}
         </div>
@@ -402,34 +404,34 @@ function RulesTab({ port }: { port: number | null }) {
     <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
       <div className="bg-surface-1 border border-border-2 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4 flex-1">IP / CIDR / Regex Rules</span>
-          <button onClick={addRule} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded-md text-[10px] font-semibold transition-colors">
+          <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3 flex-1">IP / CIDR / Regex Rules</span>
+          <button onClick={addRule} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded text-[12px] font-semibold transition-colors">
             <Plus size={10} /> Add Rule
           </button>
-          <button onClick={saveRules} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-md text-[10px] font-semibold transition-colors">
+          <button onClick={saveRules} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-[var(--color-on-accent)] rounded text-[12px] font-semibold transition-colors">
             Save
           </button>
         </div>
-        {message && <div className="px-4 py-2 text-[11px] text-success border-b border-border-1">{message}</div>}
+        {message && <div className="px-4 py-2 text-[12px] text-success border-b border-border-1">{message}</div>}
         <div className="flex flex-col divide-y divide-border-1/40">
           {rules.length === 0 ? (
-            <div className="px-4 py-6 text-center text-xs text-text-4">No rules. Click Add Rule to create one.</div>
+            <div className="px-4 py-6 text-center text-xs text-text-3">No rules. Click Add Rule to create one.</div>
           ) : rules.map((rule, idx) => (
             <div key={rule.id} className="flex items-center gap-3 px-4 py-2">
               <input type="checkbox" checked={rule.enabled} onChange={(e) => updateRule(idx, { enabled: e.target.checked })} className="accent-accent" />
               <select value={rule.type} onChange={(e) => updateRule(idx, { type: e.target.value as ProxyRule['type'] })}
-                className="h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 outline-none">
+                className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none">
                 <option value="allow">Allow</option>
                 <option value="block">Block</option>
                 <option value="intercept">Intercept</option>
               </select>
               <input value={rule.target} onChange={(e) => updateRule(idx, { target: e.target.value })}
                 placeholder="192.168.0.0/24 or *.internal or /regex/"
-                className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 font-mono outline-none focus:border-accent" />
+                className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
               <input value={rule.note || ''} onChange={(e) => updateRule(idx, { note: e.target.value })}
                 placeholder="note…"
-                className="w-32 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 outline-none focus:border-accent" />
-              <button onClick={() => removeRule(idx)} className="text-text-4 hover:text-error transition-colors"><Trash2 size={13} /></button>
+                className="w-32 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent" />
+              <button onClick={() => removeRule(idx)} className="text-text-3 hover:text-error transition-colors"><Trash2 size={13} /></button>
             </div>
           ))}
         </div>
@@ -437,18 +439,18 @@ function RulesTab({ port }: { port: number | null }) {
 
       <div className="bg-surface-1 border border-border-2 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-border-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Test a target</span>
+          <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3">Test a target</span>
         </div>
         <div className="flex gap-2 p-4">
           <input value={testTarget} onChange={(e) => setTestTarget(e.target.value)}
             placeholder="192.168.1.42 or api.internal"
-            className="flex-1 h-8 px-3 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 font-mono outline-none focus:border-accent" />
-          <button onClick={testRule} className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold transition-colors">
+            className="flex-1 h-8 px-3 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
+          <button onClick={testRule} className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-[var(--color-on-accent)] rounded text-xs font-semibold transition-colors">
             Test
           </button>
         </div>
         {testResult && (
-          <div className={cn('mx-4 mb-4 px-3 py-2 rounded-lg text-xs border',
+          <div className={cn('mx-4 mb-4 px-3 py-2 rounded text-xs border',
             testResult.matched ? (testResult.ruleType === 'block' ? 'bg-error/8 border-error/25 text-error' : 'bg-success/8 border-success/25 text-success') : 'bg-surface-2 border-border-2 text-text-3')}>
             {testResult.matched ? `Matched rule ${testResult.ruleId} → ${testResult.ruleType.toUpperCase()}` : 'No rule matched (default: allow)'}
           </div>
@@ -458,16 +460,16 @@ function RulesTab({ port }: { port: number | null }) {
       {log.length > 0 && (
         <div className="bg-surface-1 border border-border-2 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4 flex-1">Match Log</span>
-            <button onClick={loadLog} className="text-text-4 hover:text-text-1"><RefreshCw size={12} /></button>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3 flex-1">Match Log</span>
+            <button onClick={loadLog} className="text-text-3 hover:text-text-1"><RefreshCw size={12} /></button>
           </div>
           <div className="divide-y divide-border-1/40 max-h-48 overflow-y-auto">
             {log.map((entry, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-1.5 text-[10px] font-mono">
-                <span className="text-text-4 shrink-0">{entry.time}</span>
+              <div key={i} className="flex items-center gap-3 px-4 py-1.5 text-[12px] font-mono">
+                <span className="text-text-3 shrink-0">{entry.time}</span>
                 <span className="text-text-2 flex-1 truncate">{entry.target}</span>
-                <span className={cn('shrink-0', entry.matched ? 'text-warning' : 'text-text-4')}>{entry.ruleType || '—'}</span>
-                <span className={cn('shrink-0 font-semibold', entry.matched ? 'text-success' : 'text-text-4')}>{entry.matched ? 'HIT' : '—'}</span>
+                <span className={cn('shrink-0', entry.matched ? 'text-warning' : 'text-text-3')}>{entry.ruleType || '—'}</span>
+                <span className={cn('shrink-0 font-semibold', entry.matched ? 'text-success' : 'text-text-3')}>{entry.matched ? 'HIT' : '—'}</span>
               </div>
             ))}
           </div>
@@ -536,17 +538,17 @@ function CATab({ port }: { port: number | null }) {
     <div className="flex-1 overflow-auto p-4 flex flex-col gap-4 max-w-2xl">
       <div className="bg-surface-1 border border-border-2 rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <div className={cn('w-8 h-8 rounded-lg border flex items-center justify-center', exists ? 'bg-success/10 border-success/25' : 'bg-surface-2 border-border-2')}>
-            {exists ? <ShieldCheck size={16} className="text-success" /> : <ShieldOff size={16} className="text-text-4" />}
+          <div className={cn('w-8 h-8 rounded border flex items-center justify-center', exists ? 'bg-success/10 border-success/25' : 'bg-surface-2 border-border-2')}>
+            {exists ? <ShieldCheck size={16} className="text-success" /> : <ShieldOff size={16} className="text-text-3" />}
           </div>
           <div>
             <div className="text-sm font-semibold text-text-1">{exists ? 'CA Certificate Ready' : 'No CA Certificate'}</div>
-            <div className="text-[10px] text-text-4">{exists ? 'adOmnia Interception CA — valid 10 years' : 'Generate a CA to intercept HTTPS traffic'}</div>
+            <div className="text-[12px] text-text-3">{exists ? 'adOmnia Interception CA — valid 10 years' : 'Generate a CA to intercept HTTPS traffic'}</div>
           </div>
         </div>
 
         {(message || error) && (
-          <div className={cn('px-3 py-2 rounded-lg text-xs border', error ? 'bg-error/8 border-error/25 text-error' : 'bg-success/8 border-success/25 text-success')}>
+          <div className={cn('px-3 py-2 rounded text-xs border', error ? 'bg-error/8 border-error/25 text-error' : 'bg-success/8 border-success/25 text-success')}>
             {error || message}
           </div>
         )}
@@ -554,21 +556,21 @@ function CATab({ port }: { port: number | null }) {
         <div className="flex gap-2 flex-wrap">
           {!exists ? (
             <button onClick={generate} disabled={loading}
-              className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold shadow-[0_0_12px_var(--color-accent-glow)] disabled:opacity-50 transition-all">
+              className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-[var(--color-on-accent)] rounded text-xs font-semibold  disabled:opacity-50 transition-colors">
               <ShieldCheck size={12} /> Generate CA
             </button>
           ) : (
             <>
               <button onClick={exportPem} disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-2 border border-border-2 hover:border-border-1 rounded-lg text-xs text-text-2 hover:text-text-1 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-2 border border-border-2 hover:border-border-1 rounded text-xs text-text-2 hover:text-text-1 transition-colors">
                 <Download size={12} /> Download .pem
               </button>
               <button onClick={exportCrt} disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-2 border border-border-2 hover:border-border-1 rounded-lg text-xs text-text-2 hover:text-text-1 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-2 border border-border-2 hover:border-border-1 rounded text-xs text-text-2 hover:text-text-1 transition-colors">
                 <Download size={12} /> Download .crt
               </button>
               <button onClick={deleteCa} disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-2 border border-error/30 hover:border-error rounded-lg text-xs text-error hover:bg-error/8 transition-colors ml-auto">
+                className="flex items-center gap-1.5 px-3 py-2 border border-error/30 hover:border-error rounded text-xs text-error hover:bg-error/8 transition-colors ml-auto">
                 <Trash2 size={12} /> Delete CA
               </button>
             </>
@@ -578,7 +580,7 @@ function CATab({ port }: { port: number | null }) {
 
       {exists && (
         <div className="bg-surface-1 border border-border-2 rounded-xl p-4 flex flex-col gap-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-text-4 mb-1">Installation instructions</div>
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-text-3 mb-1">Installation instructions</div>
           <p className="text-xs text-text-3">To intercept HTTPS traffic, install the CA certificate as a trusted root authority:</p>
           <ul className="flex flex-col gap-1.5 text-xs text-text-3 list-none">
             <li><span className="text-accent font-mono">Windows: </span>Double-click .crt → Install → Local Machine → Trusted Root CAs</li>
@@ -627,29 +629,29 @@ function MapLocalTab({ port }: { port: number | null }) {
       <div className="bg-surface-1 border border-border-2 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
           <Map size={13} className="text-accent" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4 flex-1">Map Local — redirect URLs to local files</span>
-          <button onClick={add} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded-md text-[10px] font-semibold transition-colors">
+          <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3 flex-1">Map Local — redirect URLs to local files</span>
+          <button onClick={add} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded text-[12px] font-semibold transition-colors">
             <Plus size={10} /> Add
           </button>
-          <button onClick={save} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-md text-[10px] font-semibold transition-colors">
+          <button onClick={save} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-[var(--color-on-accent)] rounded text-[12px] font-semibold transition-colors">
             Save
           </button>
         </div>
-        {message && <div className="px-4 py-2 text-[11px] text-success border-b border-border-1">{message}</div>}
+        {message && <div className="px-4 py-2 text-[12px] text-success border-b border-border-1">{message}</div>}
         <div className="divide-y divide-border-1/40">
           {rules.length === 0 ? (
-            <div className="px-4 py-6 text-center text-xs text-text-4">No map-local rules. Intercept URLs and serve local files instead.</div>
+            <div className="px-4 py-6 text-center text-xs text-text-3">No map-local rules. Intercept URLs and serve local files instead.</div>
           ) : rules.map((rule, idx) => (
             <div key={idx} className="flex items-center gap-3 px-4 py-2">
               <input type="checkbox" checked={rule.enabled} onChange={(e) => update(idx, { enabled: e.target.checked })} className="accent-accent" />
               <input value={rule.pattern} onChange={(e) => update(idx, { pattern: e.target.value })}
                 placeholder="https://api.your-domain.com/v1/*"
-                className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 font-mono outline-none focus:border-accent" />
-              <span className="text-text-4 text-xs">→</span>
+                className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
+              <span className="text-text-3 text-xs">→</span>
               <input value={rule.localPath} onChange={(e) => update(idx, { localPath: e.target.value })}
                 placeholder="C:\mocks\response.json"
-                className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 font-mono outline-none focus:border-accent" />
-              <button onClick={() => remove(idx)} className="text-text-4 hover:text-error transition-colors"><Trash2 size={13} /></button>
+                className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
+              <button onClick={() => remove(idx)} className="text-text-3 hover:text-error transition-colors"><Trash2 size={13} /></button>
             </div>
           ))}
         </div>
@@ -693,29 +695,29 @@ function MapRemoteTab({ port }: { port: number | null }) {
       <div className="bg-surface-1 border border-border-2 rounded-xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-1">
           <Map size={13} className="text-accent" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4 flex-1">Map Remote — redirect URLs to other URLs</span>
-          <button onClick={add} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded-md text-[10px] font-semibold transition-colors">
+          <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3 flex-1">Map Remote — redirect URLs to other URLs</span>
+          <button onClick={add} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/25 rounded text-[12px] font-semibold transition-colors">
             <Plus size={10} /> Add
           </button>
-          <button onClick={save} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-md text-[10px] font-semibold transition-colors">
+          <button onClick={save} className="flex items-center gap-1 px-2.5 py-1.5 bg-accent hover:bg-accent-hover text-[var(--color-on-accent)] rounded text-[12px] font-semibold transition-colors">
             Save
           </button>
         </div>
-        {message && <div className="px-4 py-2 text-[11px] text-success border-b border-border-1">{message}</div>}
+        {message && <div className="px-4 py-2 text-[12px] text-success border-b border-border-1">{message}</div>}
         <div className="divide-y divide-border-1/40">
           {rules.length === 0 ? (
-            <div className="px-4 py-6 text-center text-xs text-text-4">No map-remote rules. Redirect traffic from one URL pattern to another.</div>
+            <div className="px-4 py-6 text-center text-xs text-text-3">No map-remote rules. Redirect traffic from one URL pattern to another.</div>
           ) : rules.map((rule, idx) => (
             <div key={idx} className="flex items-center gap-3 px-4 py-2">
               <input type="checkbox" checked={rule.enabled} onChange={(e) => update(idx, { enabled: e.target.checked })} className="accent-accent" />
               <input value={rule.pattern} onChange={(e) => update(idx, { pattern: e.target.value })}
                 placeholder="https://api.your-domain.com/prod/*"
-                className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 font-mono outline-none focus:border-accent" />
-              <span className="text-text-4 text-xs">→</span>
+                className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
+              <span className="text-text-3 text-xs">→</span>
               <input value={rule.target} onChange={(e) => update(idx, { target: e.target.value })}
                 placeholder="https://api.your-domain.com/staging/*"
-                className="flex-1 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 font-mono outline-none focus:border-accent" />
-              <button onClick={() => remove(idx)} className="text-text-4 hover:text-error transition-colors"><Trash2 size={13} /></button>
+                className="flex-1 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent" />
+              <button onClick={() => remove(idx)} className="text-text-3 hover:text-error transition-colors"><Trash2 size={13} /></button>
             </div>
           ))}
         </div>
@@ -783,7 +785,7 @@ function ThrottleTab({ port }: { port: number | null }) {
           {PRESETS.map((p) => (
             <button key={p.label}
               onClick={() => setCfg({ ...cfg, ...p, enabled: true })}
-              className="px-3 py-1.5 bg-surface-2 border border-border-2 hover:border-accent/40 rounded-lg text-xs text-text-3 hover:text-text-1 transition-colors">
+              className="px-3 py-1.5 bg-surface-2 border border-border-2 hover:border-accent/40 rounded text-xs text-text-3 hover:text-text-1 transition-colors">
               {p.label}
             </button>
           ))}
@@ -791,26 +793,26 @@ function ThrottleTab({ port }: { port: number | null }) {
 
         <div className="grid grid-cols-3 gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Latency (ms)</span>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3">Latency (ms)</span>
             <input type="number" value={cfg.latencyMs} onChange={(e) => setCfg({ ...cfg, latencyMs: Number(e.target.value) })} min={0}
-              className="h-8 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 outline-none focus:border-accent" />
+              className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent" />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Bandwidth (kbps)</span>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3">Bandwidth (kbps)</span>
             <input type="number" value={cfg.bandwidthKbps} onChange={(e) => setCfg({ ...cfg, bandwidthKbps: Number(e.target.value) })} min={0}
-              className="h-8 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 outline-none focus:border-accent" />
+              className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent" />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-4">Packet Loss (%)</span>
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-text-3">Packet Loss (%)</span>
             <input type="number" value={cfg.packetLossRate} onChange={(e) => setCfg({ ...cfg, packetLossRate: Number(e.target.value) })} min={0} max={100}
-              className="h-8 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 outline-none focus:border-accent" />
+              className="h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent" />
           </label>
         </div>
 
-        {message && <div className="px-3 py-2 rounded-lg text-xs bg-success/8 border border-success/25 text-success">{message}</div>}
+        {message && <div className="px-3 py-2 rounded text-xs bg-success/8 border border-success/25 text-success">{message}</div>}
 
         <button onClick={save}
-          className="self-start flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold shadow-[0_0_12px_var(--color-accent-glow)] transition-all">
+          className="self-start flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-[var(--color-on-accent)] rounded text-xs font-semibold  transition-colors">
           Apply Throttle
         </button>
       </div>
@@ -913,34 +915,35 @@ export function ProxyPanel() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Action toolbar: the panel title/navigation lives in MainArea. */}
-      <div className="flex h-12 items-center gap-3 px-4 border-b border-border-1 shrink-0">
-        <div className={cn('flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border',
-          status.running ? 'bg-success/10 text-success border-success/25' : 'bg-surface-2 text-text-4 border-border-2')}>
+    <div className="nothing-studio proxy-studio flex min-w-0 flex-1 flex-col min-h-0 overflow-hidden">
+      <header className="nothing-tool-heading"><h1 className="nothing-studio-title">Proxy Interceptor</h1><p>HTTP / HTTPS · traffic inspection and request breakpoints</p></header>
+
+      <div className="nothing-tool-actions flex items-center gap-3 px-4 border-b border-border-1 shrink-0">
+        <div className={cn('flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[12px] font-semibold border',
+          status.running ? 'bg-success/10 text-success border-success/25' : 'bg-surface-2 text-text-3 border-border-2')}>
           <Activity size={11} />
-          {status.running && <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />}
+          {status.running && <span className="w-1.5 h-1.5 rounded-full bg-success " />}
           {status.running ? `Running :${status.port}` : 'Stopped'}
         </div>
         <div className="flex-1" />
         <label className="flex items-center gap-1.5">
-          <span className="text-[10px] text-text-4">Port</span>
+          <span className="text-[12px] text-text-3">Port</span>
           <input type="number" value={proxyPort} onChange={(e) => setProxyPort(Number(e.target.value))} disabled={status.running}
-            className="w-16 h-7 px-2 bg-surface-2 border border-border-2 rounded-lg text-xs text-text-1 outline-none focus:border-accent disabled:opacity-50 text-center" />
+            className="w-16 h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent disabled:opacity-50 text-center" />
         </label>
         <label className="flex min-w-[260px] items-center gap-1.5">
-          <span className="text-[10px] text-text-4">Break on</span>
-          <input value={breakpointInput} onChange={(e) => setBreakpointInput(e.target.value)} placeholder="/payments, /admin" className="h-7 min-w-0 flex-1 rounded-lg border border-border-2 bg-surface-2 px-2 font-mono text-[10px] text-text-1 outline-none focus:border-accent" />
-          {status.running && <button onClick={() => void applyBreakpoints()} disabled={loading} className="h-7 rounded border border-border-2 px-2 text-[10px] text-text-2 hover:border-accent/40 disabled:opacity-40">Apply</button>}
+          <span className="text-[12px] text-text-3">Break on</span>
+          <input value={breakpointInput} onChange={(e) => setBreakpointInput(e.target.value)} placeholder="/payments, /admin" className="h-8 min-w-0 flex-1 rounded border border-border-2 bg-surface-2 px-2 font-mono text-[12px] text-text-1 outline-none focus:border-accent" />
+          {status.running && <button onClick={() => void applyBreakpoints()} disabled={loading} className="h-8 rounded border border-border-2 px-2 text-[12px] text-text-2 hover:border-accent/40 disabled:opacity-40">Apply</button>}
         </label>
         {!status.running ? (
           <button onClick={handleStart} disabled={loading || !port}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs font-semibold shadow-[0_0_12px_var(--color-accent-glow)] disabled:opacity-50 disabled:shadow-none transition-all">
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent hover:bg-accent-hover text-[var(--color-on-accent)] rounded text-xs font-semibold  disabled:opacity-50 disabled:shadow-none transition-colors">
             <Play size={11} /> Start
           </button>
         ) : (
           <button onClick={handleStop} disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-error/80 hover:bg-error text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors">
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-error/80 hover:bg-error text-white rounded text-xs font-semibold disabled:opacity-50 transition-colors">
             <Square size={11} /> Stop
           </button>
         )}
@@ -948,7 +951,7 @@ export function ProxyPanel() {
 
       {!status.running && (
         <div className="px-4 py-1.5 border-b border-border-1 bg-surface-1/40 shrink-0">
-          <p className="text-[11px] text-text-4">
+          <p className="text-[12px] text-text-3">
             Configure your HTTP client to proxy <code className="text-accent font-mono bg-accent/8 px-1 py-0.5 rounded">127.0.0.1:{proxyPort}</code>
           </p>
         </div>

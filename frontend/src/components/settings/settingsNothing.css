@@ -1,0 +1,29 @@
+.settings-studio { container-type: inline-size; color: var(--color-text-1); }
+.settings-studio .settings-sidebar { padding: 20px 14px; background: var(--color-surface-0); }
+.settings-title { margin: 0 10px 20px; }
+.settings-navigation { display: flex; flex-direction: column; gap: 3px; }
+.settings-navigation > button { min-height: 36px; border-radius: 3px; font-size: 13px; }
+.settings-navigation > button[aria-current=page] { border-color: var(--color-border-2); font-weight: 600; }
+.settings-studio .settings-section-title { font-size: 24px; }
+.settings-studio .settings-content { scrollbar-gutter: stable; }
+.settings-group { background: transparent; border-radius: 0; }
+.settings-danger { border-radius: 3px; }
+.settings-studio :is(input:not([type=checkbox]), select, textarea) { border-radius: 3px; }
+.settings-studio .settings-field select { padding-right: 32px; }
+.settings-studio .settings-field input[type=checkbox] { width: 18px; height: 18px; }
+.settings-studio .personal-appearance { border-radius: 0; background: transparent; box-shadow: none; }
+.settings-studio .personal-appearance p { font-size: 12px; }
+.settings-studio .personal-appearance button { min-height: 32px; font-size: 12px; }
+.settings-studio .bg-accent { color: var(--color-on-accent); }
+@container (max-width: 800px) {
+  .settings-studio > .settings-sidebar { width: 180px; padding: 16px 10px; }
+  .settings-studio .settings-field { grid-template-columns: minmax(0, 1fr); }
+  .settings-studio .settings-field > :is(input, select, div:last-child) { justify-self: start; }
+}
+@container (max-width: 580px) {
+  .settings-studio > .settings-sidebar { width: 145px; padding: 14px 8px; }
+  .settings-title { margin-left: 4px; font-size: 19px; }
+  .settings-navigation > button { gap: 6px; padding: 8px 6px; font-size: 12px; }
+  .settings-navigation > button span:last-child { white-space: normal; }
+  .settings-studio .settings-content > div { padding-left: 14px; padding-right: 14px; }
+}

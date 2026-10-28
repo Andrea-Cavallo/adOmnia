@@ -1,0 +1,25 @@
+.nothing-tool-heading { flex-shrink: 0; padding: 18px 20px; border-bottom: 1px solid var(--color-border-1); }
+.nothing-tool-heading p { margin-top: 4px; font-size: 12px; color: var(--color-text-3); }
+.nothing-tool-actions { min-height: 56px; padding-top: 10px; padding-bottom: 10px; flex-wrap: wrap; }
+:is(.proxy-studio, .mock-studio) { background: var(--color-surface-0); color: var(--color-text-1); }
+:is(.proxy-studio, .mock-studio) :is(button, input:not([type=checkbox]), select) { min-height: 32px; }
+:is(.proxy-studio, .mock-studio) :is(button, input, select, textarea) { border-radius: 3px; }
+:is(.proxy-studio, .mock-studio) :is(pre, textarea) { font-size: 13px; line-height: 1.65; }
+:is(.proxy-studio, .mock-studio) .bg-accent { color: var(--color-on-accent); }
+:is(.proxy-studio, .mock-studio) .nothing-tool-actions > div:first-child { border: 0; background: transparent; padding-left: 0; }
+.proxy-inspector > * { min-width: 0; }
+.proxy-studio > div:has(> button) { flex-wrap: wrap; }
+.mock-studio nav { height: auto; min-height: 40px; overflow-x: auto; }
+.mock-studio nav button { flex-shrink: 0; }
+.mock-server-config { border-width: 0 0 1px; border-radius: 0; background: transparent; padding: 4px 0 16px; }
+.mock-studio .mock-metrics { gap: 0; border-bottom: 1px solid var(--color-border-1); }
+.mock-metrics > div { border: 0; border-radius: 0; background: transparent; padding: 12px 16px; }
+.mock-studio section > :is(div, aside).rounded-md { border-radius: 0; background: transparent; }
+.mock-studio section > div.rounded { border-radius: 0; }
+@media (max-width: 900px) {
+  .proxy-inspector { flex-direction: column; overflow: auto; }
+  .proxy-inspector > div:first-child { width: 100%; min-height: 220px; max-height: 320px; border-right: 0; border-bottom: 1px solid var(--color-border-1); flex-shrink: 0; }
+  .proxy-inspector > div:last-child { min-height: 280px; flex-shrink: 0; }
+  .mock-studio .mock-endpoint-workspace { grid-template-columns: minmax(0, 1fr); }
+  .nothing-tool-actions > label { min-width: 0; flex-wrap: wrap; }
+}
