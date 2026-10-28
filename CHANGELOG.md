@@ -6,9 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
-Release notes for this batch: [docs/releases/v1.0.20.md](docs/releases/v1.0.20.md).
+## [1.0.20] — 2026-10-28
 
-- **Rust in Code Studio (in preparation, not announced yet).** Open a Cargo crate or workspace and Code Studio detects every package without running `cargo` or `build.rs`; each unit picks its toolchain (`rust-toolchain.toml`, a saved choice or the PATH) from a *Select Rust Toolchain* dialog with explicit *Install component / toolchain* actions.
+Release notes: [docs/releases/v1.0.20.md](docs/releases/v1.0.20.md).
+
+- **Rust in Code Studio.** Open a Cargo crate or workspace and Code Studio detects every package without running `cargo` or `build.rs`; each unit picks its toolchain (`rust-toolchain.toml`, a saved choice or the PATH) from a *Select Rust Toolchain* dialog with explicit *Install component / toolchain* actions.
 - **Run, build errors and stop.** Run a binary, example, bench, `build`, `check` or `clippy` with features, profile and target; a ▶ in the gutter sits on `fn main`. rustc errors land in the Problems panel and the console shows rustc's own text instead of cargo's JSON, with `file:line` links that resolve from the crate even in a workspace. Stopping a run ends cargo and the compiled binary.
 - **Editing.** rust-analyzer is installed on request (`rustup component add rust-analyzer`), runs one server per Cargo unit only for trusted projects and builds into its own target folder, so it never fights your `cargo run` for the build lock. `rustfmt` formats on save and completion opens after `::`.
 - **Tests.** `cargo test` fills the Test tree (crates, modules, integration tests, doctests, panic location); rerun one test, a module or only the failed ones with exact names, also in virtual workspaces; a ▶ appears on every `#[test]`.
