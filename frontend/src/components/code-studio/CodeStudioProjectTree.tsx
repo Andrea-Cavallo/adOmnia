@@ -1,6 +1,7 @@
 import { useOriginTreeReveal } from './codeStudioOriginTree'
 import { goModules } from '@/lib/code-studio/goProject'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
+import { unitBadges } from '@/lib/code-studio/projectUnits'
 import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { ChevronRight, Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
@@ -111,9 +112,10 @@ function ShowMoreRow({ hidden, depth, onShow }: { hidden: number; depth: number;
   )
 }
 
-const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, selectedPath, onContext, onKey, onMove, dropTarget, setDropTarget, marks, directoryMarks }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; selectedPath: string | null; onContext: TreeContextHandler; onKey: TreeKeyHandler; onMove: TreeMoveHandler; dropTarget: string | null; setDropTarget: (path: string | null) => void; marks: TreeMarks; directoryMarks: Record<string, CodeStudioDirectoryMark> }) {
+const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, selectedPath, onContext, onKey, onMove, dropTarget, setDropTarget, marks, directoryMarks, unitLabels }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; selectedPath: string | null; onContext: TreeContextHandler; onKey: TreeKeyHandler; onMove: TreeMoveHandler; dropTarget: string | null; setDropTarget: (path: string | null) => void; marks: TreeMarks; directoryMarks: Record<string, CodeStudioDirectoryMark>; unitLabels: Record<string, string> }) {
   const mark = marks.get(entry.relativePath)
   const directoryMark = entry.directory ? directoryMarks[entry.relativePath] : undefined
+  const unitLanguage = entry.directory ? unitLabels[entry.relativePath] : undefined
   const selected = entry.relativePath === (selectedPath ?? activePath)
   const [open, setOpen] = useState(false)
   const [limit, setLimit] = useState(TREE_PAGE)
@@ -188,6 +190,9 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           ? <CodeStudioFolderIcon open={open} size={TREE_ICON_PX} />
           : <CodeStudioFileIcon name={entry.name} relativePath={entry.relativePath} size={TREE_ICON_PX} />}
         <span className={`min-w-0 flex-1 truncate ${mark?.vcs && !selected ? VCS_CLASS[mark.vcs] : ''} ${mark?.problem ? `underline decoration-wavy underline-offset-[3px] ${mark.problem === 'error' ? 'decoration-danger' : 'decoration-warning'}` : ''}`}>{entry.name}</span>
+        {/* La cartella che è una unità di build dichiara il suo linguaggio: in un monorepo misto le
+            righe non si somigliano tutte (6.5). */}
+        {unitLanguage && <span className="shrink-0 rounded bg-surface-3 px-1 text-[10px] leading-4 text-text-3" title={`Build unit: ${unitLanguage}`}>{unitLanguage}</span>}
         {directoryMark && <span className={`shrink-0 text-[10px] ${directoryMark === 'excluded' ? 'text-warning' : 'text-text-4'}`}>{directoryMarkLabel(directoryMark)}</span>}
         <span className={`grid h-5 w-5 shrink-0 place-items-center font-mono text-[11px] leading-none ${mark?.vcs ? VCS_CLASS[mark.vcs] : 'text-text-3'}`} title={mark?.vcs ? `Git: ${mark.vcs}` : entry.ignored ? 'Git: ignored' : undefined} aria-label={mark?.vcs ? `Git: ${mark.vcs}` : entry.ignored ? 'Git: ignored' : undefined}>
           {mark?.vcs ? ({ modified: 'M', added: 'A', untracked: '?', deleted: 'D', conflicted: '!' } as const)[mark.vcs] : entry.ignored ? 'I' : ''}
@@ -195,7 +200,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         {mark?.testFailed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-label="failed tests" />}
       </button>
       {entry.directory && open && <div role="group" className="code-studio-tree-branch" style={{ '--tree-guide-x': `${ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX + 6}px` } as React.CSSProperties}>{entries?.slice(0, limit).map((child) => (
-        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} />
+        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} unitLabels={unitLabels} />
       ))}</div>}
       {entry.directory && open && entries && entries.length > limit && <ShowMoreRow hidden={entries.length - limit} depth={depth + 1} onShow={() => setLimit((value) => value + TREE_PAGE)} />}
     </>
@@ -235,6 +240,8 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
   const [compareRequest, setCompareRequest] = useState<{ path: string; directory: boolean } | null>(null)
   const [gistRequest, setGistRequest] = useState<string | null>(null)
   const [directoryMarks, setDirectoryMarks] = useState<Record<string, CodeStudioDirectoryMark>>(() => loadDirectoryMarks(session.project.realPath))
+  // Etichette delle unità di build sulle cartelle che ne sono la radice: un monorepo misto resta leggibile.
+  const unitLabels = useMemo(() => unitBadges(session.project), [session.project])
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const onContext = useCallback<TreeContextHandler>((entry, x, y) => {
     setSelectedPath(entry?.relativePath ?? '')
@@ -405,7 +412,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
           <CodeStudioFolderIcon open={rootOpen} size={TREE_ICON_PX} />
           <span className="min-w-0 truncate font-medium text-text-1">{session.project.name}</span>
         </div>
-        {rootOpen && entries.slice(0, rootLimit).map((entry) => <DirectoryNode key={`${collapseEpoch}:${entry.relativePath}`} sessionId={session.id} entry={entry} depth={2} activePath={activePath} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} />)}
+        {rootOpen && entries.slice(0, rootLimit).map((entry) => <DirectoryNode key={`${collapseEpoch}:${entry.relativePath}`} sessionId={session.id} entry={entry} depth={2} activePath={activePath} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} unitLabels={unitLabels} />)}
         {rootOpen && entries.length > rootLimit && <ShowMoreRow hidden={entries.length - rootLimit} depth={2} onShow={() => setRootLimit((value) => value + TREE_PAGE)} />}
         {rootOpen && entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
       </div>
