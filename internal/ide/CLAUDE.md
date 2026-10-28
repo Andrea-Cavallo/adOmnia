@@ -14,6 +14,7 @@ Read before non-trivial work:
 
 | File | Use |
 |------|-----|
+| `docs/architecture/go-coding-rules.md` | **Go code rules**: KISS/YAGNI, DRY, fail fast, naming, errors, concurrency, comments, tests |
 | `docs/architecture/ide-package-rules.md` | **Package layout and rules**: where code goes, how to move code out of codestudio, shared test setup, a new language |
 | `docs/architecture/ide-multilanguage-refactor.md` | GENERIC/MIXED/GO_SPECIFIC map, interfaces, migration (12 phases, complete), non-goals, manual smoke checklist |
 | `docs/CODE-STUDIO.md` | Usage, trust model, optional tools, persistence schema, shortcuts, limits |

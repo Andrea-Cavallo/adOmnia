@@ -381,7 +381,7 @@ if (request.auth.type === 'aws4') {
 
 ### Code quality rules (Sonar / lint gates — new code must not reintroduce them)
 
-Details and the open queue: `docs/QUALITY.md`. Run the linters on what you touched before closing a task. **SonarCloud lags behind the code**: an issue stays OPEN until the next analysis, so verify the list against the working tree before working it (2026-10-23: 40 of 63 "open" S2871 were already fixed in code) — fix in code, push to trigger a scan, then re-read the queue.
+Details and the open queue: `docs/QUALITY.md`. **Go code style** (KISS/YAGNI, DRY, fail fast, naming, errors, concurrency, tests): `docs/architecture/go-coding-rules.md` — follow it for every Go change. Run the linters on what you touched before closing a task. **SonarCloud lags behind the code**: an issue stays OPEN until the next analysis, so verify the list against the working tree before working it (2026-10-23: 40 of 63 "open" S2871 were already fixed in code) — fix in code, push to trigger a scan, then re-read the queue.
 
 - **`.sort()` always takes a comparator** (S2871): `.sort((a, b) => a.localeCompare(b))` for display strings, `([a], [b]) => a.localeCompare(b)` for `Object.entries`. Where the byte order is part of the contract (AWS4 signed headers, canonical keys) use a code-point comparator, not `localeCompare`.
 - **`.map(fn)` gets a wrapper, never the bare function** (S7727): `.map((x) => fn(x))`. A bare function also receives `(value, index, array)` and silently misbehaves as soon as it takes a second parameter.
