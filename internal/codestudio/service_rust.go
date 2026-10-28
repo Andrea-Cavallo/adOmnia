@@ -43,6 +43,9 @@ func (s *Service) RustToolchains(sessionID string) (RustToolchainReport, error) 
 	}
 	if session.Project.Authorization == AuthorizationPermitted {
 		report.Installed = rust.ProbeToolchains(report.Installed)
+		// RS-2.1: un canale dichiarato e non installato è uno stato esplicito con il comando da
+		// eseguire, non un download silenzioso alla prima Run.
+		report.Installed = rust.MarkMissingChannels(report.Installed)
 		report.Probed = true
 	}
 	return report, nil

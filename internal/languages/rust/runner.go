@@ -135,6 +135,8 @@ func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 	if toolchain.Channel != "" && !hasEnvironment(environment, "RUSTUP_TOOLCHAIN") {
 		environment = append(environment, "RUSTUP_TOOLCHAIN="+toolchain.Channel)
 	}
+	// RS-2.1: la Run non fa scaricare a rustup una toolchain mancante, la segnala prima.
+	environment = rustupEnvironment(environment)
 	return run.CommandSpec{
 		Executable: toolchain.Cargo, Arguments: args,
 		WorkingDirectory: request.WorkingDirectory,

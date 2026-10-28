@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -137,10 +138,13 @@ func debugTitle(options DebugOptions) string {
 	return "Debug"
 }
 
-// runCargoBuild esegue cargo build e restituisce lo stdout; sostituibile nei test.
+// runCargoBuild esegue cargo build e restituisce lo stdout; sostituibile nei test. L'ambiente è
+// quello del processo con RUSTUP_AUTO_INSTALL=0 (RS-2.1): la build di debug non deve scaricare una
+// toolchain mancante.
 var runCargoBuild = func(cargo, workingDirectory string, arguments []string) ([]byte, error) {
 	command := procutil.CommandContext(context.Background(), cargo, arguments...)
 	command.Dir = workingDirectory
+	command.Env = rustupEnvironment(os.Environ())
 	process.Configure(command, false)
 	return command.Output()
 }

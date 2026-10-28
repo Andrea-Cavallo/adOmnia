@@ -10,6 +10,7 @@ import {
 } from '@/lib/code-studio-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { rustToolchainProblemBadge } from '@/lib/code-studio/rustToolchainProblem'
 import type { RustToolchainReport } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 let openRequest: ((sessionId: string) => void) | null = null
@@ -135,13 +136,21 @@ export function CodeStudioRustToolchain() {
           const selected = (report?.selected ?? '') === row.path
           return (
             <div key={row.path || 'automatic'} className="gs-list-row">
-              <button type="button" disabled={busy !== ''} onClick={() => void choose(row.path)} className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-60">
-                <span className="grid w-4 shrink-0 place-items-center text-success">{selected ? <Check size={13} /> : null}</span>
-                <span className="w-40 shrink-0 text-[12px] text-text-1">{row.title}</span>
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-3">{row.detail}</span>
-                {row.toolchain?.problem && <span className="gs-badge shrink-0 text-warning" title={row.toolchain.problem}>no probe</span>}
-                {!report?.probed && row.toolchain && <span className="gs-badge shrink-0">not trusted</span>}
-              </button>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <button type="button" disabled={busy !== ''} onClick={() => void choose(row.path)} className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-60">
+                  <span className="grid w-4 shrink-0 place-items-center text-success">{selected ? <Check size={13} /> : null}</span>
+                  <span className="w-40 shrink-0 text-[12px] text-text-1">{row.title}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-3">{row.detail}</span>
+                  {row.toolchain?.problem && (
+                    <span className="gs-badge shrink-0 text-warning">{rustToolchainProblemBadge(row.toolchain.problem)}</span>
+                  )}
+                  {!report?.probed && row.toolchain && <span className="gs-badge shrink-0">not trusted</span>}
+                </button>
+                {/* Il motivo per esteso: un canale dichiarato e non installato porta il comando esatto. */}
+                {row.toolchain?.problem && (
+                  <span className="pl-6 text-[10.5px] text-warning" title={row.toolchain.problem}>{row.toolchain.problem}</span>
+                )}
+              </div>
             </div>
           )
         })}

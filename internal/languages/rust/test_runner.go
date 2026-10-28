@@ -95,8 +95,9 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	spec := run.CommandSpec{
 		Executable: toolchain.Cargo, Arguments: arguments,
 		WorkingDirectory: request.WorkingDirectory,
-		Environment:      append([]string(nil), request.Environment...),
-		DisplayCommand:   "cargo " + strings.Join(arguments, " "),
+		// RS-2.1: mai una toolchain scaricata da rustup durante i test.
+		Environment:    rustupEnvironment(request.Environment),
+		DisplayCommand: "cargo " + strings.Join(arguments, " "),
 		// Anche `cargo test` aspetta il lock di `target/`: la stessa spiegazione della Run (RS-3.5).
 		ConsoleLine: runConsole(workspacePaths{directory: request.WorkingDirectory, root: request.Root}),
 	}
