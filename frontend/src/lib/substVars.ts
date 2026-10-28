@@ -1,7 +1,10 @@
+import { dynamicVarValue } from '@/lib/headerValues'
+
+/** Environment variables win; `{{$uuid7}}`-style dynamic variables are generated per call. */
 export function substVars(text: string, vars: Record<string, string>): string {
   return text.replace(/(?<!\{)\{\{([^}]+)\}\}/g, (_, key) => {
     const trimmed = key.trim()
-    return vars[trimmed] ?? `{{${trimmed}}}`
+    return vars[trimmed] ?? dynamicVarValue(trimmed) ?? `{{${trimmed}}}`
   })
 }
 

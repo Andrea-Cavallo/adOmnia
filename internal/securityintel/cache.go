@@ -1,15 +1,17 @@
 package securityintel
 
 import (
-	"adomnia/internal/jsonutil"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // DefaultCacheTTL è la durata di validità di una voce del database locale. Passato
@@ -180,9 +182,7 @@ func (c *AdvisoryCache) load() {
 		c.stale = true
 		return // database corrotto: si riparte vuoto invece di fallire la scansione
 	}
-	for key, entry := range stored {
-		c.entries[key] = entry
-	}
+	maps.Copy(c.entries, stored)
 }
 
 // save scrive il database su disco. Un errore di scrittura non deve fermare la
@@ -193,9 +193,7 @@ func (c *AdvisoryCache) save() {
 	}
 	c.mu.RLock()
 	snapshot := make(map[string]cacheEntry, len(c.entries))
-	for key, entry := range c.entries {
-		snapshot[key] = entry
-	}
+	maps.Copy(snapshot, c.entries)
 	c.mu.RUnlock()
 	data, err := jsonutil.Marshal(snapshot, jsontext.WithIndent("  "))
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	idetesting "adomnia/internal/ide/testing"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // Report JUnit XML: Surefire (Maven) e Gradle usano lo stesso formato, in cartelle diverse.
@@ -188,8 +188,8 @@ func firstProblem(test junitCase) *junitProblem {
 func moduleOfReport(report string) string {
 	directory := filepath.ToSlash(filepath.Dir(report))
 	for _, marker := range []string{"/target/surefire-reports", "/build/test-results"} {
-		if index := strings.LastIndex(directory, marker); index >= 0 {
-			return filepath.FromSlash(directory[:index])
+		if before, _, ok := strings.CutLast(directory, marker); ok {
+			return filepath.FromSlash(before)
 		}
 	}
 	return filepath.Dir(report)

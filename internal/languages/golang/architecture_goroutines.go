@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 	goversion "go/version"
+	"slices"
 	"sort"
 	"strings"
 
@@ -312,8 +313,8 @@ func isHandlerSignature(object *types.Func) bool {
 	if !ok {
 		return false
 	}
-	for index := 0; index < signature.Params().Len(); index++ {
-		text := types.TypeString(signature.Params().At(index).Type(), nil)
+	for v := range signature.Params().Variables() {
+		text := types.TypeString(v.Type(), nil)
 		for _, marker := range []string{"net/http.ResponseWriter", "net/http.Request", "gin.Context", "echo.Context", "fiber.Ctx"} {
 			if strings.Contains(text, marker) {
 				return true
@@ -446,12 +447,7 @@ func (a *architecture) linkGoroutines() {
 }
 
 func hasString(items []string, value string) bool {
-	for _, item := range items {
-		if item == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(items, value)
 }
 
 // rateGoroutine applica le regole di rischio. Sono indizi: ognuna dice cosa guardare, non che c'è un bug.

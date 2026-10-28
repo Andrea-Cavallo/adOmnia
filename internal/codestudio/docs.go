@@ -3,8 +3,8 @@ package codestudio
 import (
 	"path/filepath"
 
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/protodoc"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/protodoc"
 )
 
 // DocumentationReport è la documentazione del progetto: package Go (go/doc), simboli esportati

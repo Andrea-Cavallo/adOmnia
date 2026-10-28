@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	idetesting "adomnia/internal/ide/testing"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // pytestEvent è una riga del file di eventi scritto dal plugin adomnia_pytest_events.

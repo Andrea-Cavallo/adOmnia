@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // TestJdtImportsARealMultiModuleProject porta Eclipse JDT LS su un progetto Maven/Gradle multi-modulo

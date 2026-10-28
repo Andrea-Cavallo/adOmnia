@@ -1,4 +1,4 @@
-import * as GitSyncBindings from '../../../bindings/adomnia/gitsync'
+import * as GitSyncBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/gitsync'
 
 export interface LocalReplaceInfo {
   file: string

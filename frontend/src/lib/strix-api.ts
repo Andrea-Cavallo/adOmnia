@@ -1,4 +1,4 @@
-import * as SecurityIntelBindings from '../../bindings/adomnia/securityintel'
+import * as SecurityIntelBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/securityintel'
 
 // Strix (pentest con agenti AI) nel Security Center. Il backend parla JSON: qui il contratto è tipizzato una volta sola.
 

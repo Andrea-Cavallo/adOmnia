@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 

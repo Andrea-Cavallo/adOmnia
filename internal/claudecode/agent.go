@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/milk"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // AdapterPackage è l'adapter ACP ufficiale di Claude Code, avviato con npx quando
@@ -150,11 +150,12 @@ func setEnv(env []string, name, value string) []string {
 func launchKey(launch milk.Launch, env []string) string {
 	interesting := []string{"ANTHROPIC_MODEL", "ANTHROPIC_CUSTOM_MODEL_OPTION", "CLAUDE_CODE_EXECUTABLE", "HTTPS_PROXY", "NODE_EXTRA_CA_CERTS"}
 	sort.Strings(interesting)
-	material := launch.Binary + "\x00" + strings.Join(launch.Args, "\x00")
+	var material strings.Builder
+	material.WriteString(launch.Binary + "\x00" + strings.Join(launch.Args, "\x00"))
 	for _, name := range interesting {
-		material += "\x00" + name + "=" + envValue(env, name)
+		material.WriteString("\x00" + name + "=" + envValue(env, name))
 	}
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(material)))
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(material.String())))
 }
 
 func withoutVar(env []string, name string) []string {

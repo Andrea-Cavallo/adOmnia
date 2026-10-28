@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/gaissmai/bart"
 )
 
@@ -166,7 +166,7 @@ func proxyRulesGetHandler(w http.ResponseWriter, r *http.Request) {
 	proxyRulesMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"rules": rules,
 		"count": len(rules),
 	})
@@ -220,7 +220,7 @@ func proxyRulesPutHandler(w http.ResponseWriter, r *http.Request) {
 	proxyRulesMu.RLock()
 	ct := len(proxyRules)
 	proxyRulesMu.RUnlock()
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "count": ct})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "count": ct})
 }
 
 func proxyRulesTestHandler(w http.ResponseWriter, r *http.Request) {
@@ -234,7 +234,7 @@ func proxyRulesTestHandler(w http.ResponseWriter, r *http.Request) {
 	regexOk, regexRule := matchRegex(target)
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"target":      target,
 		"ipMatch":     ipOk,
 		"ipRule":      ipRule,
@@ -263,7 +263,7 @@ func proxyRulesLogHandler(w http.ResponseWriter, r *http.Request) {
 	proxyLogMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"log":   logs,
 		"count": len(logs),
 	})

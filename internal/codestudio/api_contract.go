@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"adomnia/internal/ide/apicontract"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/apicontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // APIContractReport confronta le route del codice con il contratto OpenAPI del progetto.

@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/git"
-	"adomnia/internal/ide/graph"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/graph"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // ArchitectureDiff confronta l'architettura di oggi con quella di un commit o branch:

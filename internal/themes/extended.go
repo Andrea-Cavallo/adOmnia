@@ -4,8 +4,6 @@
 package themes
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/storage"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
@@ -19,6 +17,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 // ---------------------------------------------------------------------------
@@ -319,7 +320,7 @@ func projectThemeDirectories() []string {
 
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			dirs = append(dirs, filepath.Join(dir, "data", "themes"))
 			dir = filepath.Dir(dir)
 		}
@@ -631,6 +632,7 @@ func (tm *ThemeManager) checkForChanges(skinsDir string) {
 // GetExtendedBuiltinThemes returns additional built-in themes beyond the core set.
 func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 	return []Theme{
+		staticCitrineTheme(),
 		{
 			ID:          "builtin-terminal-green",
 			Name:        "Terminal Green",

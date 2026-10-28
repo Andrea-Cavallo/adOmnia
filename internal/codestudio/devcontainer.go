@@ -1,11 +1,12 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/remote"
 	"bytes"
 	"fmt"
 	"os"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/remote"
 )
 
 type DevContainerResult struct {

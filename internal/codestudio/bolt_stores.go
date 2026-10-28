@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 const boltBucket = "goide"

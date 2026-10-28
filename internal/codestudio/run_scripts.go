@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 const maxScriptSuggestions = 8

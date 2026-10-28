@@ -1,20 +1,17 @@
-// templates.go — Local template marketplace for adOmnia.
-// Templates are pre-made request collections, flows, or mock configurations
-// that users can browse, install, and share.
-
+// Package templates is adOmnia's local template marketplace: ready-made request collections, flows and mock configurations that users can browse, install and share.
 package templates
 
 import (
-	"adomnia/internal/storage"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"log"
 	"os"
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 

@@ -1,4 +1,4 @@
-import type { JVMHeapSample } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { JVMHeapSample } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 
 /** Quanti campioni tenere nel grafico: a un campione ogni 2 secondi sono circa 4 minuti. */
 export const JVM_HISTORY_LIMIT = 120

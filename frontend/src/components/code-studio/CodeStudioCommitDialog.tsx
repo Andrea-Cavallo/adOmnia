@@ -15,7 +15,7 @@ import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
 import { CodeStudioCommitDiff } from './CodeStudioCommitDiff'
-import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { activeLocalReplaces, isGoModPath, type GoModReplace } from '@/lib/goModLocalReplaces'
 
 interface CodeStudioCommitDialogProps {

@@ -1,12 +1,12 @@
 package milk
 
 import (
-	"adomnia/internal/aipolicy"
-	"adomnia/internal/jsonutil"
 	"context"
 	"encoding/base64"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"runtime"

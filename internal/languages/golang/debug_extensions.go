@@ -1,8 +1,9 @@
 package golang
 
 import (
-	"adomnia/internal/ide/dap"
 	"fmt"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 type DebugExtensions struct{ dap.Session }

@@ -1,13 +1,14 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/run"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // MakeInfo descrive il make usato dalla sessione.

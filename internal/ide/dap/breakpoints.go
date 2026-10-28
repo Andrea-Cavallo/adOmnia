@@ -334,12 +334,30 @@ func (m *DebugManager) sendBreakpoints(session *debugger, path string, breakpoin
 // sendBreakpointsReport invia i breakpoint di un file e dice anche se debug adapter ha accettato la riga di Run to Cursor.
 func (m *DebugManager) sendBreakpointsReport(session *debugger, path string, breakpoints []Breakpoint) ([]BreakpointState, bool) {
 	session.mu.Lock()
-	client := session.client
 	runTo := 0
 	if session.runTo != nil && session.runTo.path == path {
 		runTo = session.runTo.line
 	}
 	session.mu.Unlock()
+	// Con una sessione figlia (startDebugging) le stesse breakpoint vanno su ogni connessione: la
+	// principale risponde "provvisorio", quella che controlla il target conferma la riga.
+	var states []BreakpointState
+	runToVerified := false
+	answered := false
+	for _, client := range session.connections() {
+		received, verified := m.sendBreakpointsTo(client, path, breakpoints, runTo)
+		if !answered && received != nil {
+			states, runToVerified, answered = received, verified, true
+		}
+	}
+	if !answered {
+		return nil, false
+	}
+	return states, runToVerified
+}
+
+// sendBreakpointsTo invia i breakpoint di un file su una connessione e ne legge la verifica.
+func (m *DebugManager) sendBreakpointsTo(client *Client, path string, breakpoints []Breakpoint, runTo int) ([]BreakpointState, bool) {
 	if client == nil {
 		return nil, false
 	}

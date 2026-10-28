@@ -3,6 +3,7 @@ package securityintel
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 )
@@ -319,12 +320,7 @@ func (e *Engine) ecosystemSelected(ecosystem Ecosystem, selected []Ecosystem) bo
 	if len(selected) == 0 {
 		return true
 	}
-	for _, candidate := range selected {
-		if candidate == ecosystem {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(selected, ecosystem)
 }
 
 // adapterFor ritrova l'adapter che ha prodotto un componente.
@@ -449,10 +445,8 @@ func suppressionMatches(suppression Suppression, finding Finding) bool {
 		if id == finding.Advisory.ID || id == CanonicalAdvisoryID(finding.Advisory) {
 			return true
 		}
-		for _, alias := range finding.Advisory.Aliases {
-			if id == alias {
-				return true
-			}
+		if slices.Contains(finding.Advisory.Aliases, id) {
+			return true
 		}
 	}
 	return false

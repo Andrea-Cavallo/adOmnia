@@ -1,19 +1,16 @@
-// themes.go — Theme/skin system for adOmnia.
-// Themes are JSON objects that define CSS custom properties.
-// Users can create, import, export, and switch themes.
-
+// Package themes implements adOmnia's theme system: themes are JSON objects that define CSS custom properties, and users can create, import, export and switch them.
 package themes
 
 import (
-	"adomnia/internal/storage"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"log"
 	"os"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 

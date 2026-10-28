@@ -1,12 +1,12 @@
 package graph
 
 import (
-	"adomnia/internal/jsonutil"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io/fs"
 	"os"
 	"path/filepath"

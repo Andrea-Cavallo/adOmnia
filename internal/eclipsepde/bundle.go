@@ -183,7 +183,7 @@ func bundleFromManifest(mf *Manifest, location string) (*Bundle, error) {
 
 	if raw := mf.Main["Bundle-ClassPath"]; raw != "" {
 		var entries []string
-		for _, e := range strings.Split(raw, ",") {
+		for e := range strings.SplitSeq(raw, ",") {
 			if e = strings.TrimSpace(e); e != "" {
 				entries = append(entries, e)
 			}

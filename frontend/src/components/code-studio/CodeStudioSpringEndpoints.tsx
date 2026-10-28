@@ -4,7 +4,7 @@ import { CodeStudioModal } from './CodeStudioModal'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useSpringStore, springStateOf } from '@/stores/codeStudioSpring'
 import { filterEndpoints } from '@/lib/code-studio/springInsights'
-import type { SpringEndpoint } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { SpringEndpoint } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 
 interface EndpointsRequest {
   sessionId: string

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // declaredRequirement è una dipendenza letta da un manifest, con la versione esatta solo quando il
@@ -54,7 +54,7 @@ func parseRequirements(text string, scope securityintel.Scope) ([]declaredRequir
 	var requirements []declaredRequirement
 	var warnings []string
 	seen := map[string]bool{}
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		line = stripRequirementComment(line)
 		if line == "" || strings.HasPrefix(line, "-") {
 			continue
@@ -368,7 +368,7 @@ func parseLockfile(text string) ([]lockedPackage, []string) {
 		}
 		current = nil
 	}
-	for _, raw := range strings.Split(text, "\n") {
+	for raw := range strings.SplitSeq(text, "\n") {
 		line := strings.TrimSpace(raw)
 		if strings.HasPrefix(line, "[[package]]") {
 			flush()
@@ -424,7 +424,7 @@ func normalizeName(name string) string {
 // `[tool.poetry] name`. È solo un'etichetta per il report: non partecipa alla risoluzione.
 func pyprojectName(text string) string {
 	section := ""
-	for _, raw := range strings.Split(text, "\n") {
+	for raw := range strings.SplitSeq(text, "\n") {
 		line := strings.TrimSpace(raw)
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.ToLower(strings.Trim(line, "[] "))

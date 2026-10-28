@@ -1,3 +1,4 @@
+import { useOriginTreeReveal } from './codeStudioOriginTree'
 import { goModules } from '@/lib/code-studio/goProject'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
@@ -116,6 +117,16 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
   const selected = entry.relativePath === (selectedPath ?? activePath)
   const [open, setOpen] = useState(false)
   const [limit, setLimit] = useState(TREE_PAGE)
+  const reveal = useOriginTreeReveal()
+  useEffect(() => {
+    if (reveal.sessionId !== sessionId) return
+    if (entry.directory && reveal.path.startsWith(`${entry.relativePath}/`)) { setOpen(true); setLimit(Number.MAX_SAFE_INTEGER) }
+    if (reveal.path === entry.relativePath) requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(`[data-tree-path="${CSS.escape(entry.relativePath)}"]`)
+      target?.scrollIntoView({ block: 'nearest' }); target?.focus()
+    })
+  }, [reveal, sessionId, entry.directory, entry.relativePath])
+
   const entries = useCodeStudioStore((state) => state.directoryEntries[sessionId]?.[entry.relativePath])
   const loading = useCodeStudioStore((state) => state.directoryLoading[`${sessionId}:${entry.relativePath}`] ?? false)
   const loadDirectory = useCodeStudioStore((state) => state.loadDirectory)
@@ -202,6 +213,11 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [creationFolder, setCreationFolder] = useState('')
   const [rootOpen, setRootOpen] = useState(true)
+  const originReveal = useOriginTreeReveal()
+  useEffect(() => {
+    if (originReveal.sessionId === session.id && originReveal.path) { setRootOpen(true); setRootLimit(Number.MAX_SAFE_INTEGER); setSelectedPath(originReveal.path) }
+  }, [originReveal, session.id])
+
   const [collapseEpoch, setCollapseEpoch] = useState(0)
   useEffect(() => { setSelectedPath(null); setCreationFolder(''); setRootOpen(true) }, [rootKey])
   useEffect(() => { if (activePath) { setSelectedPath(null); setCreationFolder(parentOf(activePath)) } }, [activePath])

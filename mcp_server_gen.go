@@ -1,6 +1,6 @@
 package main
 
-import "adomnia/internal/mcp/generator"
+import "github.com/Andrea-Cavallo/adOmnia/internal/mcp/generator"
 
 type MCPServerGenerator struct{}
 

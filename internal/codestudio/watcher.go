@@ -5,13 +5,14 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -26,22 +27,6 @@ const (
 	// maxBatchPaths oltre questa soglia il batch diventa overflow: il frontend ricontrolla tutto.
 	maxBatchPaths = 500
 )
-
-// DiskChangeKind segue workspace/didChangeWatchedFiles: 1 creato, 2 modificato, 3 eliminato.
-type DiskChangeKind int
-
-const (
-	FileCreated DiskChangeKind = 1
-	FileChanged DiskChangeKind = 2
-	FileDeleted DiskChangeKind = 3
-)
-
-// DiskChange è un file del progetto cambiato su disco.
-type DiskChange struct {
-	Path         string         `json:"path"`
-	RelativePath string         `json:"relativePath"`
-	Kind         DiskChangeKind `json:"kind"`
-}
 
 // FilesChanged è il payload dell'evento files.changed: modifiche raggruppate, o overflow se troppe.
 type FilesChanged struct {
@@ -229,10 +214,8 @@ func (w *sessionWatch) ignoredPath(path string) bool {
 		return false
 	}
 	segments := strings.Split(filepath.ToSlash(relative), "/")
-	for _, segment := range segments[:len(segments)-1] {
-		if isIgnoredDirectory(segment) {
-			return true
-		}
+	if slices.ContainsFunc(segments[:len(segments)-1], isIgnoredDirectory) {
+		return true
 	}
 	if isIgnoredDirectory(segments[len(segments)-1]) {
 		return true

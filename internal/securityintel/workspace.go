@@ -1,13 +1,15 @@
 package securityintel
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // WorkspaceSettingsFile è il file di configurazione della Security Intelligence dentro
@@ -137,10 +139,5 @@ func sameAdvisorySet(left, right []string) bool {
 }
 
 func containsString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, want)
 }

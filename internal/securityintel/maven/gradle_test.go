@@ -1,8 +1,8 @@
 package maven
 
 import (
-	"adomnia/internal/securityintel"
 	"context"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 	"os"
 	"path/filepath"
 	"strings"

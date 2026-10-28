@@ -1,12 +1,13 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Restart policy di una configurazione Run dopo un crash di adOmnia.

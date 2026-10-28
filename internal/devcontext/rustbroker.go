@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strconv"
 
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // detectRustBroker: topic e code di rdkafka/lapin/async-nats/redis diventano entità topic come

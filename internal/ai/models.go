@@ -1,7 +1,7 @@
 package ai
 
 import (
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 	"context"
 	"encoding/json/v2"

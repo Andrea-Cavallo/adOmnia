@@ -1,11 +1,11 @@
 package milk
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"sync"
 	"testing"

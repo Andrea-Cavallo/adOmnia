@@ -1,6 +1,9 @@
+import { useCodeStudioStore } from '@/stores/codeStudio'
+import { symbolOrigin } from '@/lib/code-studio/symbolOrigin'
+import { revealSymbolOrigin } from './codeStudioOriginTree'
 import { codeVisionEditorLanguages } from '@/components/ide/languages'
 import { monaco } from '@/lib/monacoSetup'
-import { requestDocumentSymbols, requestLocations, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
+import { requestDocumentSymbols, requestLocations, requestPrepareHierarchy, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import { getGoIDEBlame, type GoIDEVCSBlameLine } from '@/lib/code-studio-vcs-api'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -17,6 +20,8 @@ const UNCOMMITTED_HASH = /^0+$/
 const VISION_KINDS = new Set([5, 6, 10, 11, 12, 13, 14, 23])
 /** Punti di ingresso chiamati dal runtime: il conteggio degli usi sarebbe sempre zero e fuorviante. */
 const ENTRY_POINT = /^(main|init|(Test|Benchmark|Fuzz|Example)\w*)$/
+
+interface OriginLens extends monaco.languages.CodeLens { origin: string }
 
 interface VisionLens extends monaco.languages.CodeLens {
   visionSymbol: { name: string, line: number, column: number, countUsages: boolean, author: string }
@@ -81,10 +86,21 @@ async function provideVisionLenses(model: monaco.editor.ITextModel, token: monac
       prepared.document.dirty ? Promise.resolve([]) : blameFor(prepared.document),
     ])
     if (token.isCancellationRequested) return empty
-    const lenses = result.symbols
-      .filter((symbol) => VISION_KINDS.has(symbol.kind))
-      .map((symbol) => visionLens(symbol, authorForRange(blame, symbol.range.startLine, symbol.range.endLine)))
-      .filter((lens) => lens.visionSymbol.countUsages || lens.visionSymbol.author)
+    const project = useCodeStudioStore.getState().sessions.find(session => session.id === prepared.sessionId)?.project
+    const origin = project ? symbolOrigin(project, prepared.document.document.path, prepared.document.document.language, model.getValue()) : null
+    const lenses: monaco.languages.CodeLens[] = []
+    const visit = (symbols: GoIDESymbolNode[]) => {
+      for (const symbol of symbols) {
+        if (VISION_KINDS.has(symbol.kind)) {
+          const lens = visionLens(symbol, authorForRange(blame, symbol.range.startLine, symbol.range.endLine))
+          if (lens.visionSymbol.countUsages || lens.visionSymbol.author) lenses.push(lens)
+          if (origin && [5,6,10,11,12,23].includes(symbol.kind)) lenses.push({ range: lens.range, origin, command: { id: 'codeStudio.symbolOrigin', title: origin, tooltip: 'Reveal in Project Explorer · right-click to copy origin', arguments: [prepared.sessionId, prepared.document.document.relativePath] } } as OriginLens)
+          if ([6,12].includes(symbol.kind)) lenses.push({ range: lens.range, command: { id: 'codeStudio.functionExplorer', title: 'callers · callees', arguments: [prepared.sessionId, prepared.documentId, symbol.selectionRange.startLine, symbol.selectionRange.startColumn] } })
+        }
+        if (symbol.children) visit(symbol.children)
+      }
+    }
+    visit(result.symbols)
     return { lenses, dispose: () => undefined }
   } catch {
     return empty
@@ -131,7 +147,7 @@ export function registerCodeStudioCodeVision(): void {
   const provider: monaco.languages.CodeLensProvider = {
     onDidChange: changed.event,
     provideCodeLenses: provideVisionLenses,
-    resolveCodeLens: (model, lens, token) => resolveVisionLens(model, lens as VisionLens, token),
+    resolveCodeLens: (model, lens, token) => 'visionSymbol' in lens ? resolveVisionLens(model, lens as VisionLens, token) : lens,
   }
   // gopls pronto o repository rilevato: i lens calcolati prima erano vuoti o senza autore.
   // Anche quando l'utente accende o spegne Code Vision, o cambia la modalità a basso consumo.
@@ -144,6 +160,15 @@ export function registerCodeStudioCodeVision(): void {
   })
   monaco.editor.registerCommand(SHOW_USAGES_COMMAND, (_accessor, sessionId: string, documentId: string, line: number, column: number, name: string) => {
     void showUsages(sessionId, documentId, line, column, name)
+  })
+  monaco.editor.registerCommand('codeStudio.symbolOrigin', (_accessor, sessionId: string, path: string) => revealSymbolOrigin(sessionId, path))
+  monaco.editor.registerCommand('codeStudio.functionExplorer', async (_accessor, sessionId: string, documentId: string, line: number, column: number) => {
+    try {
+      const roots = await requestPrepareHierarchy(sessionId, documentId, 'call', line, column)
+      if (useCodeStudioStore.getState().activeSessionId !== sessionId) return
+      if (roots[0]) useCodeStudioLspStore.setState({ hierarchy: { sessionId, kind: 'call', root: roots[0] } })
+      else report('No call hierarchy reported for this symbol.')
+    } catch (error) { report(String(error)) }
   })
   monaco.languages.registerCodeLensProvider(LANGUAGE, provider)
 }

@@ -4,11 +4,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"adomnia/internal/languages/golang/golangtest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang/golangtest"
 )
 
 // testSession è il minimo che il manager conosce di una sessione: ID e cartella del progetto.
@@ -183,12 +184,7 @@ func TestProcessEnvironmentInheritsCorporateVariablesWithoutOverriding(t *testin
 }
 
 func slicesContains(items []string, wanted string) bool {
-	for _, item := range items {
-		if item == wanted {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(items, wanted)
 }
 
 // Go reale, progetto che chiede go1.99.0 e GOPROXY irraggiungibile (VPN lenta o rete assente):

@@ -47,7 +47,7 @@ type listedPackage struct {
 
 func parseAffectedList(output string) []listedPackage {
 	listed := []listedPackage{}
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		fields := strings.Split(strings.TrimRight(line, "\r"), "|")
 		if len(fields) != 5 || fields[0] == "" || fields[1] == "" {
 			continue // avvisi di go list su stderr

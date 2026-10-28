@@ -116,6 +116,17 @@ type mcpPrompt struct {
 
 func mcpPrompts() []mcpPrompt {
 	return []mcpPrompt{
+		{"create_collection_from_code", "Create a collection from code", "Scan a Code Studio project, create or sync its API collection and review the generated requests.", []mcpPromptArg{
+			{"project", "Project folder opened in Code Studio.", true},
+			{"collection", "Destination collection folder; empty uses the server default.", false},
+			{"name", "New collection name.", false},
+			{"baseUrl", "Base URL prefix (default {{baseUrl}}).", false},
+		}},
+		{"configure_environment", "Configure an environment", "Create or update an environment with variables and secrets, then use it to run the collection.", []mcpPromptArg{
+			{"name", "Environment name, for example dev.", true},
+			{"collection", "Collection folder; empty uses the server default.", false},
+			{"variables", "Variables as KEY=VALUE pairs or a JSON array with key, value, enabled and secret.", true},
+		}},
 		{"test_endpoint", "Test one endpoint", "Read one request of the collection, run it and explain any failing assertion.", []mcpPromptArg{
 			{"request", "Request id from collection_list_requests.", true},
 			{"env", "Environment name.", false},
@@ -164,6 +175,14 @@ func promptText(name string, args map[string]string) string {
 		env = fmt.Sprintf(" with the %q environment", args["env"])
 	}
 	switch name {
+	case "create_collection_from_code":
+		baseURL := args["baseUrl"]
+		if baseURL == "" {
+			baseURL = "{{baseUrl}}"
+		}
+		return fmt.Sprintf("Create an adOmnia API collection from the Code Studio project %q. First call project_list_routes to inspect the detected routes, then call collection_create_from_code with project %q, collection %q, name %q and baseUrl %q. Finally call collection_list_requests and report the generated requests and any scan warnings. Do not invent routes that were not detected.", args["project"], args["project"], args["collection"], args["name"], baseURL)
+	case "configure_environment":
+		return fmt.Sprintf("Configure the adOmnia environment %q in collection %q with these variables: %s. Call collection_upsert_environment using a variables array with key, value, enabled and secret fields. Mark tokens, passwords and other sensitive values as secret. If the environment already exists, set merge=true so unspecified variables and secrets are preserved. Then call collection_list_environments to verify that secrets are masked and collection_run with env=%q to use the saved environment.", args["name"], args["collection"], args["variables"], args["name"])
 	case "test_endpoint":
 		return fmt.Sprintf("Use the adOmnia tools to test the request with id %q%s. First call collection_get_request to read it, then collection_run to execute it, and report the status, timing and every failing assertion. If it fails, explain the likely cause and what to change in the code or the request.", args["request"], env)
 	case "run_collection_report":

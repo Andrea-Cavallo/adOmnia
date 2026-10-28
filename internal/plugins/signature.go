@@ -12,12 +12,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -173,10 +174,8 @@ func (pm *PluginManager) TrustPluginKey(publicKey string) error {
 		return fmt.Errorf("not a base64 ed25519 public key")
 	}
 	keys := loadTrustedKeys()
-	for _, key := range keys {
-		if key == publicKey {
-			return nil
-		}
+	if slices.Contains(keys, publicKey) {
+		return nil
 	}
 	if err := saveTrustedKeys(append(keys, publicKey)); err != nil {
 		return err

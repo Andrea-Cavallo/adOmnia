@@ -1,10 +1,11 @@
+// Package testing is the language-agnostic test runner of the IDE Platform: it runs a language's tests, collects neutral results and coverage reports, and lets language adapters enrich them through hooks.
 package testing
 
 import (
-	"adomnia/internal/ide/run"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"sort"
 	"sync"
 	"time"

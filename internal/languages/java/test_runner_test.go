@@ -5,13 +5,14 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/language"
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 var _ language.TestRunner = (*Language)(nil)
@@ -153,12 +154,7 @@ func TestTestCommandRunsTheUnitAndRejectsUnsafeFilters(t *testing.T) {
 }
 
 func contains(list []string, want string) bool {
-	for _, item := range list {
-		if item == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, want)
 }
 
 func TestSkippedTestKeepsItsReason(t *testing.T) {

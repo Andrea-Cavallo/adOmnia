@@ -3,9 +3,9 @@ package codestudio
 import (
 	"testing"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/languages/java"
-	"adomnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
 )
 
 // Il servizio passa la factory delle spec per unità solo ai linguaggi che la dichiarano: Python ha un
@@ -21,12 +21,12 @@ func TestOnlyPerUnitLanguagesGetASpecFactory(t *testing.T) {
 	if service.perUnitSpec(java.ID, t.TempDir()) != nil {
 		t.Fatal("java keeps one language server per project")
 	}
-	if _, ok := interface{}(java.New()).(language.UnitServers); ok {
+	if _, ok := any(java.New()).(language.UnitServers); ok {
 		t.Fatal("java must not declare per-unit servers without a consumer")
 	}
 	// L'adapter Python è quello che sa costruire la spec di una unità a partire dalla radice del
 	// progetto: la factory dell'host non fa altro che inoltrarla.
-	servers, ok := interface{}(python.New()).(language.UnitServers)
+	servers, ok := any(python.New()).(language.UnitServers)
 	if !ok || !servers.ServersPerUnit() {
 		t.Fatal("python must implement language.UnitServers")
 	}

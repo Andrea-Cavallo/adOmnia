@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 )
 
 const releasesAPI = "https://api.github.com/repos/Andrea-Cavallo/adOmnia/releases/latest"

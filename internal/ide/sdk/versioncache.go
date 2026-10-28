@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"maps"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -78,8 +79,6 @@ func VersionsSnapshot() map[string]ToolVersionEntry {
 		return nil
 	}
 	snapshot := make(map[string]ToolVersionEntry, len(toolVersions.entries))
-	for key, entry := range toolVersions.entries {
-		snapshot[key] = entry
-	}
+	maps.Copy(snapshot, toolVersions.entries)
 	return snapshot
 }

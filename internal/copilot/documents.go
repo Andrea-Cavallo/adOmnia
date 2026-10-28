@@ -5,11 +5,10 @@ import (
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"errors"
-	"net/url"
 	"path/filepath"
 
-	"adomnia/internal/airedact"
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/airedact"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // ErrExcluded indica un file escluso dal contesto AI (segreti o .adomnia/aiignore).
@@ -162,7 +161,7 @@ func (m *Manager) workspaceFoldersLocked() []map[string]string {
 	if name == "" {
 		name = filepath.Base(m.root)
 	}
-	return []map[string]string{{"uri": fileURI(m.root), "name": name}}
+	return []map[string]string{{"uri": lsp.FileURI(m.root), "name": name}}
 }
 
 // InlineCompletionRequest usa posizioni Monaco (1-based, UTF-16), come il resto di Code Studio.
@@ -285,13 +284,4 @@ func (m *Manager) DidPartiallyAcceptCompletion(raw jsonv1.RawMessage, acceptedLe
 	if running, err := m.connection(); err == nil {
 		_ = running.Notify("textDocument/didPartiallyAcceptCompletion", map[string]any{"item": raw, "acceptedLength": acceptedLength})
 	}
-}
-
-// fileURI converte un percorso assoluto in URI file://, con la stessa codifica usata da goide per i documenti.
-func fileURI(path string) string {
-	normalized := filepath.ToSlash(path)
-	if len(normalized) >= 2 && normalized[1] == ':' {
-		normalized = "/" + normalized
-	}
-	return (&url.URL{Scheme: "file", Path: normalized}).String()
 }

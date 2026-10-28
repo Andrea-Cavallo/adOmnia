@@ -6,7 +6,7 @@ import (
 	"encoding/json/v2"
 	"testing"
 
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	bolt "go.etcd.io/bbolt"
 )
 

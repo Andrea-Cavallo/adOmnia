@@ -1,7 +1,6 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"embed"
 	"errors"
@@ -13,6 +12,9 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // I template integrati usano il suffisso .tmpl così i sorgenti non vengono compilati
@@ -231,7 +233,7 @@ func runGoCommand(binary, dir string, timeout time.Duration, args ...string) err
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("go %s: %s", strings.Join(args, " "), cleanToolError(output, 0))
+		return fmt.Errorf("go %s: %s", strings.Join(args, " "), process.CleanToolError(output, 0))
 	}
 	return nil
 }

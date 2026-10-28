@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/youmark/pkcs8"
 )
 

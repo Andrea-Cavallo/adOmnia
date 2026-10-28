@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -149,12 +150,7 @@ func groupOf(groups map[string][]string, path string) string {
 }
 
 func contains(list []string, value string) bool {
-	for _, item := range list {
-		if item == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, value)
 }
 
 // CheckDrift confronta il grafo con le regole: import fra layer non consentiti, import vietati,

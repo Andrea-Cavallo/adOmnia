@@ -1,8 +1,8 @@
 package codestudio
 
 import (
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/languages/golang"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 type TestLocation = idetesting.TestLocation

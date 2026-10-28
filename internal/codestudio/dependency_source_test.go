@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/project"
-	golang "adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	golang "github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // TestResolveDependencySourceLocalReplace: una replace locale punta al codice giusto, dentro o

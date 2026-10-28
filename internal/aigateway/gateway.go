@@ -1,9 +1,10 @@
+// Package aigateway runs a local OpenAI-compatible endpoint that forwards requests, without decoding them, to the configured upstream provider, so local tools can reuse adOmnia's AI settings through a stable client token.
 package aigateway
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"log"
 	"net"
 	"net/http"

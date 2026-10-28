@@ -22,7 +22,7 @@ export async function openProjectArtifact(ref: EntityRef, intent: 'inspect' | 's
   return
  }
  if (intent === 'inspect' && /\.(jks|p12|pfx)$/i.test(path)) {
-  const { ReadProjectKeystore } = await import('../../../bindings/adomnia/goide')
+  const { ReadProjectKeystore } = await import('../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide')
   handoffToPanel('powertools', ref, 'keystore', { name: ref.label, base64: await ReadProjectKeystore(ref.sessionId, path) })
   return
  }

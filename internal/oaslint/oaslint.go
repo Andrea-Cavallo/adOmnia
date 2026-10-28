@@ -1,3 +1,4 @@
+// Package oaslint lints OpenAPI documents with configurable rules and severities.
 package oaslint
 
 import (
@@ -10,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -302,8 +303,8 @@ func validatePathName(path string) string {
 	if !strings.HasPrefix(path, "/") {
 		return "Paths should start with /."
 	}
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-	for _, part := range parts {
+	parts := strings.SplitSeq(strings.Trim(path, "/"), "/")
+	for part := range parts {
 		if part == "" || strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
 			continue
 		}

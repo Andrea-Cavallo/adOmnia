@@ -1,10 +1,10 @@
 package milk
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"os"

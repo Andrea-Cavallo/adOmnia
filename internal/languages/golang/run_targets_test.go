@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func writeRunTargetFile(t *testing.T, root, relative, content string) {

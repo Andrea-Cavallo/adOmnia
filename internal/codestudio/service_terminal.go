@@ -3,6 +3,8 @@ package codestudio
 import (
 	"fmt"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/terminal"
 )
 
 // OpenTerminal apre una shell interattiva nella working directory del progetto.
@@ -25,7 +27,7 @@ func (s *Service) OpenTerminal(request TerminalRequest) (TerminalSession, error)
 		return TerminalSession{}, err
 	}
 	// La shell arriva solo da un profilo rilevato: la UI non può chiedere un eseguibile arbitrario.
-	profile, err := resolveTerminalProfile(request.Profile)
+	profile, err := terminal.ResolveTerminalProfile(request.Profile)
 	if err != nil {
 		return TerminalSession{}, err
 	}

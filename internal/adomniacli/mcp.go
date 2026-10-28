@@ -10,17 +10,18 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 
-	"adomnia/internal/collectionfs"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/mock"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/mock"
 )
 
 // Revisions of the protocol this server understands, newest first. The client's requested
 // version is echoed when known, otherwise the newest is offered and the client decides.
 var mcpProtocolVersions = []string{"2025-06-18", "2025-03-26", "2024-11-05"}
 
-const mcpServerInstructions = "adOmnia exposes the API collections of this machine: list and read requests, run them with their tests against real endpoints, and drive a local mock server to see what the code under development sends. Secrets in requests and environments are masked."
+const mcpServerInstructions = "adOmnia exposes local API collections and Code Studio project routes: generate collections from statically detected routes; create, update and delete requests and environments; run tests with saved variables; and drive a local mock server. Source code is never executed by route scans. Secrets in requests and environments are always masked in responses."
 
 // JSON-RPC error codes.
 const (
@@ -108,6 +109,7 @@ func mcpErrorReply(id jsonv1.RawMessage, code int, message string) map[string]an
 type mcpServer struct {
 	defaultFolder string
 	mux           *http.ServeMux
+	writeMu       sync.Mutex
 }
 
 func (s *mcpServer) handle(request mcpRPC) (any, *mcpError) {

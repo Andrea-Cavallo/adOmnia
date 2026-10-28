@@ -1,3 +1,4 @@
+// Package ai is adOmnia's AI provider layer: provider configuration, credential resolution from the Vault or the process environment, model discovery and requests to OpenAI, Anthropic, Gemini, Hugging Face and OpenAI-compatible endpoints.
 package ai
 
 import (
@@ -300,7 +301,7 @@ func resolveDotEnvCredential(startDir string, keys []string) (string, string) {
 	if err != nil {
 		return "", ""
 	}
-	for depth := 0; depth < 6; depth++ {
+	for range 6 {
 		for _, name := range dotEnvNames {
 			path := filepath.Join(dir, name)
 			if value := readDotEnvCredential(path, wanted); value != "" {

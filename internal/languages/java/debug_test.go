@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 var _ dap.DebugAdapterProvider = (*Language)(nil)

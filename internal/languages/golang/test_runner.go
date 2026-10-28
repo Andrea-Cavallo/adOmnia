@@ -1,14 +1,15 @@
 package golang
 
 import (
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idetesting.EventParser, error) {

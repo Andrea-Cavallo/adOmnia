@@ -1,13 +1,13 @@
 package update
 
 import (
-	"adomnia/internal/jsonutil"
 	"archive/zip"
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"runtime"

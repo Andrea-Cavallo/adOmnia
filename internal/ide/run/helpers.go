@@ -1,9 +1,9 @@
 package run
 
 import (
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/sdk"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 
 	"path/filepath"
 	"strings"

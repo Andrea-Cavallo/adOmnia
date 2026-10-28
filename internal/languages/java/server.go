@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // Eclipse JDT LS: scaricato (dopo conferma) nella cartella strumenti di adOmnia, mai nel progetto.

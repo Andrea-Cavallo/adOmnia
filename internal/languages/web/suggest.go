@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Suggest propone gli script dev, build e test di un package.json come comandi del package manager

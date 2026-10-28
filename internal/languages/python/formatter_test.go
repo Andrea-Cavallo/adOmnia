@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 // TestFormatToolUsesRuffOnTheRealPath: Ruff riceve il contenuto su stdin, il percorso reale come

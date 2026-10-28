@@ -4,6 +4,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/activity"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/resources"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
 )
 
 // DefaultScenarioInterval matches the resources sampler cache (1s), so every
@@ -237,9 +238,7 @@ func frontendMetrics() map[string]any {
 		return nil
 	}
 	merged := make(map[string]any, len(frontendLatest))
-	for key, value := range frontendLatest {
-		merged[key] = value
-	}
+	maps.Copy(merged, frontendLatest)
 	return merged
 }
 

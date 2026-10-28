@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // lspTestHandler raccoglie le diagnostiche e risponde alle richieste del server con le stesse

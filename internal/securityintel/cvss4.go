@@ -1,6 +1,7 @@
 package securityintel
 
 import (
+	"maps"
 	"math"
 	"strings"
 )
@@ -421,9 +422,7 @@ func cvss40SeverityDistances(selected map[string]string, macroVector string) (ma
 	// Nel punteggio base E vale come E:A e CR/IR/AR come H: distanza zero dai
 	// vettori peggiori, che usano esattamente quei valori.
 	selectedWithDefaults := map[string]string{"E": "A", "CR": "H", "IR": "H", "AR": "H"}
-	for name, value := range selected {
-		selectedWithDefaults[name] = value
-	}
+	maps.Copy(selectedWithDefaults, selected)
 
 	eq3eq6Maxes, ok := cvss40MaxComposedEQ3EQ6[levels[2]][levels[5]]
 	if !ok {
@@ -503,8 +502,8 @@ func cvss40ExtractValue(vector, metric string) string {
 		return ""
 	}
 	rest := vector[index+len(metric)+1:]
-	if end := strings.Index(rest, "/"); end >= 0 {
-		return rest[:end]
+	if before, _, ok := strings.Cut(rest, "/"); ok {
+		return before
 	}
 	return rest
 }

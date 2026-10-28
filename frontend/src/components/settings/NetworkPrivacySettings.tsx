@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { withContentKeys } from '@/lib/contentKeys'
 import { Activity, CircleSlash, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
-import * as AppBindings from '../../../bindings/adomnia/app'
-import type { Event as NetworkEvent, Settings as NetworkSettings } from '../../../bindings/adomnia/internal/netpolicy/models'
+import * as AppBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
+import type { Event as NetworkEvent, Settings as NetworkSettings } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/netpolicy/models'
 import { SettingsCard } from './SettingsLayout'
 import { TextInput, Toggle } from './SettingsFields'
 

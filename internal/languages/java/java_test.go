@@ -6,12 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 var (
@@ -70,10 +71,8 @@ func stubTools(t *testing.T, found ...string) {
 	t.Helper()
 	previous := lookPath
 	lookPath = func(name string) (string, error) {
-		for _, candidate := range found {
-			if candidate == name {
-				return "/usr/bin/" + name, nil
-			}
+		if slices.Contains(found, name) {
+			return "/usr/bin/" + name, nil
 		}
 		return "", errors.New("not found")
 	}

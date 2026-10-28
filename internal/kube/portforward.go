@@ -1,10 +1,10 @@
 package kube
 
 import (
-	"adomnia/internal/procutil"
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"net"
 	"sort"
 	"strings"

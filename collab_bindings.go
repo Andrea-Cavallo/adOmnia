@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"adomnia/internal/collab"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collab"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )

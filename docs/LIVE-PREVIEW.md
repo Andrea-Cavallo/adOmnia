@@ -2,7 +2,7 @@
 
 Open a static site, a React/Vite app or a Node.js project in Code Studio, edit it, and see the real page next to the code, without an external browser or extra tools. Everything Code Studio already does for Go (trust model, terminals, Run console, Git, gopls, Delve) is unchanged.
 
-This page is the technical reference. For the platform rules read [`architecture/ide-multilanguage-refactor.md`](architecture/ide-multilanguage-refactor.md) and [`internal/ide/CLAUDE.md`](../internal/ide/CLAUDE.md).
+This page is the technical reference. For the platform rules read [`architecture/ide-package-rules.md`](architecture/ide-package-rules.md) and [`internal/ide/CLAUDE.md`](../internal/ide/CLAUDE.md).
 
 ---
 

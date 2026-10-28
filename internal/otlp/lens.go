@@ -32,10 +32,7 @@ func percentile(sorted []float64, p float64) float64 {
 	if len(sorted) == 0 {
 		return 0
 	}
-	rank := int(p/100*float64(len(sorted))+0.999999) - 1
-	if rank < 0 {
-		rank = 0
-	}
+	rank := max(int(p/100*float64(len(sorted))+0.999999)-1, 0)
 	if rank >= len(sorted) {
 		rank = len(sorted) - 1
 	}

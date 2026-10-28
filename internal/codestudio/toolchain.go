@@ -1,9 +1,9 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // L'SDK Go vive nell'adapter (internal/languages/golang); questi alias tengono stabili i nomi usati

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"adomnia/internal/ide/remote"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/remote"
 )
 
 // RemoteTarget è un ambiente in cui eseguire run, test e comandi: distro WSL, host SSH o container.

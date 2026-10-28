@@ -1,10 +1,10 @@
 package eclipsepde
 
 import (
-	"adomnia/internal/jsonutil"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // The legacy bridge (spec sections 8 and 11: "LegacyJavaBridge"): authoritative

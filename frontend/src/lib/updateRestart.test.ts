@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const api = vi.hoisted(() => ({ save: vi.fn(), flush: vi.fn(), schedule: vi.fn(), close: vi.fn(), set: vi.fn() }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => ({ documents: [{ dirty: true, document: { id: 'dirty-file' } }], saveDocument: api.save }) } }))
 vi.mock('./storeSave', () => ({ flushPendingSaves: api.flush }))
-vi.mock('../../bindings/adomnia/app', () => ({ ScheduleUpdateOnExit: api.schedule }))
+vi.mock('../../bindings/github.com/Andrea-Cavallo/adOmnia/app', () => ({ ScheduleUpdateOnExit: api.schedule }))
 vi.mock('@/stores/updater', () => ({ useUpdaterStore: { setState: api.set } }))
 vi.mock('@wailsio/runtime', () => ({ Window: { Close: api.close } }))
 import { restartForUpdate } from './updateRestart'

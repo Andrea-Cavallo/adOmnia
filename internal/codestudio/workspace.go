@@ -2,8 +2,6 @@ package codestudio
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -13,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 var projectNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$`)
@@ -283,14 +281,6 @@ func goLayoutOf(source Project) goLayout {
 		}
 	}
 	return target
-}
-
-func newID(prefix string) string {
-	random := make([]byte, 12)
-	if _, err := rand.Read(random); err != nil {
-		return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
-	}
-	return prefix + "-" + hex.EncodeToString(random)
 }
 
 // whileOpen serializes short in-memory cache updates with session removal.

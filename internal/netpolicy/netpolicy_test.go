@@ -86,7 +86,7 @@ func TestProcessEnvironmentOfflineOverridesProject(t *testing.T) {
 
 func TestActivityKeepsMostRecent(t *testing.T) {
 	ClearActivity()
-	for index := 0; index < activityLimit+10; index++ {
+	for index := range activityLimit + 10 {
 		Record(Event{Host: "h", Status: index})
 	}
 	events := Activity()

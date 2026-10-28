@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TestPytestCoverageReportMapsFilesAndLines: il report JSON di coverage.py diventa un report
@@ -113,7 +113,7 @@ func TestRealPytestCoverageReport(t *testing.T) {
 	if !ok {
 		t.Fatal("the pytest parser is not a batch parser")
 	}
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		batch.ParseAll([]byte(line))
 	}
 	provider, ok := parser.(idetesting.CoverageProvider)

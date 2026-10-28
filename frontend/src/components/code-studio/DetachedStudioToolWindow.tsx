@@ -1,7 +1,7 @@
 import { useActivityScope } from '@/hooks/useActivity'
 import { useEffect, useState } from 'react'
 import { Events } from '@wailsio/runtime'
-import * as AppBindings from '../../../bindings/adomnia/app'
+import * as AppBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { ThemeProvider } from '@/components/themes/ThemeProvider'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { TitlebarWindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'

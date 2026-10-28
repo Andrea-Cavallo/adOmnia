@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // startJavaMarkersProject avvia JDT LS con le impostazioni di produzione e un workspace stabile

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/procutil"
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // Adapter è l'adapter Maven di adOmnia Security Intelligence.
@@ -132,8 +132,8 @@ func findMaven(environment []string) string {
 		wrapper = "mvnw.cmd"
 	}
 	for _, entry := range environment {
-		if strings.HasPrefix(entry, "MAVEN_WRAPPER_DIR=") {
-			if candidate := filepath.Join(strings.TrimPrefix(entry, "MAVEN_WRAPPER_DIR="), wrapper); isFile(candidate) {
+		if after, ok := strings.CutPrefix(entry, "MAVEN_WRAPPER_DIR="); ok {
+			if candidate := filepath.Join(after, wrapper); isFile(candidate) {
 				return candidate
 			}
 		}

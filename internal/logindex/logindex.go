@@ -13,12 +13,12 @@
 package logindex
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,6 +28,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // entrySize is the on-disk footprint of one record: offset, length, timestamp,
@@ -238,11 +240,11 @@ var timestampKeys = [][]byte{
 // scan, not a JSON parse: the index pass must stay linear in the line length.
 func jsonTimestamp(line []byte) int64 {
 	for _, key := range timestampKeys {
-		start := bytes.Index(line, key)
-		if start < 0 {
+		_, after, ok := bytes.Cut(line, key)
+		if !ok {
 			continue
 		}
-		rest := bytes.TrimLeft(line[start+len(key):], " ")
+		rest := bytes.TrimLeft(after, " ")
 		if len(rest) == 0 {
 			continue
 		}
@@ -390,7 +392,7 @@ func (j *Job) index(ctx context.Context) {
 		// ReadSlice returns ErrBufferFull on a line longer than the buffer; the
 		// remainder is consumed so offsets stay exact on a one-line 200 MB JSON.
 		full := chunk
-		for err == bufio.ErrBufferFull {
+		for errors.Is(err, bufio.ErrBufferFull) {
 			pending = append(pending[:0], full...)
 			var more []byte
 			more, err = reader.ReadSlice('\n')
@@ -624,10 +626,7 @@ func (j *Job) Query(q Query) QueryResult {
 	}
 	defer func() { _ = indexFile.Close() }()
 
-	cursor := q.From
-	if cursor < 0 {
-		cursor = 0
-	}
+	cursor := max(q.From, 0)
 	if _, err := indexFile.Seek(cursor*entrySize, io.SeekStart); err != nil {
 		result.Error = err.Error()
 		return result

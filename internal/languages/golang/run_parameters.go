@@ -1,13 +1,14 @@
 package golang
 
 import (
-	idetesting "adomnia/internal/ide/testing"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
+
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 var platformNamePattern = regexp.MustCompile(`^[a-z0-9]{1,16}$`)

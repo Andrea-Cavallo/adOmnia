@@ -4,16 +4,15 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
 func TestScriptCommandPicksInterpreterPerPlatform(t *testing.T) {
 	only := func(names ...string) func(string) (string, error) {
 		return func(name string) (string, error) {
-			for _, n := range names {
-				if n == name {
-					return name, nil
-				}
+			if slices.Contains(names, name) {
+				return name, nil
 			}
 			return "", errors.New("missing")
 		}

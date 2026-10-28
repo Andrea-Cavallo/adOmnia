@@ -4,13 +4,13 @@
 package plugins
 
 import (
-	"adomnia/internal/storage"
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -18,7 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -66,18 +68,18 @@ type PluginSandbox struct {
 
 // ExecRequest describes a function call to execute in a plugin sandbox.
 type ExecRequest struct {
-	PluginID string                 `json:"pluginId"`
-	Function string                 `json:"function"`
-	Args     map[string]interface{} `json:"args"`
+	PluginID string         `json:"pluginId"`
+	Function string         `json:"function"`
+	Args     map[string]any `json:"args"`
 }
 
 // ExecResult is the outcome of a sandbox execution.
 type ExecResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-	MemUsed int64       `json:"memUsed"`
-	TimeMs  float64     `json:"timeMs"`
+	Success bool    `json:"success"`
+	Data    any     `json:"data,omitempty"`
+	Error   string  `json:"error,omitempty"`
+	MemUsed int64   `json:"memUsed"`
+	TimeMs  float64 `json:"timeMs"`
 }
 
 // defaultHostFunctions are safe functions that plugins can call.
@@ -129,9 +131,7 @@ func (wr *WasmRuntime) ensureSandbox(pluginID string) *PluginSandbox {
 		return sandbox
 	}
 	hostFuncs := make(map[string]HostFunction, len(defaultHostFunctions))
-	for name, fn := range defaultHostFunctions {
-		hostFuncs[name] = fn
-	}
+	maps.Copy(hostFuncs, defaultHostFunctions)
 	sandbox := &PluginSandbox{
 		PluginID:  pluginID,
 		MaxMemory: wr.memoryLimit,
@@ -152,9 +152,7 @@ func (wr *WasmRuntime) CreateSandbox(pluginID string) error {
 	}
 
 	hostFuncs := make(map[string]HostFunction, len(defaultHostFunctions))
-	for name, fn := range defaultHostFunctions {
-		hostFuncs[name] = fn
-	}
+	maps.Copy(hostFuncs, defaultHostFunctions)
 
 	wr.sandboxes[pluginID] = &PluginSandbox{
 		PluginID:  pluginID,
@@ -218,7 +216,7 @@ func (wr *WasmRuntime) Execute(req ExecRequest) ExecResult {
 		return timedExecError(start, err)
 	}
 	var (
-		data    interface{}
+		data    any
 		memUsed int64
 	)
 	switch plugin.Manifest.Runtime {
@@ -314,8 +312,8 @@ func (wr *WasmRuntime) SetTimeLimit(pluginID string, ms int64) error {
 }
 
 // GetRuntimeMode returns the current execution mode of the plugin runtime.
-func (wr *WasmRuntime) GetRuntimeMode() map[string]interface{} {
-	return map[string]interface{}{
+func (wr *WasmRuntime) GetRuntimeMode() map[string]any {
+	return map[string]any{
 		"mode":        "javascript+wasm",
 		"description": "JavaScript entrypoints run in an isolated goja runtime with permissions; WASI modules run in wazero with no filesystem or network. Both have timeout and memory limits.",
 		"jsReady":     true,
@@ -404,7 +402,7 @@ func hostHTTPFetch(ctx context.Context, args jsonv1.RawMessage) (jsonv1.RawMessa
 		headers[k] = resp.Header.Get(k)
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"status":  resp.StatusCode,
 		"headers": headers,
 		"body":    string(body),
@@ -485,7 +483,7 @@ func hostStorageGet(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessag
 		return nil, fmt.Errorf("storage read failed: %w", err)
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"key":   params.Key,
 		"value": nil,
 	}
@@ -528,7 +526,7 @@ func hostStorageSet(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessag
 		return nil, fmt.Errorf("storage write failed: %w", err)
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"ok": true,
 	}
 	return jsonutil.Marshal(result)
@@ -565,7 +563,7 @@ func hostStorageDelete(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMes
 		return nil, fmt.Errorf("storage delete failed: %w", err)
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"ok": true,
 	}
 	return jsonutil.Marshal(result)
@@ -584,7 +582,7 @@ func hostLogInfo(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, 
 	log.Printf("[plugin:%s] INFO: %s", params.PluginID, params.Message)
 	appendPluginLog(params.PluginID, "info", params.Message)
 
-	result := map[string]interface{}{"ok": true}
+	result := map[string]any{"ok": true}
 	return jsonutil.Marshal(result)
 }
 
@@ -601,7 +599,7 @@ func hostLogError(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage,
 	log.Printf("[plugin:%s] ERROR: %s", params.PluginID, params.Message)
 	appendPluginLog(params.PluginID, "error", params.Message)
 
-	result := map[string]interface{}{"ok": true}
+	result := map[string]any{"ok": true}
 	return jsonutil.Marshal(result)
 }
 
@@ -643,7 +641,7 @@ func hostUINotify(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage,
 	})
 	log.Printf("[plugin:%s] NOTIFY [%s] %s: %s", params.PluginID, params.Type, params.Title, params.Message)
 
-	result := map[string]interface{}{"ok": true}
+	result := map[string]any{"ok": true}
 	return jsonutil.Marshal(result)
 }
 
@@ -667,7 +665,7 @@ func hostEnvGet(_ context.Context, args jsonv1.RawMessage) (jsonv1.RawMessage, e
 
 	value := os.Getenv(upperName)
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"name":  upperName,
 		"value": value,
 	}

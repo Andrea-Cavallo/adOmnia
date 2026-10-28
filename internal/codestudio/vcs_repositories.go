@@ -1,10 +1,11 @@
 package codestudio
 
 import (
-	"adomnia/internal/git"
 	"fmt"
 	"path/filepath"
 	"sort"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 )
 
 func (s *Service) repositoryRoots(session Session) ([]string, error) {

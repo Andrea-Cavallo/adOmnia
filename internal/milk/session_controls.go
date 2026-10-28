@@ -1,9 +1,6 @@
 package milk
 
 import (
-	"adomnia/internal/aipolicy"
-	"adomnia/internal/airedact"
-	"adomnia/internal/jsonutil"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -11,6 +8,9 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/airedact"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"os"
 	"path/filepath"

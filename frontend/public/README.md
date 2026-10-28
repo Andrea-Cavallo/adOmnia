@@ -163,6 +163,6 @@ Source files, build scripts, frontend package manifests, Docker lab files, works
 
 ## License
 
-MIT License. See [LICENSE.md](LICENSE.md).
+MIT License. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
 
 Developed by Andrea Cavallo.

@@ -1,6 +1,6 @@
 package main
 
-import "adomnia/internal/pdfsign"
+import "github.com/Andrea-Cavallo/adOmnia/internal/pdfsign"
 
 func (a *App) SignPdfDocumentBase64(reqJSON string) (string, error) {
 	return pdfsign.Sign(reqJSON)

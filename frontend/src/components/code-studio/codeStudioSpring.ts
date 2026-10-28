@@ -2,7 +2,7 @@ import { monaco } from '@/lib/monacoSetup'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useSpringStore, springStateOf } from '@/stores/codeStudioSpring'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
-import type { SpringProperty, SpringValue } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { SpringProperty, SpringValue } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import {
   beanForInjection,
   effectiveValues,

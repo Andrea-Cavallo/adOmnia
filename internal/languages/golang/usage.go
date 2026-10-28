@@ -4,9 +4,10 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"slices"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // Tipi di utilizzo ricavati dall'AST Go (alias locali dei valori del core).
@@ -146,19 +147,9 @@ func isWrite(ident *ast.Ident, path []ast.Node) bool {
 }
 
 func containsIdent(names []*ast.Ident, ident *ast.Ident) bool {
-	for _, name := range names {
-		if name == ident {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(names, ident)
 }
 
 func containsExpr(expressions []ast.Expr, target ast.Expr) bool {
-	for _, expression := range expressions {
-		if expression == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(expressions, target)
 }

@@ -1,4 +1,4 @@
-import * as AppBindings from '../../bindings/adomnia/app'
+import * as AppBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 export function safeSelectFolder(title: string): Promise<string> {
   // Wails 3 has no `window.go` global; the binding is imported directly.
   const fn = AppBindings.SelectFolder

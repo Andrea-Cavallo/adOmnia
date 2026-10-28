@@ -1,4 +1,4 @@
-import type { PomDependency, VersionInfo } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { PomDependency, VersionInfo } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { SecurityBand, SecurityFinding } from '../securityIntel-api'
 
 /** Rischio massimo per ordinare: la riga di una dipendenza mostra il peggiore. */

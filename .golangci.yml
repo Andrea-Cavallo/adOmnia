@@ -11,12 +11,19 @@ linters:
   enable:
     - copyloopvar
     - durationcheck
+    - errorlint
     - gocyclo
+    - modernize
     - nakedret
     - whitespace
   settings:
     gocyclo:
       min-complexity: 40
+    modernize:
+      disable:
+        # omitzero assumes encoding/json v1, where omitempty on a struct or time.Time is a no-op. adOmnia
+        # marshals with json v2, which omits empty objects: dropping the tag would change persisted JSON.
+        - omitzero
     staticcheck:
       checks:
         - all

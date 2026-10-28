@@ -7,10 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 const (
@@ -105,11 +106,8 @@ func unitInCandidate(visit project.DirectoryVisit) (project.Unit, bool) {
 			candidate = true
 			break
 		}
-		for _, build := range gradleBuildFiles {
-			if name == build {
-				candidate = true
-				break
-			}
+		if slices.Contains(gradleBuildFiles, name) {
+			candidate = true
 		}
 	}
 	if !candidate {

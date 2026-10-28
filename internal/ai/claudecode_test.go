@@ -1,18 +1,20 @@
 package ai
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"encoding/json/v2"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TestMain isolates the package from the developer's real ~/.claude files.
@@ -178,7 +180,7 @@ func TestClaudeCodeCacheReloadsOnChange(t *testing.T) {
 	if got := LoadClaudeCodeSettings("").Model(); got != "claude-one" {
 		t.Fatalf("Model() = %q", got)
 	}
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		LoadClaudeCodeSettings("")
 	}
 	if reads := claudeFileReads - readsBefore; reads != 1 {
@@ -215,7 +217,7 @@ func TestClaudeCodeCachedLoadIsCheap(t *testing.T) {
 	LoadClaudeCodeSettings(f.workspace)
 	const n = 200
 	samples := make([]time.Duration, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		start := time.Now()
 		LoadClaudeCodeSettings(f.workspace)
 		samples = append(samples, time.Since(start))
@@ -223,7 +225,7 @@ func TestClaudeCodeCachedLoadIsCheap(t *testing.T) {
 	// Si guarda il decimo percentile, non la media: il carico della macchina (una suite che gira su
 	// centinaia di package) aggiunge latenza a ogni chiamata ma non la toglie, e una media segnalerebbe
 	// un rallentamento che il percorso cached non ha. Il percentile misura il costo reale della cache.
-	sort.Slice(samples, func(i, j int) bool { return samples[i] < samples[j] })
+	slices.Sort(samples)
 	if cheap := samples[len(samples)/10]; cheap > time.Millisecond {
 		t.Fatalf("cached load = %s (10th percentile of %d), want < 1ms", cheap, n)
 	}
@@ -233,7 +235,7 @@ func BenchmarkLoadClaudeCodeSettingsCached(b *testing.B) {
 	dir := b.TempDir()
 	b.Setenv("CLAUDE_CONFIG_DIR", dir)
 	_ = os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"env":{"ANTHROPIC_MODEL":"m"}}`), 0o600)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		LoadClaudeCodeSettings("")
 	}
 }
@@ -349,9 +351,7 @@ func TestClaudeCodeAnthropicUsesBaseURLAndCredentials(t *testing.T) {
 			var captured capturedRequest
 			srv := anthropicTestServer(t, &captured)
 			env := map[string]string{"ANTHROPIC_BASE_URL": srv.URL + "/"}
-			for k, v := range tc.fileEnv {
-				env[k] = v
-			}
+			maps.Copy(env, tc.fileEnv)
 			f.write(t, ClaudeScopeProject, envJSON(env, ""))
 			for k, v := range tc.processEnv {
 				t.Setenv(k, v)

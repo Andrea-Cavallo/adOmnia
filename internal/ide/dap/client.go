@@ -2,13 +2,13 @@
 package dap
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"strconv"
 	"strings"
@@ -42,7 +42,12 @@ type rawMessage struct {
 	Message    string            `json:"message"`
 	Body       jsonv1.RawMessage `json:"body"`
 	Event      string            `json:"event"`
+	Arguments  jsonv1.RawMessage `json:"arguments"`
 }
+
+// ReverseHandler gestisce una richiesta inversa del debug adapter (adapter → client). Restituisce
+// true quando l'ha gestita: la risposta success parte da sola, e false diventa un errore esplicito.
+type ReverseHandler func(command string, arguments jsonv1.RawMessage) bool
 
 // ResponseError è una risposta DAP con success=false.
 type ResponseError struct {
@@ -68,6 +73,15 @@ type Client struct {
 	done    chan struct{}
 	err     error
 	once    sync.Once
+	reverse ReverseHandler
+}
+
+// SetReverseHandler registra chi gestisce le richieste inverse dell'adapter (per ora
+// `startDebugging`: una sessione figlia su una nuova connessione allo stesso server).
+func (c *Client) SetReverseHandler(handler ReverseHandler) {
+	c.mu.Lock()
+	c.reverse = handler
+	c.mu.Unlock()
 }
 
 // NewClient avvia la lettura dello stream; gli eventi arrivano in ordine sul canale Events.
@@ -191,10 +205,23 @@ func (c *Client) read(reader *bufio.Reader) {
 				return
 			}
 		case "request":
-			// Richieste inverse (es. runInTerminal) non supportate: si risponde con un errore esplicito,
-			// in un goroutine separato, così la lettura non si blocca se l'adapter sta scrivendo.
-			reply := response{Type: "response", RequestSeq: incoming.Seq, Command: incoming.Command, Success: false, Message: "non supportato da adOmnia"}
-			go func() { _ = c.write(reply) }()
+			// Richieste inverse (js-debug: startDebugging). Il gestore decide se è supportata; in ogni
+			// caso la risposta parte da una goroutine, così la lettura non si blocca se l'adapter sta
+			// scrivendo, e un comando non supportato riceve un errore esplicito.
+			c.mu.Lock()
+			handler := c.reverse
+			c.mu.Unlock()
+			go func(request rawMessage) {
+				success := false
+				if handler != nil {
+					success = handler(request.Command, request.Arguments)
+				}
+				reply := response{Type: "response", RequestSeq: request.Seq, Command: request.Command, Success: success}
+				if !success {
+					reply.Message = "non supportato da adOmnia"
+				}
+				_ = c.write(reply)
+			}(incoming)
 		}
 	}
 }

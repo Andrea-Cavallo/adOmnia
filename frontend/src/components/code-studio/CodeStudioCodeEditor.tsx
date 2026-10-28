@@ -1,3 +1,4 @@
+import { installSymbolOriginCopy } from './codeStudioSymbolOriginEditor'
 import { installInlineDiagnostics } from './codeStudioInlineDiagnostics'
 import { attachEditorMode } from './codeStudioEditorModes'
 import { CodeStudioEditorModeNotice } from './CodeStudioEditorModeNotice'
@@ -201,6 +202,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       if (position) callbacks.current.onCursor(position.lineNumber, position.column)
     })
     installCodeStudioEditorActions(editor)
+    installSymbolOriginCopy(editor)
     installIDEExtensionActions(editor)
     installCodeStudioAIActions(editor)
     installRecursiveCallMarkers(editor)

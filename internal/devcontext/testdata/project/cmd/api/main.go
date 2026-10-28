@@ -8,3 +8,7 @@ func main() {
 	mux.HandleFunc("GET /payments/{id}", getPayment)
 	_ = http.ListenAndServe(":8080", mux) // nosemgrep: go.lang.security.audit.net.use-tls.use-tls -- loopback-only example/fixture
 }
+
+func createPayment(w http.ResponseWriter, r *http.Request) {}
+
+func getPayment(w http.ResponseWriter, r *http.Request) {}

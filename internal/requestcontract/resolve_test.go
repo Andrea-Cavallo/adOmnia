@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
 )
 
 func TestBuildHTTPPayloadCreatesMultipartFieldsAndFiles(t *testing.T) {

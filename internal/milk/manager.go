@@ -1,9 +1,9 @@
 package milk
 
 import (
-	"adomnia/internal/aipolicy"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"bufio"
 	"context"

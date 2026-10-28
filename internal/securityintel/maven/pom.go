@@ -9,13 +9,14 @@ package maven
 
 import (
 	"encoding/xml"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 const maxPomBytes = 4 << 20
@@ -153,12 +154,8 @@ func Interpolate(value string, properties map[string]string) string {
 // esplicite. Le proprietà implicite di Maven sono quelle che ogni pom ha sempre.
 func PomProperties(pom POM, inherited map[string]string) map[string]string {
 	properties := map[string]string{}
-	for key, value := range inherited {
-		properties[key] = value
-	}
-	for key, value := range pom.Properties.Map() {
-		properties[key] = value
-	}
+	maps.Copy(properties, inherited)
+	maps.Copy(properties, pom.Properties.Map())
 	groupID := pom.GroupID
 	if groupID == "" && pom.Parent != nil {
 		groupID = pom.Parent.GroupID
@@ -223,8 +220,8 @@ func ScopeOf(dependency Dependency) string {
 // impostato nell'ambiente, altrimenti ~/.m2/repository.
 func LocalRepository(environment []string) string {
 	for _, entry := range environment {
-		if strings.HasPrefix(entry, "maven.repo.local=") {
-			if path := strings.TrimPrefix(entry, "maven.repo.local="); path != "" {
+		if after, ok := strings.CutPrefix(entry, "maven.repo.local="); ok {
+			if path := after; path != "" {
 				return path
 			}
 		}
@@ -245,11 +242,11 @@ func LocalRepository(environment []string) string {
 
 // extractOption estrae il valore di un'opzione "-D" da una riga di argomenti.
 func extractOption(arguments, prefix string) (string, bool) {
-	index := strings.Index(arguments, prefix)
-	if index < 0 {
+	_, after, ok := strings.Cut(arguments, prefix)
+	if !ok {
 		return "", false
 	}
-	value := arguments[index+len(prefix):]
+	value := after
 	if end := strings.IndexAny(value, " \t"); end >= 0 {
 		value = value[:end]
 	}

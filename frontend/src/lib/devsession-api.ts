@@ -1,4 +1,4 @@
-import * as DevSessionBindings from '../../bindings/adomnia/devsession'
+import * as DevSessionBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/devsession'
 
 /** Header adOmnia adds to requests sent to a live service, so its logs and messages can be tied back. */
 export const CORRELATION_HEADER = 'X-AdOmnia-Request-ID'

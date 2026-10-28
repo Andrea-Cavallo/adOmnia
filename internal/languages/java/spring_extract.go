@@ -2,6 +2,7 @@ package java
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -418,10 +419,8 @@ func annotationString(args string, names ...string) string {
 			}
 		}
 	}
-	for _, name := range names {
-		if name == "value" {
-			return annotationValue(args)
-		}
+	if slices.Contains(names, "value") {
+		return annotationValue(args)
 	}
 	return ""
 }
@@ -469,8 +468,8 @@ func propertyKey(expression string) (key, fallback string) {
 		return "", ""
 	}
 	inner := match[1]
-	if cut := strings.Index(inner, ":"); cut >= 0 {
-		return strings.TrimSpace(inner[:cut]), strings.TrimSpace(inner[cut+1:])
+	if before, after, ok := strings.Cut(inner, ":"); ok {
+		return strings.TrimSpace(before), strings.TrimSpace(after)
 	}
 	return strings.TrimSpace(inner), ""
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"adomnia/internal/codestudio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
 	"os"
 	"path/filepath"
 	"testing"

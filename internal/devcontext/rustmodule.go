@@ -4,7 +4,7 @@ import (
 	"path"
 	"strings"
 
-	"adomnia/internal/ide/toml"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toml"
 )
 
 // detectCargoToml: ogni crate con `[package]` diventa un'entità module, come un go.mod, così i

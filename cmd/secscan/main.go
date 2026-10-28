@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/securityintel"
-	"adomnia/internal/securityintel/standard"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/standard"
 )
 
 func main() {

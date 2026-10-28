@@ -177,7 +177,7 @@ interface BrokerMessage {
 const mechanisms = ['PLAIN', 'SCRAM-SHA-256', 'SCRAM-SHA-512']
 const inputClass = 'h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent'
 const textAreaClass = 'px-3 py-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 font-mono outline-none focus:border-accent resize-y'
-const labelClass = 'text-[10px] text-text-4 uppercase tracking-wider'
+const labelClass = 'text-[10px] text-text-3 uppercase tracking-wider'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -190,12 +190,12 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Metric({ icon: Icon, label, value, tone = 'default' }: { icon: LucideIcon; label: string; value: string; tone?: 'default' | 'good' | 'warn' | 'bad' }) {
   return (
-    <div className="min-w-0 rounded border border-border-1 bg-surface-1 px-3 py-2">
+    <div className="min-w-0 border-b border-border-1 px-3 py-3">
       <div className="flex items-center gap-2">
-        <Icon size={14} className={cn(tone === 'good' && 'text-success', tone === 'warn' && 'text-warning', tone === 'bad' && 'text-error', tone === 'default' && 'text-accent')} />
+        <Icon size={14} className={cn(tone === 'good' && 'text-success', tone === 'warn' && 'text-warning', tone === 'bad' && 'text-error', tone === 'default' && 'text-text-3')} />
         <span className="text-[10px] uppercase tracking-wider text-text-4">{label}</span>
       </div>
-      <p className="mt-1 truncate text-sm font-semibold text-text-1">{value}</p>
+      <p className="mt-2 truncate text-lg font-medium tabular-nums text-text-1">{value}</p>
     </div>
   )
 }
@@ -237,7 +237,7 @@ function JsonResult({ result }: { result: unknown }) {
     )
   }
   return (
-    <pre className="max-h-[calc(100vh-190px)] overflow-auto rounded border border-border-1 bg-surface-1 p-3 text-xs font-mono text-text-2 whitespace-pre-wrap">
+    <pre className="max-h-[calc(100vh-190px)] overflow-auto border-b border-border-1 py-4 text-xs font-mono text-text-2 whitespace-pre-wrap">
       {JSON.stringify(result, null, 2)}
     </pre>
   )
@@ -247,17 +247,20 @@ export function KafkaPanel({
   onMessages,
   embedded = false,
   requestedTab,
+  onTabChange,
   connectNonce,
   onConnectionState,
 }: {
   onMessages?: (msgs: BrokerMessage[]) => void
   embedded?: boolean
   requestedTab?: Tab
+  onTabChange?: (tab: Tab) => void
   connectNonce?: number
   onConnectionState?: (state: 'connected' | 'error', detail: string) => void
 }) {
   const port = useServerPort()
-  const [tab, setTab] = useState<Tab>('messages')
+  const [tab, setTab] = useState<Tab>(requestedTab ?? 'messages')
+  useEffect(() => { onTabChange?.(tab) }, [tab, onTabChange])
   const [connectionEditorOpen, setConnectionEditorOpen] = useState(false)
   const [readMode, setReadMode] = useState<'inspect' | 'consume'>('inspect')
   const [produceMode, setProduceMode] = useState<ProduceMode>('single')
@@ -376,6 +379,7 @@ export function KafkaPanel({
     const url = serverUrl(port, path)
     if (!url) {
       setError('Backend not ready')
+      onConnectionState?.('error', 'Backend not ready')
       return null
     }
     setLoading(label)
@@ -563,8 +567,8 @@ export function KafkaPanel({
   }
 
   const tabClass = (item: Tab) => cn(
-    'inline-flex items-center gap-2 rounded px-3 py-2 text-xs font-semibold transition-colors',
-    tab === item ? 'bg-accent text-white' : 'text-text-3 hover:bg-surface-2 hover:text-text-1'
+    'inline-flex items-center gap-2 border-b-2 px-3 py-2 text-xs transition-colors',
+    tab === item ? 'border-text-1 text-text-1 font-semibold' : 'border-transparent text-text-3 hover:bg-surface-2 hover:text-text-1'
   )
 
   const busy = (label: string) => loading === label
@@ -587,55 +591,55 @@ export function KafkaPanel({
             </div>
           )}
 
-          <div className="mb-4 rounded border border-border-1 bg-surface-1">
+          <div className="mb-3 border-b border-border-1">
             <div className="flex flex-wrap items-center gap-2 px-3 py-2">
-              <Radio size={13} className="text-accent" />
+              <Radio size={13} className="text-text-3" />
               <span className="text-xs font-semibold text-text-1">{cfg.topic || 'Select a topic'}</span>
               <span className="max-w-[280px] truncate font-mono text-[10px] text-text-4">{brokers.join(', ') || 'Broker address required'}</span>
-              <span className="ml-auto text-[10px] text-text-4">Inspect mode never joins an application group or commits offsets.</span>
-              <button type="button" onClick={() => setConnectionEditorOpen((open) => !open)} className="rounded border border-border-2 px-2 py-1 text-[10px] text-text-3 hover:text-text-1">Edit connection</button>
+
+              <button type="button" aria-expanded={connectionEditorOpen} onClick={() => setConnectionEditorOpen((open) => !open)} className="ml-auto rounded border border-border-2 px-2 py-1 text-[11px] text-text-2 hover:text-text-1">Connection settings</button>
             </div>
             {connectionEditorOpen && <div className="border-t border-border-1 p-3"><ConnectionCard cfg={cfg} setCfg={setCfg} compact /></div>}
           </div>
 
-          <div className="my-4 flex flex-wrap gap-2">
-            <button className={tabClass('messages')} onClick={() => setTab('messages')}><Search size={14} /> Messages</button>
-            <button className={tabClass('produce')} onClick={() => setTab('produce')}><Send size={14} /> Publish</button>
-            <button className={tabClass('topics')} onClick={() => setTab('topics')}><ListTree size={14} /> Topics</button>
-            <button className={tabClass('groups')} onClick={() => setTab('groups')}><Users size={14} /> Consumer groups</button>
-            <button className={tabClass('overview')} onClick={() => setTab('overview')}><Gauge size={14} /> Cluster</button>
-            <button className={tabClass('load')} onClick={() => setTab('load')}><Activity size={14} /> Load</button>
-          </div>
+          <nav aria-label="Kafka views" className="mb-4 flex flex-wrap gap-1 border-b border-border-1">
+            <button aria-pressed={tab === 'messages'} className={tabClass('messages')} onClick={() => setTab('messages')}><Search size={14} /> Messages</button>
+            <button aria-pressed={tab === 'produce'} className={tabClass('produce')} onClick={() => setTab('produce')}><Send size={14} /> Publish</button>
+            <button aria-pressed={tab === 'topics'} className={tabClass('topics')} onClick={() => setTab('topics')}><ListTree size={14} /> Topics</button>
+            <button aria-pressed={tab === 'groups'} className={tabClass('groups')} onClick={() => setTab('groups')}><Users size={14} /> Consumer groups</button>
+            <button aria-pressed={tab === 'overview'} className={tabClass('overview')} onClick={() => setTab('overview')}><Gauge size={14} /> Cluster</button>
+            <button aria-pressed={tab === 'load'} className={tabClass('load')} onClick={() => setTab('load')}><Activity size={14} /> Load</button>
+          </nav>
 
           {tab === 'overview' && (
             <section className="space-y-4">
-              <div className="flex items-center justify-between rounded border border-border-1 bg-surface-1 p-3">
+              <div className="flex items-center justify-between border-b border-border-1 py-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-text-1">Kafka Cluster Overview</h3>
+                  <h3 className="text-sm font-semibold text-text-1">Cluster</h3>
                   <p className="mt-1 text-[11px] text-text-4">Broker inventory, controller, topic/partition counts and basic partition health.</p>
                 </div>
                 <button onClick={refreshOverview} disabled={!!loading || brokers.length === 0} className="inline-flex items-center gap-2 rounded bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
                   <RefreshCcw size={14} /> {busy('overview') ? 'Refreshing...' : 'Refresh'}
                 </button>
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                <Metric icon={CheckCircle2} label="Health" value={overview?.health ?? '-'} tone={overview?.health === 'healthy' ? 'good' : overview?.health === 'critical' ? 'bad' : 'warn'} />
+              <div className="grid grid-cols-2 gap-x-4 xl:grid-cols-4">
+                <Metric icon={CheckCircle2} label="Health" value={overview?.health ?? '-'} tone={!overview ? 'default' : overview.health === 'healthy' ? 'good' : overview?.health === 'critical' ? 'bad' : 'warn'} />
                 <Metric icon={Database} label="Brokers" value={String(overview?.brokerCount ?? '-')} />
-                <Metric icon={ListTree} label="Topics" value={`${overview?.topicCount ?? '-'} (${overview?.internalTopicCount ?? 0} internal)`} />
+                <Metric icon={ListTree} label="Topics" value={`${overview?.topicCount ?? '-'} (${overview?.internalTopicCount ?? '-'} internal)`} />
                 <Metric icon={Split} label="Partitions" value={String(overview?.partitionCount ?? '-')} />
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-3">
                 <Metric icon={Gauge} label="Controller" value={String(overview?.controllerId ?? '-')} />
-                <Metric icon={AlertTriangle} label="Under replicated" value={String(overview?.underReplicated ?? '-')} tone={(overview?.underReplicated ?? 0) > 0 ? 'warn' : 'good'} />
-                <Metric icon={AlertTriangle} label="Offline partitions" value={String(overview?.offlinePartitions ?? '-')} tone={(overview?.offlinePartitions ?? 0) > 0 ? 'bad' : 'good'} />
+                <Metric icon={AlertTriangle} label="Under replicated" value={String(overview?.underReplicated ?? '-')} tone={!overview ? 'default' : (overview?.underReplicated ?? 0) > 0 ? 'warn' : 'good'} />
+                <Metric icon={AlertTriangle} label="Offline partitions" value={String(overview?.offlinePartitions ?? '-')} tone={!overview ? 'default' : (overview?.offlinePartitions ?? 0) > 0 ? 'bad' : 'good'} />
               </div>
               <BrokerTable brokers={overview?.brokers ?? []} />
             </section>
           )}
 
           {tab === 'topics' && (
-            <section className="grid grid-cols-[300px_1fr] gap-4">
-              <div className="rounded border border-border-1 bg-surface-1 p-3">
+            <section className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-4">
+              <div className="border-b border-border-1 py-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-text-1">Topic Explorer</h3>
                   <button onClick={listTopics} disabled={!!loading || brokers.length === 0} title="List topics" className="grid h-8 w-8 place-items-center rounded bg-surface-2 text-text-3 hover:text-accent disabled:opacity-50">
@@ -656,7 +660,7 @@ export function KafkaPanel({
               </div>
 
               <div className="space-y-4">
-                <div className="rounded border border-border-1 bg-surface-1 p-3">
+                <div className="border-b border-border-1 py-4">
                   <h3 className="text-sm font-semibold text-text-1">Create / edit topic</h3>
                   <div className="mt-3 grid grid-cols-[1fr_110px_110px] gap-3">
                     <Field label="New topic"><input value={newTopic} onChange={(event) => setNewTopic(event.target.value)} className={inputClass} placeholder="payments.events" /></Field>
@@ -681,8 +685,8 @@ export function KafkaPanel({
           )}
 
           {tab === 'groups' && (
-            <section className="grid grid-cols-[300px_1fr] gap-4">
-              <div className="rounded border border-border-1 bg-surface-1 p-3">
+            <section className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-4">
+              <div className="border-b border-border-1 py-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-text-1">Consumer Groups</h3>
                   <button onClick={listGroups} disabled={!!loading || brokers.length === 0} className="grid h-8 w-8 place-items-center rounded bg-surface-2 text-text-3 hover:text-accent disabled:opacity-50">
@@ -710,7 +714,7 @@ export function KafkaPanel({
 
           {tab === 'messages' && (
             <section className="space-y-4">
-              <div className="rounded border border-border-1 bg-surface-1 p-3">
+              <div className="border-b border-border-1 py-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-text-1">{cfg.topic || 'Topic messages'}</h3>
@@ -722,20 +726,23 @@ export function KafkaPanel({
                   </div>
                 </div>
                 {readMode === 'inspect' ? <>
-                  <div className="mt-3 grid grid-cols-5 gap-3">
+                  <div className="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-5">
                     <Field label="Partitions"><input value={browsePartition} onChange={(event) => setBrowsePartition(event.target.value)} className={inputClass} placeholder="all" /></Field>
                     <Field label="From offset"><input value={browseOffset} onChange={(event) => setBrowseOffset(event.target.value)} className={inputClass} placeholder="oldest" /></Field>
                     <Field label="From timestamp"><input type="datetime-local" value={browseTimestamp} onChange={(event) => setBrowseTimestamp(event.target.value)} className={inputClass} /></Field>
                     <Field label="Limit"><input type="number" min={1} max={500} value={maxMsgs} onChange={(event) => setMaxMsgs(Number(event.target.value))} className={inputClass} /></Field>
                     <Field label="Scan timeout"><input type="number" min={1} max={30} value={maxWait} onChange={(event) => setMaxWait(Number(event.target.value))} className={inputClass} /></Field>
                   </div>
+                  <details className="mt-3">
+                    <summary className="cursor-pointer py-1 text-xs text-text-2">Message filters{[keyFilter, valueFilter, headerKeyFilter, headerValueFilter].some(Boolean) ? ' · active' : ''}</summary>
                   <div className="mt-3 grid grid-cols-4 gap-3">
                     <Field label="Key contains"><input value={keyFilter} onChange={(event) => setKeyFilter(event.target.value)} className={inputClass} /></Field>
                     <Field label="Payload contains"><input value={valueFilter} onChange={(event) => setValueFilter(event.target.value)} className={inputClass} /></Field>
                     <Field label="Header key"><input value={headerKeyFilter} onChange={(event) => setHeaderKeyFilter(event.target.value)} className={inputClass} /></Field>
                     <Field label="Header value"><input value={headerValueFilter} onChange={(event) => setHeaderValueFilter(event.target.value)} className={inputClass} /></Field>
                   </div>
-                  <div className="mt-3 flex items-center gap-3">
+                  </details>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
                     <label className="inline-flex items-center gap-2 text-xs text-text-2"><input type="checkbox" checked={tail} onChange={(event) => setTail(event.target.checked)} className="accent-accent" /> Live from latest offset</label>
                     <span className="text-[10px] text-text-4">Scope: bounded broker scan · max {maxMsgs} messages · {maxWait}s</span>
                     <button onClick={browseMessages} disabled={!!loading || !cfg.topic || brokers.length === 0} className="ml-auto inline-flex items-center gap-2 rounded bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><Search size={14} /> {busy('browse') ? 'Reading…' : 'Read messages'}</button>
@@ -768,7 +775,7 @@ export function KafkaPanel({
 
           {tab === 'produce' && (
             <section className="space-y-4">
-              <div className="rounded border border-border-1 bg-surface-1 p-3">
+              <div className="border-b border-border-1 py-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-text-1">Producer</h3>
                   <label className="ml-auto mr-2 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded border border-border-2 px-2 text-[11px] text-text-2 hover:border-accent hover:text-accent" title="Load a message saved with Save fixture">
@@ -824,7 +831,7 @@ export function KafkaPanel({
 
           {tab === 'load' && (
             <section className="space-y-4">
-              <div className="rounded border border-border-1 bg-surface-1 p-3">
+              <div className="border-b border-border-1 py-4">
                 <h3 className="text-sm font-semibold text-text-1">Producer load test</h3>
                 <p className="mt-1 text-[11px] text-text-4">Send messages concurrently and measure broker acknowledgement latency and throughput.</p>
                 <div className="mt-3 grid grid-cols-4 gap-3">
@@ -860,7 +867,7 @@ export function KafkaPanel({
             </div>
             {error && <div className="mb-4 rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">{error}</div>}
             <JsonResult result={actionResult} />
-            <details className="mt-4 rounded border border-border-1 bg-surface-1 p-3">
+            <details className="mt-4 border-b border-border-1 py-4">
               <summary className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-text-2">
                 <Lock size={13} className="text-accent" />
                 Connection security details
@@ -880,7 +887,7 @@ export function KafkaPanel({
 
 function ConnectionCard({ cfg, setCfg, compact = false }: { cfg: BrokerConfig; setCfg: Dispatch<SetStateAction<BrokerConfig>>; compact?: boolean }) {
   return (
-    <div className="rounded border border-border-1 bg-surface-1 p-3">
+    <div className="border-b border-border-1 py-4">
       <div className="mb-3 flex items-center gap-2">
         <Radio size={14} className="text-accent" />
         <h3 className="text-xs font-semibold text-text-1">Kafka connection</h3>
@@ -917,14 +924,14 @@ function ConnectionCard({ cfg, setCfg, compact = false }: { cfg: BrokerConfig; s
 
 function BrokerTable({ brokers }: { brokers: Array<{ id?: number; addr?: string; controller?: boolean }> }) {
   return (
-    <div className="rounded border border-border-1 bg-surface-1">
-      <div className="border-b border-border-1 px-3 py-2 text-xs font-semibold text-text-1">Brokers</div>
+    <div className="overflow-x-auto border-y border-border-1">
+      <div className="flex items-center justify-between border-b border-border-1 px-3 py-3 text-xs text-text-1"><h3 className="font-semibold">Brokers</h3><span className="font-mono text-text-3">{brokers.length}</span></div>
       {brokers.length === 0 ? (
-        <p className="px-3 py-4 text-xs text-text-4">No broker data loaded.</p>
+        <p className="px-3 py-4 text-xs text-text-4">Check the connection or refresh the cluster to load brokers.</p>
       ) : brokers.map((broker) => (
-        <div key={`${broker.id}-${broker.addr}`} className="grid grid-cols-[90px_1fr_110px] gap-3 border-b border-border-1/50 px-3 py-2 text-xs last:border-b-0">
-          <span className="font-mono text-accent">#{broker.id ?? '-'}</span>
-          <span className="font-mono text-text-2">{broker.addr}</span>
+        <div key={`${broker.id}-${broker.addr}`} className="grid min-w-[360px] grid-cols-[64px_minmax(0,1fr)_90px] gap-3 border-b border-border-1/50 px-3 py-2 text-xs last:border-b-0">
+          <span className="font-mono text-text-3">#{broker.id ?? '-'}</span>
+          <span className="break-all font-mono text-text-1">{broker.addr}</span>
           <span className={cn('text-[11px]', broker.controller ? 'text-success' : 'text-text-4')}>{broker.controller ? 'controller' : 'broker'}</span>
         </div>
       ))}
@@ -943,7 +950,7 @@ function TopicDetailView({ detail, onRefresh }: { detail: TopicDetail | null; on
   }
   return (
     <div className="space-y-4">
-      <div className="rounded border border-border-1 bg-surface-1 p-3">
+      <div className="border-b border-border-1 py-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
             <h3 className="font-mono text-sm font-semibold text-text-1">{detail.topic}</h3>
@@ -963,7 +970,7 @@ function TopicDetailView({ detail, onRefresh }: { detail: TopicDetail | null; on
           ))}
         </div>
       </div>
-      <div className="rounded border border-border-1 bg-surface-1 p-3">
+      <div className="border-b border-border-1 py-4">
         <div className="mb-2 flex items-center gap-2"><Settings size={14} className="text-accent" /><h3 className="text-xs font-semibold text-text-1">Topic configs</h3></div>
         <div className="max-h-72 overflow-auto rounded border border-border-1 bg-surface-0">
           {(detail.configs ?? []).slice(0, 80).map((config) => (
@@ -1006,13 +1013,13 @@ function ConsumerGroupDetail({
   }
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-x-4 xl:grid-cols-4">
         <Metric icon={Users} label="Group" value={group.groupId} />
         <Metric icon={Activity} label="State" value={group.state || '-'} />
         <Metric icon={Database} label="Members" value={String(group.memberCount)} />
         <Metric icon={AlertTriangle} label="Lag" value={String(group.totalLag)} tone={group.totalLag > 0 ? 'warn' : 'good'} />
       </div>
-      <div className="rounded border border-border-1 bg-surface-1 p-3">
+      <div className="border-b border-border-1 py-4">
         <div className="mb-3 grid grid-cols-[140px_160px_1fr] gap-3">
           <Field label="Reset mode">
             <select value={resetMode} onChange={(event) => setResetMode(event.target.value)} className={inputClass}>
@@ -1039,7 +1046,7 @@ function ConsumerGroupDetail({
           ))}
         </div>
       </div>
-      <div className="rounded border border-border-1 bg-surface-1 p-3">
+      <div className="border-b border-border-1 py-4">
         <h3 className="mb-2 text-xs font-semibold text-text-1">Members</h3>
         <div className="max-h-48 overflow-auto rounded border border-border-1 bg-surface-0">
           {group.members.length === 0 ? <p className="px-3 py-4 text-xs text-text-4">No active members.</p> : group.members.map((member) => (
@@ -1111,7 +1118,7 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
   }
 
   return (
-    <div className="rounded border border-border-1 bg-surface-1 p-3">
+    <div className="border-b border-border-1 py-4">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2"><Layers size={14} className="text-accent" /><h3 className="text-xs font-semibold text-text-1">Messages</h3></div>
         {selected && <button onClick={() => setSelectedIndex(null)} className="text-[11px] text-text-4 hover:text-text-1">Close detail</button>}
@@ -1163,11 +1170,11 @@ function MessageList({ messages, empty, topic, onRepublish, onReplay }: MessageL
                 <p className="text-[10px] uppercase tracking-wider text-text-4">Go types inferred from this message</p>
                 <button onClick={() => void navigator.clipboard?.writeText(goStruct)} className="rounded border border-border-2 px-2 py-0.5 text-[11px] text-text-2 hover:border-accent hover:text-accent">Copy Go</button>
               </div>
-              <pre className="max-h-72 overflow-auto rounded border border-border-1 bg-surface-1 p-3 font-mono text-[11px] leading-relaxed text-text-2">{goStruct}</pre>
+              <pre className="max-h-72 overflow-auto border-b border-border-1 py-4 font-mono text-[11px] leading-relaxed text-text-2">{goStruct}</pre>
             </div>
           )}
           <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-            <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-3 font-mono text-[11px] leading-relaxed text-text-2">{selected.value || '(empty payload)'}</pre>
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words border-b border-border-1 py-4 font-mono text-[11px] leading-relaxed text-text-2">{selected.value || '(empty payload)'}</pre>
             <div className="space-y-3 text-[11px]"><div><p className="mb-1 uppercase tracking-wider text-text-4">Key</p><p className="break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-text-2">{selected.key || '(no key)'}</p></div><div><p className="mb-1 uppercase tracking-wider text-text-4">Headers</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border-1 bg-surface-1 p-2 font-mono text-[10px] text-text-3">{Object.keys(selected.headers ?? {}).length ? JSON.stringify(selected.headers, null, 2) : '(none)'}</pre></div></div>
           </div>
         </section>

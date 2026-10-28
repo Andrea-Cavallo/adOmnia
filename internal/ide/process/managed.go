@@ -1,13 +1,14 @@
 package process
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Registro locale dei processi figli gestiti da adOmnia (gopls, debug adapter).

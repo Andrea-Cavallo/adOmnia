@@ -2,8 +2,8 @@
 package requestwindow
 
 import (
-	"adomnia/internal/windowfit"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 	"net/url"
 	"strings"
 	"sync"

@@ -5,7 +5,7 @@ import { useModalFocusTrap } from '@/lib/accessibility'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { withGoIDETask } from '@/stores/codeStudioTasks'
-import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { documentForModel } from './codeStudioLanguageFeatures'
 
 interface MoveSymbolRequest {

@@ -1,7 +1,6 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
@@ -15,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const (

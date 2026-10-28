@@ -1,11 +1,12 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/run"
-	"adomnia/internal/languages/golang"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 const (

@@ -42,7 +42,7 @@ import { NetworkPrivacySettings } from './NetworkPrivacySettings'
 import { UpdateCheckRow } from './UpdateCheckRow'
 import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
 import { redactSensitiveData } from '@/lib/secretRedaction'
-import * as AppBindings from '../../../bindings/adomnia/app'
+import * as AppBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 const ThemePanel = lazy(() => import('@/components/themes/ThemePanel').then((module) => ({ default: module.ThemePanel })))
 const TemplatesWorkspace = lazy(() => import('@/components/templates/TemplatesWorkspace').then((module) => ({ default: module.TemplatesWorkspace })))
 

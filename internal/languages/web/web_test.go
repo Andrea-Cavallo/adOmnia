@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 func writeFile(t *testing.T, path, content string) {

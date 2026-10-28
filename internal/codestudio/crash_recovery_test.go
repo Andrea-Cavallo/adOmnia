@@ -1,12 +1,13 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestRuntimeLockDetectsCrashFromHeartbeatNotPID(t *testing.T) {
@@ -143,7 +144,7 @@ func TestTenDirtyBuffersAreAllRecoveredAndSessionViewKeepsCursorsAndSplit(t *tes
 		t.Fatal(err)
 	}
 	id := string(session.ID)
-	for index := 0; index < 10; index++ {
+	for index := range 10 {
 		name := filepath.Join("pkg", "file"+string(rune('a'+index))+".go")
 		writeFixtureFile(t, project, filepath.ToSlash(name), "package pkg\n")
 		if err := service.RememberBuffer(id, filepath.ToSlash(name), "package pkg\n\n// dirty\n", ""); err != nil {

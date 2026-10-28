@@ -1,9 +1,6 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
@@ -11,6 +8,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 const (

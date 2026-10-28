@@ -64,8 +64,8 @@ func TestQuickOpenIndexIsRebuiltAfterInvalidation(t *testing.T) {
 func TestQuickOpenStaysFastOnLargeProjects(t *testing.T) {
 	root := t.TempDir()
 	files := make([]string, 0, 3200)
-	for pkg := 0; pkg < 400; pkg++ {
-		for file := 0; file < 8; file++ {
+	for pkg := range 400 {
+		for file := range 8 {
 			files = append(files, fmt.Sprintf("pkg/p%03d/file%d.go", pkg, file))
 		}
 	}

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const binaryBuildTimeout = 5 * time.Minute
@@ -58,7 +58,7 @@ func (s *Service) buildExecutable(ctx context.Context, sessionID, root, target s
 	if err != nil {
 		return executable{}, errors.New("go is not available: detect or configure the toolchain")
 	}
-	environment = withGoFirstInPath(environment, binary)
+	environment = golang.WithGoFirstInPath(environment, binary)
 	temp, err := os.MkdirTemp("", "adomnia-bin-")
 	if err != nil {
 		return executable{}, err

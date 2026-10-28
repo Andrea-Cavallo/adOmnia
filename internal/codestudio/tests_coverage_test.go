@@ -3,8 +3,8 @@ package codestudio
 import (
 	"testing"
 
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TestHostCoverageMapsAdapterReport: il report neutro dell'adapter diventa il modello della vista,

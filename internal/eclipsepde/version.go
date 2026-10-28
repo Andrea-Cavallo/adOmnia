@@ -120,12 +120,12 @@ func ParseVersionRange(s string) (VersionRange, error) {
 	}
 	close := s[len(s)-1]
 	inner := s[1 : len(s)-1]
-	comma := strings.Index(inner, ",")
-	if comma < 0 {
+	before, after, ok := strings.Cut(inner, ",")
+	if !ok {
 		return VersionRange{}, fmt.Errorf("invalid OSGi version range %q: missing ','", s)
 	}
-	floorStr := strings.TrimSpace(inner[:comma])
-	ceilStr := strings.TrimSpace(inner[comma+1:])
+	floorStr := strings.TrimSpace(before)
+	ceilStr := strings.TrimSpace(after)
 	r := VersionRange{
 		IncludeFloor:   open == '[',
 		IncludeCeiling: close == ']',

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/httpexec"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 func prepareHeadlessAuth(req requestcontract.Request, vars map[string]string) (requestcontract.Request, error) {

@@ -1,7 +1,7 @@
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
-import type { PreviewConfig, PreviewRequest, WebProjectReport, Execution } from '../../bindings/adomnia/internal/codestudio/models'
-import type { Preview } from '../../bindings/adomnia/internal/ide/preview/models'
-import type { Info as WebProjectInfo, Runtime as WebRuntime } from '../../bindings/adomnia/internal/languages/web/models'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { PreviewConfig, PreviewRequest, WebProjectReport, Execution } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+import type { Preview } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/preview/models'
+import type { Info as WebProjectInfo, Runtime as WebRuntime } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/web/models'
 
 export type LivePreview = Preview
 export type LivePreviewConfig = PreviewConfig

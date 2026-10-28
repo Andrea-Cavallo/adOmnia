@@ -1,3 +1,4 @@
+// Package procutil creates child processes with the platform policy adOmnia needs: no console window on Windows and a dedicated process group, so a whole process tree can be stopped.
 package procutil
 
 import (

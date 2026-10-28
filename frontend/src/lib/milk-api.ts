@@ -1,4 +1,4 @@
-import * as MilkBindings from '../../bindings/adomnia/milk'
+import * as MilkBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/milk'
 import { Events } from '@wailsio/runtime'
 import type {
   AgentsInfo,
@@ -8,7 +8,7 @@ import type {
   Settings,
   Status,
   SessionControls,
-} from '../../bindings/adomnia/internal/milk/models'
+} from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/milk/models'
 
 export type MilkStatus = Status
 export type AgentSessionControls = SessionControls

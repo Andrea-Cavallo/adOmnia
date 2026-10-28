@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Debug dei test Rust (RS-5.5): `cargo test --no-run --message-format=json` compila il solo target
@@ -127,7 +127,7 @@ func binaryTestStem(file string) (string, bool) {
 // `profile.test` (le dipendenze e i proc-macro non sono binari di test).
 func parseTestArtifactPath(output []byte) (string, error) {
 	executable := ""
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		var message struct {
 			Reason     string `json:"reason"`
 			Executable string `json:"executable"`

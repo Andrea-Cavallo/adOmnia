@@ -164,3 +164,88 @@ describe('OAS 3.2 metadata and multi content-type', () => {
     expect(methods).toContain('QUERY')
   })
 })
+
+describe('buildApiDocModel – local $ref components (issue #228)', () => {
+  const spec = {
+    openapi: '3.0.3',
+    info: { title: 'Refs', version: '1' },
+    paths: {
+      '/validate': {
+        post: {
+          parameters: [{ $ref: '#/components/parameters/Trace' }],
+          requestBody: { $ref: '#/components/requestBodies/Input' },
+          responses: {
+            '200': {
+              description: 'Successful response',
+              headers: { 'Request-Id': { $ref: '#/components/headers/Request-Id' } },
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationResponse' } } },
+            },
+            '400': { $ref: '#/components/responses/BadRequest400' },
+            '401': { $ref: '#/components/responses/Unauthorized401' },
+          },
+        },
+      },
+    },
+    components: {
+      schemas: {
+        ValidationResponse: { type: 'object', properties: { ok: { type: 'boolean' } } },
+        Error: { type: 'object', properties: { code: { type: 'string' } } },
+      },
+      parameters: { Trace: { name: 'X-Trace', in: 'header', required: true, schema: { type: 'string' } } },
+      requestBodies: { Input: { required: true, content: { 'application/json': { schema: { type: 'object' } } } } },
+      headers: { 'Request-Id': { description: 'Correlation id', required: true, schema: { type: 'string', format: 'uuid' } } },
+      examples: { BadRequest: { value: { code: 'BAD_INPUT' } } },
+      responses: {
+        BadRequest400: {
+          description: 'Bad request',
+          headers: { 'Request-Id': { $ref: '#/components/headers/Request-Id' } },
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/Error' },
+              examples: { bad: { $ref: '#/components/examples/BadRequest' } },
+            },
+          },
+        },
+        // A ref chain: one reusable response aliasing another.
+        Unauthorized401: { $ref: '#/components/responses/Generic401' },
+        Generic401: { description: 'Unauthorized', content: { 'application/problem+json': { schema: { $ref: '#/components/schemas/Error' } } } },
+      },
+    },
+  }
+  const op = buildApiDocModel(spec).tags[0].operations[0]
+  const byStatus = (s: string) => op.responses.find((r) => r.status === s)!
+
+  it('resolves referenced responses with description, content, examples and headers', () => {
+    const bad = byStatus('400')
+    expect(bad.description).toBe('Bad request')
+    expect(bad.contentTypes).toEqual(['application/json'])
+    expect(bad.schema).toEqual({ $ref: '#/components/schemas/Error' })
+    expect(bad.example).toEqual({ code: 'BAD_INPUT' })
+    expect(bad.headers).toEqual([
+      { name: 'Request-Id', required: true, description: 'Correlation id', schema: { type: 'string', format: 'uuid' } },
+    ])
+  })
+
+  it('follows ref chains and resolves inline response headers', () => {
+    expect(byStatus('401').description).toBe('Unauthorized')
+    expect(byStatus('401').contentTypes).toEqual(['application/problem+json'])
+    expect(byStatus('200').headers[0].description).toBe('Correlation id')
+  })
+
+  it('resolves referenced parameters and request bodies', () => {
+    expect(op.parameters).toEqual([expect.objectContaining({ name: 'X-Trace', in: 'header', required: true })])
+    expect(op.requestBody?.required).toBe(true)
+  })
+
+  it('survives ref cycles and dangling refs', () => {
+    const cyclic = buildApiDocModel({
+      openapi: '3.0.0',
+      info: { title: 'c', version: '1' },
+      paths: { '/x': { get: { responses: { '500': { $ref: '#/components/responses/A' }, '404': { $ref: '#/nope' } } } } },
+      components: { responses: { A: { $ref: '#/components/responses/B' }, B: { $ref: '#/components/responses/A' } } },
+    })
+    const responses = cyclic.tags[0].operations[0].responses
+    expect(responses.map((r) => r.status)).toEqual(['404', '500'])
+    expect(responses.every((r) => r.contents.length === 0 && r.headers.length === 0)).toBe(true)
+  })
+})

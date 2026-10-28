@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 const killChildEnv = "ADOMNIA_RECOVERY_KILL_CHILD"
@@ -58,7 +58,7 @@ func TestRecoveryChildWritesSnapshots(t *testing.T) {
 	manager.BindWorkspace("t", "ws-b")
 	padding := strings.Repeat("x", 64*1024) // snapshot grandi: la scrittura dura abbastanza da essere interrotta
 	for round := 0; ; round++ {
-		for file := 0; file < killDirtyFiles; file++ {
+		for file := range killDirtyFiles {
 			if err := manager.Remember(SessionID([]string{"s", "t"}[file%2]), fmt.Sprintf("f%d.go", file), fmt.Sprintf("round %d\n%s", round, padding), ""); err != nil {
 				t.Fatal(err)
 			}
@@ -161,8 +161,8 @@ func TestRecoveryLatencyWithTenDirtyFiles(t *testing.T) {
 	padding := strings.Repeat("x", 64*1024)
 	var slowest time.Duration
 	var snapshots []time.Duration
-	for round := 0; round < 5; round++ {
-		for file := 0; file < killDirtyFiles; file++ {
+	for round := range 5 {
+		for file := range killDirtyFiles {
 			start := time.Now()
 			if err := manager.Remember(SessionID([]string{"s", "t"}[file%2]), fmt.Sprintf("f%d.go", file), fmt.Sprintf("round %d\n%s", round, padding), ""); err != nil {
 				t.Fatal(err)
@@ -177,7 +177,7 @@ func TestRecoveryLatencyWithTenDirtyFiles(t *testing.T) {
 	}
 
 	var restores []time.Duration
-	for attempt := 0; attempt < 20; attempt++ {
+	for range 20 {
 		start := time.Now()
 		restored := NewRecoveryManager(bboltRecoveryStore{})
 		if err := restored.Load(); err != nil {

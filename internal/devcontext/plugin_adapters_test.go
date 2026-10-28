@@ -1,7 +1,7 @@
 package devcontext
 
 import (
-	"adomnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 	"os"
 	"path/filepath"
 	"testing"

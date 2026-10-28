@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 func write(t *testing.T, path, content string) {

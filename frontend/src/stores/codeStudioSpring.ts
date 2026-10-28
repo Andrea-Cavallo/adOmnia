@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SpringIndex, SpringMetadataReport } from '../../bindings/adomnia/internal/languages/java/models'
+import type { SpringIndex, SpringMetadataReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { getSpringIndex, refreshSpringMetadata } from '@/lib/code-studio-api'
 
 /** Stato dell'indice Spring di una sessione: l'indice è locale, i metadata solo su richiesta. */

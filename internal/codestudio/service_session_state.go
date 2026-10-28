@@ -164,8 +164,8 @@ func classifyRecovery(entry recoveredEntry, disk, token string, readErr error) s
 
 // diskContentHash estrae la parte di hash del token "mtime-size-hash".
 func diskContentHash(token string) string {
-	if index := strings.LastIndexByte(token, '-'); index >= 0 {
-		return token[index+1:]
+	if _, after, ok := strings.CutLast(token, "-"); ok {
+		return after
 	}
 	return token
 }

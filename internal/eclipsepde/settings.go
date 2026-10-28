@@ -1,12 +1,13 @@
 package eclipsepde
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TargetSettingsFile is versionable with the project: adOmnia settings live in
@@ -111,7 +112,7 @@ func SaveTargetSettings(root string, settings TargetSettings) error {
 	closeErr := temporary.Close()
 	if writeErr != nil || closeErr != nil {
 		_ = os.Remove(name)
-		return fmt.Errorf("cannot write %s: %v %v", TargetSettingsFile, writeErr, closeErr)
+		return fmt.Errorf("cannot write %s: %w %w", TargetSettingsFile, writeErr, closeErr)
 	}
 	if err := os.Rename(name, path); err != nil {
 		_ = os.Remove(name)

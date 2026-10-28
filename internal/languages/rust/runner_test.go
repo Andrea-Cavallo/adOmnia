@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func TestCargoArguments(t *testing.T) {

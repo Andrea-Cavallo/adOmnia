@@ -12,7 +12,7 @@ func TestLocalHistoryLimitsRetentionAndSecrets(t *testing.T) {
 	clock := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
 	history.now = func() time.Time { return clock }
 
-	for index := 0; index < maxHistoryRevisionsByFile+5; index++ {
+	for index := range maxHistoryRevisionsByFile + 5 {
 		clock = clock.Add(time.Minute)
 		if err := history.Record("s1", "main.go", strings.Repeat("x", index+1), "Saved"); err != nil {
 			t.Fatal(err)

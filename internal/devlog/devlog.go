@@ -2,7 +2,6 @@
 package devlog
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"fmt"
 	"io"
@@ -12,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const IsDev = true
@@ -20,7 +21,7 @@ var (
 	baseDir string
 	logFile *os.File
 	mu      sync.Mutex
-	counter int64
+	counter atomic.Int64
 )
 
 // Init deve essere chiamato una sola volta all'avvio, prima di qualunque log.
@@ -77,7 +78,7 @@ func write(source, level, fn, msg string, data map[string]any) {
 	if !IsDev || logFile == nil {
 		return
 	}
-	idx := atomic.AddInt64(&counter, 1)
+	idx := counter.Add(1)
 	e := Entry{
 		I:      idx,
 		Ts:     time.Now().UTC().Format(time.RFC3339Nano),

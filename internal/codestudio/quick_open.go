@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	ideproject "adomnia/internal/ide/project"
+	ideproject "github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // fileIndex tiene in memoria l'elenco dei file di ogni progetto per Quick Open: si costruisce alla

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 const fakeServerEnv = "ADOMNIA_FAKE_COPILOT_SERVER"
@@ -143,7 +143,7 @@ func TestChatStreamsAndFiltersWorkspaceContext(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	manager.DocumentOpened(OpenedDocument{ID: "chat-doc", URI: fileURI(filepath.Join(root, "main.go")), Root: root, RootName: "demo", RelativePath: "main.go", LanguageID: "go", Text: "package main\nfunc main() {}\n"})
+	manager.DocumentOpened(OpenedDocument{ID: "chat-doc", URI: lsp.FileURI(filepath.Join(root, "main.go")), Root: root, RootName: "demo", RelativePath: "main.go", LanguageID: "go", Text: "package main\nfunc main() {}\n"})
 
 	var events []ChatEvent
 	var eventMu sync.Mutex
@@ -216,7 +216,7 @@ func TestWorkspaceFoldersWaitUntilServerInitialized(t *testing.T) {
 		defer manager.mu.Unlock()
 		return manager.current != nil
 	}, "Copilot process created")
-	manager.DocumentOpened(OpenedDocument{ID: "during-init", URI: fileURI(filepath.Join(root, "main.go")), Root: root, RootName: "during-init", RelativePath: "main.go", LanguageID: "go", Text: "package main\n"})
+	manager.DocumentOpened(OpenedDocument{ID: "during-init", URI: lsp.FileURI(filepath.Join(root, "main.go")), Root: root, RootName: "during-init", RelativePath: "main.go", LanguageID: "go", Text: "package main\n"})
 	if err := <-started; err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +292,7 @@ func TestManagerReadyWithEnterpriseHostAndGhostText(t *testing.T) {
 	}
 	waitFor(t, func() bool { return logContains(manager, `"github-enterprise":{"uri":"https://company.ghe.com"}`) }, "enterprise configuration")
 
-	manager.DocumentOpened(OpenedDocument{ID: "doc-1", URI: fileURI(filepath.Join(root, "main.go")), Root: root, RootName: "demo", RelativePath: "main.go", LanguageID: "go", Text: "package main\n"})
+	manager.DocumentOpened(OpenedDocument{ID: "doc-1", URI: lsp.FileURI(filepath.Join(root, "main.go")), Root: root, RootName: "demo", RelativePath: "main.go", LanguageID: "go", Text: "package main\n"})
 	waitFor(t, func() bool { return logContains(manager, "open file://") }, "didOpen")
 	items, err := manager.InlineCompletion(context.Background(), InlineCompletionRequest{DocumentID: "doc-1", Version: 1, Line: 3, Column: 5, TabSize: 4, Automatic: true})
 	if err != nil {
@@ -309,8 +309,8 @@ func TestManagerReadyWithEnterpriseHostAndGhostText(t *testing.T) {
 func TestSensitiveFilesNeverReachCopilot(t *testing.T) {
 	root := t.TempDir()
 	manager := startFakeManager(t, DefaultProfile(), root)
-	manager.DocumentOpened(OpenedDocument{ID: "env", URI: fileURI(filepath.Join(root, ".env")), Root: root, RootName: "demo", RelativePath: ".env", LanguageID: "dotenv", Text: "TOKEN=secret"})
-	if _, err := manager.InlineCompletion(context.Background(), InlineCompletionRequest{DocumentID: "env", Line: 1, Column: 1}); err != ErrExcluded {
+	manager.DocumentOpened(OpenedDocument{ID: "env", URI: lsp.FileURI(filepath.Join(root, ".env")), Root: root, RootName: "demo", RelativePath: ".env", LanguageID: "dotenv", Text: "TOKEN=secret"})
+	if _, err := manager.InlineCompletion(context.Background(), InlineCompletionRequest{DocumentID: "env", Line: 1, Column: 1}); !errors.Is(err, ErrExcluded) {
 		t.Fatalf("expected ErrExcluded, got %v", err)
 	}
 	time.Sleep(100 * time.Millisecond)
@@ -322,7 +322,7 @@ func TestSensitiveFilesNeverReachCopilot(t *testing.T) {
 func TestStaleBufferGivesNoSuggestion(t *testing.T) {
 	root := t.TempDir()
 	manager := startFakeManager(t, DefaultProfile(), root)
-	manager.DocumentOpened(OpenedDocument{ID: "doc", URI: fileURI(filepath.Join(root, "a.go")), Root: root, RootName: "demo", RelativePath: "a.go", LanguageID: "go", Text: "package a\n"})
+	manager.DocumentOpened(OpenedDocument{ID: "doc", URI: lsp.FileURI(filepath.Join(root, "a.go")), Root: root, RootName: "demo", RelativePath: "a.go", LanguageID: "go", Text: "package a\n"})
 	items, err := manager.InlineCompletion(context.Background(), InlineCompletionRequest{DocumentID: "doc", Version: 5, Line: 1, Column: 1})
 	if err != nil || len(items) != 0 {
 		t.Fatalf("a request newer than the synced buffer must return nothing: %+v %v", items, err)

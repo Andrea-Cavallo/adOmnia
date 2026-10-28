@@ -1,13 +1,14 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // fakeModuleProxy simula `go list -m` per un modulo con le versioni e le direttive go indicate.

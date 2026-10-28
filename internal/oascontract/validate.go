@@ -1,3 +1,4 @@
+// Package oascontract checks an HTTP response against the matching operation of an OpenAPI document and reports contract violations.
 package oascontract
 
 import (
@@ -8,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/httpexec"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 	"gopkg.in/yaml.v3"
 )
 

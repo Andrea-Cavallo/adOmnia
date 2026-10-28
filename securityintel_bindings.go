@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/securityintel"
-	"adomnia/internal/securityintel/standard"
-	"adomnia/internal/securityintel/strix"
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/standard"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/strix"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 // SecurityIntel espone adOmnia Security Intelligence al frontend: scansione delle
@@ -366,12 +367,8 @@ func resolveOptionsFrom(options ScanOptionsJSON, settings securityintel.Workspac
 // significa aggiungere una riga qui, non una seconda logica CVE.
 func buildSecurityEngine(options ScanOptionsJSON, settings securityintel.WorkspaceSettings) (*securityintel.Engine, *securityintel.AdvisoryCache) {
 	overrides := map[string]string{}
-	for key, value := range settings.SourceEndpoints {
-		overrides[key] = value
-	}
-	for key, value := range options.SourceEndpoints {
-		overrides[key] = value
-	}
+	maps.Copy(overrides, settings.SourceEndpoints)
+	maps.Copy(overrides, options.SourceEndpoints)
 	return standard.Engine(securityintelCacheDirectory(), overrides)
 }
 

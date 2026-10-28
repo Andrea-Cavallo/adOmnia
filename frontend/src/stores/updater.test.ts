@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 const api = vi.hoisted(()=>({check:vi.fn(),status:vi.fn(),download:vi.fn(),cancel:vi.fn(),schedule:vi.fn(),confirm:vi.fn(),openLog:vi.fn(),general:{autoCheckUpdates:true,autoDownloadUpdates:true,updateChannel:'auto'}}))
-vi.mock('../../bindings/adomnia/app',()=>({CheckUpdateChannel:api.check,GetUpdateState:api.status,DownloadUpdate:api.download,CancelUpdateDownload:api.cancel,ScheduleUpdateOnExit:api.schedule,ConfirmUpdateStartup:api.confirm,OpenUpdateApplyLog:api.openLog}))
+vi.mock('../../bindings/github.com/Andrea-Cavallo/adOmnia/app',()=>({CheckUpdateChannel:api.check,GetUpdateState:api.status,DownloadUpdate:api.download,CancelUpdateDownload:api.cancel,ScheduleUpdateOnExit:api.schedule,ConfirmUpdateStartup:api.confirm,OpenUpdateApplyLog:api.openLog}))
 vi.mock('./settings',()=>({useSettingsStore:{getState:()=>({loaded:true,settings:{general:api.general}})}}))
 vi.mock('@/lib/buildInfo',()=>({APP_VERSION:'0.10.0-beta.2'}))
 import { startUpdater, useUpdaterStore } from './updater'

@@ -67,7 +67,7 @@ func stripComment(line string) string {
 // splitKeyPath spezza `tool.pytest.ini_options` nelle sue parti.
 func splitKeyPath(key string) []string {
 	var parts []string
-	for _, part := range strings.Split(key, ".") {
+	for part := range strings.SplitSeq(key, ".") {
 		part = strings.Trim(strings.TrimSpace(part), `"'`)
 		if part != "" {
 			parts = append(parts, part)
@@ -102,20 +102,20 @@ func parseValue(raw string, lines []string, index *int) (any, string, bool) {
 		return nil, "", false
 	}
 	for _, marker := range []string{`"""`, `'''`} {
-		if strings.HasPrefix(raw, marker) {
-			text := strings.TrimPrefix(raw, marker)
-			if closed := strings.Index(text, marker); closed >= 0 {
-				return text[:closed], text[closed+len(marker):], true
+		if after, ok := strings.CutPrefix(raw, marker); ok {
+			text := after
+			if before, after, ok := strings.Cut(text, marker); ok {
+				return before, after, true
 			}
 			var builder strings.Builder
 			builder.WriteString(text)
 			for *index+1 < len(lines) {
 				*index++
 				next := strings.ReplaceAll(lines[*index], "\r", "")
-				if closed := strings.Index(next, marker); closed >= 0 {
+				if before, after, ok := strings.Cut(next, marker); ok {
 					builder.WriteString("\n")
-					builder.WriteString(next[:closed])
-					return builder.String(), next[closed+len(marker):], true
+					builder.WriteString(before)
+					return builder.String(), after, true
 				}
 				builder.WriteString("\n")
 				builder.WriteString(next)
@@ -183,8 +183,8 @@ func parseArray(raw string, lines []string, index *int) (any, string, bool) {
 			if text == "" || strings.HasPrefix(text, "#") {
 				break
 			}
-			if strings.HasPrefix(text, "]") {
-				return items, strings.TrimPrefix(text, "]"), true
+			if after, ok := strings.CutPrefix(text, "]"); ok {
+				return items, after, true
 			}
 			value, rest, ok := parseValue(text, lines, index)
 			if !ok {
@@ -208,7 +208,7 @@ func parseInlineTable(raw string, _ []string, _ *int) (any, string, bool) {
 		return nil, "", false
 	}
 	table := map[string]any{}
-	for _, entry := range strings.Split(raw[1:end], ",") {
+	for entry := range strings.SplitSeq(raw[1:end], ",") {
 		key, value, ok := cutAssignment(strings.TrimSpace(entry))
 		if !ok {
 			continue

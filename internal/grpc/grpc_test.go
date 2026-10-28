@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json/v2"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/jhump/protoreflect/desc"            //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/desc/protoparse" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"google.golang.org/grpc"
@@ -49,7 +50,7 @@ func (grpcStreamingTestService) StreamingInputCall(stream grpc.ClientStreamingSe
 	var total int32
 	for {
 		message, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return stream.SendAndClose(&grpc_testing.StreamingInputCallResponse{AggregatedPayloadSize: total})
 		}
 		if err != nil {
@@ -62,7 +63,7 @@ func (grpcStreamingTestService) StreamingInputCall(stream grpc.ClientStreamingSe
 func (grpcStreamingTestService) FullDuplexCall(stream grpc.BidiStreamingServer[grpc_testing.StreamingOutputCallRequest, grpc_testing.StreamingOutputCallResponse]) error {
 	for {
 		message, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {
@@ -98,10 +99,10 @@ func startGrpcStreamingTestServer(t *testing.T) string {
 	return listener.Addr().String()
 }
 
-func invokeGrpcStreamingRequest(t *testing.T, address string, method string, messages []map[string]interface{}) grpcInvokeResponse {
+func invokeGrpcStreamingRequest(t *testing.T, address string, method string, messages []map[string]any) grpcInvokeResponse {
 	t.Helper()
 
-	body, err := jsonutil.Marshal(map[string]interface{}{
+	body, err := jsonutil.Marshal(map[string]any{
 		"address":  address,
 		"service":  "grpc.testing.TestService",
 		"method":   method,
@@ -129,15 +130,15 @@ func invokeGrpcStreamingRequest(t *testing.T, address string, method string, mes
 }
 
 func TestGrpcInvokeClientStreamingMessages(t *testing.T) {
-	result := invokeGrpcStreamingRequest(t, startGrpcStreamingTestServer(t), "StreamingInputCall", []map[string]interface{}{
-		{"payload": map[string]interface{}{"body": "YQ=="}},
-		{"payload": map[string]interface{}{"body": "YmM="}},
+	result := invokeGrpcStreamingRequest(t, startGrpcStreamingTestServer(t), "StreamingInputCall", []map[string]any{
+		{"payload": map[string]any{"body": "YQ=="}},
+		{"payload": map[string]any{"body": "YmM="}},
 	})
 
 	if len(result.Messages) != 1 {
 		t.Fatalf("client-stream response messages = %d, want 1", len(result.Messages))
 	}
-	response, ok := result.Messages[0].(map[string]interface{})
+	response, ok := result.Messages[0].(map[string]any)
 	if !ok {
 		t.Fatalf("client-stream response type = %T", result.Messages[0])
 	}
@@ -151,9 +152,9 @@ func TestGrpcInvokeClientStreamingMessages(t *testing.T) {
 }
 
 func TestGrpcInvokeBidirectionalStreamingMessages(t *testing.T) {
-	result := invokeGrpcStreamingRequest(t, startGrpcStreamingTestServer(t), "FullDuplexCall", []map[string]interface{}{
-		{"payload": map[string]interface{}{"body": "YQ=="}},
-		{"payload": map[string]interface{}{"body": "YmM="}},
+	result := invokeGrpcStreamingRequest(t, startGrpcStreamingTestServer(t), "FullDuplexCall", []map[string]any{
+		{"payload": map[string]any{"body": "YQ=="}},
+		{"payload": map[string]any{"body": "YmM="}},
 	})
 
 	if len(result.Messages) != 2 {
@@ -187,7 +188,7 @@ func TestGrpcStreamEmitsMessagesBeforeCompletion(t *testing.T) {
 }
 
 func TestGrpcParseProtoWithImportsReturnsRichSchema(t *testing.T) {
-	body, err := jsonutil.Marshal(map[string]interface{}{
+	body, err := jsonutil.Marshal(map[string]any{
 		"files": map[string]string{
 			"common.proto": `syntax = "proto3";
 				package demo;

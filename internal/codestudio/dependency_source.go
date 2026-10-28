@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	golang "adomnia/internal/languages/golang"
+	golang "github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	modulepath "golang.org/x/mod/module"
 )
 

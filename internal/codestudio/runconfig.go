@@ -1,12 +1,13 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/golang"
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // normalizeConfiguration valida e ripulisce una configurazione prima di salvarla o avviarla.

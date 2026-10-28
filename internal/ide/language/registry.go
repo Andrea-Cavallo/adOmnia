@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"sync"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 var idPattern = regexp.MustCompile(`^[a-z][a-z0-9+#._-]{0,31}$`)

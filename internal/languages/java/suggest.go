@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // buildTool è il comando con cui si esegue il build di un'unità: il wrapper del progetto se c'è
@@ -54,8 +54,8 @@ func wrapperSupport(kind string) string {
 
 // resolve è il percorso dell'eseguibile: il wrapper dentro l'unità o lo strumento trovato nel PATH.
 func (t buildTool) resolve(unit project.Unit) string {
-	if strings.HasPrefix(t.Target, "./") {
-		return filepath.Join(unit.Root, filepath.FromSlash(strings.TrimPrefix(t.Target, "./")))
+	if after, ok := strings.CutPrefix(t.Target, "./"); ok {
+		return filepath.Join(unit.Root, filepath.FromSlash(after))
 	}
 	if found, err := lookPath(t.Target); err == nil {
 		return found

@@ -1,10 +1,10 @@
 package preview
 
 import (
-	"adomnia/internal/jsonutil"
 	"bytes"
 	_ "embed"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net"
 	"net/http"

@@ -29,24 +29,24 @@ function sessionWith(units: Array<{ language: string; kind: string; manifest: st
 
 const session = sessionWith([{ language: 'go', kind: 'module', manifest: 'C:/work/app/go.mod' }])
 
-describe('separate Structure and AI navigation', () => {
-  it('shows only Structure, Context and Project in the Structure pane', () => {
+describe('Structure and AI navigation in the same pane', () => {
+  it('always shows the AI Assistant tab next to Structure, Context and Project', () => {
     useCodeStudioAssistantStore.getState().close()
     const html = renderToStaticMarkup(<CodeStudioSidePane session={session} document={null} />)
-    expect(html.match(/role="tab"/g)).toHaveLength(3)
+    expect(html.match(/role="tab"/g)).toHaveLength(4)
     expect(html).toContain('Structure')
     expect(html).toContain('Context')
     expect(html).toContain('Project')
-    expect(html).not.toContain('AI Assistant')
+    expect(html).toContain('AI Assistant')
   })
-  it('shows only AI navigation when the assistant is selected', () => {
+  it('shows the AI hub when the assistant is selected, with the other tabs still reachable', () => {
     useCodeStudioAssistantStore.getState().open('claude')
     try {
       const html = renderToStaticMarkup(<CodeStudioSidePane session={session} document={null} />)
-      expect(html.match(/role="tab"/g)).toHaveLength(1)
+      expect(html.match(/role="tab"/g)).toHaveLength(4)
       expect(html).toContain('AI providers')
-      expect(html).not.toContain('> Context')
-      expect(html).not.toContain('> Project')
+      expect(html).toContain('Structure')
+      expect(html).toContain('Project')
     } finally {
       useCodeStudioAssistantStore.getState().close()
     }
@@ -55,9 +55,10 @@ describe('separate Structure and AI navigation', () => {
     useCodeStudioAssistantStore.getState().close()
     const java = sessionWith([{ language: 'java', kind: 'maven', manifest: 'C:/work/app/pom.xml' }])
     const html = renderToStaticMarkup(<CodeStudioSidePane session={java} document={null} />)
-    expect(html.match(/role="tab"/g)).toHaveLength(2)
+    expect(html.match(/role="tab"/g)).toHaveLength(3)
     expect(html).toContain('Structure')
     expect(html).toContain('Project')
+    expect(html).toContain('AI Assistant')
     expect(html).not.toContain('Context')
   })
 })

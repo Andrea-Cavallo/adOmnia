@@ -1,4 +1,4 @@
-import * as DevContextBindings from '../../bindings/adomnia/devcontext'
+import * as DevContextBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/devcontext'
 import type { EntityRef } from './entities/types'
 
 export type DevEntityKind = 'module' | 'route' | 'service' | 'datasource' | 'envvar' | 'contract' | 'table' | 'topic' | 'grpc' | 'websocket'

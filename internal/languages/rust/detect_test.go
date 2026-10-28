@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 func TestDetectSingleBinCrate(t *testing.T) {

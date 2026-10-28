@@ -27,7 +27,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | F | [Customization & Extensibility](#f-customization--extensibility) | Themes, JavaScript plugins, Template | ~51 |
 | G | [Platform](#g-platform) | Settings, Infrastructure, UI Framework | ~76 |
 | H | [API Design](#h-api-design) | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | ~10 |
-| I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | MCP Client/Debugger, Sessions & Transport, Server Generator | ~12 |
+| I | [MCP (Model Context Protocol)](#i-mcp-model-context-protocol) | Server Generator, Agent Integration | ~12 |
 | J | [Code Studio (IDE)](#j-code-studio-ide) | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration, Java/Spring/JVM | ~43 |
 | K | [Security Intelligence](#k-security-intelligence) | CVE Intelligence Engine, Risk-based prioritisation, Reachability, Maven & Go Analyzers, Remediation, SBOM & Export, Security Center | ~13 |
 
@@ -979,25 +979,9 @@ Spec-first design module: define and maintain OpenAPI specs and reusable models,
 
 ## I. MCP (MODEL CONTEXT PROTOCOL)
 
-AI-integration module: connect to, debug, and generate MCP servers — exposing API endpoints as AI-invocable tools.
+AI-integration module: generate MCP servers — exposing API endpoints as AI-invocable tools.
 
-### I1. MCP Client / Debugger
-
-| # | Feature | Description |
-|---|-------------|-------------|
-| I1.1 | **Connection Manager** | Sidebar of saved MCP server configurations with connect/disconnect. |
-| I1.2 | **Tool Browser + Form Caller** | Structured browser of exposed tools with a form-based call interface (no raw JSON textarea). |
-| I1.3 | **Resources Browser** | Inspects resources exposed by the connected server. |
-| I1.4 | **Call History** | History panel with a request/response inspector for each tool call. |
-
-### I2. MCP Sessions & Transport
-
-| # | Feature | Description |
-|---|-------------|-------------|
-| I2.1 | **Multi-Session** | Connect to multiple MCP servers simultaneously, each as an independent session. |
-| I2.2 | **STDIO Transport + Process State** | STDIO (local process) transport with exposed process health status. |
-| I2.3 | **Restart Without Reconnect** | Restart a session's process without losing its saved configuration. |
-| I2.4 | **Env Injection** | Injects adOmnia environment variables into the STDIO `Env` before launching the server process. |
+The standalone MCP client and its session transports have been removed. Existing local client configuration is left untouched.
 
 ### I3. MCP Server Generator
 
@@ -1006,7 +990,7 @@ AI-integration module: connect to, debug, and generate MCP servers — exposing 
 | I3.1 | **Collection → MCP Server** | Generates a self-contained TypeScript/Node.js MCP server from a collection (optionally with `_openapiSpec`) or a bare list of requests. |
 | I3.2 | **Endpoints as Tools** | Each endpoint becomes an AI-invocable tool, ready for Claude Code or any MCP-compatible agent. |
 | I3.3 | **Auth Passthrough** | The generated server passes through authentication for the mapped requests. |
-| I3.4 | **Output Directory Picker** | Choose the output directory; generation runs from the "Generate Server" tab in the MCP panel. |
+| I3.4 | **Output Directory Picker** | Choose the output directory; generation runs from the MCP Server Generator panel. |
 
 ### I4. MCP for AI Agents
 
@@ -1155,7 +1139,7 @@ rail panel.
 | **F — Customization & Extensibility** | Themes, JavaScript plugins, Template | 51 |
 | **G — Platform** | Settings, Infrastructure, UI Framework | 76 |
 | **H — API Design** | OpenAPI Import/Export, Schema Components, Visual OpenAPI Editor | 10 |
-| **I — MCP (Model Context Protocol)** | Client/Debugger, Sessions & Transport, Server Generator | 12 |
+| **I — MCP (Model Context Protocol)** | Server Generator, Agent Integration | 12 |
 | **J - Code Studio (IDE)** | Projects & Windows, Editor & gopls, Lint & AI, Run/Test/Debug, Toolchain, Git & Integration | 39 |
 | **K - Security Intelligence** | CVE Intelligence Engine, Risk-based prioritisation, Reachability, Maven & Go Analyzers, Remediation, SBOM & Export, Security Center | 13 |
 | **Total** | 45 sections | **~586** |

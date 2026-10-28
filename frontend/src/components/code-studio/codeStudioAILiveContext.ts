@@ -1,4 +1,4 @@
-import { GetServerPort } from '../../../bindings/adomnia/app'
+import { GetServerPort } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { getDevContext, type DevEntity } from '@/lib/devcontext-api'
 import { safeStorageGet } from '@/lib/wailsStorage'
 import { serverUrl, sidecarFetch } from '@/lib/useServerPort'

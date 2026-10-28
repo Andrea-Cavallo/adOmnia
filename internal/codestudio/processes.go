@@ -1,6 +1,6 @@
 package codestudio
 
-import "adomnia/internal/ide/run"
+import "github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 
 type CommandSpec = run.CommandSpec
 type ProcessManager = run.ProcessManager

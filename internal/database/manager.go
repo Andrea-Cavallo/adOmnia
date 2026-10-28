@@ -1,8 +1,6 @@
 package database
 
 import (
-	"adomnia/internal/storage"
-	"adomnia/internal/vault"
 	"context"
 	"database/sql"
 	"encoding/json/v2"
@@ -14,7 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/vault"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
@@ -189,10 +190,7 @@ func (h *connectionHandle) idleTimeout() time.Duration {
 }
 func (h *connectionHandle) fail(err error) error {
 	h.failures++
-	delay := time.Second * time.Duration(1<<min(h.failures-1, 5))
-	if delay > 30*time.Second {
-		delay = 30 * time.Second
-	}
+	delay := min(time.Second*time.Duration(1<<min(h.failures-1, 5)), 30*time.Second)
 	h.retry = time.Now().Add(delay + time.Duration(rand.IntN(250))*time.Millisecond)
 	h.status.State = "error"
 	h.status.Error = "Database connection failed. Check credentials, address and server availability."

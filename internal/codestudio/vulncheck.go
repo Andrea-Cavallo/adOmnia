@@ -10,10 +10,10 @@ import (
 
 	modulepath "golang.org/x/mod/module"
 
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
-	"adomnia/internal/securityintel/govuln"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/govuln"
 )
 
 // Il modello e il parser dello stream govulncheck vivono in internal/securityintel/govuln:
@@ -119,7 +119,7 @@ func dependencyPathTo(graphOutput, mainModule, target string) []string {
 		return nil
 	}
 	edges := map[string][]string{}
-	for _, line := range strings.Split(graphOutput, "\n") {
+	for line := range strings.SplitSeq(graphOutput, "\n") {
 		from, to, ok := strings.Cut(strings.TrimSpace(line), " ")
 		if !ok {
 			continue

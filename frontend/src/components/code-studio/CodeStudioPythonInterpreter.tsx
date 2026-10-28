@@ -13,7 +13,7 @@ import {
 } from '@/lib/code-studio-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
-import type { PythonInterpreterReport } from '../../../bindings/adomnia/internal/codestudio/models'
+import type { PythonInterpreterReport } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 let openRequest: ((sessionId: string) => void) | null = null
 

@@ -37,6 +37,13 @@ func TestHierarchiesWithRealGopls(t *testing.T) {
 	if err != nil || len(roots) != 1 || roots[0].Name != "Hello" {
 		t.Fatalf("prepare call hierarchy: %v %v", hierarchyNames(roots), err)
 	}
+	preview, err := service.HierarchyPreview(sessionID, roots[0].Token)
+	if err != nil || !preview.Found || !strings.Contains(preview.Code, "func Hello(") {
+		t.Fatalf("hierarchy preview: %+v, %v", preview, err)
+	}
+	if _, err := service.HierarchyPreview(sessionID, "{}"); err == nil {
+		t.Fatal("accepted invalid preview token")
+	}
 	callers, err := service.ExpandHierarchy(ctx, sessionID, "incoming", roots[0].Token)
 	if err != nil {
 		t.Fatal(err)

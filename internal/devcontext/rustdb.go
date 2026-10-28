@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/toml"
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toml"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // detectRustDatabase: i riferimenti a database di un sorgente Rust (sqlx/diesel/sea-orm e stringhe

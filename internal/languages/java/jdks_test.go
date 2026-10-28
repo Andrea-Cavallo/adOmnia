@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func fakeJDK(t *testing.T, version string) string {

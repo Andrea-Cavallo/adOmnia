@@ -22,7 +22,7 @@ Run configurations also have additive `language` / `languageOptions` fields. The
 
 Play, Build and Debug resolve their target through the registered language adapter before a command is built. For Go, a project whose `go.mod` is at the root and whose executable is under `cmd/` runs that package from the owning module. Nested modules and `go.work` members keep separate working directories. On the first Play, Code Studio saves a shared module-scoped Run configuration. With several `main` packages it prefers the active file, then `cmd/<module-name>`; if neither identifies one target, it asks instead of guessing.
 
-Phases 1–12 are complete. The shared core owns processes, configurations, Run chains/compound execution, generic Make/Docker/command workflows and test lifecycle/history/publication. Go adapters own command options, test2json, race reports and Go source interpretation; the Wails facade preserves existing APIs and persisted fields. A fixture language runs and tests through the registry with no Go on PATH, including saved opaque options, environment files and generic commands. In the UI, `GetCapabilities().languages` lists the registered languages; each one contributes its icon, menu, commands and editor languages from `frontend/src/components/ide/languages/<id>/`. The project model carries language units only: Go modules, `go.work` and loose folders are derived from them (`goLayoutOf` in the backend, `lib/code-studio/goProject.ts` in the frontend). See [the migration plan](architecture/ide-multilanguage-refactor.md) for the decisions and the manual smoke checklist.
+Phases 1–12 are complete. The shared core owns processes, configurations, Run chains/compound execution, generic Make/Docker/command workflows and test lifecycle/history/publication. Go adapters own command options, test2json, race reports and Go source interpretation; the Wails facade preserves existing APIs and persisted fields. A fixture language runs and tests through the registry with no Go on PATH, including saved opaque options, environment files and generic commands. In the UI, `GetCapabilities().languages` lists the registered languages; each one contributes its icon, menu, commands and editor languages from `frontend/src/components/ide/languages/<id>/`. The project model carries language units only: Go modules, `go.work` and loose folders are derived from them (`goLayoutOf` in the backend, `lib/code-studio/goProject.ts` in the frontend). The package layout and its rules are in [ide-package-rules.md](architecture/ide-package-rules.md).
 
 Phase 8 was published in [`fe3456a`](https://github.com/Andrea-Cavallo/adOmnia/commit/fe3456ac351ebae9ce7d8cbd76b2ca0b070df4e4), following the phase 9 backend in `daa2e89`. Validation passed: full Go suite with managed gopls/Delve, build/vet, focused race regressions, pinned Wails bindings, TypeScript, frontend build and startup budget. Real Make passed; real Docker integration was skipped because the daemon was stopped. The new desktop build has not received the complete manual smoke check, and macOS/Linux validation remains open in phase 12.
 
@@ -597,8 +597,8 @@ Code Studio follows the GoLand keymap. The table below is generated from the com
 | Show Usages | Ctrl+Alt+F7 | ⌘⌥F7 |
 | Quick Definition | Ctrl+Shift+I | ⌘⇧I |
 | File Structure | Ctrl+F12 | ⌘F12 |
-| Back | Ctrl+Alt+ArrowLeft | ⌘⌥ArrowLeft |
-| Forward | Ctrl+Alt+ArrowRight | ⌘⌥ArrowRight |
+| Back | Alt+ArrowLeft | ⌥ArrowLeft |
+| Forward | Alt+ArrowRight | ⌥ArrowRight |
 | Toggle Bookmark | F11 | F11 |
 | Bookmarks | Shift+F11 | ⇧F11 |
 | Symbol in Workspace | Ctrl+T | ⌘T |
@@ -965,3 +965,26 @@ Run configurations provide project-aware creation, searchable saved entries and 
 ## AI chat context and attachments
 
 Claude Code and milk chat share filtered live project context and support explicit text and image attachments. Model selectors follow agent capabilities. milk's own slash commands are read from the agent (`/workflow`, `/bg`, `/tasks`, `/usage`, `/memory`, `/escalate`, `/primary`, …) and offered in a keyboard palette in the composer, so workflows, background agents and plans are usable without guessing syntax; background-agent follow-up turns appear as a marked assistant response instead of being dropped. Images use native ACP blocks when the agent advertises them, otherwise a private temporary `@<path>` reference deleted at the end of the turn — the same convention milk's TUI uses — so Claude Code can read them while a text-only local model cannot. Milk 0.7 exposes configured-agent selection, routing/reasoning controls and task plans; native provider acceptance remains pending.
+
+
+## Function Explorer and Symbol Origin Lens
+
+Call Hierarchy (`Ctrl+Alt+H`, or the editor context menu) now opens Function Explorer. With Code Vision enabled, the **callers · callees** lens opens it directly from a declaration.
+
+Function Explorer is a docked tool window inside the workspace, next to the editor. Choose **Left** or **Right** in its header and drag the splitter to resize it; side and width are saved locally (`adomnia.codestudio.functionExplorer.dock`). **Esc** or the hide button closes it.
+
+- **Calls** shows callers and callees side by side (stacked when the pane is narrow), with a source preview. Search filters loaded functions; it does not launch a workspace scan.
+- **Visual Graph** uses the same LSP hierarchy and the shared graph renderer. Callers are above the current function, callees below. Depth is 1–3, bounded to 120 functions, 240 edges and 120 expansion requests. Recursive edges retain symbol identity.
+
+A single click previews source, a double click or Enter opens it. **Alt+Left** returns to the previous editor position; explicit function jumps preserve nearby positions instead of merging them. Alt+Right goes forward. Preview reads synchronized unsaved text where available, without opening editor tabs or sending `didOpen`.
+
+The origin lens shares Code Vision's preference and resource policy. It shows the actual Go module import path plus package directory (including nested modules), the declared Java package, or the TypeScript/JavaScript module path relative to the project. It is a virtual CodeLens, never source text. Click it to reveal the source in Project Explorer; right-click the lens to copy the origin. The editor context menu also offers **Copy Symbol Origin**. No OSGi bundle or Java module name is inferred without metadata.
+
+This static call graph does not establish runtime execution, dynamic dispatch completeness, or exhaustive change impact. The profiler Call Graph and Semantic Workspace Graph retain their existing purposes.
+
+### Verification for this change
+
+- Automated: origin resolution, graph direction/recursion/budgets, nearby navigation jumps, existing Code Vision and command tests.
+- Backend: preview reads synchronized buffers and disk without opening documents; invalid preview tokens are rejected.
+- Browser fixture: popup, sidebar and visual graph rendered and inspected using illustrative call data.
+- Pending native acceptance: real Go/Java/TypeScript language servers, lens placement/copy/reveal, actual double-click plus Alt+Left/Right, and dependency-source navigation. The real-gopls integration test is skipped when gopls is unavailable.

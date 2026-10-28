@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/dap"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // DebugOptions sono le opzioni di LanguageOptions del debug Python: lo stesso target della Run
@@ -240,10 +241,5 @@ func withoutFlag(arguments []string, flag string) []string {
 
 // containsWord dice se arguments contiene la parola esatta.
 func containsWord(arguments []string, word string) bool {
-	for _, argument := range arguments {
-		if argument == word {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(arguments, word)
 }

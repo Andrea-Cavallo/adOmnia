@@ -1,6 +1,7 @@
 package codestudio
 
 import (
+	"maps"
 	"sync"
 	"time"
 )
@@ -44,8 +45,6 @@ func (s *Service) GetWorkspaceLoadPerformance() map[string]float64 {
 	s.loadPerf.mu.Lock()
 	defer s.loadPerf.mu.Unlock()
 	result := make(map[string]float64, len(s.loadPerf.values))
-	for key, value := range s.loadPerf.values {
-		result[key] = value
-	}
+	maps.Copy(result, s.loadPerf.values)
 	return result
 }

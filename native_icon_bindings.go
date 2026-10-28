@@ -1,8 +1,8 @@
 package main
 
 import (
-	"adomnia/internal/nativeicon"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/nativeicon"
 )
 
 // SetNativeIconMode updates running windows; executable/shortcut resources stay static.

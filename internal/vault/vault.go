@@ -1,11 +1,7 @@
-// vault.go - local secret vault using age encryption.
-// Tokens, API keys, and passwords are encrypted at rest with a passphrase.
-// In-memory key is held only while the vault is unlocked.
-
+// Package vault is adOmnia's local secret vault: tokens, API keys and passwords are encrypted at rest with age and a passphrase, and the key stays in memory only while the vault is unlocked.
 package vault
 
 import (
-	"adomnia/internal/storage"
 	"bytes"
 	"encoding/base64"
 	"encoding/json/v2"
@@ -16,8 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
+
 	"filippo.io/age"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -167,7 +165,7 @@ func vaultStatusHandler(w http.ResponseWriter, r *http.Request) {
 	defer vaultMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"unlocked": vaultUnlocked,
 	})
 }
@@ -206,7 +204,7 @@ func vaultUnlockHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("[vault] unlocked")
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 func vaultLockHandler(w http.ResponseWriter, r *http.Request) {
@@ -214,7 +212,7 @@ func vaultLockHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("[vault] locked manually")
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 func vaultEncryptHandler(w http.ResponseWriter, r *http.Request) {
@@ -244,7 +242,7 @@ func vaultEncryptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":         true,
 		"ciphertext": ciphertext,
 	})
@@ -320,7 +318,7 @@ func vaultDecryptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":        true,
 		"plaintext": plaintext,
 	})
@@ -377,7 +375,7 @@ func vaultExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":     true,
 		"format": "adomnia-age",
 		"data":   ciphertext,
@@ -437,7 +435,7 @@ func vaultImportHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "imported": imported})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "imported": imported})
 }
 
 // RegisterHandlers registers local secret vault endpoints.

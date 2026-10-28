@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // managedVersion è una versione imposta da dependencyManagement o da un BOM.
@@ -189,7 +189,7 @@ func (r *Resolver) loadModel(pomPath, repository string) ([]POM, map[string]stri
 	managed := map[string]managedVersion{}
 	warnings := []string{}
 	current := pomPath
-	for depth := 0; depth < maxParentDepth; depth++ {
+	for depth := range maxParentDepth {
 		pom, err := ReadPOM(current)
 		if err != nil && pom.ArtifactID == "" {
 			if depth == 0 {
@@ -328,7 +328,7 @@ func parseDependencyTree(output, rootDirectory string) ([]securityintel.Componen
 	// stack tiene il percorso dalla radice al nodo corrente, per livello di indentazione.
 	stack := []string{}
 	seen := map[string]bool{}
-	for _, raw := range strings.Split(output, "\n") {
+	for raw := range strings.SplitSeq(output, "\n") {
 		line := strings.TrimRight(raw, "\r")
 		if !strings.Contains(line, "[INFO]") {
 			continue
@@ -414,12 +414,4 @@ func treeLevel(indent string) int {
 	prefix = strings.ReplaceAll(prefix, "-", "")
 	prefix = strings.ReplaceAll(prefix, "\\", "")
 	return len(prefix)/2 + 1
-}
-
-// min ritorna il minore fra due interi.
-func min(left, right int) int {
-	if left < right {
-		return left
-	}
-	return right
 }

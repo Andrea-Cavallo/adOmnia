@@ -1,4 +1,4 @@
-import type { Snapshot } from '../../bindings/adomnia/internal/resources/models'
+import type { Snapshot } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 import { resourceStats } from './resourceReport'
 
 const mib = (bytes: number) => `${(bytes / 1048576).toFixed(1)} MiB`

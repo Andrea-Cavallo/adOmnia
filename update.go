@@ -1,8 +1,8 @@
 package main
 
 import (
-	"adomnia/internal/devlog"
-	"adomnia/internal/update"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 	"path/filepath"
 	"sync"
 

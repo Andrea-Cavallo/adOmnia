@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // Installazione dei language server web: un solo `npm install` nella cartella strumenti di adOmnia

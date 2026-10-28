@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/archivetest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/archivetest"
 )
 
 func TestExtractPackageRejectsEntriesOutsideTheStage(t *testing.T) {

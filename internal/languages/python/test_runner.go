@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // TestOptions sono le opzioni di LanguageOptions dei test Python. Hanno gli stessi nomi JSON

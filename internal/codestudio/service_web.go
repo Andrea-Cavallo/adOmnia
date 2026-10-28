@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/preview"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/languages/web"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/preview"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/web"
 )
 
 // Live Server: anteprima dei progetti web (HTML/CSS/JS statici, React/Vite, Node) dentro l'IDE.
@@ -79,9 +80,7 @@ func (c *previewConfigStore) replace(configs map[string]PreviewConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.configs = make(map[string]PreviewConfig, len(configs))
-	for key, config := range configs {
-		c.configs[key] = config
-	}
+	maps.Copy(c.configs, configs)
 }
 
 func (c *previewConfigStore) snapshot() map[string]PreviewConfig {
@@ -91,9 +90,7 @@ func (c *previewConfigStore) snapshot() map[string]PreviewConfig {
 		return nil
 	}
 	clone := make(map[string]PreviewConfig, len(c.configs))
-	for key, config := range c.configs {
-		clone[key] = config
-	}
+	maps.Copy(clone, c.configs)
 	return clone
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Snapshot } from '../../bindings/adomnia/internal/resources/models'
+import type { Snapshot } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 import { resourceChartPath, resourceProcessSummary, resourceReport, resourceStats, resourcesToCSV, resourcesToHTML } from './resourceReport'
 const sample = (second: number, cpu: number | null): Snapshot => ({ at: `2026-10-19T10:00:${String(second).padStart(2,'0')}Z`, ram: 1024*(second+1), cpu: cpu ?? 0, processes: [{pid:7,createdAt:12,parentPid:1,parentName:'adOmnia',name:'<script>|"',ram:1024,cpu,workspace:'C:\\x,foo',role:'language-server'}], runtime:{memoryLimit:536870912,numGC:2},rootPid:1,logicalCores:8,instances:1,incomplete:false } as Snapshot)
 describe('resource diagnostics export',()=>{

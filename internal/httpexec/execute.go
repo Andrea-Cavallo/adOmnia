@@ -1,7 +1,8 @@
+// Package httpexec executes HTTP requests for the frontend with full control of the transport: per-request cookie jars, cancellation and DNS overrides from the hosts map.
 package httpexec
 
 import (
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 	"context"
 	"crypto/tls"
@@ -19,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/psd2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/psd2"
 )
 
 // inFlight tracks cancel functions for running requests, keyed by the

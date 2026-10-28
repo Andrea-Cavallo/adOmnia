@@ -1,3 +1,4 @@
+// Package requestcontract turns a saved adOmnia request into an executable HTTP request without the UI: variable substitution, body encoding, authentication and assertion evaluation. The command-line runner and collection tools share it.
 package requestcontract
 
 import (
@@ -14,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/httpexec"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type KVRow struct {
@@ -228,8 +229,8 @@ func RequestBodyString(req Request, vars map[string]string) (string, string, str
 			if unresolved(key) || unresolved(value) {
 				return "", "", "unresolved form variables"
 			}
-			if strings.HasPrefix(value, "@file:") {
-				path := strings.TrimSpace(strings.TrimPrefix(value, "@file:"))
+			if after, ok := strings.CutPrefix(value, "@file:"); ok {
+				path := strings.TrimSpace(after)
 				file, err := os.Open(path)
 				if err != nil {
 					return "", "", fmt.Sprintf("open multipart file %q: %v", path, err)

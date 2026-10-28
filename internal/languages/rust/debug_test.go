@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 func TestParseArtifactPathSelectsFinalExecutable(t *testing.T) {

@@ -45,3 +45,11 @@ describe('Recent Locations', () => {
     expect(recentLocations({ entries: [], index: -1 })).toEqual([])
   })
 })
+
+it('preserves the exact origin for explicit nearby function jumps', () => {
+ const origin={relativePath:'order.go',line:40,column:17}
+ const target={relativePath:'order.go',line:43,column:5}
+ const history=recordNavigation({entries:[origin],index:0},target,true)
+ expect(stepNavigation(history,-1)?.target).toEqual(origin)
+ expect(recordNavigation(history,target,true)).toBe(history)
+})

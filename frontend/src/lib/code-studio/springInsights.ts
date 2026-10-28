@@ -5,7 +5,7 @@ import type {
   SpringInjection,
   SpringProperty,
   SpringValue,
-} from '../../../bindings/adomnia/internal/languages/java/models'
+} from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 
 /** Posizione navigabile dentro un file del progetto (1-based, come Monaco). */
 export interface SpringLocation {

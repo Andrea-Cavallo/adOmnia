@@ -90,7 +90,7 @@ func maskRange(data []byte, start, end int) {
 		if len(replacement) == size {
 			copy(data[index:index+size], replacement)
 		} else {
-			for offset := 0; offset < size; offset++ {
+			for offset := range size {
 				data[index+offset] = '*'
 			}
 		}

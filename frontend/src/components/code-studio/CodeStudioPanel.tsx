@@ -147,8 +147,8 @@ import {
   taskConfiguration,
   taskConfigurationForDetected,
 } from './codeStudioWorkspaceStart'
-import * as DevContextBindings from '../../../bindings/adomnia/devcontext'
-import { ListLocalPorts } from '../../../bindings/adomnia/devsession'
+import * as DevContextBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/devcontext'
+import { ListLocalPorts } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/devsession'
 import { CodeStudioWorkspaceBar } from './CodeStudioWorkspaceBar'
 import { CodeStudioToasts } from './CodeStudioToasts'
 import { CodeStudioSnapshots, useSnapshotsDrawer } from './CodeStudioSnapshots'
@@ -156,11 +156,13 @@ import { CodeStudioStartupAnalyzer, useStartupDrawer } from './CodeStudioStartup
 import { openWorkspaceApi, openWorkspaceLogs } from '@/lib/devsession/workspaceFlow'
 import { clampPaneSize, DEFAULT_PANE_SIZES, type GoIDEPaneSizeKey, type PaneBounds } from '@/lib/codeStudioLayout'
 import type { ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
-import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest, GoIDERustDebugRequest } from '@/lib/code-studio-debug-api'
+import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest, GoIDERustDebugRequest, GoIDEWebDebugRequest } from '@/lib/code-studio-debug-api'
 import { javaDebugTargetOf } from '@/lib/code-studio/javaDebug'
 import { pythonDebugTargetOf } from '@/lib/code-studio/pythonDebug'
 import { rustDebugTargetOf } from '@/lib/code-studio/rustDebug'
+import { webDebugTargetOf } from '@/lib/code-studio/webDebug'
 import { runRustCommand } from './codeStudioRustCommands'
+import { runWebCommand } from './codeStudioWebCommands'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
 import { activeGoIDEDocument, dirtyGoIDEDocuments, sessionsInWorkspace, useCodeStudioStore, type GoIDEEditorDocument, type GoIDEState } from '@/stores/codeStudio'
@@ -886,6 +888,12 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     return target && activeSession ? { sessionId: activeSession.id, ...target } : null
   }
 
+  // Debug di una configurazione JS/TS: lo script del package manager (npm run dev) con js-debug.
+  const configuredWebDebugRequest = (): GoIDEWebDebugRequest | null => {
+    const target = activeSession && activeConfig ? webDebugTargetOf(activeConfig) : null
+    return target && activeSession ? { sessionId: activeSession.id, ...target } : null
+  }
+
   const openLanguageServerMenu = () => {
     if (!activeSession) return
     if (lspStatus?.state === 'ready' || lspStatus?.state === 'starting') return setLspLogOpen(true)
@@ -913,7 +921,8 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (runJavaCommand(id, activeSession?.id ?? null, currentActiveDocument() ?? null, useCodeStudioCursorStore.getState().line, runTarget)) return
     if (runPythonCommand(id, activeSession?.id ?? null)) return
     if (runRustCommand(id, activeSession?.id ?? null)) return
-    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest)) return
+    if (runWebCommand(id, activeSession?.id ?? null)) return
+    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest, configuredWebDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
     if (runIntegrationCommand(id, currentActiveDocument(), activeCodeStudioEditor(), () => setServicesOpen(true))) return

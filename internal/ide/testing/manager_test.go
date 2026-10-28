@@ -1,13 +1,14 @@
 package testing
 
 import (
-	"adomnia/internal/ide/run"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 type neutralParser struct{}
@@ -117,7 +118,7 @@ func TestManagerHistoryTailAndSnapshotIsolation(t *testing.T) {
 	var mu sync.Mutex
 	finals := make(map[run.RunID]int)
 	var first, last run.RunID
-	for i := 0; i < 23; i++ {
+	for i := range 23 {
 		done := make(chan Snapshot, 1)
 		env, err := run.Environment(map[string]string{"ADOMNIA_NEUTRAL_TEST": "1", "GORACE": "atexit_sleep_ms=0"})
 		if err != nil {

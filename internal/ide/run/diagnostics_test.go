@@ -10,8 +10,8 @@ import (
 func TestDiagnosticsCollectionSplitsLinesAndFlushes(t *testing.T) {
 	process := &managedProcess{
 		diagnostics: func(line string) (Diagnostic, bool) {
-			if strings.HasPrefix(line, "ERR:") {
-				return Diagnostic{File: "src/main.rs", Line: 1, Severity: 1, Message: strings.TrimPrefix(line, "ERR:")}, true
+			if after, ok := strings.CutPrefix(line, "ERR:"); ok {
+				return Diagnostic{File: "src/main.rs", Line: 1, Severity: 1, Message: after}, true
 			}
 			return Diagnostic{}, false
 		},

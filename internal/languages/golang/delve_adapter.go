@@ -1,13 +1,14 @@
 package golang
 
 import (
-	"adomnia/internal/ide/dap"
 	"encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 const (

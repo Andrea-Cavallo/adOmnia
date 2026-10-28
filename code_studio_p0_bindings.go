@@ -1,6 +1,6 @@
 package main
 
-import "adomnia/internal/codestudio"
+import "github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
 
 // BaseBranchCoverage misura la coverage degli stessi package sul merge-base con base, in un worktree temporaneo.
 func (g *GoIDE) BaseBranchCoverage(sessionID, base string, packageDirs, buildTags []string) (codestudio.BaseCoverage, error) {

@@ -1,7 +1,6 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"fmt"
 	"path"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const (
@@ -139,7 +140,7 @@ func (h *LocalHistory) Record(sessionID SessionID, relativePath, content, label 
 	now := h.now().UTC()
 	h.revisions = append([]historyEntry{{
 		SessionID: sessionID, RelativePath: relativePath, Content: content,
-		HistoryRevision: HistoryRevision{ID: newID("rev"), Label: label, SavedAt: now, Bytes: len(content)},
+		ID: newID("rev"), Label: label, SavedAt: now, Bytes: len(content),
 	}}, h.revisions...)
 	h.pruneLocked()
 	return h.persistLocked()

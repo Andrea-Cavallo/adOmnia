@@ -27,7 +27,7 @@ func writeScaleMonorepo(t *testing.T) string {
 	root := t.TempDir()
 	var work strings.Builder
 	work.WriteString("go 1.22\n\nuse (\n")
-	for module := 0; module < scaleModules; module++ {
+	for module := range scaleModules {
 		name := fmt.Sprintf("svc%02d", module)
 		fmt.Fprintf(&work, "\t./%s\n", name)
 		if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
@@ -36,12 +36,12 @@ func writeScaleMonorepo(t *testing.T) string {
 		if err := os.WriteFile(filepath.Join(root, name, "go.mod"), []byte("module example.com/"+name+"\n\ngo 1.22\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		for pkg := 0; pkg < scalePackages; pkg++ {
+		for pkg := range scalePackages {
 			directory := filepath.Join(root, name, "internal", fmt.Sprintf("pkg%02d", pkg))
 			if err := os.MkdirAll(directory, 0o755); err != nil {
 				t.Fatal(err)
 			}
-			for file := 0; file < scaleFilesPerPkg; file++ {
+			for file := range scaleFilesPerPkg {
 				body := fmt.Sprintf("package pkg%02d\n\n// Handler%d serve la richiesta.\nfunc Handler%d(value int) int {\n\treturn value * %d\n}\n", pkg, file, file, file+1)
 				if module == scaleModules-1 && pkg == scalePackages-1 && file == 0 {
 					body += "\nconst needleMarker = \"monorepo-needle\"\n"
@@ -57,7 +57,7 @@ func writeScaleMonorepo(t *testing.T) string {
 		t.Fatal(err)
 	}
 	// Rumore che non deve finire in Quick Open né nella ricerca.
-	for index := 0; index < 500; index++ {
+	for index := range 500 {
 		directory := filepath.Join(root, "node_modules", fmt.Sprintf("dep%03d", index))
 		if err := os.MkdirAll(directory, 0o755); err != nil {
 			t.Fatal(err)

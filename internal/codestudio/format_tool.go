@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // formatToolTimeout limita lo strumento esterno: un Ruff bloccato non deve congelare il salvataggio.
@@ -117,7 +117,7 @@ func isAbsoluteExistingFile(path string) bool {
 
 // firstLine è il messaggio compatto di uno strumento: la prima riga non vuota di stderr.
 func firstMeaningfulLine(text string) string {
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if trimmed := strings.TrimSpace(line); trimmed != "" {
 			return trimmed
 		}

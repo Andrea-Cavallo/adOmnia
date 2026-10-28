@@ -1,6 +1,6 @@
 package main
 
-import "adomnia/internal/netpolicy"
+import "github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 // GetNetworkSettings restituisce modo offline, proxy e CA validi per tutta adOmnia.
 func (a *App) GetNetworkSettings() netpolicy.Settings {

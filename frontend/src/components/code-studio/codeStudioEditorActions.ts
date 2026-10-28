@@ -117,7 +117,7 @@ export function installCodeStudioEditorActions(editor: monaco.editor.IStandalone
     const anchor = caretAnchor(target)
     if (anchor) useCodeStudioLspStore.setState({ generateMenu: anchor })
   })
-  semantic(CODE_STUDIO_ACTIONS.callHierarchy, 'Call Hierarchy', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyH], (target) => showHierarchy(target, 'call'))
+  semantic(CODE_STUDIO_ACTIONS.callHierarchy, 'Function Explorer (Call Hierarchy)', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyH], (target) => showHierarchy(target, 'call'))
   semantic(CODE_STUDIO_ACTIONS.typeHierarchy, 'Type Hierarchy', [], (target) => showHierarchy(target, 'type'))
   // SQL: la selezione (o l'istruzione sotto il cursore) passa al modulo Database, che ha già connessioni e credenziali sigillate.
   editor.addAction({

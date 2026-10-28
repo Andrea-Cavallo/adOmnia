@@ -5,13 +5,14 @@ package sdk
 
 import (
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 )
 
 const (
@@ -91,9 +92,7 @@ func RedactURLList(value string) string {
 // CopyEnvironment restituisce una copia (mai nil).
 func CopyEnvironment(source map[string]string) map[string]string {
 	result := make(map[string]string, len(source))
-	for key, value := range source {
-		result[key] = value
-	}
+	maps.Copy(result, source)
 	return result
 }
 
@@ -120,9 +119,7 @@ func ProcessEnvironment(configured, overrides map[string]string) (map[string]str
 			base[item[:index]] = item[index+1:]
 		}
 	}
-	for key, value := range merged {
-		base[key] = value
-	}
+	maps.Copy(base, merged)
 	// Proxy e CA di adOmnia riempiono i vuoti; il modo offline di adOmnia vince sul progetto.
 	netpolicy.ProcessEnvironment(base)
 	return base, nil

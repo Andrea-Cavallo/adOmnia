@@ -1,8 +1,8 @@
 package database
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"os"

@@ -1,8 +1,8 @@
 package ai
 
 import (
-	"adomnia/internal/netpolicy"
 	"errors"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 	"context"
 	"fmt"

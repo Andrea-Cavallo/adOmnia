@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // isolateRustPath removes cargo, rustup, codelldb and the VS Code extension from the environment

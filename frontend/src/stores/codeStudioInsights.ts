@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { GoIDEVulnReport } from '@/lib/code-studio-api'
-import type { BinaryReport } from '../../bindings/adomnia/internal/languages/golang/models'
+import type { BinaryReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/golang/models'
 
 /** The last vulnerability scan and binary inspection of each project, for answers that combine them. */
 export const useCodeStudioInsights = create<{

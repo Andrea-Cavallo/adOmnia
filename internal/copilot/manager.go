@@ -1,8 +1,8 @@
 package copilot
 
 import (
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"bufio"
 	"context"
@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 // State è lo stato dell'integrazione mostrato nella status bar.

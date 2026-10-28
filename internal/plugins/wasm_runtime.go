@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
@@ -41,7 +41,7 @@ func (b *limitedBuffer) Write(p []byte) (int, error) {
 	return b.Buffer.Write(p)
 }
 
-func executeWasmPlugin(plugin PluginInstance, function string, args map[string]interface{}, timeLimit time.Duration, memoryLimit int64) (interface{}, int64, []string, error) {
+func executeWasmPlugin(plugin PluginInstance, function string, args map[string]any, timeLimit time.Duration, memoryLimit int64) (any, int64, []string, error) {
 	entryPoint, err := ResolvePluginEntryPoint(plugin.InstallDir, plugin.Manifest.EntryPoint)
 	if err != nil {
 		return nil, 0, nil, err
@@ -50,7 +50,7 @@ func executeWasmPlugin(plugin PluginInstance, function string, args map[string]i
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to read plugin module: %w", err)
 	}
-	input, err := jsonutil.Marshal(map[string]interface{}{"function": function, "args": args, "settings": plugin.Settings, "pluginId": plugin.Manifest.ID})
+	input, err := jsonutil.Marshal(map[string]any{"function": function, "args": args, "settings": plugin.Settings, "pluginId": plugin.Manifest.ID})
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to encode plugin arguments: %w", err)
 	}
@@ -91,7 +91,7 @@ func executeWasmPlugin(plugin PluginInstance, function string, args map[string]i
 	if len(output) == 0 {
 		return nil, memUsed, logs, nil
 	}
-	var result interface{}
+	var result any
 	if err := json.Unmarshal(output, &result); err != nil {
 		return nil, memUsed, logs, fmt.Errorf("plugin function %s wrote non-JSON output: %w", function, err)
 	}
@@ -100,7 +100,7 @@ func executeWasmPlugin(plugin PluginInstance, function string, args map[string]i
 
 func splitLogLines(text string) []string {
 	var lines []string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if line = strings.TrimSpace(line); line != "" {
 			lines = append(lines, line)
 		}

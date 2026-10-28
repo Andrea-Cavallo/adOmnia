@@ -1,4 +1,4 @@
-import * as DockerLabBindings from '../../bindings/adomnia/dockerlab'
+import * as DockerLabBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/dockerlab'
 export interface PresetDef {
   id: string
   name: string

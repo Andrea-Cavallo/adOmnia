@@ -1,10 +1,7 @@
-// plugins.go — Plugin system with JSON manifests, hook registration, event bus, and lifecycle management.
-// Plugins are directories containing a manifest.json + optional scripts/assets.
-
+// Package plugins is adOmnia's plugin system: directories with a manifest.json and optional scripts or assets, run in a sandboxed JavaScript or WebAssembly runtime, with hook registration, an event bus, signature checks, IDE contributions and lifecycle management.
 package plugins
 
 import (
-	"adomnia/internal/storage"
 	"encoding/base64"
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
@@ -12,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,7 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -169,7 +169,7 @@ func (s *PluginSetting) UnmarshalJSON(data []byte) error {
 		s.Default = stringValue
 		return nil
 	}
-	var value interface{}
+	var value any
 	if err := json.Unmarshal(raw.Default, &value); err != nil {
 		return err
 	}
@@ -193,25 +193,25 @@ type PluginInstance struct {
 
 // PluginEvent carries event data through the hook system.
 type PluginEvent struct {
-	Type    string                 `json:"type"`
-	Payload map[string]interface{} `json:"payload"`
+	Type    string         `json:"type"`
+	Payload map[string]any `json:"payload"`
 }
 
 // HookResult is the outcome of a hook invocation.
 type HookResult struct {
-	Modified bool                   `json:"modified"`
-	Data     map[string]interface{} `json:"data,omitempty"`
-	Error    string                 `json:"error,omitempty"`
+	Modified bool           `json:"modified"`
+	Data     map[string]any `json:"data,omitempty"`
+	Error    string         `json:"error,omitempty"`
 }
 
-func hookResultFromData(data interface{}) HookResult {
-	value, ok := data.(map[string]interface{})
+func hookResultFromData(data any) HookResult {
+	value, ok := data.(map[string]any)
 	if !ok || value == nil {
 		return HookResult{}
 	}
 	modified, _ := value["modified"].(bool)
 	result := HookResult{Modified: modified}
-	if rawData, ok := value["data"].(map[string]interface{}); ok {
+	if rawData, ok := value["data"].(map[string]any); ok {
 		result.Data = rawData
 	}
 	if rawError, ok := value["error"].(string); ok {
@@ -273,7 +273,7 @@ func rejectSymlinkPath(base, target string) error {
 		return fmt.Errorf("path escapes plugin directory")
 	}
 	current := base
-	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+	for part := range strings.SplitSeq(rel, string(filepath.Separator)) {
 		if part == "" || part == "." {
 			continue
 		}
@@ -581,9 +581,7 @@ func (pm *PluginManager) pluginForExecution(id string) (PluginInstance, error) {
 	}
 	copy := *inst
 	copy.Settings = make(map[string]string, len(inst.Settings))
-	for key, value := range inst.Settings {
-		copy.Settings[key] = value
-	}
+	maps.Copy(copy.Settings, inst.Settings)
 	pm.mu.RUnlock()
 
 	if !copy.Enabled {
@@ -599,7 +597,7 @@ func (pm *PluginManager) pluginForExecution(id string) (PluginInstance, error) {
 }
 
 // ExecuteAction invokes an action declared by an enabled plugin.
-func (pm *PluginManager) ExecuteAction(pluginID, actionID string, args map[string]interface{}) ExecResult {
+func (pm *PluginManager) ExecuteAction(pluginID, actionID string, args map[string]any) ExecResult {
 	pm.mu.RLock()
 	inst, ok := pm.plugins[pluginID]
 	runtime := pm.runtime
@@ -623,7 +621,7 @@ func (pm *PluginManager) ExecuteAction(pluginID, actionID string, args map[strin
 		return failedExecResult(fmt.Errorf("plugin runtime is not initialized"))
 	}
 	if args == nil {
-		args = map[string]interface{}{}
+		args = map[string]any{}
 	}
 	return runtime.Execute(ExecRequest{PluginID: pluginID, Function: actionID, Args: args})
 }
@@ -1008,9 +1006,7 @@ func (pm *PluginManager) GetPluginSettings(id string) (map[string]string, error)
 
 	// Return a copy
 	result := make(map[string]string, len(inst.Settings))
-	for k, v := range inst.Settings {
-		result[k] = v
-	}
+	maps.Copy(result, inst.Settings)
 	return result, nil
 }
 
@@ -1045,7 +1041,7 @@ func (pm *PluginManager) SetPluginSetting(id string, key string, value string) e
 	return nil
 }
 
-func (pm *PluginManager) emitEvent(event PluginEvent) ([]HookResult, map[string]interface{}) {
+func (pm *PluginManager) emitEvent(event PluginEvent) ([]HookResult, map[string]any) {
 	pm.mu.RLock()
 	entries := append([]pluginHookEntry(nil), pm.hooks[event.Type]...)
 	runtime := pm.runtime
@@ -1053,7 +1049,7 @@ func (pm *PluginManager) emitEvent(event PluginEvent) ([]HookResult, map[string]
 
 	current := event.Payload
 	if current == nil {
-		current = map[string]interface{}{}
+		current = map[string]any{}
 	}
 	if len(entries) == 0 {
 		return nil, current
@@ -1069,7 +1065,7 @@ func (pm *PluginManager) emitEvent(event PluginEvent) ([]HookResult, map[string]
 		execResult := runtime.Execute(ExecRequest{
 			PluginID: entry.PluginID,
 			Function: entry.Handler,
-			Args: map[string]interface{}{
+			Args: map[string]any{
 				"event":   event.Type,
 				"payload": current,
 			},
@@ -1098,7 +1094,7 @@ func (pm *PluginManager) EmitEvent(event PluginEvent) []HookResult {
 // A hook error aborts the operation so callers never silently send a request
 // that an enabled plugin failed to prepare.
 func (pm *PluginManager) ApplyEventJSON(eventType, payloadJSON string) (string, error) {
-	var payload map[string]interface{}
+	var payload map[string]any
 	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
 		return "", fmt.Errorf("invalid %s payload: %w", eventType, err)
 	}

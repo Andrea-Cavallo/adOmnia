@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Snapshot } from '../../../bindings/adomnia/internal/resources/models'
+import type { Snapshot } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -30,7 +30,7 @@ export function ResourceMemoryControls({ sample }: { sample: Snapshot }) {
     if(!Number.isInteger(value)||(value!==0&&(value<min||value>65536))){setError(`${tr('Memory limit range')}: ${min}–65536 MiB; 0 = ${tr('Default')}`);return}
     setBusy(true);setError('');setMessage('')
     try{
-      if(kind==='backend') { const {SetBackendMemoryLimit}=await import('../../../bindings/adomnia/goide'); await SetBackendMemoryLimit(value); setMessage(tr('Backend limit applied live. No app restart needed.')) }
+      if(kind==='backend') { const {SetBackendMemoryLimit}=await import('../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'); await SetBackendMemoryLimit(value); setMessage(tr('Backend limit applied live. No app restart needed.')) }
       else {
         const store=useCodeStudioLspStore.getState()
         await store.updateSettings(null,{memoryLimitMiB:value})

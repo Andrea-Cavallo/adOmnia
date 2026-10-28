@@ -2,7 +2,7 @@
 package swaggerwindow
 
 import (
-	"adomnia/internal/windowfit"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"

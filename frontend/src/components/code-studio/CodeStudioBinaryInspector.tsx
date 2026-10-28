@@ -1,9 +1,9 @@
 import { useCodeStudioInsights } from '@/stores/codeStudioInsights'
 import { Fragment, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
-import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { BinaryReport } from '../../../bindings/adomnia/internal/languages/golang/models'
-import type { BinaryComparison } from '../../../bindings/adomnia/internal/codestudio/models'
+import * as GoIDE from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { BinaryReport } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/golang/models'
+import type { BinaryComparison } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 export function formatBytes(bytes: number): string {
   const sign = bytes < 0 ? '-' : ''

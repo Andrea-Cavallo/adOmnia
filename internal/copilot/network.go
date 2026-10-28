@@ -1,7 +1,7 @@
 package copilot
 
 import (
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 	"crypto/tls"
 	"crypto/x509"

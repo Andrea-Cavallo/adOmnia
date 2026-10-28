@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // GoplsModule è il modulo che `go install` usa per installare gopls nella cartella strumenti.
@@ -88,7 +88,7 @@ func goplsVersion(binary string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("gopls is not executable: %s", strings.TrimSpace(string(output)))
 	}
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) >= 2 && strings.HasSuffix(fields[0], "gopls") {
 			return fields[1], nil
@@ -131,9 +131,15 @@ func GoplsServerSpec(info GoplsInfo, environment []string, settings GoplsSetting
 		TraceEnvironment: []string{"GOFLAGS", "GOWORK", "GOPROXY", "GOPRIVATE", "GONOSUMDB", "GOTOOLCHAIN", "GOMEMLIMIT", "GOCACHE", "GOMODCACHE"},
 		// Con 12 moduli annidati e una cartella per modulo gopls creava 12 view e le caricava tutte
 		// all'avvio (minuti); dalla radice carica solo i moduli dei file aperti.
-		DiscoversNestedUnits: true,
+		DiscoversNestedUnits:   true,
+		HiddenCodeActionKinds:  GoplsWebViewActionKinds,
+		ChangeSignatureCommand: GoplsChangeSignatureCommand,
 	}
 }
+
+// GoplsWebViewActionKinds are gopls actions that open its web UI via window/showDocument: Code Studio does not
+// open external pages, so they are not offered instead of showing inert buttons.
+var GoplsWebViewActionKinds = []string{"source.doc", GoplsDocCommand, "source.splitPackage", "source.assembly", "source.freesymbols"}
 
 // goplsConfiguration traduce le preferenze della sessione nella configurazione gopls; i link esterni restano disattivati (local-first).
 func goplsConfiguration(settings GoplsSettings) map[string]any {

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const sampleReport = `{"testResults":[
@@ -37,7 +37,7 @@ func runParser(t *testing.T, root, report string, indented bool) ([]idetesting.T
 	}
 	parser := &reportParser{root: root}
 	tree := idetesting.NewTree()
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		for _, event := range parser.ParseAll([]byte(line)) {
 			tree.Apply(event)
 		}

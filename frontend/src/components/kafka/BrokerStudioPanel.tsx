@@ -1,7 +1,8 @@
+import './brokerStudio.css'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Activity, AlertCircle, BookMarked, CheckCircle2, ChevronDown, ChevronRight,
-  Database, ExternalLink,
+  Database, ExternalLink, Server,
   Loader2, Plus, Send, Timer, Trash2,
   Unplug,
 } from 'lucide-react'
@@ -37,16 +38,16 @@ interface MessagePreset {
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
-const PROTOCOL_DEFS: { id: Protocol; label: string; color: string; desc: string; port: string }[] = [
-  { id: 'kafka',    label: 'Kafka',    color: '#fb923c', desc: 'Apache Kafka streaming', port: '9092'  },
-  { id: 'rabbitmq', label: 'RabbitMQ', color: '#f87171', desc: 'AMQP 0-9-1 messaging',  port: '5672'  },
-  { id: 'mqtt',     label: 'MQTT',     color: '#34d399', desc: 'IoT pub/sub protocol',   port: '1883'  },
-  { id: 'redis',    label: 'Redis',    color: '#60a5fa', desc: 'In-memory pub/sub',       port: '6379'  },
-  { id: 'nats',     label: 'NATS',     color: '#a78bfa', desc: 'Cloud-native messaging',  port: '4222'  },
+const PROTOCOL_DEFS: { id: Protocol; label: string; desc: string; port: string }[] = [
+  { id: 'kafka',    label: 'Kafka',    desc: 'Apache Kafka streaming', port: '9092'  },
+  { id: 'rabbitmq', label: 'RabbitMQ', desc: 'AMQP 0-9-1 messaging',  port: '5672'  },
+  { id: 'mqtt',     label: 'MQTT',     desc: 'IoT pub/sub protocol',   port: '1883'  },
+  { id: 'redis',    label: 'Redis',    desc: 'In-memory pub/sub',       port: '6379'  },
+  { id: 'nats',     label: 'NATS',     desc: 'Cloud-native messaging',  port: '4222'  },
 ]
 
 const inputClass = 'h-8 px-2 bg-surface-2 border border-border-2 rounded text-xs text-text-1 outline-none focus:border-accent w-full'
-const labelClass = 'text-[10px] text-text-4 uppercase tracking-wider mb-0.5 block'
+const labelClass = 'text-[10px] text-text-3 uppercase tracking-wider mb-0.5 block'
 
 // ─── small shared components ──────────────────────────────────────────────────
 
@@ -244,7 +245,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded border border-border-1 bg-surface-1 p-3">
+      <div className="border-b border-border-1 py-4">
         <div className="flex items-center gap-2 mb-3">
           <Unplug size={13} className="text-[#f87171]" />
           <h3 className="text-xs font-semibold text-text-1">Connection</h3>
@@ -280,14 +281,14 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
         {(['publish', 'consume', 'info'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
-              tab === t ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
+              tab === t ? 'bg-surface-2 text-text-1 border border-border-2' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
             {t}
           </button>
         ))}
       </div>
 
       {tab === 'publish' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 flex flex-col gap-3">
+        <div className="border-b border-border-1 py-4 flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Content-Type">
               <input value={contentType} onChange={e => setContentType(e.target.value)} className={inputClass} />
@@ -311,7 +312,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
       )}
 
       {tab === 'consume' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 flex flex-col gap-3">
+        <div className="border-b border-border-1 py-4 flex flex-col gap-3">
           <p className="rounded border border-warning/25 bg-warning/10 px-2 py-1.5 text-[11px] leading-relaxed text-text-3">RabbitMQ consumption is delivery, not a neutral browse operation. With Auto-ack enabled, delivered messages are acknowledged immediately; disable it only when you explicitly want to control acknowledgement behaviour.</p>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Max wait (s)">
@@ -331,7 +332,7 @@ function RabbitMQPanel({ port, onMessages }: { port: number | null; onMessages: 
       )}
 
       {tab === 'info' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 text-xs text-text-3 space-y-1.5">
+        <div className="border-b border-border-1 py-4 text-xs text-text-3 space-y-1.5">
           <p><span className="font-semibold text-text-2">Protocol:</span> AMQP 0-9-1</p>
           <p><span className="font-semibold text-text-2">Default port:</span> 5672 (TLS: 5671)</p>
           <p><span className="font-semibold text-text-2">URL format:</span> <span className="font-mono">amqp://user:pass@host:5672/vhost</span></p> {/* NOSONAR -- the default RabbitMQ URL example; AMQPS is the user broker choice */}
@@ -391,7 +392,7 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded border border-border-1 bg-surface-1 p-3">
+      <div className="border-b border-border-1 py-4">
         <div className="flex items-center gap-2 mb-3">
           <Unplug size={13} className="text-[#34d399]" />
           <h3 className="text-xs font-semibold text-text-1">Connection</h3>
@@ -426,14 +427,14 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
         {(['publish', 'subscribe'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
-              tab === t ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
+              tab === t ? 'bg-surface-2 text-text-1 border border-border-2' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
             {t}
           </button>
         ))}
       </div>
 
       {tab === 'publish' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 flex flex-col gap-3">
+        <div className="border-b border-border-1 py-4 flex flex-col gap-3">
           <div className="grid grid-cols-[1fr_80px_auto_auto] gap-3 items-end">
             <Field label="Topic">
               <input value={topic} onChange={e => setTopic(e.target.value)} className={inputClass} />
@@ -460,7 +461,7 @@ function MQTTPanel({ port, onMessages }: { port: number | null; onMessages: (msg
       )}
 
       {tab === 'subscribe' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 flex flex-col gap-3">
+        <div className="border-b border-border-1 py-4 flex flex-col gap-3">
           <div className="grid grid-cols-3 gap-3">
             <Field label="Topic / Wildcard">
               <input value={topic} onChange={e => setTopic(e.target.value)} className={inputClass} placeholder="adomnia/# or sensors/+/temp" />
@@ -545,7 +546,7 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded border border-border-1 bg-surface-1 p-3">
+      <div className="border-b border-border-1 py-4">
         <div className="flex items-center gap-2 mb-3">
           <Database size={13} className="text-[#60a5fa]" />
           <h3 className="text-xs font-semibold text-text-1">Connection</h3>
@@ -578,14 +579,14 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
         {(['publish', 'subscribe'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
-              tab === t ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
+              tab === t ? 'bg-surface-2 text-text-1 border border-border-2' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
             {t}
           </button>
         ))}
       </div>
 
       {tab === 'publish' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 flex flex-col gap-3">
+        <div className="border-b border-border-1 py-4 flex flex-col gap-3">
           <Field label="Channel">
             <input value={channel} onChange={e => setChannel(e.target.value)} className={inputClass} />
           </Field>
@@ -602,7 +603,7 @@ function RedisPanel({ port, onMessages }: { port: number | null; onMessages: (ms
       )}
 
       {tab === 'subscribe' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 flex flex-col gap-3">
+        <div className="border-b border-border-1 py-4 flex flex-col gap-3">
           <Field label="Channels (comma-separated or pattern)">
             <input value={channel} onChange={e => setChannel(e.target.value)} className={inputClass} placeholder="chan1,chan2 or adomnia:*" />
           </Field>
@@ -677,7 +678,7 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded border border-border-1 bg-surface-1 p-3">
+      <div className="border-b border-border-1 py-4">
         <div className="flex items-center gap-2 mb-3">
           <Activity size={13} className="text-[#a78bfa]" />
           <h3 className="text-xs font-semibold text-text-1">Connection</h3>
@@ -716,14 +717,14 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
         {(['publish', 'subscribe'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-3 py-1.5 rounded text-xs font-semibold capitalize transition-colors',
-              tab === t ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
+              tab === t ? 'bg-surface-2 text-text-1 border border-border-2' : 'text-text-3 hover:text-text-1 hover:bg-surface-2')}>
             {t}
           </button>
         ))}
       </div>
 
       {tab === 'publish' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 flex flex-col gap-3">
+        <div className="border-b border-border-1 py-4 flex flex-col gap-3">
           <Field label="Subject">
             <input value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} />
           </Field>
@@ -744,7 +745,7 @@ function NATSPanel({ port, onMessages }: { port: number | null; onMessages: (msg
       )}
 
       {tab === 'subscribe' && (
-        <div className="rounded border border-border-1 bg-surface-1 p-3 flex flex-col gap-3">
+        <div className="border-b border-border-1 py-4 flex flex-col gap-3">
           <Field label="Subject / Wildcard">
             <input value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} placeholder="adomnia.> or foo.*" />
           </Field>
@@ -789,6 +790,7 @@ export function BrokerStudioPanel() {
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null)
   const [workspaceTab, setWorkspaceTab] = useState<BrokerWorkspaceTab>('messages')
   const [panelKey, setPanelKey] = useState(0)
+  const [connectNonce, setConnectNonce] = useState(0)
   const [showProtocolPicker, setShowProtocolPicker] = useState(false)
   const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle')
   const [connectionDetail, setConnectionDetail] = useState('Not connected yet')
@@ -843,6 +845,7 @@ export function BrokerStudioPanel() {
       setActiveProfileId(null)
     }
     setProtocol(nextProtocol)
+    setConnectNonce(0)
     setConnectionState('idle')
     setConnectionDetail('Not connected yet')
     setPanelKey((key) => key + 1)
@@ -867,61 +870,51 @@ export function BrokerStudioPanel() {
   const connect = () => {
     setConnectionState('connecting')
     setConnectionDetail('Checking broker connection…')
-    setPanelKey((key) => key + 1)
+    setConnectNonce((nonce) => nonce + 1)
   }
 
   const activeDef = PROTOCOL_DEFS.find(p => p.id === protocol)!
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId)
-  const kafkaResources: Array<{ id: typeof workspaceTab; label: string }> = [
-    { id: 'messages', label: 'Topics & messages' },
-    { id: 'produce', label: 'Publish event' },
-    { id: 'groups', label: 'Consumer groups' },
-    { id: 'topics', label: 'Topic configuration' },
-    { id: 'overview', label: 'Cluster' },
-    { id: 'load', label: 'Load test' },
-  ]
   const stateClass = connectionState === 'connected' ? 'text-success' : connectionState === 'error' ? 'text-error' : 'text-text-4'
-  const stateDot = connectionState === 'connected' ? 'bg-success' : connectionState === 'error' ? 'bg-error' : connectionState === 'connecting' ? 'bg-warning animate-pulse' : 'bg-text-4'
+  const stateDot = connectionState === 'connected' ? 'bg-success' : connectionState === 'error' ? 'bg-error' : connectionState === 'connecting' ? 'bg-warning' : 'bg-text-4'
 
   return (
-    <div className="flex-1 min-h-0 overflow-hidden flex">
-      <aside className="w-60 flex-shrink-0 border-r border-border-1 bg-surface-0 flex flex-col">
+    <div className="broker-studio flex-1 min-h-0 overflow-hidden flex">
+      <aside className="broker-sidebar w-52 flex-shrink-0 border-r border-border-1 bg-surface-0 flex flex-col">
         <div className="border-b border-border-1 px-3 py-3">
-          <div className="flex items-center justify-between"><p className="text-[9px] font-semibold uppercase tracking-widest text-text-4">Connections</p><button onClick={() => void refreshProfiles()} className="text-[10px] text-text-4 hover:text-accent">Refresh</button></div>
-          <button onClick={() => setShowProtocolPicker((open) => !open)} className="mt-2 flex w-full items-center justify-center gap-2 rounded border border-border-2 bg-surface-1 px-2 py-1.5 text-xs text-text-2 hover:border-accent hover:text-accent"><Plus size={13} /> New connection</button>
+          <div className="flex items-center justify-between"><p className="text-[9px] font-semibold uppercase tracking-wider text-text-3">Connections</p><button onClick={() => void refreshProfiles()} className="text-[10px] text-text-4 hover:text-accent">Refresh</button></div>
+          <button aria-expanded={showProtocolPicker} onClick={() => setShowProtocolPicker((open) => !open)} className="mt-2 flex w-full items-center justify-center gap-2 rounded border border-border-2 bg-surface-1 px-2 py-1.5 text-xs text-text-2 hover:border-accent hover:text-accent"><Plus size={13} /> New connection</button>
           {showProtocolPicker && <div className="mt-2 grid grid-cols-2 gap-1 rounded border border-border-1 bg-surface-1 p-1">{PROTOCOL_DEFS.map((item) => <button key={item.id} onClick={() => selectConnection(item.id)} className="rounded px-2 py-1.5 text-left text-[11px] text-text-3 hover:bg-surface-2 hover:text-text-1">{item.label}</button>)}</div>}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto py-2">
-          {profiles.length === 0 && <button onClick={() => selectConnection('kafka')} className={cn('mx-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded px-2 py-2 text-left', protocol === 'kafka' && !activeProfileId ? 'bg-accent/10 text-text-1' : 'text-text-3 hover:bg-surface-1')}><span className="h-2 w-2 rounded-full bg-[#fb923c]" /><span><span className="block text-xs font-semibold">Kafka local</span><span className="text-[10px] text-text-4">Unsaved connection</span></span></button>}
+          {profiles.length === 0 && <button onClick={() => selectConnection('kafka')} className={cn('mx-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded px-2 py-2 text-left', protocol === 'kafka' && !activeProfileId ? 'bg-surface-2 text-text-1' : 'text-text-3 hover:bg-surface-1')}><Server size={14} className="shrink-0 text-text-3" /><span><span className="block text-xs font-semibold">Kafka local</span><span className="text-[10px] text-text-4">Unsaved connection</span></span></button>}
           {profiles.map((profile) => {
             const definition = PROTOCOL_DEFS.find((item) => item.id === profile.protocol)!
             const active = profile.id === activeProfileId
-            return <button key={profile.id} onClick={() => selectConnection(profile.protocol, profile)} className={cn('mx-2 mb-1 flex w-[calc(100%-1rem)] items-center gap-2 rounded px-2 py-2 text-left transition-colors', active ? 'bg-accent/10 text-text-1' : 'text-text-3 hover:bg-surface-1 hover:text-text-1')}><span className="h-2 w-2 rounded-full" style={{ backgroundColor: definition.color }} /><span className="min-w-0"><span className="block truncate text-xs font-semibold">{profile.name || `${definition.label} connection`}</span><span className="block text-[10px] text-text-4">{definition.label} · saved</span></span></button>
+            return <button key={profile.id} aria-pressed={active} onClick={() => selectConnection(profile.protocol, profile)} className={cn('mx-2 mb-1 flex w-[calc(100%-1rem)] items-center gap-2 rounded px-2 py-2 text-left transition-colors', active ? 'bg-surface-2 text-text-1' : 'text-text-3 hover:bg-surface-1 hover:text-text-1')}><Server size={14} className="shrink-0 text-text-3" /><span className="min-w-0"><span className="block truncate text-xs font-semibold">{profile.name || `${definition.label} connection`}</span><span className="block text-[10px] text-text-4">{definition.label} · saved</span></span></button>
           })}
         </div>
-        {protocol === 'kafka' && <div className="border-t border-border-1 py-2"><p className="px-3 pb-1 text-[9px] font-semibold uppercase tracking-widest text-text-4">Kafka resources</p>{kafkaResources.map((resource) => <button key={resource.id} onClick={() => setWorkspaceTab(resource.id)} className={cn('w-full px-4 py-1.5 text-left text-[11px]', workspaceTab === resource.id ? 'border-l-2 border-accent bg-surface-1 text-accent' : 'text-text-4 hover:bg-surface-1 hover:text-text-2')}>{resource.label}</button>)}</div>}
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border-1 flex-shrink-0 bg-surface-0">
           <div>
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: activeDef.color }} />
-              <h2 className="text-sm font-semibold text-text-1">{activeProfile?.name || `${activeDef.label} local`}</h2>
-              <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[9px] font-semibold text-text-4">DEV</span>
+              <Server size={16} className="shrink-0 text-text-3" />
+              <h2 className="broker-title text-text-1">{activeProfile?.name || activeDef.label}</h2>
             </div>
-            <p className="text-[10px] text-text-4 mt-0.5">{activeDef.label} · {activeDef.desc} · :{activeDef.port}</p>
+            <p className="text-[10px] text-text-4 mt-0.5">{activeDef.desc}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className={cn('flex items-center gap-1.5 text-[11px]', stateClass)} title={connectionDetail}>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className={cn('flex items-center gap-1.5 text-[11px]', stateClass)} role="status" title={connectionDetail}>
               <span className={cn('w-1.5 h-1.5 rounded-full', stateDot)} />
               {connectionState === 'connected' ? 'Broker connected' : connectionState === 'error' ? 'Broker unavailable' : connectionState === 'connecting' ? 'Connecting…' : 'Not connected'}
             </span>
-            <button onClick={connectionState === 'connected' ? () => { setConnectionState('idle'); setConnectionDetail('Disconnected by user') } : connect} className="rounded border border-border-2 bg-surface-1 px-3 py-1.5 text-xs font-semibold text-text-2 hover:border-accent hover:text-accent">{connectionState === 'connected' ? 'Disconnect' : 'Connect'}</button>
+            {protocol === 'kafka' && <button onClick={connect} disabled={connectionState === 'connecting'} className="rounded border border-border-2 bg-surface-1 px-3 py-1.5 text-xs font-semibold text-text-2 hover:border-accent hover:text-accent">{connectionState === 'connecting' ? 'Checking…' : 'Check connection'}</button>}
           </div>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto p-5">
-          {protocol === 'kafka'    && <KafkaPanel key={panelKey} embedded requestedTab={workspaceTab} connectNonce={connectionState === 'connecting' ? panelKey : undefined} onConnectionState={(state, detail) => { setConnectionState(state); setConnectionDetail(detail) }} />}
+        <div className="broker-content flex-1 min-h-0 overflow-y-auto p-4">
+          {protocol === 'kafka'    && <KafkaPanel key={panelKey} embedded requestedTab={workspaceTab} onTabChange={setWorkspaceTab} connectNonce={connectNonce} onConnectionState={(state, detail) => { setConnectionState(state); setConnectionDetail(detail) }} />}
           {protocol === 'rabbitmq' && <RabbitMQPanel key={panelKey} port={port} onMessages={() => undefined} />}
           {protocol === 'mqtt'     && <MQTTPanel     key={panelKey} port={port} onMessages={() => undefined} />}
           {protocol === 'redis'    && <RedisPanel    key={panelKey} port={port} onMessages={() => undefined} />}

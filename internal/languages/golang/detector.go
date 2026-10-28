@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"golang.org/x/mod/modfile"
 )
 

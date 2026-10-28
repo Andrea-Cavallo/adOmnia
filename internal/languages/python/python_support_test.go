@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestManifestReadsProjectAndRequirements(t *testing.T) {

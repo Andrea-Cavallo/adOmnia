@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { PackageHeatmap } from '../../../bindings/adomnia/internal/codestudio/models'
+import * as GoIDE from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { PackageHeatmap } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 import { dependencyHeatmap } from '@/lib/code-studio/dependencyHeatmap'
 import { useCodeStudioRuntimeProfile } from '@/stores/codeStudioRuntimeProfile'
 

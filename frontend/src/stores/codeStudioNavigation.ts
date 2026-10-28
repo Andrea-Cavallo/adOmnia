@@ -9,6 +9,7 @@ const PERSIST_DEBOUNCE_MS = 1000
 
 export interface GoIDENavigationEntry {
   relativePath: string
+  externalPath?: string
   line: number
   column: number
 }
@@ -27,9 +28,10 @@ const EMPTY_HISTORY: GoIDENavigationHistory = { entries: [], index: -1 }
 const EMPTY_BOOKMARKS: GoIDEBookmark[] = []
 
 /** Registra una posizione: un salto crea una voce e taglia il "futuro", un piccolo spostamento aggiorna la corrente. */
-export function recordNavigation(history: GoIDENavigationHistory, entry: GoIDENavigationEntry): GoIDENavigationHistory {
+export function recordNavigation(history: GoIDENavigationHistory, entry: GoIDENavigationEntry, force = false): GoIDENavigationHistory {
   const current = history.entries[history.index]
-  if (current && current.relativePath === entry.relativePath && Math.abs(current.line - entry.line) < NEARBY_LINES) {
+  if (current && current.relativePath === entry.relativePath && current.externalPath === entry.externalPath && current.line === entry.line && current.column === entry.column) return history
+  if (!force && current && current.relativePath === entry.relativePath && current.externalPath === entry.externalPath && Math.abs(current.line - entry.line) < NEARBY_LINES) {
     if (current.line === entry.line && current.column === entry.column) return history
     const entries = [...history.entries]
     entries[history.index] = entry
@@ -61,6 +63,7 @@ interface GoIDENavigationState {
   /** Ultima posizione modificata per sessione (Jump to Last Edit). */
   lastEdit: Record<string, GoIDENavigationEntry>
   record: (sessionId: string, entry: GoIDENavigationEntry) => void
+  recordJump: (sessionId: string, origin: GoIDENavigationEntry, target: GoIDENavigationEntry) => void
   recordEdit: (sessionId: string, entry: GoIDENavigationEntry) => void
   go: (sessionId: string, direction: -1 | 1) => Promise<void>
   toggleBookmark: (sessionId: string, bookmark: GoIDEBookmark) => void
@@ -81,6 +84,12 @@ export const useCodeStudioNavigationStore = create<GoIDENavigationState>((set, g
   history: {},
   bookmarks: {},
   lastEdit: {},
+
+  recordJump: (sessionId, origin, target) => {
+    const history = recordNavigation(get().history[sessionId] ?? EMPTY_HISTORY, origin)
+    set(state => ({ history: { ...state.history, [sessionId]: recordNavigation(history, target, true) } }))
+    schedulePersist(sessionId)
+  },
 
   recordEdit: (sessionId, entry) => {
     const current = get().lastEdit[sessionId]
@@ -104,7 +113,8 @@ export const useCodeStudioNavigationStore = create<GoIDENavigationState>((set, g
     // Durante il salto il cursore si muove: non va registrato come nuova navigazione.
     navigating = true
     try {
-      await useCodeStudioStore.getState().openLocation(step.target.relativePath, step.target.line, step.target.column)
+      if (step.target.externalPath) await useCodeStudioStore.getState().openExternalLocation(step.target.externalPath, step.target.line, step.target.column)
+      else await useCodeStudioStore.getState().openLocation(step.target.relativePath, step.target.line, step.target.column)
     } finally {
       window.setTimeout(() => { navigating = false }, 100)
     }
@@ -139,6 +149,7 @@ export function recentLocations(history: GoIDENavigationHistory): GoIDEBookmark[
   const seen = new Set<string>()
   const recent: GoIDEBookmark[] = []
   for (let index = history.entries.length - 1; index >= 0 && recent.length < MAX_RECENT_LOCATIONS; index--) {
+    if (history.entries[index].externalPath) continue
     const { relativePath, line } = history.entries[index]
     const key = `${relativePath}:${line}`
     if (seen.has(key)) continue
@@ -160,7 +171,9 @@ registerSessionViewExtension({
   save: (sessionId) => {
     const { history, bookmarks } = useCodeStudioNavigationStore.getState()
     const saved = history[sessionId] ?? EMPTY_HISTORY
-    return { bookmarks: bookmarks[sessionId] ?? [], navigation: saved.entries, navigationIndex: Math.max(saved.index, 0) }
+    const projectEntries = saved.entries.filter(entry => !entry.externalPath)
+    const projectIndex = saved.entries.slice(0, saved.index + 1).filter(entry => !entry.externalPath).length - 1
+    return { bookmarks: bookmarks[sessionId] ?? [], navigation: projectEntries, navigationIndex: Math.max(projectIndex, 0) }
   },
   restore: (sessionId, view) => {
     const entries = view.navigation ?? []

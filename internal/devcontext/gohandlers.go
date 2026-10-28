@@ -3,6 +3,8 @@ package devcontext
 import (
 	"go/ast"
 	"go/token"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -49,10 +51,8 @@ func isHandlerSignature(params *ast.FieldList, hints AdapterHints) bool {
 			return true
 		}
 		for _, fh := range hints.Frameworks {
-			for _, ht := range fh.HandlerTypes {
-				if t == ht {
-					return true
-				}
+			if slices.Contains(fh.HandlerTypes, t) {
+				return true
 			}
 		}
 	}
@@ -100,9 +100,7 @@ func linkHandlers(entities []Entity) []Entity {
 			continue
 		}
 		attrs := make(map[string]string, len(route.Attrs)+3)
-		for k, v := range route.Attrs {
-			attrs[k] = v
-		}
+		maps.Copy(attrs, route.Attrs)
 		route.Attrs = attrs // the per-file cache keeps its own map
 		route.Attrs["declName"] = name
 		if recv := decl.Attrs["recv"]; recv != "" {

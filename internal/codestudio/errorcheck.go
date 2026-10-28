@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -145,7 +145,7 @@ func (s *Service) forEachGoModuleAt(sessionID, base string, visit func(root stri
 	if err != nil {
 		return nil, errors.New("go unavailable: detect or configure the toolchain")
 	}
-	environment = withGoFirstInPath(environment, binary)
+	environment = golang.WithGoFirstInPath(environment, binary)
 	root := session.Project.RealPath
 	if base != "" {
 		root = base

@@ -7,7 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/langserver"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // StartLanguageServer avvia gopls per un progetto autorizzato, usando l'SDK Go selezionato per la sessione.
@@ -99,11 +102,11 @@ func (s *Service) OpenExternalDocument(sessionID, path string) (OpenDocument, er
 		return OpenDocument{}, err
 	}
 	// Le sorgenti delle librerie Java (jdt://) sono salvate sotto virtualDocumentsRoot; quelle Go stanno in GOROOT/GOMODCACHE.
-	roots := append([]string{virtualDocumentsRoot()}, localDependencyRoots(session.Project)...)
+	roots := append([]string{langserver.VirtualDocumentsRoot()}, localDependencyRoots(session.Project)...)
 	info, detected := s.toolchain.LastDetected(session.ID)
 	if detected {
 		roots = append(roots, info.GOROOT, info.GOMODCACHE)
-	} else if !strings.HasPrefix(filepath.Clean(path), virtualDocumentsRoot()) {
+	} else if !strings.HasPrefix(filepath.Clean(path), langserver.VirtualDocumentsRoot()) {
 		return OpenDocument{}, fmt.Errorf("detect the Go SDK to browse its sources")
 	}
 	document, err := s.documents.OpenExternalDocument(session, path, roots)
@@ -244,4 +247,61 @@ func (s *Service) RestartLanguageServerFromUser(sessionID string, settings Langu
 		return LanguageServerStatus{}, err
 	}
 	return s.RestartLanguageServer(sessionID, settings)
+}
+
+func (s *Service) HierarchyPreview(sessionID, token string) (QuickDefinitionResult, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return QuickDefinitionResult{}, err
+	}
+	uri, err := langserver.HierarchyTokenURI(token)
+	if err != nil {
+		return QuickDefinitionResult{}, err
+	}
+	path, err := filepath.EvalSymlinks(langserver.PathFromURI(uri))
+	if err != nil {
+		return QuickDefinitionResult{}, fmt.Errorf("could not resolve hierarchy source: %w", err)
+	}
+	roots := append([]string{session.Project.RootPath, langserver.VirtualDocumentsRoot()}, localDependencyRoots(session.Project)...)
+	if info, ok := s.toolchain.LastDetected(session.ID); ok {
+		roots = append(roots, info.GOROOT, info.GOMODCACHE)
+	}
+	if !withinAnyRoot(path, roots) {
+		return QuickDefinitionResult{}, fmt.Errorf("hierarchy source is outside the permitted source roots")
+	}
+	return s.lsp.HierarchyPreview(SessionID(sessionID), token)
+}
+
+// EnableMemoryBudget is called by the desktop composition root before sessions
+// start. The controller samples only while at least one server is running.
+func (s *Service) EnableMemoryBudget(target uint64) { s.lsp.EnableMemoryBudget(target) }
+
+// SetActivityManager is called by the desktop composition root before starting sessions.
+func (s *Service) SetActivityManager(manager *activity.Manager) {
+	if manager != nil {
+		s.lsp.SetActivityManager(manager)
+	}
+}
+
+// ProtectLanguageServer records explicit user intent without launching a process.
+// The pin survives automatic restarts and is cleared by an explicit stop/close.
+func (s *Service) ProtectLanguageServer(sessionID, languageID string) error {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return err
+	}
+	return s.lsp.Protect(session, languageID)
+}
+
+// ImplementationMarkers calcola in un solo passaggio i marcatori del gutter del documento (icone I↑ e I↓).
+func (s *Service) ImplementationMarkers(ctx context.Context, sessionID, documentID string) ([]ImplementationMarker, error) {
+	relativePath := ""
+	var semantics language.ImplementationMarkers
+	if document, ok := s.documents.Get(SessionID(sessionID), DocumentID(documentID)); ok {
+		relativePath = document.RelativePath
+		if adapter, ok := s.workspace.languages.Get(document.Language); ok {
+			semantics, _ = adapter.(language.ImplementationMarkers)
+		}
+	}
+	return s.lsp.ImplementationMarkers(ctx, SessionID(sessionID), DocumentID(documentID), relativePath, semantics)
 }

@@ -1,8 +1,9 @@
+// Package git wraps the git command line for adOmnia's Git integration: status, staging and commits, branches, history search, rebase and cherry-pick, stash, conflict resolution and pull requests on GitHub and other hosts.
 package git
 
 import (
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"bytes"
 	"context"
@@ -290,7 +291,7 @@ func GetStatus(repoPath string) (Status, error) {
 	// Non-nil so JSON marshals empty collections as [] (not null), which the
 	// frontend reads with .length without guarding.
 	modified, untracked := []string{}, []string{}
-	for _, line := range strings.Split(porcelain, "\n") {
+	for line := range strings.SplitSeq(porcelain, "\n") {
 		if len(line) < 4 {
 			continue
 		}
@@ -322,7 +323,7 @@ func GetStatus(repoPath string) (Status, error) {
 func parsePorcelain(porcelain string) []FileChange {
 	changes := []FileChange{}
 	conflictCodes := map[string]bool{"DD": true, "AU": true, "UD": true, "UA": true, "DU": true, "AA": true, "UU": true}
-	for _, line := range strings.Split(porcelain, "\n") {
+	for line := range strings.SplitSeq(porcelain, "\n") {
 		if len(line) < 4 || strings.HasPrefix(line, "##") {
 			continue
 		}
@@ -360,7 +361,7 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 
 	branches := []BranchInfo{}
 	if out, err := runGit(repoPath, "branch", "--all", "--format=%(refname:short)|%(upstream:short)|%(objectname:short)|%(committerdate:relative)"); err == nil {
-		for _, line := range strings.Split(out, "\n") {
+		for line := range strings.SplitSeq(out, "\n") {
 			if strings.TrimSpace(line) == "" {
 				continue
 			}
@@ -385,7 +386,7 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 
 	remoteURLs := map[string]string{}
 	if out, err := runGit(repoPath, "remote", "-v"); err == nil {
-		for _, line := range strings.Split(out, "\n") {
+		for line := range strings.SplitSeq(out, "\n") {
 			fields := strings.Fields(line)
 			if len(fields) >= 3 && fields[2] == "(fetch)" {
 				remoteURLs[fields[0]] = fields[1]
@@ -404,14 +405,14 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 
 	commits := []CommitInfo{}
 	if out, err := runGit(repoPath, "log", "--all", "--topo-order", fmt.Sprintf("--max-count=%d", n), "--date=short", "--pretty=format:%h%x1f%H%x1f%P%x1f%an%x1f%ad%x1f%s%x1f%D"); err == nil && out != "" {
-		for _, line := range strings.Split(out, "\n") {
+		for line := range strings.SplitSeq(out, "\n") {
 			parts := strings.Split(line, "\x1f")
 			if len(parts) < 7 {
 				continue
 			}
 			var parents []string
 			if p := strings.TrimSpace(parts[2]); p != "" {
-				for _, parent := range strings.Fields(p) {
+				for parent := range strings.FieldsSeq(p) {
 					if len(parent) > 7 {
 						parent = parent[:7]
 					}
@@ -419,7 +420,7 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 				}
 			}
 			var decorations []string
-			for _, decoration := range strings.Split(parts[6], ",") {
+			for decoration := range strings.SplitSeq(parts[6], ",") {
 				if trimmed := strings.TrimSpace(decoration); trimmed != "" {
 					decorations = append(decorations, trimmed)
 				}
@@ -750,7 +751,7 @@ func CompareRefs(repoPath, refA, refB string) ([]ChangedFile, error) {
 		return nil, fmt.Errorf("git diff --name-status: %w", err)
 	}
 	files := []ChangedFile{}
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		if line == "" {
 			continue
 		}
@@ -792,8 +793,7 @@ func readFileAtRef(repoPath, ref, filePath string) (string, error) {
 	cmd := procutil.Command("git", "-C", repoPath, "show", fmt.Sprintf("%s:%s", ref, gitPath))
 	out, err := cmd.Output()
 	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if _, ok := errors.AsType[*exec.ExitError](err); ok {
 			return "", nil
 		}
 		return "", fmt.Errorf("git show file: %w", err)

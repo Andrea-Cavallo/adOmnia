@@ -1,3 +1,4 @@
+// Package collectionresolve computes the effective requests of a collection, applying the auth, headers, variables and pre/post scripts inherited from the collection and its folders.
 package collectionresolve
 
 import (
@@ -5,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"adomnia/internal/collectionfs"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 type ResolvedRequest struct {

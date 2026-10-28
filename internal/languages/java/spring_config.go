@@ -33,8 +33,8 @@ func valuesOf(configFiles []string) []SpringValue {
 
 func fileNameOf(path string) string {
 	slashed := filepathToSlash(path)
-	if cut := strings.LastIndex(slashed, "/"); cut >= 0 {
-		return slashed[cut+1:]
+	if _, after, ok := strings.CutLast(slashed, "/"); ok {
+		return after
 	}
 	return slashed
 }
@@ -128,7 +128,7 @@ type yamlDocument struct {
 func splitYamlDocuments(text string) []yamlDocument {
 	var documents []yamlDocument
 	var current []string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.TrimSpace(line) == "---" {
 			if len(current) > 0 {
 				documents = append(documents, yamlDocument{lines: current})
@@ -173,12 +173,12 @@ func parseYamlDocument(lines []string, file, profile string) []SpringValue {
 		}
 		indent := countIndent(raw)
 		trimmed := strings.TrimSpace(raw)
-		cut := strings.Index(trimmed, ":")
-		if cut < 0 {
+		before, after, ok := strings.Cut(trimmed, ":")
+		if !ok {
 			continue
 		}
-		key := strings.TrimSpace(trimmed[:cut])
-		value := strings.TrimSpace(trimmed[cut+1:])
+		key := strings.TrimSpace(before)
+		value := strings.TrimSpace(after)
 		for len(stack) > 0 && stack[len(stack)-1].indent >= indent {
 			stack = stack[:len(stack)-1]
 		}

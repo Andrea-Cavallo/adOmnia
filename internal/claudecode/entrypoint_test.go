@@ -1,7 +1,7 @@
 package claudecode
 
 import (
-	"adomnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 	"strings"
 	"testing"
 )

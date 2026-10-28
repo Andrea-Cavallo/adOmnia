@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/dap"
-	idetesting "adomnia/internal/ide/testing"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestDebugAdapterBuildsDebugpyLaunch(t *testing.T) {
@@ -316,7 +316,7 @@ func TestRealPytestRunProducesTree(t *testing.T) {
 		t.Fatalf("pytest timed out: %s", output)
 	}
 	tree := idetesting.NewTree()
-	for _, line := range bytes.Split(output, []byte("\n")) {
+	for line := range bytes.SplitSeq(output, []byte("\n")) {
 		for _, event := range parser.(idetesting.BatchParser).ParseAll(line) {
 			tree.Apply(event)
 		}
@@ -425,7 +425,7 @@ func TestRealPytestRunHandlesAsyncTests(t *testing.T) {
 		t.Fatalf("pytest timed out: %s", output)
 	}
 	tree := idetesting.NewTree()
-	for _, line := range bytes.Split(output, []byte("\n")) {
+	for line := range bytes.SplitSeq(output, []byte("\n")) {
 		for _, event := range parser.(idetesting.BatchParser).ParseAll(line) {
 			tree.Apply(event)
 		}

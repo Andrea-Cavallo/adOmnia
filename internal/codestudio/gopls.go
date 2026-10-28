@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // DetectGopls individua gopls (personalizzato, cartella strumenti, GOPATH/bin, PATH) e ne legge la versione.

@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/collectionresolve"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionresolve"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type mcpTool struct {
@@ -37,13 +37,26 @@ func mcpTools() []mcpTool {
 		return map[string]any{"type": "string", "description": description}
 	}
 	collection := str("Collection folder (contains collection.json). Defaults to the server's folder or the working directory.")
+	project := str("Absolute or relative path of the Code Studio project to scan. Source is parsed statically and never executed.")
+	environment := map[string]any{"type": "object", "description": "Environment with name, optional id and a complete variables array. Each variable has key, value, enabled and optional secret.", "properties": map[string]any{
+		"id": str("Optional existing environment id."), "name": str("Environment file name: letters, digits, dot, underscore or hyphen."), "private": map[string]any{"type": "boolean", "description": "Private environments are not supported in shared folder collections."},
+		"variables": map[string]any{"type": "array", "items": map[string]any{"type": "object", "properties": map[string]any{"key": str("Variable name."), "value": str("Variable value."), "enabled": map[string]any{"type": "boolean"}, "secret": map[string]any{"type": "boolean", "description": "Mask this value in MCP responses while keeping it available for local runs."}}, "required": []string{"key", "value", "enabled"}}},
+	}, "required": []string{"name", "variables"}}
 	readOnly := map[string]any{"readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false}
 	local := map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false}
+	write := map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false}
+	destructive := map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false}
 	network := map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": true}
 	return []mcpTool{
+		{"project_list_routes", "List project routes", "Read HTTP routes from a Code Studio project using the same Developer Context detectors as the IDE. Returns method, path, source and warnings without executing code or exposing dotenv values.", object(map[string]any{"project": project}, "project"), readOnly},
+		{"collection_create_from_code", "Create or sync a collection from code", "Scan project routes and create or update an adOmnia folder collection. Generated request ids are deterministic; custom requests are preserved.", object(map[string]any{"project": project, "collection": collection, "name": str("Collection name for a new collection."), "baseUrl": str("Base URL prefix, for example {{baseUrl}} or http://localhost:8080.")}, "project"), write},
 		{"collection_list_requests", "List requests", "List the requests of an adOmnia collection (id, name, method, url, folder).", object(map[string]any{"collection": collection}), readOnly},
 		{"collection_get_request", "Get a request", "Return one request of the collection in full (headers, params, bodies, auth, assertions, scripts) by id. Secrets are masked.", object(map[string]any{"collection": collection, "id": str("Request id from collection_list_requests.")}, "id"), readOnly},
-		{"collection_list_environments", "List environments", "List the environments of the collection with their variable names. Values of secret-looking variables are masked.", object(map[string]any{"collection": collection}), readOnly},
+		{"collection_upsert_request", "Create or update a request", "Create or replace a complete request in the collection. The request object uses adOmnia's request format; folder is an optional slash-separated destination.", object(map[string]any{"collection": collection, "folder": str("Optional slash-separated folder path."), "request": map[string]any{"type": "object", "description": "Complete adOmnia request, including id, method and url."}}, "request"), write},
+		{"collection_delete_request", "Delete a request", "Delete one request from the collection by id.", object(map[string]any{"collection": collection, "id": str("Request id from collection_list_requests.")}, "id"), destructive},
+		{"collection_list_environments", "List environments", "List the environments of the collection with their variable names. Secret values and secret-looking variable names are masked.", object(map[string]any{"collection": collection}), readOnly},
+		{"collection_upsert_environment", "Create or update an environment", "Create or replace an environment and its variables. Set merge=true to update only the supplied variables and preserve all others, including secrets. Values remain local and are masked in responses.", object(map[string]any{"collection": collection, "environment": environment, "merge": map[string]any{"type": "boolean", "description": "Merge supplied variables by key instead of replacing the whole environment."}}, "environment"), write},
+		{"collection_delete_environment", "Delete an environment", "Delete an environment and all its variables by name.", object(map[string]any{"collection": collection, "name": str("Environment name from collection_list_environments.")}, "name"), destructive},
 		{"collection_run", "Run a collection", "Run a collection's requests (with their tests) against real endpoints and return pass/fail per request.", object(map[string]any{
 			"collection": collection,
 			"folder":     str("Only run requests under this folder name or slash path."),
@@ -88,16 +101,22 @@ func mcpKnownTool(name string) bool {
 
 func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error) {
 	var args struct {
-		Collection string            `json:"collection"`
-		Folder     string            `json:"folder"`
-		Env        string            `json:"env"`
-		ID         string            `json:"id"`
-		Vars       map[string]string `json:"vars"`
-		Config     jsonv1.RawMessage `json:"config"`
-		Plan       string            `json:"plan"`
-		Runs       int               `json:"runs"`
-		Title      string            `json:"title"`
-		OutputDir  string            `json:"outputDir"`
+		Collection  string            `json:"collection"`
+		Folder      string            `json:"folder"`
+		Env         string            `json:"env"`
+		ID          string            `json:"id"`
+		Vars        map[string]string `json:"vars"`
+		Config      jsonv1.RawMessage `json:"config"`
+		Plan        string            `json:"plan"`
+		Runs        int               `json:"runs"`
+		Title       string            `json:"title"`
+		OutputDir   string            `json:"outputDir"`
+		Project     string            `json:"project"`
+		Name        string            `json:"name"`
+		BaseURL     string            `json:"baseUrl"`
+		Request     jsonv1.RawMessage `json:"request"`
+		Environment jsonv1.RawMessage `json:"environment"`
+		Merge       bool              `json:"merge"`
 	}
 	if len(raw) > 0 && string(raw) != "null" {
 		if err := json.Unmarshal(raw, &args); err != nil {
@@ -105,12 +124,24 @@ func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error)
 		}
 	}
 	switch name {
+	case "project_list_routes":
+		return s.projectListRoutes(args.Project)
+	case "collection_create_from_code":
+		return s.collectionCreateFromCode(args.Project, args.Collection, args.Name, args.BaseURL)
 	case "collection_list_requests":
 		return s.listRequests(args.Collection)
 	case "collection_get_request":
 		return s.getRequest(args.Collection, args.ID)
+	case "collection_upsert_request":
+		return s.collectionUpsertRequest(args.Collection, args.Folder, args.Request)
+	case "collection_delete_request":
+		return s.collectionDeleteRequest(args.Collection, args.ID)
 	case "collection_list_environments":
 		return s.listEnvironments(args.Collection)
+	case "collection_upsert_environment":
+		return s.collectionUpsertEnvironment(args.Collection, args.Environment, args.Merge)
+	case "collection_delete_environment":
+		return s.collectionDeleteEnvironment(args.Collection, args.Name)
 	case "collection_run":
 		collection, folder, err := s.loadCollection(args.Collection)
 		if err != nil {
@@ -253,9 +284,17 @@ func (s *mcpServer) environments(requested string) ([]mcpEnvironment, error) {
 		if err != nil {
 			return nil, err
 		}
+		secretKeys, err := mcpSecretVariableKeys(folder, name)
+		if err != nil {
+			return nil, err
+		}
 		masked := make(map[string]string, len(vars))
 		for key, value := range vars {
-			masked[key] = maskValue(key, value)
+			if secretKeys[key] && value != "" {
+				masked[key] = maskedValue
+			} else {
+				masked[key] = maskValue(key, value)
+			}
 		}
 		result = append(result, mcpEnvironment{Name: name, Variables: masked})
 	}

@@ -3,9 +3,9 @@ package codestudio
 import (
 	"fmt"
 
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // RustDebugRequest chiede il debug di un bin o di un example Cargo, con gli stessi target e opzioni

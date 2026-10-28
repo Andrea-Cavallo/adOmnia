@@ -1,10 +1,10 @@
 package codestudiowindow
 
 import (
-	"adomnia/internal/windowfit"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 	"strings"
 	"sync"
 

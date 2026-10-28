@@ -3,7 +3,7 @@ import { GitFork, Loader2, Search } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { getRustDependencyTree } from '@/lib/code-studio-api'
 import { withContentKeys } from '@/lib/contentKeys'
-import type { CargoTreeNode } from '../../../bindings/adomnia/internal/languages/rust/models'
+import type { CargoTreeNode } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 
 interface TreeRequest {
   sessionId: string

@@ -302,16 +302,16 @@ func (b docBuilder) problem(kind, name string, pos token.Pos, prefix string) Doc
 	for lineStart > 0 && text[lineStart-1] != '\n' {
 		lineStart--
 	}
-	indent := ""
+	var indent strings.Builder
 	for index := lineStart; index < len(text); {
 		r, size := utf8.DecodeRune(text[index:])
 		if !unicode.IsSpace(r) || r == '\n' {
 			break
 		}
-		indent += string(r)
+		indent.WriteString(string(r))
 		index += size
 	}
-	stub := indent + "// " + prefix + " \n"
+	stub := indent.String() + "// " + prefix + " \n"
 	return DocProblem{
 		Kind: kind, Name: name, Problem: "Missing documentation", Site: ArchSite{Path: filepath.Clean(position.Filename), Offset: position.Offset},
 		Fix: &ErrorFix{Label: "Add doc comment", Edits: []ErrorEdit{{Offset: lineStart, End: lineStart, Text: stub}}},

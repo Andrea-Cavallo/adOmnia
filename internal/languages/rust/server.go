@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 // rust-analyzer è il language server Rust. La fonte preferita è il componente rustup

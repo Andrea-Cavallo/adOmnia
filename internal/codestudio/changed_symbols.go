@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/git"
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 )
 
 const maxChangedSymbolFiles = 200
@@ -267,7 +267,7 @@ func functionSignature(fileSet *token.FileSet, function *ast.FuncDecl) string {
 		if list != nil {
 			for index, field := range list.List {
 				count := max(len(field.Names), 1)
-				for repeat := 0; repeat < count; repeat++ {
+				for repeat := range count {
 					if index > 0 || repeat > 0 {
 						buffer.WriteString(", ")
 					}

@@ -6,11 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func writeFixture(t *testing.T, files map[string]string) string {
@@ -32,10 +33,8 @@ func withSystemTools(t *testing.T, tools ...string) {
 	t.Helper()
 	previous := lookPath
 	lookPath = func(name string) (string, error) {
-		for _, tool := range tools {
-			if tool == name {
-				return "/usr/bin/" + name, nil
-			}
+		if slices.Contains(tools, name) {
+			return "/usr/bin/" + name, nil
 		}
 		return "", errors.New("not found")
 	}

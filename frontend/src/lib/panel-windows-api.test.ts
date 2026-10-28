@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('../../bindings/adomnia/app', () => ({}))
+vi.mock('../../bindings/github.com/Andrea-Cavallo/adOmnia/app', () => ({}))
 vi.mock('@wailsio/runtime', () => ({ Events: { On: vi.fn() } }))
 
 const { canDetachPanel, detachedPanelOfThisWindow } = await import('./panel-windows-api')

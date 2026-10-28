@@ -1,7 +1,6 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"bufio"
 	"context"
 	"encoding/csv"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (

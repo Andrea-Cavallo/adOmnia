@@ -6,19 +6,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // SonarQube è un'integrazione opzionale: adOmnia non installa né avvia nulla da sé. Con un server
@@ -118,9 +120,7 @@ func (r *sonarRegistry) configSnapshot() map[SessionID]SonarConfig {
 		return nil
 	}
 	result := make(map[SessionID]SonarConfig, len(r.configs))
-	for key, value := range r.configs {
-		result[key] = value
-	}
+	maps.Copy(result, r.configs)
 	return result
 }
 
@@ -474,7 +474,7 @@ func (s *Service) waitSonarTask(ctx context.Context, root, serverURL, token stri
 		return nil // ponytail: scanner senza report-task (versioni molto vecchie): si importa subito.
 	}
 	taskID := ""
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		if value, ok := strings.CutPrefix(strings.TrimSpace(line), "ceTaskId="); ok {
 			taskID = value
 		}
@@ -634,8 +634,8 @@ func tailString(value string, limit int) string {
 
 func lastNonEmptyLine(value string) string {
 	lines := strings.Split(strings.TrimSpace(value), "\n")
-	for index := len(lines) - 1; index >= 0; index-- {
-		if line := strings.TrimSpace(lines[index]); line != "" {
+	for _, line := range slices.Backward(lines) {
+		if line := strings.TrimSpace(line); line != "" {
 			return line
 		}
 	}
@@ -643,8 +643,8 @@ func lastNonEmptyLine(value string) string {
 }
 
 func firstLine(value string) string {
-	if index := strings.IndexByte(value, '\n'); index >= 0 {
-		return value[:index]
+	if before, _, ok := strings.Cut(value, "\n"); ok {
+		return before
 	}
 	return value
 }

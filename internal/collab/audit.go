@@ -1,6 +1,6 @@
 package collab
 
-import "adomnia/internal/devlog"
+import "github.com/Andrea-Cavallo/adOmnia/internal/devlog"
 
 // Audit deliberately records only operation and opaque identifiers. Invites,
 // certificate fingerprints, shared bodies and user-provided titles never enter logs.

@@ -2,6 +2,7 @@ package codestudio
 
 import (
 	"fmt"
+	"maps"
 	"net"
 	"os"
 	"path"
@@ -10,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // DetectDelve individua dlv e ne legge la versione, senza avviare nulla.
@@ -342,9 +343,7 @@ func (s *Service) persistBreakpoints(sessionID SessionID, relativePath string, l
 	s.viewMu.Lock()
 	view := s.views[sessionID]
 	breakpoints := make(map[string][]Breakpoint, len(view.Breakpoints)+1)
-	for path, existing := range view.Breakpoints {
-		breakpoints[path] = existing
-	}
+	maps.Copy(breakpoints, view.Breakpoints)
 	_, known := breakpoints[relativePath]
 	switch {
 	case len(list) == 0:

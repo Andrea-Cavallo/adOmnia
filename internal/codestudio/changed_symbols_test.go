@@ -4,7 +4,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"adomnia/internal/git"
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 )
 
 func TestVCSChangedSymbolsAgainstHEAD(t *testing.T) {

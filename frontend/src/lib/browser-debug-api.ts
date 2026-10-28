@@ -1,9 +1,9 @@
-import * as BrowserDebugBindings from '../../bindings/adomnia/browserdebug'
+import * as BrowserDebugBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/browserdebug'
 import type {
   ConsoleEntry as BindingConsoleEntry,
   DebugNetworkEntry as BindingDebugNetworkEntry,
   DOMBreakpointInfo as BindingDOMBreakpointInfo,
-} from '../../bindings/adomnia/internal/browser/models'
+} from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/browser/models'
 import type { DebugNetworkEntry } from '@/stores/browser-debug'
 
 // Discovery types

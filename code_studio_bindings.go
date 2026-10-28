@@ -1,30 +1,30 @@
 package main
 
 import (
-	"adomnia/internal/activity"
-	"adomnia/internal/aipolicy"
-	"adomnia/internal/codestudio"
-	"adomnia/internal/codestudiowindow"
-	"adomnia/internal/copilot"
-	"adomnia/internal/git"
-	"adomnia/internal/ide/agentreview"
-	"adomnia/internal/ide/apicontract"
-	"adomnia/internal/ide/graph"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/languages/java"
-	"adomnia/internal/languages/python"
-	"adomnia/internal/languages/rust"
-	"adomnia/internal/plugins"
-	"adomnia/internal/resources"
 	"context"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudiowindow"
+	"github.com/Andrea-Cavallo/adOmnia/internal/copilot"
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/agentreview"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/apicontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/graph"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
 	"log"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 
-	"adomnia/internal/windowchrome"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowchrome"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -1717,6 +1717,21 @@ func (g *GoIDE) InstallRustDebugger(sessionID string, confirmed bool) (codestudi
 	return g.service.InstallRustDebugger(sessionID, confirmed)
 }
 
+// StartWebDebug avvia il debug JS/TS con js-debug: un file del progetto o lo script del package manager.
+func (g *GoIDE) StartWebDebug(request codestudio.WebDebugRequest) (codestudio.DebugSessionInfo, error) {
+	return g.service.StartWebDebug(request)
+}
+
+// PreviewWebDebuggerInstall mostra il comando esatto che installerebbe js-debug.
+func (g *GoIDE) PreviewWebDebuggerInstall(sessionID string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewWebDebuggerInstall(sessionID)
+}
+
+// InstallWebDebugger installa js-debug (release pinnata, checksum verificato) dopo conferma.
+func (g *GoIDE) InstallWebDebugger(sessionID string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallWebDebugger(sessionID, confirmed)
+}
+
 // RustToolchains elenca le toolchain Rust candidate del progetto (RS-2.4).
 func (g *GoIDE) RustToolchains(sessionID string) (codestudio.RustToolchainReport, error) {
 	return g.service.RustToolchains(sessionID)
@@ -1798,4 +1813,8 @@ func (g *GoIDE) SpringEndpoints(sessionID string) ([]java.SpringEndpoint, error)
 // Maven locale. Lavoro pesante, solo su azione esplicita: riprende dalla cache.
 func (g *GoIDE) SpringMetadataRefresh(sessionID string, limit int) (java.SpringMetadataReport, error) {
 	return g.service.SpringMetadataRefresh(sessionID, limit)
+}
+
+func (g *GoIDE) HierarchyPreview(sessionID, token string) (codestudio.QuickDefinitionResult, error) {
+	return g.service.HierarchyPreview(sessionID, token)
 }

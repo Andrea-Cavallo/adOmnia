@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"strings"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const (
@@ -94,7 +94,7 @@ func Ensure(path, tool, version string, artifacts []Artifact, report []byte) err
 	if existing, err := os.ReadFile(path); err == nil {
 		var parsed Manifest
 		if err := json.Unmarshal(existing, &parsed); err != nil {
-			return fmt.Errorf("the %s manifest is unreadable (%v): reinstall it from the editor notice", tool, err)
+			return fmt.Errorf("the %s manifest is unreadable (%w): reinstall it from the editor notice", tool, err)
 		}
 		if !reflect.DeepEqual(parsed, expected) {
 			return fmt.Errorf("the installed %s does not match its verified manifest: the tools folder changed, reinstall it from the editor notice", tool)

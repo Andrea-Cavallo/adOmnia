@@ -1,8 +1,8 @@
 package run
 
 import (
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"bytes"
 	"context"
@@ -35,7 +35,7 @@ func parseComposePS(output []byte) ([]composeContainer, error) {
 		return list, err
 	}
 	var list []composeContainer
-	for _, line := range bytes.Split(trimmed, []byte("\n")) {
+	for line := range bytes.SplitSeq(trimmed, []byte("\n")) {
 		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue

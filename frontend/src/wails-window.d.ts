@@ -163,25 +163,6 @@ interface WailsGoMain {
     HostPush: (repoPath: string, accountJSON: string, token: string, branch: string) => Promise<void>
     RunTerminalCommand: (repoPath: string, command: string) => Promise<string>
   }
-  MCPClient: {
-    Connect: (serverConfigJSON: string) => Promise<string>
-    ConnectSession: (sessionID: string, serverConfigJSON: string) => Promise<string>
-    Disconnect: () => Promise<void>
-    DisconnectSession: (sessionID: string) => Promise<void>
-    GetSessionStatus: (sessionID: string) => Promise<string>
-    ListTools: () => Promise<string>
-    ListToolsSession: (sessionID: string) => Promise<string>
-    CallTool: (toolName: string, argsJSON: string) => Promise<string>
-    CallToolSession: (sessionID: string, toolName: string, argsJSON: string) => Promise<string>
-    ListResources: () => Promise<string>
-    ListResourcesSession: (sessionID: string) => Promise<string>
-    ListPrompts: () => Promise<string>
-    ListPromptsSession: (sessionID: string) => Promise<string>
-    GetPrompt: (promptName: string, argsJSON: string) => Promise<string>
-    GetPromptSession: (sessionID: string, promptName: string, argsJSON: string) => Promise<string>
-    ListSessions: () => Promise<string>
-    RestartSession: (sessionID: string) => Promise<string>
-  }
   MCPServerGenerator: {
     Generate: (inputJSON: string, outputDir: string) => Promise<string>
   }

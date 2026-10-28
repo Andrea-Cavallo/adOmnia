@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // UpgradeManifest implementa securityintel.UpgradeEditor per pom.xml.

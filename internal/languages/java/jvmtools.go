@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Monitoraggio delle JVM in esecuzione con gli strumenti del JDK (jcmd, jstat): nessun agente da installare e
@@ -49,7 +49,7 @@ var jcmdLine = regexp.MustCompile(`^(\d+)\s+(\S+)\s*(.*)$`)
 // ParseJcmdList legge l'output di `jcmd -l`, escludendo jcmd stesso.
 func ParseJcmdList(output string) []JVMProcess {
 	var found []JVMProcess
-	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
 		match := jcmdLine.FindStringSubmatch(strings.TrimSpace(line))
 		if match == nil || strings.Contains(match[2], "jcmd.JCmd") {
 			continue
@@ -66,7 +66,7 @@ func ParseJcmdList(output string) []JVMProcess {
 // ParseJstatGC legge `jstat -gc -t`: un'intestazione con i nomi delle colonne e una riga di valori.
 func ParseJstatGC(output string) (JVMHeapSample, error) {
 	var header, values []string
-	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) == 0 {
 			continue

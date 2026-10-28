@@ -253,8 +253,7 @@ func describeErrorType(typeName *types.TypeName, file typedFile, offset int) *Er
 		Wraps: []string{}, Refs: []ErrorRef{},
 	}
 	if structure, ok := named.Underlying().(*types.Struct); ok {
-		for index := 0; index < structure.NumFields(); index++ {
-			field := structure.Field(index)
+		for field := range structure.Fields() {
 			if implementsError(field.Type()) {
 				label := field.Name() + " " + types.TypeString(field.Type(), types.RelativeTo(typeName.Pkg()))
 				if field.Embedded() {

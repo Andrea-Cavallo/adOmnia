@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 )
 
 func TestHintsFromContributions(t *testing.T) {

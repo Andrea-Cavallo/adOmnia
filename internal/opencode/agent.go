@@ -13,12 +13,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 )
 
 const EndpointKey = "ADOMNIA_OLLAMA_URL"
@@ -139,10 +140,8 @@ func CheckModel(ctx context.Context, endpoint, model string) error {
 	if info.RemoteHost != "" || info.RemoteModel != "" {
 		return fmt.Errorf("cloud-backed Ollama models are not supported by this local integration")
 	}
-	for _, capability := range info.Capabilities {
-		if capability == "tools" {
-			return nil
-		}
+	if slices.Contains(info.Capabilities, "tools") {
+		return nil
 	}
 	return fmt.Errorf("model %q does not report tool-calling support; choose a model with tools support in Ollama", model)
 }

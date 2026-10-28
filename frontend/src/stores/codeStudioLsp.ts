@@ -46,6 +46,7 @@ export interface GoIDEHierarchyView {
   sessionId: string
   kind: 'call' | 'type'
   root: GoIDEHierarchyItem
+  anchor?: { x: number; y: number }
 }
 
 export interface GoIDEEditorPreferences {

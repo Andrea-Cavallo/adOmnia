@@ -1,8 +1,8 @@
 package run
 
 import (
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"context"
 	"errors"

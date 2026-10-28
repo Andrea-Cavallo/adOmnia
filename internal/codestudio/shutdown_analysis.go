@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/startup"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/startup"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // ShutdownReport: dall'avvio al segnale di arresto, fino all'uscita (o al timeout).
@@ -51,7 +51,7 @@ func (s *Service) interruptHelper(ctx context.Context, built executable) (string
 	command.Dir, command.Env = temp, append(append([]string(nil), built.environment...), "GO111MODULE=off")
 	configureProcess(command, false)
 	if output, err := command.CombinedOutput(); err != nil {
-		return "", &shutdownError{cleanToolError(output, 0)}
+		return "", &shutdownError{process.CleanToolError(output, 0)}
 	}
 	return path, nil
 }

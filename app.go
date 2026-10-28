@@ -13,27 +13,27 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/activity"
-	"adomnia/internal/bootstrap"
-	"adomnia/internal/collectionsstore"
-	"adomnia/internal/devlog"
-	"adomnia/internal/dropfiles"
-	"adomnia/internal/httpexec"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/nettools"
-	"adomnia/internal/panelwindow"
-	"adomnia/internal/perf"
-	pluginRuntime "adomnia/internal/plugins"
-	"adomnia/internal/proxy"
-	"adomnia/internal/requestwindow"
-	"adomnia/internal/sidecar"
-	"adomnia/internal/sse"
-	"adomnia/internal/startupperf"
-	"adomnia/internal/storage"
-	"adomnia/internal/swaggerwindow"
-	"adomnia/internal/vault"
-	"adomnia/internal/windowchrome"
-	"adomnia/internal/ws"
+	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
+	"github.com/Andrea-Cavallo/adOmnia/internal/bootstrap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionsstore"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/dropfiles"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/nettools"
+	"github.com/Andrea-Cavallo/adOmnia/internal/panelwindow"
+	"github.com/Andrea-Cavallo/adOmnia/internal/perf"
+	pluginRuntime "github.com/Andrea-Cavallo/adOmnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/proxy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestwindow"
+	"github.com/Andrea-Cavallo/adOmnia/internal/sidecar"
+	"github.com/Andrea-Cavallo/adOmnia/internal/sse"
+	"github.com/Andrea-Cavallo/adOmnia/internal/startupperf"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/swaggerwindow"
+	"github.com/Andrea-Cavallo/adOmnia/internal/vault"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowchrome"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ws"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -203,7 +203,7 @@ func (a *App) OnStartup(ctx context.Context) {
 	startupStages["sidecarMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
 	stageStarted = time.Now()
 	if globalPluginManager != nil {
-		globalPluginManager.FireEvent(PluginEvent{Type: "onStartup", Payload: map[string]interface{}{}})
+		globalPluginManager.FireEvent(PluginEvent{Type: "onStartup", Payload: map[string]any{}})
 	}
 	startupStages["pluginEventMs"] = float64(time.Since(stageStarted).Microseconds()) / 1000
 	startupStages["totalMs"] = float64(time.Since(startupStarted).Microseconds()) / 1000
@@ -402,7 +402,7 @@ func (a *App) shutdown(_ context.Context) {
 		}
 	}
 	if globalPluginManager != nil {
-		globalPluginManager.EmitEvent(PluginEvent{Type: "onShutdown", Payload: map[string]interface{}{}})
+		globalPluginManager.EmitEvent(PluginEvent{Type: "onShutdown", Payload: map[string]any{}})
 		globalPluginManager.Shutdown()
 	}
 	pluginRuntime.ConfigureNotifier(nil)

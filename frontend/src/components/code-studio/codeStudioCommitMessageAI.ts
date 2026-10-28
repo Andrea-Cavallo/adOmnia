@@ -1,5 +1,5 @@
-import * as AIEngine from '../../../bindings/adomnia/aiengine'
-import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import * as AIEngine from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine'
+import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { createAIRedactor } from '@/lib/aiRedaction'
 import { ensureAIConfigured } from '@/lib/aiEngine'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'

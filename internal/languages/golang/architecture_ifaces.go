@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -123,12 +124,11 @@ func (a *architecture) describeInterface(item archType, concretes []archType) Ar
 		Name: item.named.Obj().Name(), Package: item.named.Obj().Pkg().Path(), Site: item.site,
 		Methods: []string{}, Embeds: []string{}, Implementations: []ArchImplementation{}, Users: []ArchRef{}, MethodUses: []ArchMethodUse{}, NearMisses: []ArchNearMiss{},
 	}
-	for index := 0; index < iface.NumMethods(); index++ {
-		method := iface.Method(index)
+	for method := range iface.Methods() {
 		result.Methods = append(result.Methods, method.Name()+strings.TrimPrefix(types.TypeString(method.Type(), qualifier), "func"))
 	}
-	for index := 0; index < iface.NumEmbeddeds(); index++ {
-		result.Embeds = append(result.Embeds, types.TypeString(iface.EmbeddedType(index), qualifier))
+	for etyp := range iface.EmbeddedTypes() {
+		result.Embeds = append(result.Embeds, types.TypeString(etyp, qualifier))
 	}
 	for _, concrete := range concretes {
 		switch {
@@ -153,7 +153,7 @@ func missingMethods(named *types.Named, iface *types.Interface) []string {
 	}
 	pointer := types.NewPointer(named)
 	var missing []string
-	for index := 0; index < total; index++ {
+	for index := range total {
 		method := iface.Method(index)
 		object, _, _ := types.LookupFieldOrMethod(pointer, true, method.Pkg(), method.Name())
 		found, ok := object.(*types.Func)
@@ -236,8 +236,8 @@ func addMethodUse(uses []ArchMethodUse, name string, count int) []ArchMethodUse 
 }
 
 func typeUseRole(stack []ast.Node) string {
-	for index := len(stack) - 1; index >= 0; index-- {
-		switch node := stack[index].(type) {
+	for index, s := range slices.Backward(stack) {
+		switch node := s.(type) {
 		case *ast.FieldList:
 			if index > 0 {
 				switch parent := stack[index-1].(type) {
@@ -267,8 +267,8 @@ func typeUseRole(stack []ast.Node) string {
 }
 
 func enclosingFuncName(stack []ast.Node) string {
-	for index := len(stack) - 1; index >= 0; index-- {
-		if fn, ok := stack[index].(*ast.FuncDecl); ok {
+	for _, s := range slices.Backward(stack) {
+		if fn, ok := s.(*ast.FuncDecl); ok {
 			return funcDeclName(fn)
 		}
 	}

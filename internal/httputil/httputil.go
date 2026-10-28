@@ -1,7 +1,8 @@
+// Package httputil holds small HTTP helpers shared by the sidecar handlers, such as the standard JSON error payload.
 package httputil
 
 import (
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 )
 

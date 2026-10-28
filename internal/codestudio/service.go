@@ -1,10 +1,7 @@
+// Package codestudio is the host of Code Studio, adOmnia's integrated IDE: it composes the language-agnostic core in internal/ide with the language adapters in internal/languages and exposes them to the frontend through a single Service facade.
 package codestudio
 
 import (
-	"adomnia/internal/ide/flight"
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/preview"
-	"adomnia/internal/ide/run"
 	"context"
 	"errors"
 	"fmt"
@@ -19,10 +16,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/flight"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/preview"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/terminal"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 const maxRecentProjects = 20
@@ -101,7 +104,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		toolchain:        NewToolchainManager(),
 		processes:        NewProcessManager(),
 		lsp:              NewLSPManager(languages),
-		terminal:         NewTerminalManager(),
+		terminal:         terminal.NewTerminalManager(),
 		debug:            NewDebugManager(),
 		tests:            NewTestManager(),
 		runConfigs:       NewRunConfigManager(),

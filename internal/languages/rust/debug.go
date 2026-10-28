@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // DebugOptions sono le opzioni di LanguageOptions del debug Rust: lo stesso target della Run
@@ -193,7 +193,7 @@ func buildArtifactPath(cargo, workingDirectory string, options DebugOptions) (st
 // (i binari delle dipendenze non hanno `executable`).
 func parseArtifactPath(output []byte) (string, error) {
 	executable := ""
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		var message struct {
 			Reason     string `json:"reason"`
 			Executable string `json:"executable"`

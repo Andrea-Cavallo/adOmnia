@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 // tempStore points the package persistence hooks at a throwaway bbolt database, so handlers that

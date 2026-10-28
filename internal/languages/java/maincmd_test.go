@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestMainOptionsAreValidated(t *testing.T) {

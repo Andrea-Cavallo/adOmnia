@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // TestOptions sono le opzioni di LanguageOptions dei test Rust. Run è un singolo nome di test da
@@ -29,7 +29,7 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 			return run.CommandSpec{}, nil, fmt.Errorf("invalid Rust test options: %w", err)
 		}
 	}
-	for _, name := range strings.Split(options.Run, "\n") {
+	for name := range strings.SplitSeq(options.Run, "\n") {
 		// Un nome non può essere un'opzione di libtest; più nomi (rerun failed) stanno uno per riga.
 		if options.Run != "" && (name == "" || strings.HasPrefix(name, "-") || strings.ContainsAny(name, "\x00\r")) {
 			return run.CommandSpec{}, nil, fmt.Errorf("invalid test name %q", name)

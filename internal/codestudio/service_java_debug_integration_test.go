@@ -1,11 +1,12 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/java"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // Opt-in: reuses installed tools; never downloads a JDK, language server or debugger.
@@ -132,19 +133,6 @@ func TestJavaDebugPreparesExistingMain(t *testing.T) {
 	}
 	options, err := service.resolveJavaDebug(session, JavaDebugRequest{SessionID: session.ID, MainClass: "com.wes.openai.SpringBootApp"})
 	if err != nil {
-		if server, ok := service.lsp.server(session.ID, java.ID); ok {
-			server.mu.Lock()
-			count := 0
-			for uri, diagnostics := range server.diagnostics {
-				for _, diagnostic := range diagnostics {
-					if diagnostic.Severity == 1 && count < 10 {
-						t.Logf("Java problem %s:%d: %s", filepath.Base(pathFromURI(uri)), diagnostic.Range.Start.Line+1, diagnostic.Message)
-						count++
-					}
-				}
-			}
-			server.mu.Unlock()
-		}
 		t.Fatal(err)
 	}
 	compiled := filepath.Join(root, "target", "classes", "com", "wes", "openai", "SpringBootApp.class")

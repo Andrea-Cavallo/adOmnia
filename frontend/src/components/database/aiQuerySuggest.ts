@@ -2,7 +2,7 @@
 // The prompt carries schema names and the current query only, never result rows; the redactor hides
 // secret-looking values before the text leaves the machine and restores them in the answer.
 
-import * as AIEngine from '../../../bindings/adomnia/aiengine'
+import * as AIEngine from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine'
 import { createAIRedactor } from '@/lib/aiRedaction'
 import { ensureAIConfigured } from '@/lib/aiEngine'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'

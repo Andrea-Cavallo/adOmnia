@@ -171,7 +171,7 @@ func TestRecentAvailabilityIsCachedAndBounded(t *testing.T) {
 		t.Fatal("expired cache entry must be re-checked")
 	}
 
-	for index := 0; index < maxRecentProjects+5; index++ {
+	for index := range maxRecentProjects + 5 {
 		service.recentAvailability(filepath.Join(root, "gone", string(rune('a'+index%26)), string(rune('a'+index/26))))
 	}
 	service.recentChecks.mu.Lock()

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/httpexec"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 func TestValidateResponseContract(t *testing.T) {

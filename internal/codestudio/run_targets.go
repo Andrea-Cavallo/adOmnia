@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // ListRunTargets returns runnable packages discovered by the registered

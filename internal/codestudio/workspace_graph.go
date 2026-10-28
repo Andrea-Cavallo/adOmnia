@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/graph"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/graph"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // Semantic Workspace Graph: costruito dal report dell'Architecture Explorer, salvato su disco

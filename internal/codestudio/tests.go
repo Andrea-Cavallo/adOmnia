@@ -1,14 +1,15 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/testing"
-	"adomnia/internal/languages/golang"
 	"encoding/json/v2"
 	"math"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 type TestRunRequest = golang.TestOptions

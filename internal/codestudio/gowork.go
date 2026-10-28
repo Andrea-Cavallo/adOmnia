@@ -1,7 +1,6 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +9,9 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 
 	"golang.org/x/mod/modfile"
 )
@@ -195,7 +197,7 @@ func (s *Service) runGoCommands(session Session, commands [][]string) error {
 		output, err := command.CombinedOutput()
 		cancel()
 		if err != nil {
-			return fmt.Errorf("go %s: %s", strings.Join(arguments, " "), cleanToolError(output, 0))
+			return fmt.Errorf("go %s: %s", strings.Join(arguments, " "), process.CleanToolError(output, 0))
 		}
 	}
 	return nil

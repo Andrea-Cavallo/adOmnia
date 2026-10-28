@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/milk"
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 type DiagnosticStep struct {

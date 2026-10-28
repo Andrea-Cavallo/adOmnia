@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // entryScriptNames sono i nomi di file che di solito avviano un progetto Python.

@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"maps"
 	"strconv"
 	"strings"
 )
@@ -41,9 +42,7 @@ func routeMethodVerbs(hints AdapterHints) map[string]string {
 	for name := range upperMethods {
 		methods[name] = name
 	}
-	for name, verb := range chiMethods {
-		methods[name] = verb
-	}
+	maps.Copy(methods, chiMethods)
 	for _, fh := range hints.Frameworks {
 		for _, name := range fh.RouteMethods {
 			methods[name] = strings.ToUpper(name)
@@ -158,9 +157,7 @@ func (w *routeWalker) call(call *ast.CallExpr) bool {
 		}
 		saved := w.prefixes
 		w.prefixes = make(map[string]string, len(saved)+1)
-		for k, v := range saved {
-			w.prefixes[k] = v
-		}
+		maps.Copy(w.prefixes, saved)
 		if params := fn.Type.Params.List; len(params) == 1 && len(params[0].Names) == 1 {
 			w.prefixes[params[0].Names[0].Name] = prefix
 		}

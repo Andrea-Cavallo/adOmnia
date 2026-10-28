@@ -91,8 +91,8 @@ func parseCoverageProfile(data []byte) (string, map[string][]rawCoverageBlock, e
 		if line == "" {
 			continue
 		}
-		if strings.HasPrefix(line, "mode:") {
-			mode = strings.TrimSpace(strings.TrimPrefix(line, "mode:"))
+		if after, ok := strings.CutPrefix(line, "mode:"); ok {
+			mode = strings.TrimSpace(after)
 			continue
 		}
 		file, block, err := parseCoverageLine(line)

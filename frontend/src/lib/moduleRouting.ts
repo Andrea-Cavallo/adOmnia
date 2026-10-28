@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import * as AppBindings from '../../bindings/adomnia/app'
+import * as AppBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { Events } from '@wailsio/runtime'
 import type { RailItem } from '@/lib/navigation'
 import type { Collection, RequestItem } from '@/lib/types'

@@ -1,5 +1,5 @@
 import { logBackgroundError } from '@/lib/code-studio/backgroundError'
-import * as GoIDEBindings from '../../../bindings/adomnia/goide'
+import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { isVaultRef, resolveVaultReferences } from '@/lib/vaultRefs'
 

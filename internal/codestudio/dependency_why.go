@@ -1,11 +1,13 @@
 package codestudio
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // DependencyWhy è la catena di import più corta dal modulo principale al modulo dipendente
@@ -20,7 +22,7 @@ type DependencyWhy struct {
 // ParseModWhy legge l'output di `go mod why -m`.
 func ParseModWhy(module, output string) DependencyWhy {
 	why := DependencyWhy{Module: module, Chain: []string{}}
-	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
 		line = strings.TrimSpace(line)
 		switch {
 		case line == "" || strings.HasPrefix(line, "#"):
@@ -61,7 +63,7 @@ func (s *Service) DependencyWhy(sessionID, module string) (DependencyWhy, error)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	command := procutil.CommandContext(ctx, binary, "mod", "why", "-m", module)
-	command.Dir, command.Env = directory, append(withGoFirstInPath(environment, binary), "GOPROXY=off")
+	command.Dir, command.Env = directory, append(golang.WithGoFirstInPath(environment, binary), "GOPROXY=off")
 	configureProcess(command, false)
 	output, err := command.CombinedOutput()
 	if err != nil {

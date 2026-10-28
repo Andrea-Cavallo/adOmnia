@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 const maxCoverageSourceScan = 20_000
@@ -113,8 +113,8 @@ func javaSourceIndex(moduleDir string) map[string]string {
 		}
 		slashed := filepath.ToSlash(file)
 		for _, root := range []string{"/src/main/java/", "/src/main/kotlin/"} {
-			if at := strings.LastIndex(slashed, root); at >= 0 {
-				if key := slashed[at+len(root):]; strings.HasSuffix(key, ".java") || strings.HasSuffix(key, ".kt") {
+			if _, after, ok := strings.CutLast(slashed, root); ok {
+				if key := after; strings.HasSuffix(key, ".java") || strings.HasSuffix(key, ".kt") {
 					if _, exists := index[key]; !exists {
 						index[key] = file
 					}

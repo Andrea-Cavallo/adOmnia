@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/graph"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/graph"
 )
 
 // Il Semantic Workspace Graph di un progetto Go nasce dal report dell'Architecture Explorer

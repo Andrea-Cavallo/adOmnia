@@ -1,8 +1,10 @@
 package dap
 
 import (
-	"adomnia/internal/ide/run"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"net"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 type SessionID = run.SessionID
@@ -32,12 +34,26 @@ type AdapterSpec struct {
 	RetryEvaluate        func(expression, context string, err error) (string, bool)
 	ExplainEvaluateError func(error, string) error
 	PanicFunction        string
+	// ZeroFrameIDs: il primo frame ha id 0 (js-debug), quindi 0 è un frame valido e non "nessun
+	// frame" come per Delve e debugpy: senza questa distinzione evaluate partirebbe in scope globale.
+	ZeroFrameIDs bool
+	// ChildSession costruisce lo spec della sessione figlia che l'adapter chiede con la richiesta
+	// inversa startDebugging (js-debug: il processo controllato vive lì). Nil = non supportata.
+	ChildSession func(request string, configuration map[string]any) (AdapterSpec, error)
 }
 
 type Launch struct {
 	SessionID SessionID
 	Root      string
 	Spec      AdapterSpec
+}
+
+// childSession è una connessione figlia dello stesso debug adapter (richiesta inversa
+// startDebugging). js-debug la usa per il processo che avvia davvero: il target vive qui, mentre la
+// connessione principale resta il canale dei comandi dell'adapter.
+type childSession struct {
+	client *Client
+	conn   net.Conn
 }
 
 type LaunchRequest struct {
@@ -47,7 +63,7 @@ type LaunchRequest struct {
 	WorkingDirectory string
 	Program          string
 	Environment      []string
-	LanguageOptions  json.RawMessage
+	LanguageOptions  jsonv1.RawMessage
 }
 
 type DebugAdapterProvider interface {

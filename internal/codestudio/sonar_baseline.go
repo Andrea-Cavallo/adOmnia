@@ -1,13 +1,14 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // La baseline SonarQube è versionabile con il progetto: chi clona vede solo i problemi nuovi,

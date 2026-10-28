@@ -1,6 +1,6 @@
 import { monaco } from '@/lib/monacoSetup'
 import { getMyBatisIndex } from '@/lib/code-studio-api'
-import type { MyBatisIndex } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { MyBatisIndex } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { mybatisLinkAt, mybatisTarget, type MyBatisSide } from '@/lib/code-studio/mybatisLinks'
 import { documentForModel } from './codeStudioLanguageFeatures'
 import { toMonacoLocation } from './codeStudioSpring'

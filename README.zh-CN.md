@@ -203,4 +203,4 @@ Code Studio    →    实时服务        →    API Workspace    →    处理�
 
 请[提交问题](https://github.com/Andrea-Cavallo/adOmnia/issues)，并附上你的版本、操作系统和复现步骤。请从截图和导出文件中去除凭据和私人数据。提交拉取请求之前，请先遵循仓库的贡献指南。
 
-[MIT 许可证](LICENSE.md)
+[MIT 许可证](LICENSE) · [第三方声明](NOTICE.md)

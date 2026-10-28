@@ -1,10 +1,11 @@
 package golang
 
 import (
-	"adomnia/internal/ide/dap"
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 var delveHitCondition = regexp.MustCompile(`^(>=|<=|==|!=|>|<|%)?\s*[0-9]+$`)

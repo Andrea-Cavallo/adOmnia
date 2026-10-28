@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 var _ language.ServerProvider = (*Language)(nil)

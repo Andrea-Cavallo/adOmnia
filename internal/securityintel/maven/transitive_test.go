@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 func writeRepoPOM(t *testing.T, repository, group, artifact, version, body string) {

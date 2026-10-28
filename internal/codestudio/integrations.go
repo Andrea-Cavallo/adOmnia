@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 // PluginContractVersion è la versione del contratto degli eventi Code Studio esposti ai plugin.

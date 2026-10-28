@@ -1,1 +1,1 @@
-export * from '../../../../bindings/adomnia/mcpservergenerator'
+export * from '../../../../bindings/github.com/Andrea-Cavallo/adOmnia/mcpservergenerator'

@@ -45,7 +45,9 @@ export function CodeStudioSidePane({ session, document }: CodeStudioSidePaneProp
   const pane = useCodeStudioAssistantStore((state) => state.pane)
   const detached = useStudioTools((state) => isChatPane(pane) && state.detached.includes(toolKey(session.id, pane)))
   const assistantOpen = isChatPane(pane)
-  const tabs = TABS.filter(({ id }) => (assistantOpen ? id === 'ai' : id !== 'ai') && (id !== 'context' || hasGo))
+  // L'hub AI resta una scheda sempre visibile accanto alle altre (non più solo un bottone della
+  // stripe): selezionarla apre l'hub sull'ultimo provider, le altre lo chiudono.
+  const tabs = TABS.filter(({ id }) => id !== 'context' || hasGo)
   const visibleTab: SidePaneTab = assistantOpen ? 'ai' : tab === 'ai' || (tab === 'context' && !hasGo) ? 'structure' : tab
   const selectTab = (next: SidePaneTab) => {
     const assistant = useCodeStudioAssistantStore.getState()
@@ -63,7 +65,7 @@ export function CodeStudioSidePane({ session, document }: CodeStudioSidePaneProp
           ? <CodeStudioLineContext session={session} document={document} />
           : <CodeStudioProjectOverview session={session} />
   return (
-    <aside aria-label={assistantOpen ? 'AI Assistant' : 'Structure and project overview'} className="flex h-full min-h-0 min-w-0 flex-col">
+    <aside aria-label={assistantOpen ? 'AI Assistant' : 'Structure, project overview and AI assistant'} className="flex h-full min-h-0 min-w-0 flex-col">
       <div role="tablist" className="code-studio-tool-header min-w-0 shrink-0 gap-1 overflow-x-auto pl-2">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" role="tab" aria-selected={visibleTab === id} onClick={() => selectTab(id)} className={`relative flex h-9 shrink-0 items-center gap-1.5 px-2 text-[12px] ${visibleTab === id ? 'font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}>

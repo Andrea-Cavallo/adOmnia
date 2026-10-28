@@ -1,7 +1,7 @@
+// Package ws implements adOmnia's WebSocket client sessions.
 package ws
 
 import (
-	"adomnia/internal/httputil"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json/v2"
@@ -12,7 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/gorilla/websocket"
 )
 
@@ -87,7 +89,7 @@ func (s *WSSession) touch() {
 
 func wsSessionCount() int {
 	n := 0
-	wsSessions.Range(func(_, _ interface{}) bool { n++; return true })
+	wsSessions.Range(func(_, _ any) bool { n++; return true })
 	return n
 }
 
@@ -155,7 +157,7 @@ func wsSessionReaper() {
 	defer ticker.Stop()
 	for range ticker.C {
 		now := time.Now().UnixNano()
-		wsSessions.Range(func(key, value interface{}) bool {
+		wsSessions.Range(func(key, value any) bool {
 			sess := value.(*WSSession)
 			last := sess.lastActive.Load()
 			if now-last > int64(wsSessionIdleTimeout) {
@@ -169,7 +171,7 @@ func wsSessionReaper() {
 
 // WsShutdown closes every active WebSocket session. Safe to call multiple times.
 func WsShutdown() {
-	wsSessions.Range(func(key, value interface{}) bool {
+	wsSessions.Range(func(key, value any) bool {
 		sess := value.(*WSSession)
 		sess.closeConn()
 		return true
@@ -179,7 +181,7 @@ func WsShutdown() {
 // WsListHandler lists all active WebSocket sessions (GET /ws/list).
 func WsListHandler(w http.ResponseWriter, r *http.Request) {
 	sessions := make([]wsSessionInfo, 0)
-	wsSessions.Range(func(key, value interface{}) bool {
+	wsSessions.Range(func(key, value any) bool {
 		sess := value.(*WSSession)
 		sess.clientsMu.Lock()
 		clientCount := len(sess.clients)
@@ -202,7 +204,7 @@ func WsCloseAllHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	count := 0
-	wsSessions.Range(func(key, value interface{}) bool {
+	wsSessions.Range(func(key, value any) bool {
 		sess := value.(*WSSession)
 		sess.closeConn()
 		count++

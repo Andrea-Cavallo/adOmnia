@@ -1,14 +1,16 @@
 package java
 
 import (
+	"maps"
 	"net"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // datasourcePrefix è il prefisso che Spring Boot usa per il datasource principale. Un datasource
@@ -92,12 +94,8 @@ func datasourcesOf(values []SpringValue, root string) []language.ConfiguredDatab
 	}
 	for _, profile := range order {
 		merged := make(map[string]SpringValue, len(base)+len(profiles[profile]))
-		for field, value := range base {
-			merged[field] = value
-		}
-		for field, value := range profiles[profile] {
-			merged[field] = value
-		}
+		maps.Copy(merged, base)
+		maps.Copy(merged, profiles[profile])
 		if database, ok := buildDatasource(merged, profile, active, root); ok {
 			result = append(result, database)
 		}
@@ -113,7 +111,7 @@ func activeProfilesOf(values []SpringValue) map[string]bool {
 		if value.Key != "spring.profiles.active" {
 			continue
 		}
-		for _, name := range strings.Split(value.Value, ",") {
+		for name := range strings.SplitSeq(value.Value, ",") {
 			if name = strings.TrimSpace(name); name != "" {
 				active[name] = true
 			}
@@ -251,12 +249,7 @@ func isPlaceholder(value string) bool {
 }
 
 func containsString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, want)
 }
 
 func dedupeStrings(values []string) []string {
@@ -399,7 +392,7 @@ func splitHostPort(value string) (string, int) {
 }
 
 func sslModeFromQuery(query string) string {
-	for _, part := range strings.Split(query, "&") {
+	for part := range strings.SplitSeq(query, "&") {
 		key, value, ok := strings.Cut(part, "=")
 		if ok && strings.EqualFold(strings.TrimSpace(key), "sslmode") {
 			return strings.TrimSpace(value)

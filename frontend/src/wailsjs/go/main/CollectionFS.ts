@@ -1,1 +1,1 @@
-export * from '../../../../bindings/adomnia/collectionfs'
+export * from '../../../../bindings/github.com/Andrea-Cavallo/adOmnia/collectionfs'

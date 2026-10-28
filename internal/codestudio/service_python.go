@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
-	"adomnia/internal/ide/run"
-	"adomnia/internal/languages/python"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
 )
 
 // PythonInterpreterReport è ciò che serve a scegliere l'interprete Python: i candidati con la
@@ -45,11 +46,7 @@ func (s *Service) PythonUnitInterpreters(sessionID, unit string) (PythonInterpre
 	}
 	installed := python.DiscoverInterpreters(root, directory)
 	if saved := python.ProjectInterpreter(root, directory); saved != "" {
-		for i := len(installed) - 1; i >= 0; i-- {
-			if installed[i].Path == saved {
-				installed = append(installed[:i], installed[i+1:]...)
-			}
-		}
+		installed = slices.DeleteFunc(installed, func(interpreter python.Interpreter) bool { return interpreter.Path == saved })
 		installed = append([]python.Interpreter{{Path: saved, Source: "saved"}}, installed...)
 	}
 	report := PythonInterpreterReport{Installed: installed, Selected: python.ProjectInterpreter(root, directory), RequiresPython: python.RequiresPython(directory)}

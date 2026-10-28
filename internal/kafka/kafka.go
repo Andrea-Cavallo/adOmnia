@@ -1,8 +1,7 @@
+// Package kafka implements adOmnia's Kafka client: producing and consuming messages, with TLS and SASL authentication including SCRAM.
 package kafka
 
 import (
-	"adomnia/internal/devlog"
-	"adomnia/internal/httputil"
 	"context"
 	"encoding/json/v2"
 	"fmt"
@@ -13,7 +12,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	hdr "github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/IBM/sarama"
 )
@@ -199,7 +201,7 @@ func kafkaProduceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":        true,
 		"partition": partition,
 		"offset":    offset,
@@ -339,7 +341,7 @@ func kafkaBulkProduceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":            true,
 		"count":         req.Count,
 		"successes":     successes,
@@ -533,7 +535,7 @@ func reserveKafkaMessageIndex(sequence *atomic.Int64, total int) (int, bool) {
 }
 
 func varyJsonField(jsonStr, field string, idx int) string {
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
 		return jsonStr
 	}
@@ -630,7 +632,7 @@ func kafkaConsumeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":       true,
 		"messages": handler.getMessages(),
 		"count":    len(handler.getMessages()),
@@ -668,16 +670,16 @@ func kafkaTopicsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	brokerList := make([]map[string]interface{}, 0)
+	brokerList := make([]map[string]any, 0)
 	for _, b := range client.Brokers() {
-		brokerList = append(brokerList, map[string]interface{}{
+		brokerList = append(brokerList, map[string]any{
 			"id":   b.ID(),
 			"addr": b.Addr(),
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":      true,
 		"topics":  topics,
 		"brokers": brokerList,
@@ -757,9 +759,9 @@ func kafkaClusterOverviewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	brokers := make([]map[string]interface{}, 0, len(clusterBrokers))
+	brokers := make([]map[string]any, 0, len(clusterBrokers))
 	for _, broker := range clusterBrokers {
-		brokers = append(brokers, map[string]interface{}{
+		brokers = append(brokers, map[string]any{
 			"id":         broker.ID(),
 			"addr":       broker.Addr(),
 			"controller": broker.ID() == controllerID,
@@ -774,7 +776,7 @@ func kafkaClusterOverviewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":                 true,
 		"health":             health,
 		"controllerId":       controllerID,
@@ -832,7 +834,7 @@ func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	oldest, _ := admin.ListOffsets(offsetReq, nil)
 
-	partitions := make([]map[string]interface{}, 0, len(metadata[0].Partitions))
+	partitions := make([]map[string]any, 0, len(metadata[0].Partitions))
 	for _, partition := range metadata[0].Partitions {
 		latestOffset := int64(-1)
 		oldestOffset := int64(-1)
@@ -842,7 +844,7 @@ func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
 		if oldest[req.Topic] != nil && oldest[req.Topic][partition.ID] != nil {
 			oldestOffset = oldest[req.Topic][partition.ID].Offset
 		}
-		partitions = append(partitions, map[string]interface{}{
+		partitions = append(partitions, map[string]any{
 			"id":              partition.ID,
 			"leader":          partition.Leader,
 			"replicas":        partition.Replicas,
@@ -859,7 +861,7 @@ func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
 	var configEntries []sarama.ConfigEntry
 	if err == nil && len(described) > 0 {
 		if described[0].ErrorCode != sarama.ErrNoError {
-			err = fmt.Errorf("%s: %s", described[0].ErrorCode, described[0].ErrorMsg)
+			err = fmt.Errorf("%w: %s", described[0].ErrorCode, described[0].ErrorMsg)
 		}
 		configEntries = described[0].Configs
 	}
@@ -867,9 +869,9 @@ func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
 		httputil.JSONError(w, "describe topic configs failed: "+err.Error(), 502)
 		return
 	}
-	configs := make([]map[string]interface{}, 0, len(configEntries))
+	configs := make([]map[string]any, 0, len(configEntries))
 	for _, entry := range configEntries {
-		configs = append(configs, map[string]interface{}{
+		configs = append(configs, map[string]any{
 			"name":      entry.Name,
 			"value":     entry.Value,
 			"readOnly":  entry.ReadOnly,
@@ -881,7 +883,7 @@ func kafkaTopicDetailHandler(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(configs, func(i, j int) bool { return configs[i]["name"].(string) < configs[j]["name"].(string) })
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":         true,
 		"topic":      req.Topic,
 		"isInternal": metadata[0].IsInternal,
@@ -933,7 +935,7 @@ func kafkaCreateTopicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "topic": req.Topic})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "topic": req.Topic})
 }
 
 func kafkaUpdateTopicHandler(w http.ResponseWriter, r *http.Request) {
@@ -979,7 +981,7 @@ func kafkaUpdateTopicHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "topic": req.Topic})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "topic": req.Topic})
 }
 
 func kafkaDeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
@@ -1008,7 +1010,7 @@ func kafkaDeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "topic": req.Topic})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "topic": req.Topic})
 }
 
 func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1056,7 +1058,7 @@ func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
 		descByID[desc.GroupId] = desc
 	}
 
-	groups := make([]map[string]interface{}, 0, len(groupIDs))
+	groups := make([]map[string]any, 0, len(groupIDs))
 	for _, groupID := range groupIDs {
 		topicPartitions := map[string][]int32(nil)
 		if req.Topic != "" {
@@ -1095,14 +1097,14 @@ func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
 			item["lag"] = lag
 		}
 
-		members := []map[string]interface{}{}
+		members := []map[string]any{}
 		if desc := descByID[groupID]; desc != nil {
 			for _, member := range desc.Members {
 				assignments := map[string][]int32{}
 				if assignment, err := member.GetMemberAssignment(); err == nil && assignment != nil {
 					assignments = assignment.Topics
 				}
-				members = append(members, map[string]interface{}{
+				members = append(members, map[string]any{
 					"memberId":        member.MemberId,
 					"clientId":        member.ClientId,
 					"clientHost":      member.ClientHost,
@@ -1115,7 +1117,7 @@ func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
 		if desc := descByID[groupID]; desc != nil && desc.State != "" {
 			state = desc.State
 		}
-		groups = append(groups, map[string]interface{}{
+		groups = append(groups, map[string]any{
 			"groupId":     groupID,
 			"state":       state,
 			"protocol":    valueOrEmpty(descByID[groupID], func(d *sarama.GroupDescription) string { return d.Protocol }),
@@ -1127,7 +1129,7 @@ func kafkaConsumerGroupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "groups": groups})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "groups": groups})
 }
 
 func kafkaResetOffsetHandler(w http.ResponseWriter, r *http.Request) {
@@ -1172,7 +1174,7 @@ func kafkaResetOffsetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "group": req.Group, "topic": req.Topic, "partition": req.Partition, "offset": offset, "response": resp})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "group": req.Group, "topic": req.Topic, "partition": req.Partition, "offset": offset, "response": resp})
 }
 
 func kafkaBrowseMessagesHandler(w http.ResponseWriter, r *http.Request) {
@@ -1264,17 +1266,17 @@ func kafkaBrowseMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "topic": req.Topic, "messages": messages, "count": len(messages)})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "topic": req.Topic, "messages": messages, "count": len(messages)})
 }
 
-func flattenGroupOffsets(resp *sarama.OffsetFetchResponse) []map[string]interface{} {
-	items := []map[string]interface{}{}
+func flattenGroupOffsets(resp *sarama.OffsetFetchResponse) []map[string]any {
+	items := []map[string]any{}
 	if resp == nil {
 		return items
 	}
 	for topic, partitions := range resp.Blocks {
 		for partition, block := range partitions {
-			items = append(items, map[string]interface{}{
+			items = append(items, map[string]any{
 				"topic":       topic,
 				"partition":   partition,
 				"offset":      block.Offset,
@@ -1287,7 +1289,7 @@ func flattenGroupOffsets(resp *sarama.OffsetFetchResponse) []map[string]interfac
 	for _, group := range resp.Groups {
 		for topic, partitions := range group.Blocks {
 			for partition, block := range partitions {
-				items = append(items, map[string]interface{}{
+				items = append(items, map[string]any{
 					"topic":       topic,
 					"partition":   partition,
 					"offset":      block.Offset,

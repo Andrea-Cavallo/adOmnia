@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 )
 
 // TestLiveClaudeCodeTurn parla con il vero adapter (Node + login di `claude`).

@@ -1,7 +1,6 @@
 package copilot
 
 import (
-	"adomnia/internal/jsonutil"
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
@@ -15,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func fakeTarball(t *testing.T, name string, content []byte) []byte {

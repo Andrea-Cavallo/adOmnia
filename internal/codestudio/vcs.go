@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/git"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (

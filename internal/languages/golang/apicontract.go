@@ -3,7 +3,7 @@ package golang
 import (
 	"strings"
 
-	"adomnia/internal/ide/apicontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/apicontract"
 )
 
 // APIOperations traduce le route HTTP del report, con i DTO di richiesta e risposta, nel

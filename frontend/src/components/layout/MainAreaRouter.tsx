@@ -16,7 +16,7 @@ import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 
-import { WelcomePanel, WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, McpPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
+import { WelcomePanel, WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, McpServerGenPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
 
 let workspaceModulePromise: ReturnType<typeof importWorkspaceModule> | undefined
 
@@ -145,7 +145,7 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'plugins': return { component: <SettingsPanel initialSection="plugins" />, titleKey: 'settings', overflow: true }
     case 'secretscanner': return { component: <UtilsPanel initialTool="secretscanner" />, titleKey: 'Power Tools', overflow: true }
     case 'collab': return { component: <CollabPanel />, titleKey: 'Live Collaboration', overflow: true }
-    case 'mcp': return { component: <McpPanel />, titleKey: 'MCP Client', overflow: true }
+    case 'mcp': return { component: <McpServerGenPanel />, titleKey: 'MCP Server Generator', overflow: true }
     case 'codestudio': return { component: <CodeStudioPanel />, titleKey: 'codestudio', overflow: true }
     case 'kube': return { component: <KubePanel />, titleKey: 'Kubernetes', overflow: true }
     case 'settings': return { component: <SettingsPanel />, titleKey: 'settings' }

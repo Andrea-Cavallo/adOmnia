@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // DelveModule è il modulo che `go install` usa per installare Delve nella cartella strumenti.
@@ -44,7 +44,7 @@ func delveVersion(binary string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("dlv is not executable: %s", strings.TrimSpace(string(output)))
 	}
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		if version, ok := strings.CutPrefix(strings.TrimSpace(line), "Version:"); ok {
 			return strings.TrimSpace(version), nil
 		}

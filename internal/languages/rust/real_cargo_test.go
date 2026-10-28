@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // requireRealCargo salta il test se ADOMNIA_TEST_CARGO non è impostato: i test con gli strumenti
@@ -252,7 +252,7 @@ func TestRealCargoTestVirtualWorkspaceFillsTheTree(t *testing.T) {
 		command.Dir, command.Env = root, spec.Environment
 		output, _ := command.CombinedOutput() // cargo test esce con errore se un test fallisce
 		tree := idetesting.NewTree()
-		for _, line := range strings.Split(string(output), "\n") {
+		for line := range strings.SplitSeq(string(output), "\n") {
 			if event, ok := parser.Parse([]byte(line)); ok {
 				tree.Apply(event)
 			}

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"adomnia/internal/ide/toml"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toml"
 )
 
 // RustEnvironment è la configurazione d'ambiente di un progetto Rust letta solo dal filesystem

@@ -4,10 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Suggest propone le configurazioni rilevate per un'unità Cargo: ogni bin ed example dichiarato
@@ -61,10 +62,5 @@ func hasFile(path string) bool {
 
 // containsName dice se names contiene name.
 func containsName(names []string, name string) bool {
-	for _, candidate := range names {
-		if candidate == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(names, name)
 }

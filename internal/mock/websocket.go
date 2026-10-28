@@ -1,11 +1,11 @@
 package mock
 
 import (
-	"adomnia/internal/httputil"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
 	"net"
 	"net/http"
 	"regexp"
@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/gorilla/websocket"
 	"github.com/tidwall/gjson"
 )

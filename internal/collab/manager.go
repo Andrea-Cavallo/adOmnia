@@ -1,7 +1,6 @@
 package collab
 
 import (
-	"adomnia/internal/collectionfs"
 	"context"
 	"crypto/subtle"
 	"crypto/tls"
@@ -9,6 +8,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
 	"net"
 	"net/http"
 	"sort"
@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/gorilla/websocket"
 )
 

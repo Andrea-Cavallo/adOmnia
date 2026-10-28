@@ -1,14 +1,15 @@
 package codestudio
 
 import (
-	"adomnia/internal/plugins"
-	"adomnia/internal/storage"
 	"encoding/base64"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 func extensionFixture(t *testing.T, serverCommand ...string) (*Service, *plugins.PluginManager) {
@@ -84,13 +85,10 @@ func TestIDEExtensionLanguageServerUsesGenericLifecycleAndBuffers(t *testing.T) 
 	if err := service.UpdateDocumentBuffer(string(session.ID), string(doc.Document.ID), 2, "unsaved"); err != nil {
 		t.Fatal(err)
 	}
-	state, ok := service.lsp.forDocument(session.ID, doc.Document.ID)
+	_, _, text, _, ok := service.lsp.DocumentSnapshot(session.ID, doc.Document.ID)
 	if !ok {
 		t.Fatal("extension document not tracked")
 	}
-	state.mu.Lock()
-	text := state.documents[doc.Document.ID].text
-	state.mu.Unlock()
 	if text != "unsaved" {
 		t.Fatal("unsaved buffer not synced")
 	}
@@ -125,7 +123,7 @@ func TestIDEExtensionSandboxContextTrustAndDisable(t *testing.T) {
 	if err != nil || !result.Success {
 		t.Fatalf("sandbox action: %+v %v", result, err)
 	}
-	data := result.Data.(map[string]interface{})
+	data := result.Data.(map[string]any)
 	if data["text"] != request.Text+"\n// extension" || data["message"] != "main.go" {
 		t.Fatalf("context not delivered: %#v", data)
 	}

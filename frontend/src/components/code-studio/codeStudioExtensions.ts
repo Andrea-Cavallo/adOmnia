@@ -1,5 +1,5 @@
 import { monaco } from '@/lib/monacoSetup'
-import { InvokeIDEExtension } from '../../../bindings/adomnia/goide'
+import { InvokeIDEExtension } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { subscribeGoIDEEvents } from '@/lib/code-studio-api'
 import { extensionResult } from '@/lib/code-studio/extensionResult'
 import { extensionLanguageForPath, useIDEExtensionsStore, type IDEContribution } from '@/stores/ideExtensions'

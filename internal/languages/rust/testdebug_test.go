@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 )
 
 // TestTestTargetSelection: il target di test si sceglie dal sorgente o dal nome, un solo target →

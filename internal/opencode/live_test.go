@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/milk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 )
 
 // Opt-in real OpenCode subprocess + local inference fixture: no model download or paid tokens.

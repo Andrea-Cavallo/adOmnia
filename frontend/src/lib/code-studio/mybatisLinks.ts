@@ -1,4 +1,4 @@
-import type { MyBatisLink } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { MyBatisLink } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 
 export type MyBatisSide = 'java' | 'xml'
 

@@ -33,7 +33,7 @@ export const ADOMNIA_CAPABILITIES: AdomniaCapability[] = [
   { id: 'storage', label: 'Storage Inspector', panel: 'storage', aliases: ['storage', 'bbolt', 'localstorage'], summary: 'Inspect adOmnia local persistence.' },
   { id: 'vault', label: 'Vault', panel: 'vault', aliases: ['vault', 'secret', 'credential', 'password'], summary: 'Store and use encrypted local secrets.' },
   { id: 'workspace', label: 'Workspace Manager', panel: 'workspace', aliases: ['workspace', 'backup', 'import', 'export'], summary: 'Manage portable local-first workspaces and backups.' },
-  { id: 'mcp', label: 'MCP', panel: 'mcp', aliases: ['mcp', 'model context protocol', 'tool server'], summary: 'Connect to MCP servers and generate MCP tools from API collections.' },
+  { id: 'mcp', label: 'MCP Server Generator', panel: 'mcp', aliases: ['mcp', 'model context protocol', 'tool server'], summary: 'Generate MCP servers from API collections.' },
   { id: 'loadtest', label: 'Load Testing', panel: 'collections', aliases: ['load test', 'stress', 'performance', 'latency'], summary: 'Run API load tests and inspect percentile metrics from requests.' },
   { id: 'json', label: 'JSON Studio', panel: 'jsonviewer', aliases: ['json', 'jsonpath', 'jq'], summary: 'Inspect, transform and query JSON.' },
   { id: 'xml', label: 'XML Tools', panel: 'xmltools', aliases: ['xml', 'xpath', 'xsd', 'xslt'], summary: 'Format, query and transform XML.' },

@@ -1,0 +1,248 @@
+{
+  "gopls": "%APPDATA%/adomnia/goide/tools/bin/gopls.exe (v0.24.0)",
+  "projects": [
+    "adOmnia",
+    "ado-e2e",
+    "adomnia-devsession",
+    "fans-backend",
+    "openfinance"
+  ],
+  "runs": 3,
+  "settleMs": 30000,
+  "results": [
+    {
+      "mode": "separate",
+      "n": 1,
+      "wsMiB": 567.1,
+      "privMiB": 692.3,
+      "processes": 1,
+      "loadMs": [
+        8587
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "separate",
+      "n": 1,
+      "wsMiB": 505.3,
+      "privMiB": 630.8,
+      "processes": 1,
+      "loadMs": [
+        6852
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "separate",
+      "n": 1,
+      "wsMiB": 515.8,
+      "privMiB": 642.9,
+      "processes": 1,
+      "loadMs": [
+        6876
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 1,
+      "wsMiB": 530.1,
+      "privMiB": 783.9,
+      "processes": 2,
+      "loadMs": [
+        6520
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 1,
+      "wsMiB": 624.9,
+      "privMiB": 783.2,
+      "processes": 2,
+      "loadMs": [
+        5990
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 1,
+      "wsMiB": 532.9,
+      "privMiB": 787.1,
+      "processes": 2,
+      "loadMs": [
+        6415
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "separate",
+      "n": 3,
+      "wsMiB": 2504.7,
+      "privMiB": 2884.9,
+      "processes": 3,
+      "loadMs": [
+        8999,
+        65103,
+        59986
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "separate",
+      "n": 3,
+      "wsMiB": 1550.1,
+      "privMiB": 1931.6,
+      "processes": 3,
+      "loadMs": [
+        10384,
+        8395,
+        7145
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "separate",
+      "n": 3,
+      "wsMiB": 1434.4,
+      "privMiB": 1818.6,
+      "processes": 3,
+      "loadMs": [
+        9741,
+        8259,
+        6976
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 3,
+      "wsMiB": 1022.2,
+      "privMiB": 1245.3,
+      "processes": 4,
+      "loadMs": [
+        9769,
+        8394,
+        7050
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 3,
+      "wsMiB": 826.8,
+      "privMiB": 1240.1,
+      "processes": 4,
+      "loadMs": [
+        10411,
+        9055,
+        7636
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 3,
+      "wsMiB": 729.4,
+      "privMiB": 1237.4,
+      "processes": 4,
+      "loadMs": [
+        9589,
+        8347,
+        6806
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "separate",
+      "n": 5,
+      "wsMiB": 2406.4,
+      "privMiB": 3045,
+      "processes": 5,
+      "loadMs": [
+        13158,
+        10622,
+        8445,
+        11007,
+        2197
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "separate",
+      "n": 5,
+      "wsMiB": 2108.2,
+      "privMiB": 2750.2,
+      "processes": 5,
+      "loadMs": [
+        10843,
+        9270,
+        7701,
+        1666,
+        1170
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "separate",
+      "n": 5,
+      "wsMiB": 2206.5,
+      "privMiB": 2750.1,
+      "processes": 5,
+      "loadMs": [
+        11591,
+        10279,
+        8600,
+        1583,
+        1399
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 5,
+      "wsMiB": 786.8,
+      "privMiB": 1551,
+      "processes": 6,
+      "loadMs": [
+        11463,
+        10150,
+        8577,
+        1700,
+        1121
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 5,
+      "wsMiB": 898.3,
+      "privMiB": 1566.1,
+      "processes": 6,
+      "loadMs": [
+        10965,
+        9565,
+        8297,
+        1822,
+        1398
+      ],
+      "timeouts": 0
+    },
+    {
+      "mode": "shared",
+      "n": 5,
+      "wsMiB": 993.7,
+      "privMiB": 1564.9,
+      "processes": 6,
+      "loadMs": [
+        11058,
+        9653,
+        8295,
+        1973,
+        1241
+      ],
+      "timeouts": 0
+    }
+  ]
+}

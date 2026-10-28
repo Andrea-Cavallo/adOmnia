@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // TestFormatToolHelper è il processo finto usato dai test: mai eseguito come test normale.

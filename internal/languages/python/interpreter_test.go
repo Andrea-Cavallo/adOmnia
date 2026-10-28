@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TestManagedEnvironmentsAreListedButNeverChosen: gli ambienti di uv e Poetry si trovano dalla

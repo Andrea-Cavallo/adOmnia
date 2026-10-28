@@ -10,7 +10,7 @@ This document is organized by area and covers everything implemented so far. It 
 | --- | --- |
 | **This document** | Architecture, modules, adapters, UI surface, bindings, invariants, status |
 | [`CODE-STUDIO.md`](CODE-STUDIO.md) | User-facing guide: how to use Code Studio feature by feature |
-| [`architecture/ide-multilanguage-refactor.md`](architecture/ide-multilanguage-refactor.md) | The migration plan "Code Studio → adOmnia IDE Platform" (Phases 1–12, complete) |
+| [`architecture/ide-package-rules.md`](architecture/ide-package-rules.md) | Package layout and rules of the IDE platform (where code goes, a new language) |
 | [`LIVE-PREVIEW.md`](LIVE-PREVIEW.md) | Live Preview / web projects deep dive |
 | [`adomnia-feature-catalog.en.md`](adomnia-feature-catalog.en.md) (section J) | Feature checklist of the Code Studio |
 | [`../internal/ide/CLAUDE.md`](../internal/ide/CLAUDE.md) | Hard rules and placement decision tree for IDE code |
@@ -42,13 +42,17 @@ code, and the UI never hard-codes the language id `'go'`.
 
 ## 2. Architecture at a glance
 
+<p align="center">
+  <img src="../assets/images/code-studio-interactions.svg" alt="Code Studio interactions: the React UI calls the Wails GoIDE service, which delegates to the internal/codestudio host; the host wires the internal/ide core, language adapters plug into the core, the core drives language servers, debuggers and toolchains for trusted projects, adapters publish routes to Developer Context, and events flow back to the UI by session id." width="100%">
+</p>
+
 ```text
 frontend (React)                         Go / Wails
 ──────────────────────────────────────────────────────────────
 components/code-studio/   (Code Studio UI shell)   code_studio_bindings.go   ← stable Wails facade `GoIDE`
 components/ide/     (language contribs)          │
         │  generated bindings                    ▼
-        └──────────────► bindings/adomnia/goide.ts
+        └──────────────► bindings/github.com/Andrea-Cavallo/adOmnia/goide.ts
                                               internal/codestudio            HOST: composition root,
                                                   │                     Service facade, gopls/Delve
                           ┌───────────────────────┼─────────────────┐   config, persistence
@@ -603,8 +607,8 @@ intent in `useCodeStudioRuntimeContext`.
 ### 8.10 Wails bindings
 Stable facade `GoIDE` in `code_studio_bindings.go` (no feature logic allowed there), regenerated
 with the pinned `wails3 generate bindings`. Generated TypeScript bindings:
-`frontend/bindings/adomnia/goide.ts` — **296 functions** (2026-10-17), models under
-`bindings/adomnia/internal/{goide,ide/*,languages/*}/models`. Typed wrappers used by the
+`frontend/bindings/github.com/Andrea-Cavallo/adOmnia/goide.ts` — **296 functions** (2026-10-17), models under
+`bindings/github.com/Andrea-Cavallo/adOmnia/internal/{goide,ide/*,languages/*}/models`. Typed wrappers used by the
 UI live in `frontend/src/lib/code-studio-*.ts` (`code-studio-api`, `-lsp-api`, `-debug-api`,
 `-tests-api`, `-vcs-api`, `-workspaces-api`, `-window-api`, `livepreview-api`,
 `devcontext-api`). Events: a single `code-studio:event` carrying a versioned
@@ -671,7 +675,7 @@ are code-presence verified only.
   debugging needs identical source paths; Fix with AI requires a verified provider and a
   user click.
 
-Historical notes: ADR 0001 is **superseded** by `ide-multilanguage-refactor.md` (cite it
+Historical notes: ADR 0001 is **superseded** by the multi-language IDE platform (cite it
 only for rationale); the web action plan is historical for status but remains the roadmap
 source. When citing counts or budgets (frontend tests, startup JS budget — gate `check:startup`
 **650 kB** — tool versions: Go 1.26.5, gopls v0.23.0, Delve 1.27.2), attach the date.

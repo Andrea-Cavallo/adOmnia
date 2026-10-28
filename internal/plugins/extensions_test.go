@@ -81,11 +81,11 @@ func main() {
 	if err := manager.EnablePlugin("wasm-echo"); err != nil {
 		t.Fatal(err)
 	}
-	result := manager.ExecuteAction("wasm-echo", "shout", map[string]interface{}{"text": "hi"})
+	result := manager.ExecuteAction("wasm-echo", "shout", map[string]any{"text": "hi"})
 	if !result.Success {
 		t.Fatalf("execution failed: %s", result.Error)
 	}
-	data := result.Data.(map[string]interface{})
+	data := result.Data.(map[string]any)
 	if data["upper"] != "hi!" || data["function"] != "shout" {
 		t.Fatalf("result = %+v", data)
 	}
@@ -232,7 +232,7 @@ func TestDevPluginHotReload(t *testing.T) {
 	if err := manager.EnablePlugin("dev"); err != nil {
 		t.Fatal(err)
 	}
-	if result := manager.ExecuteAction("dev", "run", nil); !result.Success || result.Data.(map[string]interface{})["version"] != float64(1) {
+	if result := manager.ExecuteAction("dev", "run", nil); !result.Success || result.Data.(map[string]any)["version"] != float64(1) {
 		t.Fatalf("v1 = %+v", result)
 	}
 	if err := os.WriteFile(filepath.Join(source, "main.js"), []byte("export function run() { return { version: 2 } }\n"), 0o644); err != nil {
@@ -242,7 +242,7 @@ func TestDevPluginHotReload(t *testing.T) {
 	// take well over 5s, so the wait is generous; the loop returns as soon as the reload is seen.
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		if result := manager.ExecuteAction("dev", "run", nil); result.Success && result.Data.(map[string]interface{})["version"] == float64(2) {
+		if result := manager.ExecuteAction("dev", "run", nil); result.Success && result.Data.(map[string]any)["version"] == float64(2) {
 			logs := manager.GetPluginLogs("dev")
 			var reloaded, logged bool
 			for _, entry := range logs {

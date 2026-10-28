@@ -10,7 +10,7 @@ vi.mock('@wailsio/runtime', () => ({ Events: {
   On: (name: string, handler: (event: { data: unknown }) => void) => { transport.handlers.set(name, handler); return () => undefined },
   Emit: transport.emit,
 } }))
-vi.mock('../../../bindings/adomnia/app', () => ({
+vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/app', () => ({
   ListPanelWindows: async () => ['tool-session-1-run', 'tool-session-1-milk'],
   FocusMainWindow: vi.fn(), CloseStudioToolWindow: vi.fn(),
 }))

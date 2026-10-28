@@ -208,7 +208,7 @@ func mountPrefixes(lines []rustLine) map[string][]string {
 	}
 	for _, match := range rocketMount.FindAllStringSubmatch(source.String(), -1) {
 		prefix := normalizeRustPath(match[1])
-		for _, name := range strings.Split(match[2], ",") {
+		for name := range strings.SplitSeq(match[2], ",") {
 			name = strings.TrimSpace(name)
 			// `routes![user::get]` elenca nomi qualificati: l'handler è l'ultimo segmento.
 			if index := strings.LastIndex(name, "::"); index >= 0 {

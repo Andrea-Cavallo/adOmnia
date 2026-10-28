@@ -3,6 +3,7 @@ package aigateway
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -134,7 +135,7 @@ func TestGatewayStopUpdatesStatus(t *testing.T) {
 		t.Fatal("gateway still reports running after stop")
 	}
 	// Ensure repeated lifecycle calls are harmless.
-	if err := gateway.Stop(); err != nil && err != context.Canceled {
+	if err := gateway.Stop(); err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 }

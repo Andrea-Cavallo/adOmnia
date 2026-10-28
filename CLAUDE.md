@@ -72,7 +72,7 @@ Use these files as the fastest way to understand adOmnia before changing behavio
 | `docs/CODE-STUDIO.md` | Code Studio (the integrated IDE): trust model, optional tools, persistence schema, shortcuts, limits. Its work queue and manual checks are in `mds/todo-ide.md`. |
 | `docs/QUALITY.md` | Quality toolchain for adOmnia's own code: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage. |
 | `docs/JSON-V2.md` | JSON marshaling: `encoding/json/v2` migration, where v1 remains and why, behavior changes. |
-| `docs/architecture/ide-multilanguage-refactor.md` | Code Studio → **adOmnia IDE Platform** refactor: GENERIC/MIXED/GO_SPECIFIC map, target architecture, interfaces, 12-phase migration (complete), deliberate non-goals and the manual smoke checklist. Read it before touching anything under `internal/codestudio`, `internal/ide`, `internal/languages` or `frontend/src/components/ide`. |
+| `docs/architecture/ide-package-rules.md` | **Code Studio package rules**: which package a piece of code goes in, how to move code out of `internal/codestudio` without breaking bindings, the shared test setup, the checklist for a new language. Read it before adding a Go file under `internal/codestudio`, `internal/ide` or `internal/languages`. |
 | `README.md` | Public product positioning and quick-start overview. |
 | `AGENTS.md` | Practical operating guide for AI agents in this repo. |
 
@@ -213,7 +213,7 @@ adomnia/
 
 ### Backend (Wails 3 + Go)
 
-Backend types are registered as Wails **services** in `main.go` (`application.NewService(...)`). Wails 3 generates TypeScript bindings into `frontend/bindings/adomnia/*` via `wails3 generate bindings` (wired into the `build:frontend` task, so a normal build regenerates them).
+Backend types are registered as Wails **services** in `main.go` (`application.NewService(...)`). Wails 3 generates TypeScript bindings into `frontend/bindings/github.com/Andrea-Cavallo/adOmnia/*` via `wails3 generate bindings` (wired into the `build:frontend` task, so a normal build regenerates them).
 
 `frontend/src/wailsjs/**` still exists but is now only a **compatibility shim**: the `go/main/*` files re-export from `frontend/bindings/`, and `runtime/runtime.js` maps the old v2 runtime names onto `@wailsio/runtime`. This keeps ~56 existing call sites untouched. New code should import `@wailsio/runtime` and `frontend/bindings/*` directly — do not add new surface to the shim. Prefer existing frontend wrappers in `frontend/src/lib/*-api.ts` when they exist.
 
@@ -221,7 +221,7 @@ The `@wailsio/runtime` npm version is **version-locked** to `github.com/wailsapp
 
 | Area | Packages / bindings |
 |------|---------------------|
-| App lifecycle/settings | `app.go`, `frontend/bindings/adomnia/app.ts` |
+| App lifecycle/settings | `app.go`, `frontend/bindings/github.com/Andrea-Cavallo/adOmnia/app.ts` |
 | HTTP/mock/proxy | `internal/mock`, `internal/proxy`, `internal/httpexec`, `internal/httputil` |
 | AI runtime | `internal/ai`, `ai_bindings.go`, `frontend/src/lib/aiEngine.ts` |
 | Browser debugging | `internal/browser` |
@@ -230,7 +230,7 @@ The `@wailsio/runtime` npm version is **version-locked** to `github.com/wailsapp
 | Docker Lab | `internal/docker`, `frontend/src/lib/dockerlab-api.ts` |
 | Customization | `internal/themes`, `internal/plugins`, `internal/templates` |
 | Git Sync | `internal/git`, `git_bindings.go`, `git_bindings_ops.go` |
-| Code Studio (IDE) | `internal/codestudio` (host: composition root + facade), `internal/ide/*` (language-agnostic core: language, project, lsp, dap, run, testing, sdk, process), `internal/languages/golang` (Go adapter), `internal/codestudiowindow`, `code_studio_bindings.go`, `frontend/src/components/ide/` (language contributions), `frontend/src/components/code-studio/`, `frontend/src/lib/code-studio/`, `frontend/src/stores/codeStudio*.ts` |
+| Code Studio (IDE) | `internal/codestudio` (host: composition root + facade), `internal/ide/*` (language-agnostic core: workspace, langserver, terminal, language, project, lsp, dap, run, testing, sdk, process), `internal/languages/golang` (Go adapter), `internal/codestudiowindow`, `code_studio_bindings.go`, `frontend/src/components/ide/` (language contributions), `frontend/src/components/code-studio/`, `frontend/src/lib/code-studio/`, `frontend/src/stores/codeStudio*.ts` |
 
 **IPC:** Frontend calls backend through Wails generated bindings.  
 **CORS:** Desktop backend has system/network access; do not add unsafe browser-side workarounds.  
@@ -380,7 +380,7 @@ if (request.auth.type === 'aws4') {
 
 ### Code quality rules (Sonar / lint gates — new code must not reintroduce them)
 
-Details and the open queue: `docs/QUALITY.md`. Run the linters on what you touched before closing a task. **SonarCloud lags behind the code**: an issue stays OPEN until the next analysis, so verify the list against the working tree before working it (2026-10-23: 40 of 63 "open" S2871 were already fixed in code) — fix in code, push to trigger a scan, then re-read the queue.
+Details and the open queue: `docs/QUALITY.md`. **Go code style** (KISS/YAGNI, DRY, fail fast, naming, errors, concurrency, tests): `docs/architecture/go-coding-rules.md` — follow it for every Go change. Run the linters on what you touched before closing a task. **SonarCloud lags behind the code**: an issue stays OPEN until the next analysis, so verify the list against the working tree before working it (2026-10-23: 40 of 63 "open" S2871 were already fixed in code) — fix in code, push to trigger a scan, then re-read the queue.
 
 - **`.sort()` always takes a comparator** (S2871): `.sort((a, b) => a.localeCompare(b))` for display strings, `([a], [b]) => a.localeCompare(b)` for `Object.entries`. Where the byte order is part of the contract (AWS4 signed headers, canonical keys) use a code-point comparator, not `localeCompare`.
 - **`.map(fn)` gets a wrapper, never the bare function** (S7727): `.map((x) => fn(x))`. A bare function also receives `(value, index, array)` and silently misbehaves as soon as it takes a second parameter.
@@ -403,7 +403,7 @@ Details and the open queue: `docs/QUALITY.md`. Run the linters on what you touch
 
 1. Implement the logic in the matching `internal/<domain>` package (create it if the domain is new)
 2. Expose it via a thin method in the matching root `*_bindings.go`, and register the service in `main.go` with `application.NewService(...)` if it is new
-3. Regenerate bindings with `wails3 generate bindings -clean=true -ts ./...` (a normal `wails3 task build` already does this) and check the result in `frontend/bindings/adomnia/*`
+3. Regenerate bindings with `wails3 generate bindings -clean=true -ts ./...` (a normal `wails3 task build` already does this) and check the result in `frontend/bindings/github.com/Andrea-Cavallo/adOmnia/*`
 4. Add a frontend wrapper in `frontend/src/lib/<feature>-api.ts` when one does not exist
 
 ### Add a frontend component
@@ -421,15 +421,17 @@ Details and the open queue: `docs/QUALITY.md`. Run the linters on what you touch
 
 ### Multi-language IDE Platform (Code Studio)
 
-Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete (`docs/architecture/ide-multilanguage-refactor.md`). Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java (JDT LS, Maven/Gradle, debug) and Python (basedpyright, pytest, debugpy) are delivered adapters; Rust (`internal/languages/rust`) is complete in code and tests — Cargo crate/workspace detection, toolchain selection, run with build diagnostics, `cargo test`, CodeLLDB debug, rust-analyzer and the product entities — and waits only for its manual app checks (RS-M1…RS-M10 in `mds/MANUAL-CHECK.md`, RS-M7 being the integration gate; see `mds/MULTILANGUAGE-IDE.md` §9.6). Rules:
+Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase migration from "a Go IDE" is complete; the package layout and its rules are in `docs/architecture/ide-package-rules.md`. Go is the primary language; the web frontend languages (TypeScript/JavaScript, HTML, CSS, JSON) are the second adapter (`internal/languages/web`, Live Preview in `internal/ide/preview`, see `docs/LIVE-PREVIEW.md`); Java (JDT LS, Maven/Gradle, debug) and Python (basedpyright, pytest, debugpy) are delivered adapters; Rust (`internal/languages/rust`) is complete in code and tests — Cargo crate/workspace detection, toolchain selection, run with build diagnostics, `cargo test`, CodeLLDB debug, rust-analyzer and the product entities — and waits only for its manual app checks (RS-M1…RS-M10 in `mds/MANUAL-CHECK.md`, RS-M7 being the integration gate; see `mds/MULTILANGUAGE-IDE.md` §9.6). Rules:
 
-- **Dependency direction:** `internal/codestudio` (host) → `internal/ide/*` (core) ← `internal/languages/<lang>` (adapter). The core **never** imports an adapter or Go tooling libraries (`golang.org/x/mod`, `x/tools`, pprof…); `internal/ide/architecture_test.go` fails the build if it does. Adapters never import `internal/codestudio`.
+- **Dependency direction:** `internal/codestudio` (host) → `internal/ide/*` (core) ← `internal/languages/<lang>` (adapter). The core **never** imports an adapter or Go tooling libraries (`golang.org/x/mod`, `x/tools`, pprof…), **not even from its tests** (`go list -deps -test`); `internal/ide/architecture_test.go` fails the build if it does. Core tests use fake languages; tests that need a real adapter live in the adapter. Adapters never import `internal/codestudio`.
+- **The host only wires.** `internal/codestudio` keeps the session map, the trust check and one-screen `Service` methods; feature logic lives in a core package (`ide/workspace` for the shared Project/Session/Document types, `ide/langserver` for language servers, `ide/terminal`…) or in an adapter. Moved types keep their names and get an alias in a `codestudio/*_aliases.go` file, so the `GoIDE` bindings and their TypeScript models do not change. Server-specific knobs travel in `lsp.ServerSpec` (e.g. `HiddenCodeActionKinds`, `ChangeSignatureCommand`), never as an adapter import in the core. Full rules: `docs/architecture/ide-package-rules.md`.
+- **Test setup:** a package whose tests start processes, commit to git or fake a language server uses `func TestMain(m *testing.M) { idetest.Main(m) }` (empty global git config, fake gopls). Shared helpers: `internal/ide/idetest`, `internal/ide/process/proctest`.
 - **Languages are registered in one place:** `internal/codestudio/languages.go`. Adding a language = a new `internal/languages/<lang>` package + one line there; no `switch language` in the core.
 - **Capabilities are small interfaces** in `internal/ide/language` (`Language`, `ProjectDetector`, …), discovered by type assertion. Add a capability only together with its first real consumer in the core.
 - **Projects are made of `project.Unit`s** (a `go.mod`, tomorrow a `pom.xml`/`package.json`), so one folder can mix languages. `Project` has no Go fields: read Go modules/`go.work`/loose folders with `goLayoutOf(project)` (backend) or `goProjectLayout`/`goModules` from `lib/code-studio/goProject.ts` (frontend).
 - **The UI learns languages from the backend** (`GetCapabilities().languages`) and describes each one in `frontend/src/components/ide/languages/<id>/` (`IdeLanguageContribution`: icon from Simple Icons, menu, commands with `requires: { language }`, Monaco editor languages served by its language server). Generic editor providers register on `languageServerEditorLanguages()`, never on a literal language id.
 - **The Wails service `GoIDE` stays the stable facade**; moved types are re-exported as aliases in `internal/codestudio` so bindings and call sites keep working. The run-configuration DTO keeps its flat Go fields on purpose: it is also the `.adomnia/run-configurations.json` format shared through Git.
-- **Legacy names kept on purpose (persisted or public contracts, rename only with a migration):** Wails service `GoIDE` (binding file `bindings/adomnia/goide.ts`), bbolt bucket and data dir `goide`, Docker label `adomnia.goide.session`, plugin events `onGoStudio*` (user plugins subscribe to them). Renamed with migration: rail id `goide` → `codestudio` (alias in `normalizeRailItem`), localStorage `adomnia.goide.*` → `adomnia.codestudio.*` (`lib/legacyStorageMigration.ts`, old keys are kept).
+- **Legacy names kept on purpose (persisted or public contracts, rename only with a migration):** Wails service `GoIDE` (binding file `bindings/github.com/Andrea-Cavallo/adOmnia/goide.ts`), bbolt bucket and data dir `goide`, Docker label `adomnia.goide.session`, plugin events `onGoStudio*` (user plugins subscribe to them). Renamed with migration: rail id `goide` → `codestudio` (alias in `normalizeRailItem`), localStorage `adomnia.goide.*` → `adomnia.codestudio.*` (`lib/legacyStorageMigration.ts`, old keys are kept).
 - The Go adapter package is named `golang` (`go` is a keyword).
 - **Installing a language tool (language server, debugger, SDK helper) is always visible and explicit — reuse `frontend/src/stores/codeStudioToolInstall.ts`, never a silent or ad-hoc install.** The install is confirmed with the exact command (`confirm`), then `beginToolInstall(sessionId, '<tool-task-id>', 'Installing <name>…')` opens the Run console (where the output goes) and shows a spinner task in the status bar; on `run.finished` call `endToolInstall(sessionId, id, succeeded)` (a failure brings the Run console back). The editor notice (`CodeStudioWebServerNotice`) shows `Install…` while the tool is missing and `Show output` while it installs, then disappears and the server starts by itself. Every new language (Python, Rust…) implements `lsp.ServerProvider` (`InstallPlan` = the one command shown in the confirm) and sets `providedServer: true` in its UI contribution; the generic store runs the confirm → Run console → status bar task. Never copy `service_web.go`. Pin the download to a fixed release (JDT LS: a moving `latest` snapshot started requiring Java 25) and adds an in-app check to `mds/MANUAL-CHECK.md` (see ML-9.M8). Keep the status label short (the bar truncates it).
 - **Language parity (every language, not just Go).** A language is not "supported" until it plugs into the whole adOmnia, with the same standards Go has: Run/Debug/Test with the shared tree and rerun, build errors clickable, tool install via `codeStudioToolInstall`, and the cross-product integrations. In particular, HTTP handlers of any language (Spring `@RestController`, tomorrow Express/FastAPI…) must become Developer Context `route` entities (`internal/devcontext`, one small detector per language that reuses the adapter's parser — see `javaroutes.go`), because API Workspace, Mock, cURL, OpenAPI, Live Session and the "Open API" collection all read those entities. Never write a Go-only regex path for something another language can reach through entities. Same for datasources, topics, gRPC and WebSocket: detect → entity → shared lens/action. Before closing a language feature ask "does it work from the API test side, the mock server and the live session too?". Add the check to `mds/MANUAL-CHECK.md`.
@@ -441,7 +443,7 @@ Code Studio is the **adOmnia IDE Platform + Go Language Adapter**: the 12-phase 
 
 **A feature:**
 
-1. Decide where it belongs: language-agnostic behaviour (editor, terminal, processes, search, SDK plumbing…) goes in `internal/ide/*`; Go-only behaviour (gopls, Delve, go.mod, pprof…) goes in `internal/languages/golang`; the `internal/codestudio` `Service` method only wires and stays thin. Code not yet migrated still lives in `internal/codestudio`: extend it in place, or move it when a second language needs it. Any feature that starts a process must check `session.Project.Authorization == AuthorizationPermitted`.
+1. Decide where it belongs (`docs/architecture/ide-package-rules.md`): language-agnostic behaviour (editor, terminal, processes, language servers, search, SDK plumbing…) goes in its `internal/ide/*` package; Go-only behaviour (gopls, Delve, go.mod, pprof…) goes in `internal/languages/golang`; the `internal/codestudio` `Service` method only wires and stays thin. Code not yet migrated still lives in `internal/codestudio`: do not grow it, move the part you touch when it is cheap. Any feature that starts a process must check `session.Project.Authorization == AuthorizationPermitted`.
 2. Expose it in `code_studio_bindings.go` and regenerate the bindings with the `wails3` version pinned in `go.mod`.
 3. Add a command to `frontend/src/components/code-studio/codeStudioCommands.ts` (menu, label, binding, and an availability reason when disabled) — or, for a language-specific command, to that language's `components/ide/languages/<lang>/commands.ts` with `requires: { language }` — then handle it in `CodeStudioPanel.tsx`. Menus, shortcuts and the help dialog all read that registry.
 4. Route backend events by `sessionId`/`resourceId` (and `language` for language servers) in the matching `stores/codeStudio*.ts` store; never let state cross sessions. Stores import pure helpers from `lib/code-studio/`, not from `components/`.
@@ -562,14 +564,15 @@ Four files live at the root — everything else is under `docs/`:
 
 - `README.md` — User-facing overview, quick start, feature list
 - `AGENTS.md` — Detailed architecture, conventions, file-by-file breakdown
-- `LICENSE.md` — MIT license
+- `LICENSE` — MIT license (third-party notices in `NOTICE.md`)
 - `CLAUDE.md` — This file
 
 ### docs/ index
 
 | File | Purpose |
 |------|---------|
-| `docs/architecture/ide-multilanguage-refactor.md` | IDE Platform + language adapters: architecture, rules, migration plan and status |
+| `docs/architecture/ide-package-rules.md` | IDE Platform + language adapters: package layout, placement rules, moving code, a new language |
+| `docs/architecture/go-coding-rules.md` | Go code rules: KISS/YAGNI, DRY, fail fast, naming, errors, concurrency, tests |
 | `docs/SOUL.md` | Product philosophy, UX principles, long-term vision |
 | `docs/adomnia-feature-catalog.en.md` | Fast complete catalog of product features and modules |
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |

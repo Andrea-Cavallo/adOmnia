@@ -1,7 +1,7 @@
 package java
 
 import (
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"os"
 	"path/filepath"
 	"reflect"

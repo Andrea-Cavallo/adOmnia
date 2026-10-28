@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	idetesting "adomnia/internal/ide/testing"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // TestRustCoverageReportMapsLCOVFilesAndLines: il report LCOV di cargo-llvm-cov diventa un report

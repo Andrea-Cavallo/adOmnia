@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"adomnia/internal/ide/graph"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/graph"
 )
 
 func TestEnvAndConfigReads(t *testing.T) {

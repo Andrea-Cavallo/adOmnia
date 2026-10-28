@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 var (

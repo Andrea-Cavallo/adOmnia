@@ -1,7 +1,7 @@
 package copilot
 
 import (
-	"adomnia/internal/aipolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
 
 	"os"
 	"path/filepath"

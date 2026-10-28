@@ -14,8 +14,8 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/ide/toml"
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toml"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // Adapter è l'adapter Rust (crates.io) di adOmnia Security Intelligence.

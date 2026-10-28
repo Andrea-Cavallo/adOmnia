@@ -1,13 +1,13 @@
 package milk
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"strings"
 	"time"
 )

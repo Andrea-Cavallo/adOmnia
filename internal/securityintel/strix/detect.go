@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 var ansi = regexp.MustCompile(`\x1b\[[0-9;?]*[A-Za-z]`)

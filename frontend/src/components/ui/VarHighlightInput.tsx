@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { varNameAtIndex } from '@/lib/substVars'
+import { isDynamicVar } from '@/lib/headerValues'
 import { useSettingsStore } from '@/stores/settings'
 import { useKnownUiTranslation } from '@/lib/uiI18n'
 import { VarEditPopover, varEditTarget, type VarEditTarget } from '@/components/ui/VarEditPopover'
@@ -116,7 +117,9 @@ function parseSegments(
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) segments.push({ text: text.slice(last, m.index), type: 'plain' })
     const varName = m[1].trim()
-    if (!hasActiveEnv) {
+    if (isDynamicVar(varName)) {
+      segments.push({ text: m[0], type: 'resolved' })
+    } else if (!hasActiveEnv) {
       segments.push({ text: m[0], type: 'noenv' })
     } else if (varName in resolvedVars && resolvedVars[varName] !== '') {
       segments.push({ text: m[0], type: 'resolved' })
@@ -158,6 +161,7 @@ function resolveVarTooltip(
   while ((m = re.exec(text)) !== null) {
     if (charIdx >= m.index && charIdx <= m.index + m[0].length) {
       const varName = m[1].trim()
+      if (isDynamicVar(varName)) return { varName, content: 'Generated on every send', type: 'resolved' }
       if (!hasActiveEnv) {
         return { varName, content: 'No active environment', type: 'noenv' }
       }

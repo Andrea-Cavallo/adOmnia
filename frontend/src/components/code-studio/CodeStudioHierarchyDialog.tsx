@@ -75,8 +75,10 @@ export function CodeStudioHierarchyDialog() {
   const close = () => useCodeStudioLspStore.setState({ hierarchy: null })
   const [picked, setPicked] = useState<{ view: GoIDEHierarchyView; id: string } | null>(null)
   if (!view) return null
+  // Call hierarchy is the docked Function Explorer, rendered by CodeStudioWorkspace.
+  if (view.kind === 'call') return null
   const direction = picked?.view === view ? picked.id : DIRECTIONS[view.kind][0].id
-  const title = view.kind === 'call' ? 'Call Hierarchy' : 'Type Hierarchy'
+  const title = 'Type Hierarchy'
   return (
     <CodeStudioModal
       open
@@ -97,7 +99,7 @@ export function CodeStudioHierarchyDialog() {
           ))}
         </div>
       }
-      footerStart={<>{view.kind === 'call' ? 'Callers: who calls this function. Callees: what it calls.' : 'Supertypes: interfaces it satisfies. Subtypes: types that implement it.'} ↻ marks recursion.</>}
+      footerStart={<>{'Supertypes: interfaces it satisfies. Subtypes: types that implement it.'} ↻ marks recursion.</>}
     >
       <ul className="max-h-[56vh] min-h-0 flex-1 overflow-auto p-2">
         <HierarchyNode key={`${direction}:${view.root.token}`} sessionId={view.sessionId} item={view.root} direction={direction} depth={0} ancestors={new Set()} initiallyOpen />

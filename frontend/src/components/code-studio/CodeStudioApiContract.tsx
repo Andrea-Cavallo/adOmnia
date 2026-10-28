@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
-import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { APIContractReport, EventContractReport } from '../../../bindings/adomnia/internal/codestudio/models'
-import type { Issue } from '../../../bindings/adomnia/internal/ide/apicontract/models'
+import * as GoIDE from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { APIContractReport, EventContractReport } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+import type { Issue } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/apicontract/models'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { withContentKeys } from '@/lib/contentKeys'
 

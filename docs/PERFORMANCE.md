@@ -411,3 +411,7 @@ preview. Until they exist, the README does not publish native startup figures.
 `internal/copilot/redaction_test.go` (`TestDisabledManagerDoesNotStart`) and
 `internal/milk/redaction_test.go` (`TestDisabledAgentDoesNotResolveOrSpawn`)
 guard the disabled path: `Start` returns before calling the resolver.
+
+## gopls with several Go projects (2026-10-25)
+
+One gopls per project costs ~527 MiB private per extra project: 643 / 1,932 / 2,750 MiB with 1 / 3 / 5 real Go projects, so five projects alone reach the 2–3 GiB application budget and start hibernation on a 16 GB machine. A shared `gopls serve` daemon measured 784 / 1,240 / 1,565 MiB (−36% with three projects, −43% with five) with the same load times, but one 768 MiB `GOMEMLIMIT` then covers every project, so editor latency in the shared daemon must be measured before the per-session design changes (PERF-3.6). Data and method: [gopls with 1, 3 and 5 projects](performance/gopls-multi-2026-10-25.md).

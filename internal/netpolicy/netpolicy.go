@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"golang.org/x/net/http/httpproxy"
 )
 

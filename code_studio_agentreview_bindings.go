@@ -1,6 +1,6 @@
 package main
 
-import "adomnia/internal/ide/agentreview"
+import "github.com/Andrea-Cavallo/adOmnia/internal/ide/agentreview"
 
 // AgentReview restituisce i file cambiati dagli agenti AI nel progetto e non ancora rivisti.
 func (g *GoIDE) AgentReview(root string) agentreview.Review {

@@ -1,8 +1,8 @@
 package milk
 
 import (
-	"adomnia/internal/aipolicy"
 	"context"
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
 	"strings"
 	"testing"
 )

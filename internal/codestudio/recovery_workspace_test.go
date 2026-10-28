@@ -1,10 +1,11 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // workspaceMemoryStore registra quali workspace vengono riscritti a ogni operazione.
@@ -38,7 +39,7 @@ func TestRecoveryWritesOnlyTheTouchedWorkspace(t *testing.T) {
 	manager.BindWorkspace("a", "ws-a")
 	manager.BindWorkspace("b", "ws-b")
 	big := strings.Repeat("y", 512*1024)
-	for file := 0; file < 10; file++ {
+	for file := range 10 {
 		if err := manager.Remember("b", fmt.Sprintf("b%d.go", file), big, ""); err != nil {
 			t.Fatal(err)
 		}

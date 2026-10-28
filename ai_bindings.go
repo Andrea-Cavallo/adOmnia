@@ -1,14 +1,14 @@
 package main
 
 import (
-	"adomnia/internal/ai"
-	"adomnia/internal/aigateway"
-	"adomnia/internal/devlog"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/mock"
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
+	"github.com/Andrea-Cavallo/adOmnia/internal/aigateway"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/mock"
 	"strings"
 	"sync"
 )

@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/mod/modfile"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 type ToolchainConfiguration struct {
@@ -206,7 +206,7 @@ func readModuleDirectives(root string) (string, string) {
 
 // localGoVersion estrae "go1.26.5" da "go version go1.26.5 windows/amd64".
 func localGoVersion(output string) string {
-	for _, field := range strings.Fields(output) {
+	for field := range strings.FieldsSeq(output) {
 		if goversion.IsValid(field) {
 			return field
 		}

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process/proctest"
 )
 
 // TestTwoProjectsStayIsolatedWhileRunningTogether apre due progetti autorizzati e li fa lavorare
@@ -69,7 +71,7 @@ func TestTwoProjectsStayIsolatedWhileRunningTogether(t *testing.T) {
 		terminals[name] = terminal
 	}
 	for name, terminal := range terminals {
-		if err := ide.WriteTerminal(string(terminal.ID), shellEcho("shell-42-"+name)); err != nil {
+		if err := ide.WriteTerminal(string(terminal.ID), proctest.ShellEcho("shell-42-"+name)); err != nil {
 			t.Fatal(err)
 		}
 	}

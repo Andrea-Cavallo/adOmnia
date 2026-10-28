@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { WorkspaceModule } from '../../../bindings/adomnia/internal/codestudio/models'
+import type { WorkspaceModule } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 import { workspaceDependents } from './CodeStudioWorkspaceModules'
 
 describe('workspaceDependents', () => {

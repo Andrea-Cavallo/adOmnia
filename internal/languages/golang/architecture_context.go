@@ -40,8 +40,8 @@ func (a *architecture) collectContextFlow() {
 			continue
 		}
 		vars := map[types.Object]ctxOrigin{}
-		for index := 0; index < signature.Params().Len(); index++ {
-			if param := signature.Params().At(index); isContextType(param.Type()) {
+		for param := range signature.Params().Variables() {
+			if isContextType(param.Type()) {
 				vars[param] = ctxOrigin{origin: "param"}
 				from.Context = true
 			}

@@ -1,9 +1,9 @@
 package adomniacli
 
 import (
-	"adomnia/internal/jsonutil"
 	"bytes"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"strings"
 	"testing"
 )

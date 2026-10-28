@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 // ID dei linguaggi, salvati in project.Unit.Language e usati come chiave del language server.
@@ -69,7 +69,7 @@ func Languages() []language.Language {
 		base := adapter{k}
 		switch k.id {
 		case ScriptID:
-			adapters = append(adapters, scriptAdapter{base})
+			adapters = append(adapters, scriptDebugger{scriptAdapter{base}})
 		case HTMLID:
 			adapters = append(adapters, htmlAdapter{base})
 		default:

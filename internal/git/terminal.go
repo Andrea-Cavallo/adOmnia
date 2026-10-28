@@ -1,9 +1,9 @@
 package git
 
 import (
-	"adomnia/internal/procutil"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 type TerminalResult struct {
@@ -46,7 +48,8 @@ func RunTerminalCommand(repoPath, command string) (TerminalResult, error) {
 	output := strings.TrimSpace(stdout.String() + stderr.String())
 	result := TerminalResult{Command: command, Output: output, ExitCode: 0}
 	if err != nil {
-		if exit, ok := err.(*exec.ExitError); ok {
+		exit := &exec.ExitError{}
+		if errors.As(err, &exit) {
 			result.ExitCode = exit.ExitCode()
 			return result, nil
 		}

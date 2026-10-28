@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/run"
-	"adomnia/internal/languages/java"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Il primo dependency:tree può scaricare il plugin e le dipendenze: un tempo largo, ma finito.

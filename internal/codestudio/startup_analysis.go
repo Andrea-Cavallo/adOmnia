@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/startup"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/startup"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // StartupReport è l'avvio di un servizio misurato da Code Studio.

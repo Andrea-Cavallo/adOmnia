@@ -1,7 +1,6 @@
 package copilot
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const settingsFileName = "copilot.json"

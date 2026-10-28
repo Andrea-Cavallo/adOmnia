@@ -1,4 +1,4 @@
-import type { Snapshot } from '../../../bindings/adomnia/internal/resources/models'
+import type { Snapshot } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 import { resourceChartPath } from '@/lib/resourceReport'
 
 export function ResourceChart({ samples }: { samples: Snapshot[] }) {

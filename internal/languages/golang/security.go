@@ -5,10 +5,11 @@ import (
 	"go/parser"
 	"go/token"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/security"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/security"
 )
 
 // Regole statiche Go: euristiche conservative sull'AST (senza type checking), pensate per pochi falsi positivi.
@@ -301,7 +302,7 @@ func (c *securityChecker) checkHTTPLiteral(literal *ast.BasicLit) {
 }
 
 func isLocalAddress(address string) bool {
-	host := strings.SplitN(strings.TrimPrefix(address, ":"), ":", 2)[0]
+	host, _, _ := strings.Cut(strings.TrimPrefix(address, ":"), ":")
 	if strings.HasPrefix(address, ":") || address == "" {
 		return false
 	}
@@ -310,12 +311,7 @@ func isLocalAddress(address string) bool {
 
 // isNamespaceHost: URL usati come identificatori (namespace XML, schemi) o esempi, non come endpoint.
 func isNamespaceHost(host string) bool {
-	for _, known := range []string{"www.w3.org", "schemas.xmlsoap.org", "schemas.microsoft.com", "json-schema.org", "purl.org", "xmlns.com", "ns.adobe.com", "example.com", "example.org", "example.net", "docs.oasis-open.org", "www.apache.org", "go.dev", "golang.org"} {
-		if host == known {
-			return true
-		}
-	}
-	return false
+	return slices.Contains([]string{"www.w3.org", "schemas.xmlsoap.org", "schemas.microsoft.com", "json-schema.org", "purl.org", "xmlns.com", "ns.adobe.com", "example.com", "example.org", "example.net", "docs.oasis-open.org", "www.apache.org", "go.dev", "golang.org"}, host)
 }
 
 func (c *securityChecker) checkSQL(call *ast.CallExpr, query ast.Expr) {

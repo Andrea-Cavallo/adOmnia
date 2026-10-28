@@ -6,9 +6,9 @@
 package codestudiowindow
 
 import (
-	"adomnia/internal/windowfit"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 	"net/url"
 	"strings"
 	"sync"

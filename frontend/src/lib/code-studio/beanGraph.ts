@@ -1,4 +1,4 @@
-import type { SpringBean, SpringIndex, SpringInjection } from '../../../bindings/adomnia/internal/languages/java/models'
+import type { SpringBean, SpringIndex, SpringInjection } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { beanForInjection } from './springInsights'
 
 export interface BeanNode {

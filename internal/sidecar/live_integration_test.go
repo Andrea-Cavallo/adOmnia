@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/storage"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 )
 
 // TestLiveMockStartStop exercises the exact path the frontend uses:

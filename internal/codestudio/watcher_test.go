@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -102,7 +102,7 @@ func TestWatcherReportsOverflowInsteadOfFloodingAndStopsCleanly(t *testing.T) {
 	if err := manager.Watch("s", root, nil); err != nil {
 		t.Fatal(err)
 	}
-	for index := 0; index < maxBatchPaths+100; index++ {
+	for index := range maxBatchPaths + 100 {
 		if err := os.WriteFile(filepath.Join(root, fmt.Sprintf("f%04d.go", index)), []byte("package p\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}

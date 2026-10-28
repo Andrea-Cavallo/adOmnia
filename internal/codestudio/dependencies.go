@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -291,8 +292,8 @@ func parseModuleVersions(output string) ([]string, error) {
 		versions = []string{listed.Version}
 	}
 	reversed := make([]string, 0, len(versions))
-	for index := len(versions) - 1; index >= 0; index-- {
-		reversed = append(reversed, versions[index])
+	for _, version := range slices.Backward(versions) {
+		reversed = append(reversed, version)
 	}
 	return reversed, nil
 }

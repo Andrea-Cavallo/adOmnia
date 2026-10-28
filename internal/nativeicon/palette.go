@@ -37,8 +37,8 @@ func palettePNG(mode, accent string, size int) ([]byte, error) {
 	output := image.NewNRGBA(image.Rect(0, 0, size, size))
 	bounds := source.Bounds()
 	// Area sampling retains antialiasing at native taskbar sizes.
-	for y := 0; y < size; y++ {
-		for x := 0; x < size; x++ {
+	for y := range size {
+		for x := range size {
 			x0 := x * bounds.Dx() / size
 			x1 := (x + 1) * bounds.Dx() / size
 			y0 := y * bounds.Dy() / size

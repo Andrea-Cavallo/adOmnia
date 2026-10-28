@@ -1,3 +1,4 @@
+import '@/styles/studioNothing.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useEntityHandoff } from '@/lib/entities/dispatch'
 import {
@@ -14,7 +15,6 @@ import {
   History,
   ListFilter,
   Lock,
-  MoreVertical,
   PauseCircle,
   Play,
   Plus,
@@ -385,10 +385,9 @@ function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onCh
   )
 }
 
-function SectionTitle({ n, children, right }: { n: number; children: React.ReactNode; right?: React.ReactNode }) {
+function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="flex h-9 items-center gap-2 border-b border-border-1 px-3">
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-3 text-[10px] font-semibold text-text-3">{n}</span>
       <span className="text-[12px] font-semibold text-text-1">{children}</span>
       <div className="ml-auto">{right}</div>
     </div>
@@ -412,11 +411,12 @@ function MiniButton({
     <button
       type="button"
       title={title}
+      aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
       className={cn(
         'inline-flex h-7 items-center justify-center gap-1.5 rounded border px-2 text-[11px] font-medium transition-colors disabled:opacity-35',
-        active ? 'border-accent/40 bg-accent/20 text-accent' : 'border-border-2 bg-surface-1 text-text-2 hover:bg-surface-2 hover:text-text-1',
+        active ? 'border-border-2 bg-surface-2 text-text-1' : 'border-border-2 bg-surface-1 text-text-2 hover:bg-surface-2 hover:text-text-1',
       )}
     >
       {children}
@@ -489,7 +489,7 @@ function ConfigTabs({
   ]
 
   return (
-    <div className="rounded-md border border-border-1 bg-surface-1">
+    <div className="border-b border-border-1 bg-surface-0">
       <div className="flex min-h-9 flex-wrap items-center gap-1 border-b border-border-1 px-2 py-1">
         {tabs.map((tab) => (
           <button
@@ -498,7 +498,7 @@ function ConfigTabs({
             onClick={() => onActive(tab.id)}
             className={cn(
               'inline-flex h-7 items-center gap-1.5 rounded px-3 text-[11px] font-medium transition-colors',
-              active === tab.id ? 'bg-accent/20 text-accent shadow-[inset_0_-1px_0_var(--color-accent)]' : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
+              active === tab.id ? 'bg-surface-2 text-text-1 shadow-[inset_0_-2px_0_var(--color-text-1)]' : 'text-text-3 hover:bg-surface-2 hover:text-text-1',
             )}
           >
             {tab.icon}
@@ -591,8 +591,8 @@ function MessageTemplates({
   const recent = [...templates].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4)
 
   return (
-    <div className="flex min-h-0 flex-col rounded-md border border-border-1 bg-surface-1">
-      <SectionTitle n={1} right={<span className="text-[10px] text-text-4">{templates.length}</span>}>Message Templates</SectionTitle>
+    <div className="flex min-h-0 flex-col border-b border-border-1 bg-surface-0">
+      <SectionTitle right={<span className="text-[10px] text-text-4">{templates.length}</span>}>Message Templates</SectionTitle>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <div>
           <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-4">Templates</div>
@@ -698,9 +698,8 @@ function StreamList({
   onPause: (paused: boolean) => void
 }) {
   return (
-    <div className="flex min-h-0 flex-col rounded-md border border-border-1 bg-surface-1">
+    <div className="flex min-h-0 flex-col border-b border-border-1 bg-surface-0">
       <SectionTitle
-        n={2}
         right={(
           <div className="flex items-center gap-1">
             <MiniButton onClick={onExport} disabled={messages.length === 0}><Download size={12} /> Export JSONL</MiniButton>
@@ -791,8 +790,8 @@ function Inspector({ message, onCopy }: { message: WSMessage | null; onCopy: (te
   const binary = useMemo(() => message?.binary ? binaryPayloadPreview(message.content) : null, [message])
 
   return (
-    <div className="flex min-h-0 flex-col rounded-md border border-border-1 bg-surface-1">
-      <SectionTitle n={3} right={<span className="text-[10px] text-text-4">Inspector</span>}>Inspector</SectionTitle>
+    <div className="flex min-h-0 flex-col border-b border-border-1 bg-surface-0">
+      <SectionTitle>Inspector</SectionTitle>
       {!message ? (
         <div className="flex min-h-[260px] flex-1 items-center justify-center px-6 text-center">
           <div>
@@ -1107,7 +1106,7 @@ function ParallelPanel({
 function SystemEvents({ events }: { events: WSMessage[] }) {
   const items = events.slice(-8).reverse()
   return (
-    <div className="rounded-md border border-border-1 bg-surface-1">
+    <div className="border-b border-border-1 bg-surface-0">
       <div className="flex h-8 items-center gap-2 border-b border-border-1 px-3 text-[11px] font-semibold text-text-2">
         <Activity size={13} /> System Events
       </div>
@@ -1148,6 +1147,8 @@ export function WebSocketPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [urlHistory, setUrlHistory] = useState<string[]>(loadUrlHistory)
   const [showUrlHistory, setShowUrlHistory] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [showInspector, setShowInspector] = useState(true)
   const [paused, setPaused] = useState(false)
   const [queuedEvents, setQueuedEvents] = useState<WSMessage[]>([])
   const [scriptCode, setScriptCode] = useState('')
@@ -1577,12 +1578,22 @@ export function WebSocketPanel() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
-      <div className="flex-shrink-0 border-b border-border-1 bg-surface-1 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border-2 bg-surface-0 px-2 focus-within:border-accent/50">
-            <span className="rounded bg-accent/15 px-1.5 py-1 font-mono text-[10px] font-semibold text-accent">{wsSchemeLabel(config.url)}</span>
+    <div onKeyDown={event => {
+      if (event.key !== 'Escape') return
+      const details = (event.target as HTMLElement).closest('details[open]')
+      if (details) { details.removeAttribute('open'); details.querySelector('summary')?.focus(); event.stopPropagation() }
+    }} className="nothing-studio ws-studio flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-0">
+      <div className="relative flex-shrink-0 border-b border-border-1 bg-surface-0 px-4 py-3">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h2 className="nothing-studio-title mr-auto">WebSocket</h2>
+          <MiniButton active={showTemplates} onClick={() => setShowTemplates(value => !value)}>Templates</MiniButton>
+          <MiniButton active={showInspector} onClick={() => setShowInspector(value => !value)}>Inspector</MiniButton>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex min-w-[180px] flex-1 items-center gap-2 rounded-md border border-border-2 bg-surface-0 px-2 focus-within:border-accent/50">
+            <span className="border-r border-border-1 px-2 py-1 font-mono text-[10px] text-text-2">{wsSchemeLabel(config.url)}</span>
             <input
+              aria-label="WebSocket URL"
               value={config.url}
               disabled={connected}
               onChange={(event) => setConfig((current) => ({ ...current, url: event.target.value }))}
@@ -1593,12 +1604,12 @@ export function WebSocketPanel() {
               className="h-9 min-w-0 flex-1 bg-transparent font-mono text-[13px] text-text-1 outline-none placeholder:text-text-4 disabled:opacity-60"
             />
             {urlHistory.length > 0 && !connected && (
-              <button type="button" onClick={() => setShowUrlHistory((value) => !value)} className="text-text-4 hover:text-text-1"><Clock size={14} /></button>
+              <button type="button" aria-label="URL history" aria-expanded={showUrlHistory} onClick={() => setShowUrlHistory((value) => !value)} className="text-text-4 hover:text-text-1"><Clock size={14} /></button>
             )}
             {showUrlHistory && urlHistory.length > 0 && !connected && (
-              <div className="absolute left-3 right-[410px] top-[52px] z-30 overflow-hidden rounded-md border border-border-1 bg-surface-2 shadow-lg">
+              <div className="absolute inset-x-0 top-full mt-1 z-30 overflow-hidden rounded-md border border-border-1 bg-surface-2 shadow-lg">
                 {urlHistory.map((url) => (
-                  <button key={url} type="button" onMouseDown={() => { setConfig((current) => ({ ...current, url })); setShowUrlHistory(false) }} className="block w-full truncate px-3 py-2 text-left font-mono text-[11px] text-text-2 hover:bg-surface-3 hover:text-text-1">
+                  <button key={url} type="button" onMouseDown={event => event.preventDefault()} onClick={() => { setConfig((current) => ({ ...current, url })); setShowUrlHistory(false) }} className="block w-full truncate px-3 py-2 text-left font-mono text-[11px] text-text-2 hover:bg-surface-3 hover:text-text-1">
                     {url}
                   </button>
                 ))}
@@ -1616,18 +1627,20 @@ export function WebSocketPanel() {
             </button>
           )}
 
-          <Toggle checked={config.autoReconnect} onChange={(checked) => setConfig((current) => ({ ...current, autoReconnect: checked }))} label="Auto-reconnect" />
-          <div className={cn('inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[11px] font-semibold', statusTone(status))}>
+          <div role="status" className={cn('inline-flex h-9 items-center gap-2  px-3 text-[11px] font-semibold', statusTone(status))}>
             {connected ? <Wifi size={13} /> : <WifiOff size={13} />}
             {statusLabel[status]}
             {connected && <span className="font-mono text-[10px] text-text-4">{fmtTime(nowMs()).slice(0, 8)}</span>}
           </div>
+          <details className="nothing-options relative">
+            <summary className="cursor-pointer rounded border border-border-2 px-3 py-2 text-xs text-text-2">Connection options</summary>
+            <div className="nothing-options-popover">
+          <Toggle checked={config.autoReconnect} onChange={(checked) => setConfig((current) => ({ ...current, autoReconnect: checked }))} label="Auto-reconnect" />
           <MiniButton onClick={() => void refreshSessions()}><Server size={13} /> {activeSessions} sessions</MiniButton>
           {activeSessions > 0 && <MiniButton onClick={() => void closeAllSessions()}><Trash2 size={13} /> Close all</MiniButton>}
           <MiniButton onClick={() => copyText(resolveUrl(config, getResolvedVars()))}>{copied ? <Check size={13} /> : <Copy size={13} />} Copy URL</MiniButton>
-          <button type="button" className="flex h-9 w-9 items-center justify-center rounded-md border border-border-2 bg-surface-0 text-text-3 hover:bg-surface-2 hover:text-text-1">
-            <MoreVertical size={15} />
-          </button>
+            </div>
+          </details>
         </div>
         <LiveWebSocketHandler url={resolveUrl(config, getResolvedVars())} connected={connected} onDebugReady={() => void handleConnect()} />
         {connected && liveRun && (
@@ -1637,7 +1650,8 @@ export function WebSocketPanel() {
           </div>
         )}
 
-        <div className="mt-2">
+        <details className="mt-3">
+          <summary className="cursor-pointer py-1 text-xs text-text-2">Authentication, headers & mock server</summary>
           <ConfigTabs
             active={activeTab}
             onActive={setActiveTab}
@@ -1645,10 +1659,11 @@ export function WebSocketPanel() {
             onConfig={updateConfig}
             mockPanel={<MockServerPanel port={port} onConnectToMock={(url) => { setConfig((current) => ({ ...current, url })); void handleConnect(url) }} onSystem={addSystem} />}
           />
-        </div>
+        </details>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden p-2 xl:grid-cols-[minmax(300px,0.95fr)_minmax(420px,1.3fr)_minmax(320px,0.95fr)]">
+      <div className="ws-workspace" data-templates={showTemplates} data-inspector={showInspector}>
+        <div hidden={!showTemplates} className="ws-templates min-h-0">
         <MessageTemplates
           templates={templates}
           draft={draft}
@@ -1661,6 +1676,7 @@ export function WebSocketPanel() {
           onValidate={validateJson}
         />
 
+        </div>
         <StreamList
           messages={filteredMessages}
           selectedId={selectedMessage?.id ?? null}
@@ -1675,10 +1691,10 @@ export function WebSocketPanel() {
           onPause={setPaused}
         />
 
-        <div className="flex min-h-0 flex-col gap-2">
+        <div hidden={!showInspector} className={cn('ws-inspector min-h-0 flex-col gap-2', showInspector && 'flex')}>
           <Inspector message={selectedMessage} onCopy={copyText} />
           {showScript && (
-            <div className="rounded-md border border-border-1 bg-surface-1 p-2">
+            <div className="border-b border-border-1 bg-surface-0 p-2">
               <textarea
                 value={scriptCode}
                 onChange={(event) => setScriptCode(event.target.value)}
@@ -1698,13 +1714,13 @@ export function WebSocketPanel() {
               key={mode}
               type="button"
               onClick={() => setPayloadMode(mode)}
-              className={cn('inline-flex h-7 items-center gap-1.5 rounded border px-2 text-[11px] font-medium capitalize', payloadMode === mode ? 'border-accent/40 bg-accent/20 text-accent' : 'border-border-2 bg-surface-0 text-text-3 hover:text-text-1')}
+              className={cn('inline-flex h-7 items-center gap-1.5 rounded border px-2 text-[11px] font-medium capitalize', payloadMode === mode ? 'border-border-2 bg-surface-2 text-text-1' : 'border-border-2 bg-surface-0 text-text-3 hover:text-text-1')}
             >
               {mode === 'json' ? <Braces size={13} /> : mode === 'text' ? <AlignLeft size={13} /> : <Code2 size={13} />}
               {mode}
             </button>
           ))}
-          <MiniButton onClick={() => setShowScript(!showScript)} active={showScript}><Code2 size={12} /> On Message Script</MiniButton>
+          <MiniButton onClick={() => { if (!showScript) setShowInspector(true); setShowScript(!showScript) }} active={showScript}><Code2 size={12} /> On Message Script</MiniButton>
           {connected && <MiniButton onClick={() => void handlePing()}><Activity size={12} /> Ping</MiniButton>}
           <MiniButton onClick={() => setShowParallel(!showParallel)} active={showParallel}><Zap size={12} /> Parallel</MiniButton>
           {queuedEvents.length > 0 && <span className="rounded bg-warning/10 px-2 py-1 text-[10px] text-warning">{queuedEvents.length} queued while paused</span>}

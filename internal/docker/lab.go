@@ -1,7 +1,7 @@
+// Package docker controls the adOmnia Lab, a Docker Compose set of local services (databases, brokers and more) that adOmnia starts, monitors and restarts. Only containers that belong to the lab are touched.
 package docker
 
 import (
-	"adomnia/internal/procutil"
 	"context"
 	"encoding/json/v2"
 	"errors"
@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -439,7 +441,7 @@ func (d *DockerLab) LabStatus(projectName string) ([]ContainerStatus, error) {
 	}
 
 	var result []ContainerStatus
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		if line == "" {
 			continue
 		}

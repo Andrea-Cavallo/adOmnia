@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 )
 
 // ID è salvato in project.Unit.Language e nelle configurazioni di run.

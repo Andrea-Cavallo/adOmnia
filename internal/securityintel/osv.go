@@ -6,11 +6,12 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 )
 
 const (
@@ -135,10 +136,7 @@ func (o *OSVSource) queryBatch(ctx context.Context, components []Component) (map
 	}
 	results := map[string][]Advisory{}
 	for start := 0; start < len(components); start += osvBatchMaxQuery {
-		end := start + osvBatchMaxQuery
-		if end > len(components) {
-			end = len(components)
-		}
+		end := min(start+osvBatchMaxQuery, len(components))
 		batch := components[start:end]
 		request := osvBatchRequest{Queries: make([]osvQuery, 0, len(batch))}
 		for _, component := range batch {
@@ -385,10 +383,8 @@ func appendDistinctString(values []string, value string) []string {
 	if value == "" {
 		return values
 	}
-	for _, existing := range values {
-		if existing == value {
-			return values
-		}
+	if slices.Contains(values, value) {
+		return values
 	}
 	return append(values, value)
 }

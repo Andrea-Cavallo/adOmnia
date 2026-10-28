@@ -1,7 +1,6 @@
 package run
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"fmt"
 	"slices"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const maxConfigurationsPerSession = 50
@@ -220,7 +221,7 @@ func (m *Manager) Snapshot() []Configuration {
 	for sessionID := range m.configs {
 		sessions = append(sessions, sessionID)
 	}
-	sort.Slice(sessions, func(i, j int) bool { return sessions[i] < sessions[j] })
+	slices.Sort(sessions)
 	all := make([]Configuration, 0, len(m.configs))
 	for _, sessionID := range sessions {
 		for _, config := range m.configs[sessionID] {

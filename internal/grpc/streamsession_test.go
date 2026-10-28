@@ -1,10 +1,10 @@
 package grpc
 
 import (
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"bytes"
 	"encoding/json/v2"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"

@@ -49,11 +49,9 @@ func TestConcurrentTimeoutAndTimerReset(t *testing.T) {
 	previous := TimeoutMinutes()
 	t.Cleanup(func() { lockVault(); SetTimeoutMinutes(previous) })
 	var workers sync.WaitGroup
-	for i := 0; i < 8; i++ {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
-			for j := 0; j < 100; j++ {
+	for range 8 {
+		workers.Go(func() {
+			for j := range 100 {
 				SetTimeoutMinutes(1 + j%120)
 				_ = TimeoutMinutes()
 				vaultMu.Lock()
@@ -63,7 +61,7 @@ func TestConcurrentTimeoutAndTimerReset(t *testing.T) {
 				resetVaultTimer()
 				lockVault()
 			}
-		}()
+		})
 	}
 	workers.Wait()
 }

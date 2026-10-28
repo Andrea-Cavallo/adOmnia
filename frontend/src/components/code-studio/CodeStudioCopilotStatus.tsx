@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { BRAND_ICONS } from '@/lib/brandIcons.generated'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
-import { State } from '../../../bindings/adomnia/internal/copilot/models'
+import { State } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/copilot/models'
 import type { CopilotSettings, CopilotStatus } from '@/lib/copilot-api'
 import { useCopilotStore } from '@/stores/copilot'
 

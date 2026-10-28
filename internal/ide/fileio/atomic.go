@@ -20,7 +20,7 @@ const (
 // aperto per pochi millisecondi: si riprova con backoff prima di rinunciare.
 func replaceFile(temporaryPath, path string) error {
 	var err error
-	for attempt := 0; attempt < saveRenameAttempts; attempt++ {
+	for attempt := range saveRenameAttempts {
 		if err = RenameFile(temporaryPath, path); err == nil {
 			return nil
 		}

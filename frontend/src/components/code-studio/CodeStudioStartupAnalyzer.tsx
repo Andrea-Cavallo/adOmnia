@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { create } from 'zustand'
 import { Loader2, Rocket, X } from 'lucide-react'
-import * as GoIDE from '../../../bindings/adomnia/goide'
-import type { ShutdownReport, StartupReport } from '../../../bindings/adomnia/internal/codestudio/models'
+import * as GoIDE from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { ShutdownReport, StartupReport } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 import { withContentKeys } from '@/lib/contentKeys'
 import { shutdownChecks } from '@/lib/code-studio/shutdownChecks'
 

@@ -119,7 +119,7 @@ func TestBufferByteBudgetKeepsNewestLines(t *testing.T) {
 
 	session := &Session{Config: Config{Kind: KindFile, BufferLines: 100}}
 	line := strings.Repeat("x", 40) // 41 bytes with the newline
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		session.append(line)
 	}
 	result := session.Poll(-1)

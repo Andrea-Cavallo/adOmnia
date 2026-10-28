@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/browser"
-	"adomnia/internal/proxy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/browser"
+	"github.com/Andrea-Cavallo/adOmnia/internal/proxy"
 )
 
 const maxBrowserRuns = 500

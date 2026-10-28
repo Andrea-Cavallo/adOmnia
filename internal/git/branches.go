@@ -9,8 +9,8 @@ import (
 // "remotes/origin/feature" or "origin/feature" → "feature".
 func localBranchName(remoteRef string) string {
 	n := strings.TrimPrefix(strings.TrimSpace(remoteRef), "remotes/")
-	if i := strings.Index(n, "/"); i >= 0 {
-		return n[i+1:]
+	if _, after, ok := strings.Cut(n, "/"); ok {
+		return after
 	}
 	return n
 }

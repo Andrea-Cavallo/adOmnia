@@ -41,7 +41,7 @@ func (b *BrowserDebug) EvalJS(expression string) (ConsoleEntry, error) {
 	}
 	b.mu.Unlock()
 
-	result, err := b.sendCommandWithResult("Runtime.evaluate", map[string]interface{}{
+	result, err := b.sendCommandWithResult("Runtime.evaluate", map[string]any{
 		"expression":    expression,
 		"returnByValue": true,
 	})
@@ -136,14 +136,14 @@ func (b *BrowserDebug) ClearConsoleLogs() {
 // HandleConsoleEvent processes Runtime.consoleAPICalled events.
 // This should be called from the handleEvent method in browser_debug.go when
 // msg.Method == "Runtime.consoleAPICalled".
-func (b *BrowserDebug) HandleConsoleEvent(params map[string]interface{}) {
+func (b *BrowserDebug) HandleConsoleEvent(params map[string]any) {
 	logType, _ := params["type"].(string)
 	timestamp, _ := params["timestamp"].(float64)
 
-	args, _ := params["args"].([]interface{})
+	args, _ := params["args"].([]any)
 	var textParts []string
 	for _, arg := range args {
-		argMap, ok := arg.(map[string]interface{})
+		argMap, ok := arg.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -151,7 +151,7 @@ func (b *BrowserDebug) HandleConsoleEvent(params map[string]interface{}) {
 			textParts = append(textParts, fmt.Sprintf("%v", val))
 		} else if desc, ok := argMap["description"].(string); ok {
 			textParts = append(textParts, desc)
-		} else if preview, ok := argMap["preview"].(map[string]interface{}); ok {
+		} else if preview, ok := argMap["preview"].(map[string]any); ok {
 			if desc, ok := preview["description"].(string); ok {
 				textParts = append(textParts, desc)
 			}
@@ -296,7 +296,7 @@ func (b *BrowserDebug) SetBreakpoint(url string, line int, condition string) (st
 	}
 	b.mu.Unlock()
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"url":        url,
 		"lineNumber": line,
 	}
@@ -360,8 +360,8 @@ func (b *BrowserDebug) SetBreakpointByScriptID(scriptId string, line int, column
 		column = 0
 	}
 
-	params := map[string]interface{}{
-		"location": map[string]interface{}{
+	params := map[string]any{
+		"location": map[string]any{
 			"scriptId":     scriptId,
 			"lineNumber":   line,
 			"columnNumber": column,
@@ -426,7 +426,7 @@ func (b *BrowserDebug) RemoveBreakpoint(breakpointId string) error {
 	}
 	b.mu.Unlock()
 
-	if err := b.sendCommand("Debugger.removeBreakpoint", map[string]interface{}{
+	if err := b.sendCommand("Debugger.removeBreakpoint", map[string]any{
 		"breakpointId": breakpointId,
 	}); err != nil {
 		return fmt.Errorf("failed to remove breakpoint: %w", err)
@@ -495,7 +495,7 @@ func (b *BrowserDebug) GetScriptSource(scriptId string) (string, error) {
 		return "", fmt.Errorf("script id is required")
 	}
 
-	result, err := b.sendCommandWithResult("Debugger.getScriptSource", map[string]interface{}{
+	result, err := b.sendCommandWithResult("Debugger.getScriptSource", map[string]any{
 		"scriptId": scriptId,
 	})
 	if err != nil {
@@ -611,8 +611,8 @@ func (b *BrowserDebug) GetSourceFileContent(sourceId string) (string, error) {
 		return "", err
 	}
 
-	if strings.HasPrefix(sourceId, "script:") {
-		return b.GetScriptSource(strings.TrimPrefix(sourceId, "script:"))
+	if after, ok := strings.CutPrefix(sourceId, "script:"); ok {
+		return b.GetScriptSource(after)
 	}
 
 	if !strings.HasPrefix(sourceId, "resource:") {
@@ -628,7 +628,7 @@ func (b *BrowserDebug) GetSourceFileContent(sourceId string) (string, error) {
 		return "", fmt.Errorf("invalid resource id payload")
 	}
 
-	result, err := b.sendCommandWithResult("Page.getResourceContent", map[string]interface{}{
+	result, err := b.sendCommandWithResult("Page.getResourceContent", map[string]any{
 		"frameId": parts[0],
 		"url":     parts[1],
 	})
@@ -667,7 +667,7 @@ func (b *BrowserDebug) ReloadPageNoCache() error {
 	if err := b.sendCommand("Page.enable", nil); err != nil {
 		return fmt.Errorf("failed to enable Page domain: %w", err)
 	}
-	if err := b.sendCommand("Page.reload", map[string]interface{}{
+	if err := b.sendCommand("Page.reload", map[string]any{
 		"ignoreCache": true,
 	}); err != nil {
 		return fmt.Errorf("failed to reload page without cache: %w", err)
@@ -685,7 +685,7 @@ func (b *BrowserDebug) disableBrowserCache() error {
 	if err := b.sendCommand("Network.enable", nil); err != nil {
 		return fmt.Errorf("failed to enable Network domain: %w", err)
 	}
-	if err := b.sendCommand("Network.setCacheDisabled", map[string]interface{}{
+	if err := b.sendCommand("Network.setCacheDisabled", map[string]any{
 		"cacheDisabled": true,
 	}); err != nil {
 		return fmt.Errorf("failed to disable browser cache: %w", err)
@@ -773,7 +773,7 @@ func (b *BrowserDebug) GetPausedState() PausedState {
 // HandleDebuggerEvent processes Debugger.paused and Debugger.resumed events.
 // This should be called from the handleEvent method in browser_debug.go when
 // msg.Method starts with "Debugger.".
-func (b *BrowserDebug) HandleDebuggerEvent(method string, params map[string]interface{}) {
+func (b *BrowserDebug) HandleDebuggerEvent(method string, params map[string]any) {
 	switch method {
 	case "Debugger.scriptParsed":
 		scriptID, _ := params["scriptId"].(string)
@@ -799,11 +799,11 @@ func (b *BrowserDebug) HandleDebuggerEvent(method string, params map[string]inte
 
 	case "Debugger.paused":
 		reason, _ := params["reason"].(string)
-		callFramesRaw, _ := params["callFrames"].([]interface{})
+		callFramesRaw, _ := params["callFrames"].([]any)
 
 		var frames []CallFrame
 		for _, cfRaw := range callFramesRaw {
-			cfMap, ok := cfRaw.(map[string]interface{})
+			cfMap, ok := cfRaw.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -811,7 +811,7 @@ func (b *BrowserDebug) HandleDebuggerEvent(method string, params map[string]inte
 				ID:           fmt.Sprintf("%v", cfMap["callFrameId"]),
 				FunctionName: stringFromMap(cfMap, "functionName"),
 			}
-			if loc, ok := cfMap["location"].(map[string]interface{}); ok {
+			if loc, ok := cfMap["location"].(map[string]any); ok {
 				frame.ScriptID = stringFromMap(loc, "scriptId")
 				frame.LineNumber = intFromMap(loc, "lineNumber")
 				frame.ColumnNumber = intFromMap(loc, "columnNumber")
@@ -976,7 +976,7 @@ func (b *BrowserDebug) EnableDOM() error {
 		return fmt.Errorf("failed to enable DOM domain: %w", err)
 	}
 
-	result, err := b.sendCommandWithResult("DOM.getDocument", map[string]interface{}{
+	result, err := b.sendCommandWithResult("DOM.getDocument", map[string]any{
 		"depth": 0,
 	})
 	if err != nil {
@@ -1009,7 +1009,7 @@ func (b *BrowserDebug) GetDocument(depth int) (*DOMNode, error) {
 	}
 	b.mu.Unlock()
 
-	result, err := b.sendCommandWithResult("DOM.getDocument", map[string]interface{}{
+	result, err := b.sendCommandWithResult("DOM.getDocument", map[string]any{
 		"depth": depth,
 	})
 	if err != nil {
@@ -1040,7 +1040,7 @@ func (b *BrowserDebug) GetNodeHTML(nodeId int) (string, error) {
 	}
 	b.mu.Unlock()
 
-	result, err := b.sendCommandWithResult("DOM.getOuterHTML", map[string]interface{}{
+	result, err := b.sendCommandWithResult("DOM.getOuterHTML", map[string]any{
 		"nodeId": nodeId,
 	})
 	if err != nil {
@@ -1073,7 +1073,7 @@ func (b *BrowserDebug) QuerySelector(selector string) (*DOMNode, error) {
 		return nil, fmt.Errorf("DOM not enabled; call EnableDOM first")
 	}
 
-	result, err := b.sendCommandWithResult("DOM.querySelector", map[string]interface{}{
+	result, err := b.sendCommandWithResult("DOM.querySelector", map[string]any{
 		"nodeId":   rootID,
 		"selector": selector,
 	})
@@ -1093,7 +1093,7 @@ func (b *BrowserDebug) QuerySelector(selector string) (*DOMNode, error) {
 	}
 
 	// Describe the found node to get details
-	descResult, err := b.sendCommandWithResult("DOM.describeNode", map[string]interface{}{
+	descResult, err := b.sendCommandWithResult("DOM.describeNode", map[string]any{
 		"nodeId": resp.NodeID,
 		"depth":  0,
 	})
@@ -1129,7 +1129,7 @@ func (b *BrowserDebug) GetComputedStyle(nodeId int) (map[string]string, error) {
 	// Enable CSS domain if not already enabled
 	_ = b.sendCommand("CSS.enable", nil)
 
-	result, err := b.sendCommandWithResult("CSS.getComputedStyleForNode", map[string]interface{}{
+	result, err := b.sendCommandWithResult("CSS.getComputedStyleForNode", map[string]any{
 		"nodeId": nodeId,
 	})
 	if err != nil {
@@ -1162,20 +1162,20 @@ func (b *BrowserDebug) HighlightNode(nodeId int) error {
 	}
 	b.mu.Unlock()
 
-	if err := b.sendCommand("DOM.highlightNode", map[string]interface{}{
+	if err := b.sendCommand("DOM.highlightNode", map[string]any{
 		"nodeId": nodeId,
-		"highlightConfig": map[string]interface{}{
+		"highlightConfig": map[string]any{
 			"showInfo": true,
-			"contentColor": map[string]interface{}{
+			"contentColor": map[string]any{
 				"r": 111, "g": 168, "b": 220, "a": 0.66,
 			},
-			"paddingColor": map[string]interface{}{
+			"paddingColor": map[string]any{
 				"r": 147, "g": 196, "b": 125, "a": 0.55,
 			},
-			"borderColor": map[string]interface{}{
+			"borderColor": map[string]any{
 				"r": 255, "g": 229, "b": 153, "a": 0.75,
 			},
-			"marginColor": map[string]interface{}{
+			"marginColor": map[string]any{
 				"r": 246, "g": 178, "b": 107, "a": 0.50,
 			},
 		},
@@ -1223,7 +1223,7 @@ func (b *BrowserDebug) SetDOMBreakpoint(nodeId int, breakpointType string) error
 		return fmt.Errorf("failed to enable Debugger domain: %w", err)
 	}
 
-	if err := b.sendCommand("DOMDebugger.setDOMBreakpoint", map[string]interface{}{
+	if err := b.sendCommand("DOMDebugger.setDOMBreakpoint", map[string]any{
 		"nodeId": nodeId,
 		"type":   breakpointType,
 	}); err != nil {
@@ -1257,7 +1257,7 @@ func (b *BrowserDebug) RemoveDOMBreakpoint(nodeId int, breakpointType string) er
 		return fmt.Errorf("invalid DOM breakpoint type: %s", breakpointType)
 	}
 
-	if err := b.sendCommand("DOMDebugger.removeDOMBreakpoint", map[string]interface{}{
+	if err := b.sendCommand("DOMDebugger.removeDOMBreakpoint", map[string]any{
 		"nodeId": nodeId,
 		"type":   breakpointType,
 	}); err != nil {
@@ -1373,7 +1373,7 @@ func (b *BrowserDebug) DeleteCookie(name string, domain string) error {
 	}
 	b.mu.Unlock()
 
-	if err := b.sendCommand("Network.deleteCookies", map[string]interface{}{
+	if err := b.sendCommand("Network.deleteCookies", map[string]any{
 		"name":   name,
 		"domain": domain,
 	}); err != nil {
@@ -1404,7 +1404,7 @@ func (b *BrowserDebug) GetIndexedDBDatabases() ([]string, error) {
 	b.mu.Unlock()
 
 	expression := `(async()=>{const dbs=await indexedDB.databases(); return JSON.stringify(dbs.map(d=>d.name))})()`
-	result, err := b.sendCommandWithResult("Runtime.evaluate", map[string]interface{}{
+	result, err := b.sendCommandWithResult("Runtime.evaluate", map[string]any{
 		"expression":    expression,
 		"returnByValue": true,
 		"awaitPromise":  true,
@@ -1448,7 +1448,7 @@ func (b *BrowserDebug) getWebStorage(storageType string) ([]StorageItem, error) 
 	b.mu.Unlock()
 
 	expression := fmt.Sprintf(`JSON.stringify(Object.entries(%s))`, storageType)
-	result, err := b.sendCommandWithResult("Runtime.evaluate", map[string]interface{}{
+	result, err := b.sendCommandWithResult("Runtime.evaluate", map[string]any{
 		"expression":    expression,
 		"returnByValue": true,
 	})
@@ -1534,7 +1534,7 @@ func (b *BrowserDebug) SetThrottling(downloadKbps, uploadKbps, latencyMs float64
 	downloadThroughput := downloadKbps * 1024 / 8
 	uploadThroughput := uploadKbps * 1024 / 8
 
-	if err := b.sendCommand("Network.emulateNetworkConditions", map[string]interface{}{
+	if err := b.sendCommand("Network.emulateNetworkConditions", map[string]any{
 		"offline":            offline,
 		"downloadThroughput": downloadThroughput,
 		"uploadThroughput":   uploadThroughput,
@@ -1557,7 +1557,7 @@ func (b *BrowserDebug) ClearThrottling() error {
 	}
 	b.mu.Unlock()
 
-	if err := b.sendCommand("Network.emulateNetworkConditions", map[string]interface{}{
+	if err := b.sendCommand("Network.emulateNetworkConditions", map[string]any{
 		"offline":            false,
 		"downloadThroughput": -1,
 		"uploadThroughput":   -1,
@@ -1596,12 +1596,12 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen] + "..."
 }
 
-func stringFromMap(m map[string]interface{}, key string) string {
+func stringFromMap(m map[string]any, key string) string {
 	v, _ := m[key].(string)
 	return v
 }
 
-func intFromMap(m map[string]interface{}, key string) int {
+func intFromMap(m map[string]any, key string) int {
 	switch v := m[key].(type) {
 	case float64:
 		return int(v)

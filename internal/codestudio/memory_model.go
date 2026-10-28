@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // MemoryModelReport: la sincronizzazione che la funzione sotto il cursore condivide con il suo package.

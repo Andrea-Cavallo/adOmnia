@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
 )
 
 func TestRunHeadlessScriptMutatesVariablesAndEvaluatesTests(t *testing.T) {

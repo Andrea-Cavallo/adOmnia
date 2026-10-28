@@ -39,7 +39,7 @@ Project entities come from `internal/devcontext` (Go) via `stores/devcontext.ts`
 
 ### IDE languages (Code Studio platform)
 
-Code Studio is the IDE Platform with Go as its first language adapter; read `docs/architecture/ide-multilanguage-refactor.md` before touching `internal/codestudio`, `internal/ide` or `internal/languages`.
+Code Studio is the IDE Platform with Go as its first language adapter; read `docs/architecture/ide-package-rules.md` and `internal/ide/CLAUDE.md` before touching `internal/codestudio`, `internal/ide` or `internal/languages`.
 - The core (`internal/ide/*`) never imports an adapter or Go tooling; `internal/ide/architecture_test.go` enforces it. Languages are registered in `internal/codestudio/languages.go`.
 - The frontend learns registered languages from `GetCapabilities().languages` and describes each one in `frontend/src/components/ide/languages/<id>/` (icon, menu, commands with `requires`, Monaco editor languages). Never hard-code `'go'` in shared editor code: use `languageServerEditorLanguages()` / `ideLanguageForEditor()`.
 - `Project` has only language units: derive Go modules with `goLayoutOf` (Go) or `goProjectLayout` / `goModules` (`lib/code-studio/goProject.ts`).

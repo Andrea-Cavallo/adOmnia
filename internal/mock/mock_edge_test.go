@@ -1,13 +1,14 @@
 package mock
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TestMockRapidRestart verifies that quickly stopping and starting the mock
@@ -33,7 +34,7 @@ func TestMockRapidRestart(t *testing.T) {
 
 	const port = 19997
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		// Start
 		cfg := mockServerConfig{
 			Port: port,
@@ -57,7 +58,7 @@ func TestMockRapidRestart(t *testing.T) {
 		if err != nil {
 			t.Fatalf("iteration %d: start failed: %v", i, err)
 		}
-		var startRes map[string]interface{}
+		var startRes map[string]any
 		json.UnmarshalRead(resp.Body, &startRes)
 		resp.Body.Close()
 		if startRes["ok"] != true {
@@ -124,7 +125,7 @@ func TestMockPortConflict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first start failed: %v", err)
 	}
-	var res map[string]interface{}
+	var res map[string]any
 	json.UnmarshalRead(resp.Body, &res)
 	resp.Body.Close()
 	if res["ok"] != true {
@@ -179,7 +180,7 @@ func TestMockNoEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start with 0 endpoints failed: %v", err)
 	}
-	var startRes map[string]interface{}
+	var startRes map[string]any
 	json.UnmarshalRead(resp.Body, &startRes)
 	resp.Body.Close()
 	if startRes["ok"] != true {

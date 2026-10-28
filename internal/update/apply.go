@@ -1,9 +1,6 @@
 package update
 
 import (
-	"adomnia/internal/ide/process"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/procutil"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
@@ -17,6 +14,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 type applyPlan struct {
@@ -258,7 +259,7 @@ func (h *helperRun) finalize(result *error) {
 		_ = movePath(p.Backup, p.Target)
 	}
 	if restartErr := startDesktop(p.Executable, nil); restartErr != nil {
-		*result = fmt.Errorf("%v; previous version could not be restarted: %w", *result, restartErr)
+		*result = fmt.Errorf("%w; previous version could not be restarted: %w", *result, restartErr)
 	} else {
 		h.relaunched = true
 	}

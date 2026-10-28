@@ -4,6 +4,7 @@
 package devcontext
 
 import (
+	"maps"
 	"sort"
 	"time"
 )
@@ -54,9 +55,7 @@ func merge(groups ...[]Entity) []Entity {
 			if !ok {
 				fresh := e
 				fresh.Attrs = make(map[string]string, len(e.Attrs))
-				for k, v := range e.Attrs {
-					fresh.Attrs[k] = v
-				}
+				maps.Copy(fresh.Attrs, e.Attrs)
 				fresh.Sources = append([]Source(nil), e.Sources...)
 				byID[e.ID] = &fresh
 				continue

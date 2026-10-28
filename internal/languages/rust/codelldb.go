@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/sdk"
-	"adomnia/internal/ide/toolmanifest"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toolmanifest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // CodeLLDB è il debug adapter DAP di Rust (LLDB incluso). Release e checksum sono pinnati (RS-0.2/
@@ -140,7 +140,7 @@ func codeLLDBVersionOf(path string) []int {
 	base := filepath.Base(filepath.Dir(filepath.Dir(path)))
 	base = strings.TrimPrefix(base, "vadimcn.vscode-lldb-")
 	var version []int
-	for _, part := range strings.Split(base, ".") {
+	for part := range strings.SplitSeq(base, ".") {
 		number, err := strconv.Atoi(part)
 		if err != nil {
 			break

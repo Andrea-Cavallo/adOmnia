@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strconv"
 
-	"adomnia/internal/languages/rust"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
 // detectRustGrpc: i servizi tonic diventano entità grpc come quelle Go e dei `.proto`, così il

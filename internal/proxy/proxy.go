@@ -1,9 +1,7 @@
+// Package proxy implements adOmnia's intercepting HTTP(S) proxy: traffic capture, breakpoints, map local and map remote rules, and the local certificate authority used for HTTPS interception.
 package proxy
 
 import (
-	"adomnia/internal/devlog"
-	"adomnia/internal/httputil"
-	"adomnia/internal/jsonutil"
 	"bufio"
 	"bytes"
 	"context"
@@ -20,6 +18,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // --- Path Traversal Protection ---
@@ -284,7 +286,7 @@ func proxyStartHandler(w http.ResponseWriter, r *http.Request) {
 	devlog.Info("proxyStartHandler", "proxy intercettore avviato", map[string]any{"port": cfg.Port, "https": cfg.EnableHTTPS})
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "port": cfg.Port})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "port": cfg.Port})
 }
 
 func proxyStopHandler(w http.ResponseWriter, r *http.Request) {
@@ -307,7 +309,7 @@ func proxyStopHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 func proxyTrafficHandler(w http.ResponseWriter, r *http.Request) {
@@ -316,7 +318,7 @@ func proxyTrafficHandler(w http.ResponseWriter, r *http.Request) {
 		trafficLog = nil
 		trafficMu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 		return
 	}
 
@@ -337,7 +339,7 @@ func proxyTrafficHandler(w http.ResponseWriter, r *http.Request) {
 	httpsEnableMu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":           true,
 		"entries":      entries,
 		"count":        len(entries),
@@ -367,7 +369,7 @@ func proxyBreakpointsHandler(w http.ResponseWriter, r *http.Request) {
 	breakpointsMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 }
 
 func proxyBreakpointPendingHandler(w http.ResponseWriter, r *http.Request) {
@@ -391,7 +393,7 @@ func proxyBreakpointPendingHandler(w http.ResponseWriter, r *http.Request) {
 	pendingBreakpointsMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true, "pending": pending, "count": len(pending)})
+	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "pending": pending, "count": len(pending)})
 }
 
 func proxyBreakpointResumeHandler(w http.ResponseWriter, r *http.Request) {
@@ -438,7 +440,7 @@ func proxyBreakpointResumeHandler(w http.ResponseWriter, r *http.Request) {
 	select {
 	case pending.resumeCh <- resume:
 		w.Header().Set("Content-Type", "application/json")
-		jsonutil.MarshalWrite(w, map[string]interface{}{"ok": true})
+		jsonutil.MarshalWrite(w, map[string]any{"ok": true})
 	case <-time.After(2 * time.Second):
 		httputil.JSONError(w, "request is no longer waiting", 409)
 	}

@@ -1,6 +1,6 @@
 //go:build linux && !gtk3
 
-// Package nativeicon provides the embedded application icon to GTK4's icon theme.
+// GTK4: the embedded application icon is registered with the icon theme.
 package nativeicon
 
 /*

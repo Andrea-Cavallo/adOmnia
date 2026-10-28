@@ -4,13 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -65,15 +67,11 @@ var redisReadCommands = strings.Fields("PING GET MGET EXISTS TYPE TTL PTTL STRLE
 var redisWriteCommands = strings.Fields("SET MSET SETNX SETEX PSETEX DEL UNLINK EXPIRE PEXPIRE EXPIREAT PEXPIREAT PERSIST RENAME RENAMENX INCR INCRBY DECR DECRBY APPEND HSET HSETNX HDEL HINCRBY LPUSH RPUSH LPOP RPOP LSET LTRIM LREM SADD SREM SPOP ZADD ZREM ZINCRBY XADD XDEL XTRIM FLUSHDB FLUSHALL")
 
 func redisCommandAllowed(command string) (allowed, write bool) {
-	for _, item := range redisReadCommands {
-		if command == item {
-			return true, false
-		}
+	if slices.Contains(redisReadCommands, command) {
+		return true, false
 	}
-	for _, item := range redisWriteCommands {
-		if command == item {
-			return true, true
-		}
+	if slices.Contains(redisWriteCommands, command) {
+		return true, true
 	}
 	return false, false
 }
@@ -130,7 +128,7 @@ func runRedisQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 	defer cleanup()
 	limit := redisPageLimit(req.Limit)
 	start := time.Now()
-	resp := dbQueryResponse{Driver: "redis", Columns: []string{"value"}, Rows: []map[string]interface{}{}, StatementType: command, Destructive: write}
+	resp := dbQueryResponse{Driver: "redis", Columns: []string{"value"}, Rows: []map[string]any{}, StatementType: command, Destructive: write}
 	switch q.Operation {
 	case "scan":
 		err = redisScanKeys(ctx, client, q.Pattern, limit, &resp)
@@ -155,7 +153,7 @@ func redisScanKeys(ctx context.Context, client *redis.Client, pattern string, li
 	}
 	cursor := uint64(0)
 	seen := map[string]bool{}
-	for pages := 0; pages < 100; pages++ {
+	for pages := range 100 {
 		keys, next, err := client.Scan(ctx, cursor, pattern, int64(limit)).Result()
 		if err != nil {
 			return err
@@ -169,7 +167,7 @@ func redisScanKeys(ctx context.Context, client *redis.Client, pattern string, li
 				resp.Limited = true
 				break
 			}
-			resp.Rows = append(resp.Rows, map[string]interface{}{"name": key})
+			resp.Rows = append(resp.Rows, map[string]any{"name": key})
 		}
 		cursor = next
 		if cursor == 0 || resp.Limited {
@@ -194,7 +192,7 @@ func redisTruncate[T any](items []T, max int) ([]T, bool) {
 }
 
 // redisReadValue reads a preview of the value stored at key according to its type.
-func redisReadValue(ctx context.Context, client *redis.Client, key, kind string, limit int, resp *dbQueryResponse) (interface{}, error) {
+func redisReadValue(ctx context.Context, client *redis.Client, key, kind string, limit int, resp *dbQueryResponse) (any, error) {
 	switch kind {
 	case "none":
 		return nil, nil
@@ -242,7 +240,7 @@ func redisInspectKey(ctx context.Context, client *redis.Client, key string, limi
 		return err
 	}
 	value, err := redisReadValue(ctx, client, key, kind, limit, resp)
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return err
 	}
 	resp.StatementType = "INSPECT"
@@ -251,7 +249,7 @@ func redisInspectKey(ctx context.Context, client *redis.Client, key string, limi
 	if ttl < 0 {
 		ttlMS = int64(ttl)
 	}
-	resp.Rows = append(resp.Rows, map[string]interface{}{"key": key, "type": kind, "ttlMs": ttlMS, "value": redisDisplayValue(value)})
+	resp.Rows = append(resp.Rows, map[string]any{"key": key, "type": kind, "ttlMs": ttlMS, "value": redisDisplayValue(value)})
 	if resp.Limited {
 		resp.Warning = "Collection preview; use a cursor command to read further entries."
 	}
@@ -260,17 +258,17 @@ func redisInspectKey(ctx context.Context, client *redis.Client, key string, limi
 
 // redisRunCommand executes an allow-listed command and renders list replies row by row.
 func redisRunCommand(ctx context.Context, client *redis.Client, command string, rawArgs []string, limit int, resp *dbQueryResponse) error {
-	args := []interface{}{command}
+	args := []any{command}
 	for _, arg := range rawArgs {
 		args = append(args, arg)
 	}
 	value, err := client.Do(ctx, args...).Result()
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return err
 	}
-	list, ok := value.([]interface{})
+	list, ok := value.([]any)
 	if !ok {
-		resp.Rows = append(resp.Rows, map[string]interface{}{"value": redisDisplayValue(value)})
+		resp.Rows = append(resp.Rows, map[string]any{"value": redisDisplayValue(value)})
 		return nil
 	}
 	for i, item := range list {
@@ -278,12 +276,12 @@ func redisRunCommand(ctx context.Context, client *redis.Client, command string, 
 			resp.Limited = true
 			break
 		}
-		resp.Rows = append(resp.Rows, map[string]interface{}{"value": redisDisplayValue(item)})
+		resp.Rows = append(resp.Rows, map[string]any{"value": redisDisplayValue(item)})
 	}
 	return nil
 }
 
-func redisDisplayValue(value interface{}) interface{} {
+func redisDisplayValue(value any) any {
 	switch value.(type) {
 	case nil, string, int64, float64, bool:
 		return value

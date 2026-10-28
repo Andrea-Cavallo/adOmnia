@@ -61,11 +61,9 @@ func (p *SQLProxy) accept() {
 		if err != nil {
 			return
 		}
-		p.wg.Add(1)
-		go func() {
-			defer p.wg.Done()
+		p.wg.Go(func() {
 			p.serve(client)
-		}()
+		})
 	}
 }
 

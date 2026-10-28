@@ -1,5 +1,7 @@
 package lsp
 
+import "strings"
+
 // ServerSpec descrive come avviare il language server di un linguaggio. Il lifecycle (spawn,
 // initialize, riavvio dopo un crash, shutdown) è generico; tutto ciò che è specifico del server
 // arriva da qui, prodotto dal language adapter (per Go: gopls).
@@ -33,6 +35,22 @@ type ServerSpec struct {
 	// ambiente (interprete, venv, toolchain). I server per unità guardano una sola cartella: quella
 	// dell'unità, non il progetto. L'host la imposta solo se il linguaggio dichiara language.UnitServers.
 	PerUnitSpec func(root string) (ServerSpec, error)
+	// HiddenCodeActionKinds are code action kinds (and their sub-kinds) the host never offers, e.g. gopls
+	// actions that open its web UI through window/showDocument: Code Studio does not open external pages.
+	HiddenCodeActionKinds []string
+	// ChangeSignatureCommand is the workspace/executeCommand that rewrites a signature and its callers
+	// (gopls: "gopls.change_signature"); empty when the server has none.
+	ChangeSignatureCommand string
+}
+
+// MatchesKind reports whether kind is one of kinds or a sub-kind of one ("source.doc.x" matches "source.doc").
+func MatchesKind(kind string, kinds []string) bool {
+	for _, prefix := range kinds {
+		if kind == prefix || strings.HasPrefix(kind, prefix+".") {
+			return true
+		}
+	}
+	return false
 }
 
 // VirtualDocuments dice come leggere un documento con URI non-file: l'host lo salva in un file di sola

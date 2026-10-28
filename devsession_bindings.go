@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/codestudio"
-	"adomnia/internal/devsession"
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devsession"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )

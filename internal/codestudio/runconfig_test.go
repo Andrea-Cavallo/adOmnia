@@ -1,13 +1,14 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
 	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 func TestRunConfigurationMigratesLegacyAndReadsOpaqueOptions(t *testing.T) {

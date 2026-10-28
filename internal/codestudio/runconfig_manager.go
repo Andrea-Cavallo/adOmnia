@@ -1,11 +1,12 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 type RunConfigManager struct{ core *run.Manager }

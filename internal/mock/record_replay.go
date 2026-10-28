@@ -4,7 +4,6 @@
 package mock
 
 import (
-	"adomnia/internal/jsonutil"
 	"encoding/json/v2"
 	"fmt"
 	"io"
@@ -12,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // recordRequest makes a real HTTP call and returns a mockResponse from it.
@@ -135,7 +136,7 @@ func recordReplayHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":       true,
 		"endpoint": endpoint,
 		"response": mockResp,

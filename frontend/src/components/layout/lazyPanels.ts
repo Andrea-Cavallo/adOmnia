@@ -26,6 +26,6 @@ export const DatabasePanel        = lazy(() => import('@/components/database/Dat
 export const VaultPanel           = lazy(() => import('@/components/vault/VaultPanel').then(m => ({ default: m.VaultPanel })))
 export const SettingsPanel        = lazy(() => import('@/components/settings/SettingsPanel').then(m => ({ default: m.SettingsPanel })))
 export const CollabPanel          = lazy(() => import('@/components/collab/CollabPanel').then(m => ({ default: m.CollabPanel })))
-export const McpPanel             = lazy(() => import('@/components/mcp/McpPanel').then(m => ({ default: m.McpPanel })))
+export const McpServerGenPanel             = lazy(() => import('@/components/mcp/McpServerGenPanel').then(m => ({ default: m.McpServerGenPanel })))
 export const CodeStudioPanel        = lazy(() => import('@/components/code-studio/CodeStudioPanel').then(m => ({ default: m.CodeStudioPanel })))
 export const KubePanel            = lazy(() => import('@/components/kube/KubePanel').then(m => ({ default: m.KubePanel })))

@@ -1,7 +1,6 @@
 package codestudio
 
 import (
-	"adomnia/internal/jsonutil"
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
@@ -10,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // lintBaselineFile è versionabile con il progetto: chi clona vede solo i problemi nuovi.

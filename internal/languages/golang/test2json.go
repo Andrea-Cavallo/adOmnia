@@ -1,10 +1,11 @@
 package golang
 
 import (
-	idetesting "adomnia/internal/ide/testing"
 	"encoding/json/v2"
 	"regexp"
 	"strings"
+
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 type Test2JSONParser struct{}
@@ -28,8 +29,8 @@ var (
 )
 
 func buildPackage(importPath string) string {
-	if space := strings.Index(importPath, " "); space >= 0 {
-		return importPath[:space]
+	if before, _, ok := strings.Cut(importPath, " "); ok {
+		return before
 	}
 	return importPath
 }

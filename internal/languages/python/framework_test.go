@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"adomnia/internal/ide/run"
-	"adomnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // TestFrameworkServerUsesGuidedFields: host, porta e reload sono opzioni validate, non argomenti

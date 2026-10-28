@@ -1,6 +1,4 @@
-// jsontools_go.go — server-side JSON tools powered by gjson, sjson, jsondiff.
-// Exposes fast JSON path queries, mutations, and RFC 6902 diffing.
-
+// Package jsonutil provides adOmnia's JSON tools: path queries, mutations and RFC 6902 diffing (gjson, sjson, jsondiff) served to the frontend, and deterministic encoding/json/v2 marshaling with sorted map keys.
 package jsonutil
 
 import (
@@ -48,7 +46,7 @@ func jsonQueryHandler(w http.ResponseWriter, r *http.Request) {
 	result := gjson.Get(req.JSON, req.Path)
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.MarshalWrite(w, map[string]interface{}{
+	_ = json.MarshalWrite(w, map[string]any{
 		"path":   req.Path,
 		"value":  result.Value(),
 		"raw":    result.Raw,
@@ -70,9 +68,9 @@ func jsonSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		JSON  string      `json:"json"`
-		Path  string      `json:"path"`
-		Value interface{} `json:"value"`
+		JSON  string `json:"json"`
+		Path  string `json:"path"`
+		Value any    `json:"value"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -96,7 +94,7 @@ func jsonSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.MarshalWrite(w, map[string]interface{}{
+	_ = json.MarshalWrite(w, map[string]any{
 		"ok":     true,
 		"path":   req.Path,
 		"result": jsonv1.RawMessage(result),
@@ -133,7 +131,7 @@ func jsonDiffHandler(w http.ResponseWriter, r *http.Request) {
 	identical := len(patch) == 0
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.MarshalWrite(w, map[string]interface{}{
+	_ = json.MarshalWrite(w, map[string]any{
 		"identical": identical,
 		"patch":     patch,
 		"count":     len(patch),
@@ -156,7 +154,7 @@ func jsonHumanHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := map[string]interface{}{}
+	resp := map[string]any{}
 
 	if req.Format == "" || req.Format == "bytes" || req.Format == "all" {
 		resp["bytesHuman"] = humanize.Bytes(uint64(req.Bytes))
@@ -212,12 +210,12 @@ func jsonStreamHandler(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 10*1024*1024))
 
 	valid := jscan.ValidBytes(body)
-	structures := make([]map[string]interface{}, 0)
+	structures := make([]map[string]any, 0)
 
 	if valid {
 		err := jscan.ScanBytes(jscan.Options{}, body, func(iter *jscan.IteratorBytes) bool {
 			if len(structures) < 100 {
-				structures = append(structures, map[string]interface{}{
+				structures = append(structures, map[string]any{
 					"path":  string(iter.Path()),
 					"type":  iter.ValueType.String(),
 					"value": truncateValue(string(iter.Value()), 100),
@@ -231,7 +229,7 @@ func jsonStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.MarshalWrite(w, map[string]interface{}{ // client gone mid-write: nothing to report
+	_ = json.MarshalWrite(w, map[string]any{ // client gone mid-write: nothing to report
 		"valid":      valid,
 		"structures": structures,
 		"count":      len(structures),
@@ -261,7 +259,7 @@ func mimeDetectHandler(w http.ResponseWriter, r *http.Request) {
 	mtype := mimetype.Detect(body)
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.MarshalWrite(w, map[string]interface{}{ // client gone mid-write: nothing to report
+	_ = json.MarshalWrite(w, map[string]any{ // client gone mid-write: nothing to report
 		"mime":      mtype.String(),
 		"extension": mtype.Extension(),
 		"isJSON":    strings.Contains(mtype.String(), "json"),

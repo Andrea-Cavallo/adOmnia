@@ -138,8 +138,8 @@ func (m *Manager) addSessionLocked(session *Session) {
 // pruneLocked drops the oldest ended sessions beyond the history limit.
 func (m *Manager) pruneLocked() {
 	ended := 0
-	for i := len(m.order) - 1; i >= 0; i-- {
-		session := m.sessions[m.order[i]]
+	for i, v := range slices.Backward(m.order) {
+		session := m.sessions[v]
 		if session.EndedAt == nil {
 			continue
 		}

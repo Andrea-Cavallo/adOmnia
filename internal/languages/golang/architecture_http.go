@@ -3,6 +3,7 @@ package golang
 import (
 	"go/ast"
 	"go/types"
+	"maps"
 	"reflect"
 	"regexp"
 	"slices"
@@ -37,9 +38,7 @@ func verbTable(title bool, extra map[string]string) map[string]string {
 		}
 		table[name] = verb
 	}
-	for name, verb := range extra {
-		table[name] = verb
-	}
+	maps.Copy(table, extra)
 	return table
 }
 

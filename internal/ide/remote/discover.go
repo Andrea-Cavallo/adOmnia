@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const discoverTimeout = 3 * time.Second
@@ -44,7 +44,7 @@ func WSLDistributions(ctx context.Context) []string {
 	}
 	output := run(ctx, wsl, "-l", "-q")
 	var distros []string
-	for _, line := range strings.Split(DecodeWSLOutput(output), "\n") {
+	for line := range strings.SplitSeq(DecodeWSLOutput(output), "\n") {
 		name := strings.TrimSpace(strings.Trim(line, string([]rune{0, 0xFEFF})))
 		if name != "" && !strings.HasPrefix(strings.ToLower(name), "docker-desktop") {
 			distros = append(distros, name)
@@ -109,7 +109,7 @@ func Containers(ctx context.Context) []string {
 		return nil
 	}
 	var names []string
-	for _, line := range strings.Split(string(run(ctx, docker, "ps", "--format", "{{.Names}}")), "\n") {
+	for line := range strings.SplitSeq(string(run(ctx, docker, "ps", "--format", "{{.Names}}")), "\n") {
 		if name := strings.TrimSpace(line); namePattern.MatchString(name) {
 			names = append(names, name)
 		}

@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	idetesting "adomnia/internal/ide/testing"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 const (

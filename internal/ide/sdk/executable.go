@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/process"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // ResolveExecutable risolve candidate (nome nel PATH o percorso) in un file eseguibile assoluto.

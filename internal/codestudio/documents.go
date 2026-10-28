@@ -1,28 +1,27 @@
 package codestudio
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
-	"adomnia/internal/ide/fileio"
-	"adomnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/fileio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/workspace"
 )
 
 const (
-	MaxDocumentBytes    int64 = 16 * 1024 * 1024
-	MaxDirectoryItems         = 1_000
-	MaxQuickOpenFiles         = 20_000
-	MaxQuickOpenResults       = 100
+	MaxDocumentBytes    = workspace.MaxDocumentBytes
+	MaxDirectoryItems   = 1_000
+	MaxQuickOpenFiles   = 20_000
+	MaxQuickOpenResults = 100
 )
 
 type documentRecord struct {
@@ -403,24 +402,6 @@ func readImageFile(path string) (string, string, os.FileInfo, error) {
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(data), diskToken(data, info), info, nil
 }
 
-func readTextFile(path string) (string, os.FileInfo, string, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", nil, "", fmt.Errorf("could not read the document: %w", err)
-	}
-	if info.Size() > MaxDocumentBytes {
-		return "", nil, "", fmt.Errorf("document too large: limit %d bytes", MaxDocumentBytes)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", nil, "", fmt.Errorf("could not read the document: %w", err)
-	}
-	if bytes.IndexByte(data, 0) >= 0 || !utf8.Valid(data) {
-		return "", nil, "", fmt.Errorf("the file is not a UTF-8 text document")
-	}
-	return string(data), info, diskToken(data, info), nil
-}
-
 // atomicWriteFile salva tramite il core condiviso (file temporaneo + rename con retry su Windows).
 func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 	return fileio.AtomicWriteFile(path, data, mode)
@@ -431,18 +412,7 @@ func stableDocumentID(sessionID SessionID, path string) DocumentID {
 	return DocumentID("document-" + hex.EncodeToString(sum[:12]))
 }
 
-func diskToken(data []byte, info os.FileInfo) string {
-	hash := sha256.Sum256(data)
-	return fmt.Sprintf("%d-%d-%s", info.ModTime().UnixNano(), info.Size(), hex.EncodeToString(hash[:8]))
-}
-
-func fileURI(path string) string {
-	normalized := filepath.ToSlash(path)
-	if len(normalized) >= 2 && normalized[1] == ':' {
-		normalized = "/" + normalized
-	}
-	return (&url.URL{Scheme: "file", Path: normalized}).String()
-}
+func fileURI(path string) string { return lsp.FileURI(path) }
 
 // languageByExtension mappa le estensioni sugli id dei linguaggi Monaco già
 // inclusi nel bundle: solo colorazione, nessun language server oltre a gopls.

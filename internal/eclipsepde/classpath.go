@@ -3,6 +3,7 @@ package eclipsepde
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 )
 
 // ClasspathElement is one entry of the PDE compile classpath of a project.
@@ -136,23 +137,24 @@ func missingProblem(project string, req Requirement, candidates []string, chain 
 }
 
 func joinChain(chain []string) string {
-	out := ""
+	var out strings.Builder
 	for i, c := range chain {
 		if i > 0 {
-			out += " → "
+			out.WriteString(" → ")
 		}
-		out += c
+		out.WriteString(c)
 	}
-	return out
+	return out.String()
 }
 
 func joinOrNone(values []string) string {
 	if len(values) == 0 {
 		return "none"
 	}
-	out := values[0]
+	var out strings.Builder
+	out.WriteString(values[0])
 	for _, v := range values[1:] {
-		out += ", " + v
+		out.WriteString(", " + v)
 	}
-	return out
+	return out.String()
 }

@@ -1,7 +1,7 @@
 package codestudio
 
 import (
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 )
 
 // ArchitectureReport è il modello dell'architettura del progetto (package, chiamate, moduli,

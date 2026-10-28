@@ -1,20 +1,23 @@
+// Command adomnia is the adOmnia desktop application, a local-first API development toolbox and IDE built on Wails 3.
+//
+// The root package only wires Wails services and their bindings; feature logic lives in the internal packages.
 package main
 
 import (
-	"adomnia/internal/netpolicy"
-	"adomnia/internal/resources"
-	"adomnia/internal/update"
-	"adomnia/internal/windowfit"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
+	"github.com/Andrea-Cavallo/adOmnia/internal/update"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 
-	"adomnia/internal/adomniacli"
-	"adomnia/internal/browser"
-	"adomnia/internal/devlog"
-	"adomnia/internal/docker"
-	"adomnia/internal/plugins"
-	"adomnia/internal/templates"
-	"adomnia/internal/themes"
-	"adomnia/internal/windowchrome"
 	"embed"
+	"github.com/Andrea-Cavallo/adOmnia/internal/adomniacli"
+	"github.com/Andrea-Cavallo/adOmnia/internal/browser"
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/docker"
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
+	"github.com/Andrea-Cavallo/adOmnia/internal/templates"
+	"github.com/Andrea-Cavallo/adOmnia/internal/themes"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowchrome"
 	"log"
 	"os"
 	"path/filepath"
@@ -95,7 +98,6 @@ func main() {
 	aiEngine := NewAIEngine()
 	globalAIEngine = aiEngine
 	gitSync := NewGitSync(dataDir())
-	mcpClient := NewMCPClient()
 	mcpServerGenerator := NewMCPServerGenerator()
 	collectionFS := NewCollectionFS()
 	oasLint := NewOASLint()
@@ -127,7 +129,6 @@ func main() {
 			application.NewService(dockerLab),
 			application.NewService(aiEngine),
 			application.NewService(gitSync),
-			application.NewService(mcpClient),
 			application.NewService(mcpServerGenerator),
 			application.NewService(collectionFS),
 			application.NewService(oasLint),

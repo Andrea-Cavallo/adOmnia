@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -85,12 +86,7 @@ func (r *recordedEvents) text(runID RunID, stream string) string {
 func (r *recordedEvents) hasKind(kind string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for _, recorded := range r.kinds {
-		if recorded == kind {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(r.kinds, kind)
 }
 
 func (r *recordedEvents) waitFinished(t *testing.T) Execution {

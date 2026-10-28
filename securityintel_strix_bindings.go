@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os/exec"
 
-	"adomnia/internal/ai"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/securityintel/strix"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel/strix"
 )
 
 // Binding Strix del Security Center. Il binding resta sottile: la logica vive in internal/securityintel/strix.

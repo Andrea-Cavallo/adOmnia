@@ -6,9 +6,9 @@
 package panelwindow
 
 import (
-	"adomnia/internal/windowfit"
 	"errors"
 	"fmt"
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 	"net/url"
 	"regexp"
 	"sort"

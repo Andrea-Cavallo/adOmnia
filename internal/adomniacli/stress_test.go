@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 func writeStressPlan(t *testing.T, url string, maxP95 float64) string {

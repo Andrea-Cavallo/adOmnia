@@ -7,7 +7,7 @@ vi.mock('@/stores/codeStudio',()=>({useCodeStudioStore:{getState:()=>fixture.sta
 vi.mock('@/stores/codeStudioLsp',()=>({useCodeStudioLspStore:{getState:()=>fixture.lsp,setState:(next:object)=>Object.assign(fixture.lsp,next)}}))
 vi.mock('@/stores/plugins',()=>({usePluginsStore:{subscribe:vi.fn()}}))
 vi.mock('@/lib/code-studio-api',()=>({subscribeGoIDEEvents:vi.fn()}))
-vi.mock('../../../bindings/adomnia/goide',()=>({InvokeIDEExtension:fixture.invoke,IDEContributions:vi.fn(async()=>[])}))
+vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide',()=>({InvokeIDEExtension:fixture.invoke,IDEContributions:vi.fn(async()=>[])}))
 vi.mock('@/lib/monacoSetup',()=>({monaco:{editor:{setModelMarkers:fixture.markers,getModel:vi.fn(()=>({}))},Uri:{parse:(value:string)=>value},MarkerSeverity:{Error:8,Warning:4,Info:2,Hint:1}}}))
 vi.mock('./codeStudioLanguageFeatures',()=>({documentForModel:vi.fn(),registerCodeStudioLanguageFeatures:vi.fn()}))
 vi.mock('./codeStudioModelUri',()=>({editorModelUri:()=> 'file:///project/main.go'}))

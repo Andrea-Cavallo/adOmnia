@@ -17,7 +17,7 @@ import (
 	"strings"
 	"sync"
 
-	"adomnia/internal/ide/fileio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/fileio"
 )
 
 // ChangedEvent è l'evento emesso quando la review di un progetto cambia.

@@ -141,11 +141,11 @@ func djangoEndpoints(line string, number int) []HTTPEndpoint {
 	if !djangoPattern.MatchString(line) || strings.Contains(line, "include(") {
 		return nil
 	}
-	open := strings.Index(line, "(")
-	if open < 0 {
+	_, after, ok0 := strings.Cut(line, "(")
+	if !ok0 {
 		return nil
 	}
-	rest := line[open+1:]
+	rest := after
 	path, ok := readPathArgument(rest)
 	if !ok {
 		// `path("", views.index)`: la radice del sito è un endpoint, non un errore.
@@ -286,7 +286,7 @@ func indexOutsideString(text string) int {
 func scanPythonLines(source string) []pythonLine {
 	var lines []pythonLine
 	triple := ""
-	for _, raw := range strings.Split(source, "\n") {
+	for raw := range strings.SplitSeq(source, "\n") {
 		line := pythonLine{text: strings.TrimRight(raw, "\r")}
 		line.code = triple == ""
 		if triple == "" {

@@ -1,5 +1,5 @@
 import type { BackendDevLogEntry } from '@/stores/devLogs'
-import * as AppBindings from '../../bindings/adomnia/app'
+import * as AppBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 
 export interface LogFileInfo {
   name: string

@@ -1,25 +1,19 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/language"
-	"adomnia/internal/ide/process"
-	"adomnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/process/proctest"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 
-	"adomnia/internal/jsonutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
-)
 
-// TestGoIDEManagedChildrenHelper è il processo figlio di prova per lo sweep.
-func TestGoIDEManagedChildrenHelper(t *testing.T) {
-	if os.Getenv("ADOMNIA_GOIDE_MANAGED_HELPER") != "1" {
-		t.Skip("helper per i test di sweep")
-	}
-	time.Sleep(5 * time.Minute)
-}
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+)
 
 func spawnManagedHelper(t *testing.T) *exec.Cmd {
 	t.Helper()
@@ -57,7 +51,7 @@ func TestSweepOrphanChildrenRespectsRuntimeLock(t *testing.T) {
 	if killed := SweepOrphanChildren(directory); len(killed) != 0 {
 		t.Fatalf("sweep inatteso con istanza viva: %v", killed)
 	}
-	if !processAlive(child.Process.Pid) {
+	if !proctest.Alive(child.Process.Pid) {
 		t.Fatal("il figlio di un'altra istanza non doveva essere terminato")
 	}
 
@@ -68,10 +62,10 @@ func TestSweepOrphanChildrenRespectsRuntimeLock(t *testing.T) {
 		t.Fatalf("orfani terminati inattesi: %v", killed)
 	}
 	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) && processAlive(child.Process.Pid) {
+	for time.Now().Before(deadline) && proctest.Alive(child.Process.Pid) {
 		time.Sleep(50 * time.Millisecond)
 	}
-	if processAlive(child.Process.Pid) {
+	if proctest.Alive(child.Process.Pid) {
 		t.Fatal("l'orfano è ancora vivo dopo lo sweep")
 	}
 }

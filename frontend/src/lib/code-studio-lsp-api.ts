@@ -1,4 +1,5 @@
-import * as GoIDEBindings from '../../bindings/adomnia/goide'
+import { Call } from '@wailsio/runtime'
+import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
 import type {
   CodeActionEntry,
@@ -7,8 +8,6 @@ import type {
   DocumentSymbolsResult,
   EditorLocation,
   EditorRange,
-  EditorTextEdit,
-  FileChange,
   FormatResult,
   GoplsInfo,
   HoverResult,
@@ -20,7 +19,6 @@ import type {
   SearchQuery,
   SearchResult,
   SignatureResult,
-  SymbolNode,
   WorkspaceChange,
   WorkspaceSymbol,
   Execution,
@@ -30,8 +28,9 @@ import type {
   InlayHintsResult,
   HighlightsResult,
   RecursiveCallsResult,
-  LanguageServerFeatures,
-  QuickDefinitionResult, HierarchyItem } from '../../bindings/adomnia/internal/codestudio/models'
+  QuickDefinitionResult, HierarchyItem } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
+// Types nested only inside other results are generated in the package that declares them.
+import type { EditorTextEdit, FileChange, LanguageServerFeatures, SymbolNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/langserver/models'
 
 export type GoIDELanguageServerStatus = LanguageServerStatus
 export type GoIDELanguageServerFeatures = LanguageServerFeatures
@@ -252,4 +251,8 @@ export function requestPrepareHierarchy(sessionId: string, documentId: string, k
 /** Figli di un nodo: incoming/outgoing per le chiamate, supertypes/subtypes per i tipi. */
 export function requestExpandHierarchy(sessionId: string, direction: string, token: string): CancellablePromise<HierarchyItem[]> {
   return GoIDEBindings.ExpandHierarchy(sessionId, direction, token)
+}
+
+export function requestHierarchyPreview(sessionId: string, token: string): Promise<GoIDEQuickDefinition> {
+ return Call.ByName('main.GoIDE.HierarchyPreview', sessionId, token)
 }

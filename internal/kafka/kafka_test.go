@@ -15,10 +15,8 @@ func TestReserveKafkaMessageIndexStopsExactlyAtLimit(t *testing.T) {
 	var sequence atomic.Int64
 	indices := make(chan int, total)
 	var wg sync.WaitGroup
-	for worker := 0; worker < workers; worker++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range workers {
+		wg.Go(func() {
 			for {
 				idx, ok := reserveKafkaMessageIndex(&sequence, total)
 				if !ok {
@@ -26,7 +24,7 @@ func TestReserveKafkaMessageIndexStopsExactlyAtLimit(t *testing.T) {
 				}
 				indices <- idx
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	close(indices)

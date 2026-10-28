@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { IDEContributions } from '../../bindings/adomnia/goide'
-import type { Contribution } from '../../bindings/adomnia/internal/plugins/models'
+import { IDEContributions } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
+import type { Contribution } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/plugins/models'
 import type { GoIDEDiagnosticsReport } from '@/lib/code-studio-lsp-api'
 export type IDEContribution = Contribution
 

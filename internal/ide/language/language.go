@@ -3,17 +3,17 @@
 // Il core dell'IDE dipende solo da questo package, mai da un adapter concreto: un linguaggio
 // implementa Language più le sole capability che supporta, e il core le scopre per type assertion.
 // Le capability si aggiungono qui quando il core ne ha un consumatore reale (vedi
-// docs/architecture/ide-multilanguage-refactor.md, piano di migrazione).
+// docs/architecture/ide-package-rules.md).
 package language
 
 import (
 	"context"
 
-	"adomnia/internal/ide/dap"
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // Language è l'unica interfaccia obbligatoria per un language adapter.

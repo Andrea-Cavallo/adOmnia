@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const ai = vi.hoisted(() => ({ complete: vi.fn(), configure: vi.fn(() => Promise.resolve()), available: true }))
 const codeStudio = vi.hoisted(() => ({ diff: vi.fn(), policy: 'allowed' as string, excluded: [] as string[] }))
 
-vi.mock('../../../bindings/adomnia/aiengine', () => ({ Complete: ai.complete }))
-vi.mock('../../../bindings/adomnia/goide', () => ({ VCSWorkingDiff: codeStudio.diff }))
+vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine', () => ({ Complete: ai.complete }))
+vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide', () => ({ VCSWorkingDiff: codeStudio.diff }))
 vi.mock('@/lib/aiEngine', () => ({ ensureAIConfigured: ai.configure }))
 vi.mock('@/lib/aiAvailability', () => ({ isAICompanionAvailable: () => ai.available }))
 vi.mock('@/lib/code-studio-api', () => ({

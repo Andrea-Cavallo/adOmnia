@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Mode dice come l'anteprima viene prodotta.
@@ -569,7 +569,7 @@ func relativeWithin(root, changed string) (string, bool) {
 	if relative == "" {
 		return "", false
 	}
-	for _, segment := range strings.Split(relative, "/") {
+	for segment := range strings.SplitSeq(relative, "/") {
 		if project.IgnoredDirectory(segment) || strings.HasPrefix(segment, ".") {
 			return "", false
 		}

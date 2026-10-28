@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"adomnia/internal/ide/lsp"
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/sdk"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 )
 
 // basedpyright è il language server Python. Versione pinnata (PY-0.2): per aggiornarla si cambia

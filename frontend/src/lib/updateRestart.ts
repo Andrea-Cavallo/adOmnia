@@ -7,7 +7,7 @@ export async function restartForUpdate(): Promise<void> {
   }
   const { flushPendingSaves } = await import('./storeSave')
   await flushPendingSaves(true)
-  const { ScheduleUpdateOnExit } = await import('../../bindings/adomnia/app')
+  const { ScheduleUpdateOnExit } = await import('../../bindings/github.com/Andrea-Cavallo/adOmnia/app')
   const status = await ScheduleUpdateOnExit(true)
   if (!status.scheduled) throw new Error('The update could not be scheduled.')
   const { useUpdaterStore } = await import('@/stores/updater')

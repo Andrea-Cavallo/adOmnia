@@ -14,8 +14,8 @@ import (
 	"regexp"
 	"strings"
 
-	"adomnia/internal/ide/run"
-	idetesting "adomnia/internal/ide/testing"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
 
 // TestNode è il valore di Info.TestFramework per il test runner integrato in Node (`node --test`).

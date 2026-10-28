@@ -2,10 +2,10 @@
 //
 // Dipende dal core (internal/ide/...) e mai il contrario: il core scopre le capability Go tramite
 // le interfacce di internal/ide/language. Tutto ciò che sa di go, gopls, Delve, go.mod e GOROOT
-// converge qui fase dopo fase (docs/architecture/ide-multilanguage-refactor.md).
+// converge qui fase dopo fase (docs/architecture/ide-package-rules.md).
 package golang
 
-import "adomnia/internal/ide/language"
+import "github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 
 // ID del linguaggio Go, salvato in project.Unit.Language.
 const ID = "go"

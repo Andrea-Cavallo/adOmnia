@@ -8,13 +8,14 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"adomnia/internal/airedact"
-	"adomnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/airedact"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 const (
@@ -299,11 +300,8 @@ func chatModels(conn *lsp.Conn) ([]ChatModel, error) {
 		if strings.TrimSpace(model.ID) == "" {
 			continue
 		}
-		for _, scope := range model.Scopes {
-			if scope == "chat-panel" {
-				filtered = append(filtered, model)
-				break
-			}
+		if slices.Contains(model.Scopes, "chat-panel") {
+			filtered = append(filtered, model)
 		}
 	}
 	return filtered, nil
@@ -325,7 +323,7 @@ func (m *Manager) chatContext(request ChatRequest) (string, map[string]any, []ma
 	folders := []map[string]string{}
 	if request.IncludeWorkspace && root != "" {
 		folders = append(folders, map[string]string{
-			"uri":  fileURI(root),
+			"uri":  lsp.FileURI(root),
 			"name": filepath.Base(root),
 		})
 	}

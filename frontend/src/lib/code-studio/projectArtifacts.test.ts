@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ handoff: vi.fn(), open: vi.fn(), close: vi.fn(
 vi.mock('@/lib/code-studio-api', () => ({openGoIDEDocument: mocks.open, closeGoIDEDocument: mocks.close}))
 vi.mock('@/stores/codeStudio', () => ({useCodeStudioStore: {getState: () => mocks.state}}))
 vi.mock('@/lib/entities/dispatch', () => ({handoffToPanel: mocks.handoff}))
-vi.mock('../../../bindings/adomnia/goide', () => ({ReadProjectKeystore: mocks.read}))
+vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide', () => ({ReadProjectKeystore: mocks.read}))
 import { openProjectArtifact } from './projectArtifacts'
 const ref = (path: string) => ({kind: 'artifact' as const, id: path, sessionId: 's', label: path, attrs: {path}})
 beforeEach(() => {vi.clearAllMocks(); mocks.state.documents = []})

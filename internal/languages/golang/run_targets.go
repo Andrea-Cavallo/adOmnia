@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -15,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/ide/project"
-	"adomnia/internal/ide/run"
-	"adomnia/internal/procutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const runTargetDiscoveryTimeout = 30 * time.Second
@@ -59,7 +60,7 @@ func discoverRunTargetsWithGoList(ctx context.Context, root string) ([]run.RunTa
 	for {
 		var pkg listedPackage
 		if err := json.UnmarshalDecode(decoder, &pkg); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			_ = cmd.Wait()
@@ -147,7 +148,7 @@ func hasIgnoreBuildTag(path string) bool {
 	if len(prefix) > 4096 {
 		prefix = prefix[:4096]
 	}
-	for _, line := range strings.Split(prefix, "\n") {
+	for line := range strings.SplitSeq(prefix, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "package ") {
 			break

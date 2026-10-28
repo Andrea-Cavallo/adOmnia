@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"adomnia/internal/httpexec"
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/requestcontract"
+	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 func TestFetchOAuth2ClientCredentials(t *testing.T) {

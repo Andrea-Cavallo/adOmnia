@@ -12,7 +12,7 @@ import { WEB_LANGUAGES } from './languages/web'
  * Contribuzione UI di un linguaggio dell'IDE Platform. Il backend dice quali linguaggi sono
  * registrati (`GetCapabilities().languages`); qui ognuno dichiara come appare: icona, menu e
  * linguaggi Monaco serviti dal suo language server. Aggiungere un linguaggio = una cartella in
- * `languages/<id>/` più una riga in IDE_LANGUAGES (docs/architecture/ide-multilanguage-refactor.md).
+ * `languages/<id>/` più una riga in IDE_LANGUAGES (docs/architecture/ide-package-rules.md).
  */
 export interface IdeLanguageContribution {
   fileIcon?: (lowerName: string) => IdeFileIcon | undefined

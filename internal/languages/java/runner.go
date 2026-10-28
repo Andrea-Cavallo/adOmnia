@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"adomnia/internal/ide/run"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // Kind delle configurazioni Run Java: una classe `main` scelta dall'utente e un attach a una JVM remota.

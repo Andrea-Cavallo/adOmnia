@@ -1,8 +1,6 @@
 package codestudio
 
 import (
-	"adomnia/internal/ide/language"
-	idetesting "adomnia/internal/ide/testing"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"errors"
@@ -12,9 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/languages/golang"
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // StartTests avvia `go test -json` sul perimetro richiesto; l'albero dei risultati arriva con gli eventi tests.updated.

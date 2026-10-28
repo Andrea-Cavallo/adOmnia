@@ -4,7 +4,7 @@ import (
 	"encoding/json/v2"
 	"os"
 
-	"adomnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 // javaDirectLaunch lancia la classe `main` con `java` diretto: classpath e JDK vengono da JDT LS (stesso JDK del

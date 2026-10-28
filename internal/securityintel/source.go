@@ -1,6 +1,9 @@
 package securityintel
 
-import "context"
+import (
+	"context"
+	"slices"
+)
 
 // Source è una fonte di advisory. Il motore ne consulta più di una e fonde i risultati
 // sugli alias: NVD non è sufficiente, perché gli advisory open source vivono in OSV,
@@ -104,13 +107,7 @@ func mergeAdvisory(left, right Advisory) Advisory {
 func mergeRanges(left, right []VersionRange) []VersionRange {
 	result := append([]VersionRange(nil), left...)
 	for _, candidate := range right {
-		duplicate := false
-		for _, existing := range result {
-			if existing == candidate {
-				duplicate = true
-				break
-			}
-		}
+		duplicate := slices.Contains(result, candidate)
 		if !duplicate {
 			result = append(result, candidate)
 		}

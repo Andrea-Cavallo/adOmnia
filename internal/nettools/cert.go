@@ -1,8 +1,6 @@
 package nettools
 
 import (
-	"adomnia/internal/jsonutil"
-	"adomnia/internal/procutil"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -17,6 +15,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // ── Certificate Inspect ──────────────────────────────────────────────────────
@@ -352,7 +353,7 @@ func certJksSplitHandler(w http.ResponseWriter, r *http.Request) {
 	certPEM, _ := os.ReadFile(certPath)
 	keyPEM, _ := os.ReadFile(keyPath)
 	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, map[string]interface{}{
+	jsonutil.MarshalWrite(w, map[string]any{
 		"ok":        true,
 		"fileName":  header.Filename,
 		"certPem":   string(certPEM),

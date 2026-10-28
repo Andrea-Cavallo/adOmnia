@@ -9,7 +9,7 @@ import (
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/semver"
 
-	"adomnia/internal/securityintel"
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 // UpgradeManifest implementa securityintel.UpgradeEditor per go.mod.
