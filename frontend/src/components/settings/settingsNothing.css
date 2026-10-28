@@ -1,4 +1,4 @@
-.settings-studio {
+.nothing-studio.settings-studio {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
