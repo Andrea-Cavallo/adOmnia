@@ -3,5 +3,7 @@
 
 export {
     CargoTreeNode,
+    RustEnvironment,
+    TargetConfig,
     Toolchain
 } from "./models.js";

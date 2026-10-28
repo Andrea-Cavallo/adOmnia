@@ -1773,6 +1773,18 @@ func (g *GoIDE) RustDependencyTree(sessionID string) ([]rust.CargoTreeNode, erro
 	return g.service.RustDependencyTree(sessionID)
 }
 
+// RustEnvironment è la vista dell'ambiente Rust del progetto: variabili, `.cargo/config.toml`,
+// cartella target di rust-analyzer e stato di "Low resources" (RS-2).
+func (g *GoIDE) RustEnvironment(sessionID string) (codestudio.RustEnvironmentReport, error) {
+	return g.service.RustEnvironment(sessionID)
+}
+
+// CleanRustAnalyzerCache ferma rust-analyzer e cancella la sua cartella target, mai quella
+// dell'utente e solo dopo conferma esplicita (RS-2).
+func (g *GoIDE) CleanRustAnalyzerCache(sessionID string, confirmed bool) (codestudio.RustCacheCleanReport, error) {
+	return g.service.CleanRustAnalyzerCache(sessionID, confirmed)
+}
+
 // SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo: proprietà di configurazione
 // note, valori con il loro profilo, bean, iniezioni ed endpoint. Solo filesystem, senza rete.
 func (g *GoIDE) SpringIndex(sessionID string) (java.SpringIndex, error) {
