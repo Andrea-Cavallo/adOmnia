@@ -1,0 +1,45 @@
+@import '@fontsource/doto/latin-800.css';
+.agent-task-composer { border-radius: 5px; }
+.agent-task-composer .gs-modal-title { font-family: var(--skin-font-ui, Doto, var(--font-ui)); font-size: 25px; font-weight: 800; line-height: 1.4; }
+.agent-task-composer .gs-modal-header { padding: 22px 24px 18px; }
+.agent-task-composer .agent-composer-body { padding: 0; gap: 0; }
+.agent-composer-project { display: flex; gap: 14px; align-items: baseline; padding: 12px 24px; border-bottom: 1px solid var(--color-border-1); }
+.agent-composer-project > span { font-size: 10px; letter-spacing: .1em; color: var(--color-text-3); }
+.agent-composer-project code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--color-text-2); }
+.agent-composer-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr); }
+.agent-composer-brief, .agent-composer-context { display: flex; flex-direction: column; min-width: 0; gap: 20px; padding: 24px; }
+.agent-composer-context { border-left: 1px solid var(--color-border-1); background: var(--color-surface-1); }
+.agent-composer-section-heading { display: flex; align-items: baseline; gap: 10px; }
+.agent-composer-section-heading > span { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-3); }
+.agent-composer-section-heading h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.agent-task-composer .gs-label { font-size: 13px; }
+.agent-task-composer .gs-hint { font-size: 12px; line-height: 1.5; }
+.agent-task-composer .gs-input { border-radius: 3px; font-size: 13px; }
+.agent-task-composer textarea.gs-input { line-height: 1.65; resize: vertical; }
+.agent-task-composer .agent-composer-objective { min-height: 150px; }
+.agent-composer-intent { display: flex; flex-direction: column; gap: 8px; }
+.agent-composer-intent-options { display: flex; border: 1px solid var(--color-border-2); border-radius: 3px; overflow: hidden; }
+.agent-composer-intent-options button { display: flex; gap: 6px; justify-content: center; align-items: center; min-height: 36px; flex: 1; padding: 6px; font-size: 12px; color: var(--color-text-3); background: transparent; }
+.agent-composer-intent-options button + button { border-left: 1px solid var(--color-border-2); }
+.agent-composer-intent-options button[aria-pressed=true] { background: var(--color-text-1); color: var(--color-surface-0); font-weight: 600; }
+.agent-composer-files { border-top: 1px solid var(--color-border-1); padding-top: 18px; }
+.agent-composer-files-heading { display: flex; justify-content: space-between; align-items: center; }
+.agent-composer-files-heading > span:last-child { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-3); }
+.agent-composer-no-files { margin: 16px 0; font-size: 12px; color: var(--color-text-3); }
+.agent-composer-file-list { list-style: none; margin: 12px 0; padding: 0; max-height: 160px; overflow: auto; }
+.agent-composer-file-list li { display: flex; gap: 8px; align-items: center; min-width: 0; border-bottom: 1px solid var(--color-border-1); padding: 6px 0; }
+.agent-composer-file-list li > svg { flex-shrink: 0; }
+.agent-composer-file-list li > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-mono); font-size: 12px; white-space: nowrap; }
+.agent-composer-file-list button { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; }
+.agent-composer-limits { border-top: 1px solid var(--color-border-1); padding-top: 14px; }
+.agent-composer-limits summary { cursor: pointer; font-size: 12px; }
+.agent-composer-limits summary > span { display: block; margin: 6px 0 0 14px; color: var(--color-text-3); font-family: var(--font-mono); font-size: 11px; }
+.agent-composer-limits .gs-field { margin-top: 14px; }
+.agent-composer-draft-note { font-size: 12px; color: var(--color-text-3); }
+.agent-task-composer :is(button, summary, input, textarea, select):focus-visible { outline: 2px solid var(--color-text-1); outline-offset: 2px; }
+@media (max-width: 720px) {
+  .agent-composer-layout { grid-template-columns: minmax(0, 1fr); }
+  .agent-composer-context { border-left: 0; border-top: 1px solid var(--color-border-1); }
+  .agent-composer-brief, .agent-composer-context { padding: 18px; }
+  .agent-composer-draft-note { display: none; }
+}

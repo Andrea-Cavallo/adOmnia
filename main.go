@@ -5,6 +5,7 @@ package main
 
 import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/pi"
 	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
 	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
@@ -67,6 +68,13 @@ func isCLICommand(args []string) bool {
 }
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "--pi-acp-bridge" {
+		if err := pi.RunBridge(os.Args[2], os.Stdin, os.Stdout); err != nil {
+			log.Print(err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) == 3 && os.Args[1] == "--adomnia-update-helper" {
 		if err := update.RunHelper(os.Args[2], Version); err != nil {
 			log.Print("[update] ", err)
@@ -109,8 +117,11 @@ func main() {
 	copilotService := NewCopilot(goIDE)
 	milkService := NewMilk()
 	claudeService := NewClaudeCode()
+	piService := NewPiAgent()
 	milkService.manager.SetTurnObserver(goIDE.agentReview)
 	claudeService.manager.SetTurnObserver(goIDE.agentReview)
+	piService.manager.SetTurnObserver(goIDE.agentReview)
+	agentTasks := NewAgentTasks(milkService.manager, claudeService.manager, piService.manager)
 	collabService := NewCollab(goIDE.sessionRoot)
 
 	var mainWindow *application.WebviewWindow
@@ -139,6 +150,8 @@ func main() {
 			application.NewService(copilotService),
 			application.NewService(milkService),
 			application.NewService(claudeService),
+			application.NewService(piService),
+			application.NewService(agentTasks),
 			application.NewService(collabService),
 		},
 		// Only one process may hold the bbolt lock. Additional launches focus
@@ -170,6 +183,8 @@ func main() {
 	copilotService.attachDesktop(desktopApp)
 	milkService.attachDesktop(desktopApp)
 	claudeService.attachDesktop(desktopApp)
+	piService.attachDesktop(desktopApp)
+	agentTasks.attachDesktop(desktopApp)
 	collabService.attachDesktop(desktopApp)
 
 	winW, winH, winMinW, winMinH := windowfit.Size(desktopApp, 1400, 900, 900, 600)

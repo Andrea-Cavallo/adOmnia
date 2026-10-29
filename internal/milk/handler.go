@@ -87,7 +87,7 @@ func (h *handler) handleSessionUpdate(params jsonv1.RawMessage) {
 		}
 		if json.Unmarshal(notification.Update, &update) == nil {
 			h.manager.mu.Lock()
-			if root := h.manager.rootBySession[notification.SessionID]; root != "" {
+			if root := h.manager.rootBySession[notification.SessionID]; root != "" && h.manager.scopeBySession[notification.SessionID] == "" {
 				h.manager.controls[root] = update.ConfigOptions
 			}
 			h.manager.mu.Unlock()
@@ -275,8 +275,11 @@ func (h *handler) handleCommands(sessionID string, update jsonv1.RawMessage) {
 	}
 }
 
-// HandleRequest risponde a session/request_permission; gli altri metodi sono non supportati.
+// HandleRequest risponde alle richieste ACP supportate dal client.
 func (h *handler) HandleRequest(ctx context.Context, method string, params jsonv1.RawMessage) (any, error) {
+	if method == "fs/read_text_file" {
+		return h.readTextFile(ctx, params)
+	}
 	if method != "session/request_permission" {
 		return nil, ErrMethodNotFound
 	}
@@ -334,7 +337,7 @@ func (h *handler) HandleRequest(ctx context.Context, method string, params jsonv
 		h.manager.publish("permissionResolved", map[string]string{"requestId": requestID})
 	}()
 	h.manager.publish("permission", PermissionEvent{
-		RequestID: requestID, SessionID: request.SessionID, ToolCallID: toolCallID,
+		RequestID: requestID, SessionID: request.SessionID, SessionKey: h.manager.scopeForSession(request.SessionID), ToolCallID: toolCallID,
 		Title: request.Title, Description: request.Description, Options: options,
 	})
 
@@ -417,6 +420,9 @@ func (m *Manager) endAmbient(sessionID string) {
 func (m *Manager) setCommands(sessionID string, commands []Command) string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.scopeBySession[sessionID] != "" {
+		return ""
+	}
 	root := m.rootBySession[sessionID]
 	if root != "" {
 		m.commands[root] = commands

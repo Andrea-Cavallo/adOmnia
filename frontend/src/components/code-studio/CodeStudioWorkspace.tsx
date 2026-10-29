@@ -73,6 +73,7 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
   ]
   const debugPanes = debugging ? panes.map(pane => ({ ...pane, open: false })) : panes
   const { focused, left, centerColumns, gridStyle, styleFor } = studioToolLayout(debugPanes, zen || debugging ? null : maximized, bottomHeight)
+  const functionExplorerVisible = styleFor('functions').display !== 'none'
   const editor = <CodeStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} />
 
   return (
@@ -130,7 +131,7 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
           </div>
         </div>
       </div>
-      {!zen && <CodeStudioToolDrawer side="right"><CodeStudioRightStripe onDependencies={onDependencies} /></CodeStudioToolDrawer>}
+      {!zen && !functionExplorerVisible && <CodeStudioToolDrawer side="right"><CodeStudioRightStripe onDependencies={onDependencies} /></CodeStudioToolDrawer>}
     </div>
   )
 }

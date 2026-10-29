@@ -11,7 +11,7 @@ vi.mock('@wailsio/runtime', () => ({ Events: {
   Emit: transport.emit,
 } }))
 vi.mock('../../../bindings/github.com/Andrea-Cavallo/adOmnia/app', () => ({
-  ListPanelWindows: async () => ['tool-session-1-run', 'tool-session-1-milk'],
+  ListPanelWindows: async () => ['tool-session-1-run', 'tool-session-1-milk', 'tool-session-1-pi'],
   FocusMainWindow: vi.fn(), CloseStudioToolWindow: vi.fn(),
 }))
 vi.mock('@/lib/code-studio-api', () => ({ subscribeGoIDEEvents: () => () => undefined, listGoIDETerminals: async () => [] }))
@@ -31,6 +31,10 @@ vi.mock('@/stores/codeStudioWindows', async () => {
 vi.mock('@/stores/milk', async () => {
   const { create } = await import('zustand')
   return { useMilkStore: create(() => ({ status: null, settings: null, chatThreads: {}, permissions: [], sendChat: transport.sendChat })) }
+})
+vi.mock('@/stores/piAgent', async () => {
+  const { create } = await import('zustand')
+  return { usePiAgentStore: create(() => ({ status: null, settings: null, chatThreads: {}, permissions: [], sendChat: transport.sendChat })) }
 })
 vi.mock('@/stores/claudeCode', async () => {
   const { create } = await import('zustand')
@@ -74,8 +78,8 @@ describe('tool owner routing', () => {
     transport.handlers.get('studio-tool:request')?.({ data: { session: 'session-2', tool: 'run', id: 'wrong-owner', action: 'stopRun', args: ['run-1'] } })
     expect(transport.emit).not.toHaveBeenCalled()
   })
-  it('acknowledges chat submission while its response continues streaming in the owner', async () => {
-    transport.handlers.get('studio-tool:request')?.({ data: { session: 'session-1', tool: 'milk', id: 'chat', action: 'sendChat', args: ['/ignored-client-root', 'hello'] } })
+  it.each(['milk', 'pi'])('acknowledges %s chat submission while streaming continues in the owner', async tool => {
+    transport.handlers.get('studio-tool:request')?.({ data: { session: 'session-1', tool, id: 'chat', action: 'sendChat', args: ['/ignored-client-root', 'hello'] } })
     await vi.waitFor(() => expect(transport.emit).toHaveBeenCalledWith('studio-tool:response', expect.objectContaining({ id: 'chat', result: null })))
     expect(transport.sendChat).toHaveBeenCalledWith('/project', 'hello', undefined)
   })

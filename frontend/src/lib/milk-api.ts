@@ -50,6 +50,7 @@ export interface MilkChatEvent {
   token: string
   root: string
   sessionId?: string
+  sessionKey?: string
   kind: 'begin' | 'text' | 'thought' | 'tool' | 'end' | 'route' | 'warning' | 'error' | 'plan'
   plan?: { content: string; status: string; priority?: string }[]
   reply?: string
@@ -68,6 +69,7 @@ export interface MilkPermissionOption {
 export interface MilkPermissionEvent {
   requestId: string
   sessionId: string
+  sessionKey?: string
   toolCallId: string
   title: string
   description: string

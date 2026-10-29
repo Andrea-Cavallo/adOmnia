@@ -8,5 +8,8 @@
     "go:test": "go test ./...",
     "check:wails": "node scripts/check-wails-version.mjs",
     "check": "npm run check:wails && npm --prefix frontend run build && go test ./..."
+  },
+  "dependencies": {
+    "headroom-ai": "^0.42.0"
   }
 }

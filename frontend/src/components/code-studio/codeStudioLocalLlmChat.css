@@ -1,0 +1,47 @@
+@import '@fontsource/doto/latin-800.css';
+.local-llm-chat { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; color: var(--color-text-1); background: var(--color-surface-0); font-size: 13px; }
+.local-llm-heading { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; padding: 14px; border-bottom: 1px solid var(--color-border-1); flex-shrink: 0; }
+.local-llm-heading h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--skin-font-ui, Doto, var(--font-ui)); font-size: 20px; font-weight: 800; }
+.local-llm-heading p, .local-llm-hint { margin: 5px 0 0; font-size: 12px; line-height: 1.5; color: var(--color-text-3); }
+.local-llm-chat button { display: inline-flex; gap: 6px; align-items: center; justify-content: center; min-height: 30px; padding: 5px 9px; border: 1px solid var(--color-border-2); border-radius: 3px; font-size: 12px; }
+.local-llm-chat button:hover:not(:disabled) { background: var(--color-surface-2); }
+.local-llm-chat button:disabled { opacity: .45; cursor: default; }
+.local-llm-chat :is(button, input, select, summary, textarea):focus-visible { outline: 2px solid var(--color-text-1); outline-offset: 2px; }
+.local-llm-chat :is(input:not([type=checkbox]), textarea) { width: 100%; min-width: 0; border: 1px solid var(--color-border-2); border-radius: 3px; padding: 7px 9px; background: var(--color-surface-1); color: var(--color-text-1); font-size: 13px; }
+.local-llm-chat input[type=checkbox] { accent-color: var(--color-accent); }
+.local-llm-chat textarea { resize: vertical; line-height: 1.6; }
+.local-llm-chat fieldset { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 0; border: 0; }
+.local-llm-chat fieldset > label, .local-llm-model-row > label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--color-text-2); }
+.local-llm-chat label.local-llm-check { flex-direction: row; align-items: center; gap: 7px; }
+.local-llm-connection { padding: 10px 14px; flex-shrink: 0; max-height: 45%; overflow-y: auto; border-bottom: 1px solid var(--color-border-1); }
+.local-llm-chat summary { cursor: pointer; min-width: 0; font-size: 12px; }
+.local-llm-connection summary > span { margin-left: 8px; color: var(--color-text-3); overflow-wrap: anywhere; }
+.local-llm-connection[open] > summary { margin-bottom: 12px; }
+.local-llm-presets { display: flex; gap: 6px; }
+.local-llm-model-row { display: flex; align-items: flex-end; gap: 8px; }
+.local-llm-model-row > label { min-width: 0; flex: 1; }
+.local-llm-model-row button { flex-shrink: 0; min-height: 34px; }
+.local-llm-transcript { flex: 1; min-height: 100px; overflow: auto; padding: 14px; }
+.local-llm-empty { padding: 24px 0; color: var(--color-text-3); line-height: 1.6; }
+.local-llm-empty h3 { margin: 0 0 8px; color: var(--color-text-1); font-size: 15px; font-weight: 600; }
+.local-llm-turn { padding-bottom: 20px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border-1); overflow-wrap: anywhere; }
+.local-llm-turn > h3 { font-size: 11px; color: var(--color-text-3); margin: 12px 0 6px; text-transform: uppercase; letter-spacing: .06em; }
+.local-llm-question { white-space: pre-wrap; }
+.local-llm-answer { line-height: 1.65; }
+.local-llm-answer :is(pre, code) { font-family: var(--font-mono); font-size: 12px; }
+.local-llm-answer pre { max-width: 100%; overflow: auto; padding: 10px; background: var(--color-surface-1); border: 1px solid var(--color-border-1); }
+.local-llm-answer a { text-decoration: underline; }
+.local-llm-sources, .local-llm-tool-log { margin: 10px 0; font-size: 11px; color: var(--color-text-3); }
+.local-llm-sources ul { padding-left: 18px; }
+.local-llm-composer { border-top: 1px solid var(--color-border-1); padding: 10px 14px; flex-shrink: 0; max-height: 50%; overflow-y: auto; }
+.local-llm-context { margin-bottom: 10px; }
+.local-llm-context[open] summary { margin-bottom: 10px; }
+.local-llm-send-row { display: flex; gap: 8px; align-items: center; padding-top: 8px; }
+.local-llm-send-row > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--color-text-3); }
+.local-llm-send-row > button:last-child { background: var(--color-accent); color: var(--color-on-accent); }
+.local-llm-error { padding: 8px 14px; font-size: 12px; color: var(--color-error); border-top: 1px solid var(--color-border-1); flex-shrink: 0; overflow-wrap: anywhere; }
+.local-llm-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.local-llm-proposal { border: 1px solid var(--color-border-2); padding: 10px; margin-top: 12px; }
+.local-llm-diff { display: grid; grid-template-columns: minmax(0, 1fr); margin: 12px 0; gap: 10px; }
+.local-llm-diff h4 { font-size: 11px; color: var(--color-text-3); }
+.local-llm-diff pre { max-height: 220px; overflow: auto; font-size: 12px; white-space: pre; background: var(--color-surface-1); padding: 8px; }

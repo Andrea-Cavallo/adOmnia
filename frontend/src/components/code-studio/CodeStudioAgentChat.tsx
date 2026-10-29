@@ -24,7 +24,7 @@ import { listGoIDEDirectory } from '@/lib/code-studio-api'
 export interface ChatAgent {
   sessionControls?: (root: string) => Promise<AgentSessionControls>
   setSessionControl?: (root: string, id: string, value: unknown) => Promise<AgentSessionControls>
-  tool: 'milk' | 'claude'
+  tool: 'milk' | 'claude' | 'pi'
   name: string
   store: AgentChatStore
   Logo: ComponentType<{ size?: number }>
@@ -156,7 +156,7 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
   activeRoot.current = root
   const status = store((state) => state.status)
   const thread = store((state) => state.chatThreads[root])
-  const permissions = store((state) => state.permissions)
+  const permissions = store((state) => state.permissions).filter((permission) => !permission.sessionKey)
   const advertisedCommands = store((state) => state.commandsByRoot[root])
   const [draft, setDraft] = useToolView(session.id, tool, 'draft', '')
   const [includeFile, setIncludeFile] = useToolView(session.id, tool, 'includeFile', true)

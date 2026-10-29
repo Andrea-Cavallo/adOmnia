@@ -4,6 +4,7 @@
 export {
     AgentStatus,
     AgentsInfo,
+    Capabilities,
     Command,
     ControlValue,
     ImageAttachment,

@@ -96,6 +96,50 @@ export class AgentsInfo {
 }
 
 /**
+ * Status è lo stato pubblicato al frontend.
+ */
+export class Capabilities {
+    "protocolVersion": number;
+    "loadSession": boolean;
+    "resumeSession": boolean;
+    "closeSession": boolean;
+    "promptImages": boolean;
+    "readTextFile": boolean;
+
+    /** Creates a new Capabilities instance. */
+    constructor($$source: Partial<Capabilities> = {}) {
+        if (!("protocolVersion" in $$source)) {
+            this["protocolVersion"] = 0;
+        }
+        if (!("loadSession" in $$source)) {
+            this["loadSession"] = false;
+        }
+        if (!("resumeSession" in $$source)) {
+            this["resumeSession"] = false;
+        }
+        if (!("closeSession" in $$source)) {
+            this["closeSession"] = false;
+        }
+        if (!("promptImages" in $$source)) {
+            this["promptImages"] = false;
+        }
+        if (!("readTextFile" in $$source)) {
+            this["readTextFile"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Capabilities instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Capabilities {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Capabilities($$parsedSource as Partial<Capabilities>);
+    }
+}
+
+/**
  * Command è una slash command annunciata dall'agente (ACP
  * available_commands_update): il client la completa, l'agente la esegue.
  */
@@ -234,6 +278,7 @@ export class MCPServer {
 export class PromptRequest {
     "token": string;
     "root"?: string;
+    "sessionKey"?: string;
     "message": string;
     "images"?: ImageAttachment[];
 
@@ -253,10 +298,10 @@ export class PromptRequest {
      * Creates a new PromptRequest instance from a string or object.
      */
     static createFrom($$source: any = {}): PromptRequest {
-        const $$createField3_0 = $$createType9;
+        const $$createField4_0 = $$createType9;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("images" in $$parsedSource) {
-            $$parsedSource["images"] = $$createField3_0($$parsedSource["images"]);
+            $$parsedSource["images"] = $$createField4_0($$parsedSource["images"]);
         }
         return new PromptRequest($$parsedSource as Partial<PromptRequest>);
     }
@@ -521,9 +566,6 @@ export enum State {
     StateInstalling = "installing",
 };
 
-/**
- * Status è lo stato pubblicato al frontend.
- */
 export class Status {
     "state": State;
     "message"?: string;
@@ -532,6 +574,7 @@ export class Status {
     "running": boolean;
     "restarts": number;
     "activeAgent"?: string;
+    "capabilities": Capabilities;
 
     /**
      * Backend è chi serve i turni secondo l'agente (Claude Code: "AWS Bedrock", "Claude Pro"…).
@@ -554,6 +597,9 @@ export class Status {
         if (!("restarts" in $$source)) {
             this["restarts"] = 0;
         }
+        if (!("capabilities" in $$source)) {
+            this["capabilities"] = (new Capabilities());
+        }
 
         Object.assign(this, $$source);
     }
@@ -562,7 +608,11 @@ export class Status {
      * Creates a new Status instance from a string or object.
      */
     static createFrom($$source: any = {}): Status {
+        const $$createField7_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("capabilities" in $$parsedSource) {
+            $$parsedSource["capabilities"] = $$createField7_0($$parsedSource["capabilities"]);
+        }
         return new Status($$parsedSource as Partial<Status>);
     }
 }
@@ -582,3 +632,4 @@ const $$createType10 = SessionControl.createFrom;
 const $$createType11 = $Create.Array($$createType10);
 const $$createType12 = Command.createFrom;
 const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = Capabilities.createFrom;

@@ -89,7 +89,7 @@ function requestRename(editor: monaco.editor.ICodeEditor): void {
   const position = editor.getPosition()
   if (!model || !position) return
   void prepareDocument(model).then((prepared) => {
-    if (!prepared) return report('gopls is not ready for this file yet.')
+    if (!prepared) return report('The language server is not ready to rename symbols in this file yet.')
     useCodeStudioLspStore.setState({ renameRequest: { sessionId: prepared.sessionId, documentId: prepared.documentId, line: position.lineNumber, column: position.column } })
   })
 }
@@ -102,7 +102,7 @@ export function installCodeStudioEditorActions(editor: monaco.editor.IStandalone
   semantic(CODE_STUDIO_ACTIONS.gotoDeclaration, 'Go to Declaration', [KeyMod.CtrlCmd | KeyCode.KeyB], (target) => target.trigger('code-studio', 'editor.action.revealDefinition', null))
   semantic(CODE_STUDIO_ACTIONS.gotoImplementation, 'Go to Implementation', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyB], (target) => showLocations(target, 'implementation', `Implementations of ${wordAt(target)}`))
   semantic(CODE_STUDIO_ACTIONS.findUsages, 'Find Usages', [KeyMod.Alt | KeyCode.F7, KeyMod.Shift | KeyCode.F12], (target) => showLocations(target, 'references', `Usages of ${wordAt(target)}`))
-  semantic(CODE_STUDIO_ACTIONS.rename, 'Rename Symbol…', [KeyCode.F2, KeyMod.Shift | KeyCode.F6], requestRename)
+  editor.addAction({ id: CODE_STUDIO_ACTIONS.rename, label: 'Rename Symbol…', precondition: '!editorReadonly', keybindings: [KeyCode.F2, KeyMod.Shift | KeyCode.F6], contextMenuGroupId: 'navigation', contextMenuOrder: -20, run: requestRename })
   editor.addAction({ id: CODE_STUDIO_ACTIONS.organizeImports, label: 'Optimize Imports', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyO, KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyO], contextMenuGroupId: '1_modification', run: (target) => { void organizeImports(target) } })
   editor.addAction({ id: CODE_STUDIO_ACTIONS.reformat, label: 'Reformat Code', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyL], contextMenuGroupId: '1_modification', run: (target) => { target.trigger('code-studio', 'editor.action.formatDocument', null) } })
   editor.addAction({ id: CODE_STUDIO_ACTIONS.quickFix, label: 'Show Context Actions', keybindings: [KeyMod.Alt | KeyCode.Enter], run: (target) => { target.trigger('code-studio', 'editor.action.quickFix', null) } })
@@ -144,7 +144,7 @@ export function installCodeStudioEditorActions(editor: monaco.editor.IStandalone
   native('codeStudio.allOccurrences', 'Select All Occurrences', [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyJ], 'editor.action.selectHighlights')
   native('codeStudio.columnSelection', 'Column Selection Mode', [KeyMod.Alt | KeyMod.Shift | KeyCode.Insert], 'editor.action.toggleColumnSelection')
   // Refactoring: solo ciò che gopls offre per la selezione; le scorciatoie sono quelle predefinite.
-  editor.addAction({ id: CODE_STUDIO_ACTIONS.refactorThis, label: 'Refactor This…', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyT], contextMenuGroupId: '1_modification', run: (target) => { target.trigger('code-studio', 'editor.action.refactor', null) } })
+  editor.addAction({ id: CODE_STUDIO_ACTIONS.refactorThis, label: 'Refactor This…', precondition: '!editorReadonly', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyMod.Shift | KeyCode.KeyT], contextMenuGroupId: 'navigation', contextMenuOrder: -19, run: (target) => { target.trigger('code-studio', 'editor.action.refactor', null) } })
   const refactoring = (id: string, label: string, keybinding: number, kind: CodeStudioRefactoring) => {
     editor.addAction({ id, label, keybindings: [keybinding], run: (target) => { void runCodeStudioRefactoring(target, kind) } })
   }
