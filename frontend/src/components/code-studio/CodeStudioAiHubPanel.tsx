@@ -1,5 +1,7 @@
+import { ContextMenu } from '@/components/ui/ContextMenu'
+import { CodeStudioChatHeader } from './CodeStudioChatChrome'
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
-import { Cpu, ListTodo, Power, Terminal } from 'lucide-react'
+import { ChevronDown, Cpu, ListTodo, Power, Terminal } from 'lucide-react'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { isChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
@@ -36,51 +38,29 @@ export function CodeStudioAiHubPanel({ session, document }: CodeStudioAiHubPanel
   const providers = useAiProviders()
   const tasksOpen = useCodeStudioAssistantStore((state) => state.tasksOpen)
   const showTasks = useCodeStudioAssistantStore((state) => state.showTasks)
+  const [menu, setMenu] = useState<{x: number; y: number} | null>(null)
   const [switching, setSwitching] = useState<CodeStudioChatPane | null>(null)
   useEffect(() => { ensureAiProviders() }, [])
+  const Icon = PROVIDER_ICONS[active]
+  const current = providers[active]
+  const label = AI_PROVIDERS.find(item => item.id === active)?.label ?? active
+  const power = aiProviderPower(label, current.enabled)
+  const chrome = <div className="studio-chat-switcher">
+    <button type="button" className="studio-chat-provider" aria-label={`Choose assistant: ${label}`} aria-haspopup="menu" aria-expanded={!!menu} title={aiProviderTooltip(current.tone, current.message, label)} onClick={event => { const rect = event.currentTarget.getBoundingClientRect(); setMenu(menu ? null : { x: rect.left, y: rect.bottom + 6 }) }}><Icon size={15} /><span>{label}</span><span className={`studio-chat-state ${AI_PROVIDER_TONE_CLASS[current.tone]}`} aria-hidden="true" /><ChevronDown size={12} /></button>
+    <button type="button" className="studio-chat-tasks" aria-label={tasksOpen ? 'Return to chat' : 'Agent tasks'} aria-pressed={tasksOpen} title={tasksOpen ? 'Return to chat' : 'Agent tasks'} onClick={() => tasksOpen ? open(active) : showTasks()}><ListTodo size={14} /></button>
+  </div>
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div role="tablist" aria-label="AI assistants" className="flex min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto px-1.5 py-1">
-        {AI_PROVIDERS.map(({ id, label }) => {
-          const { tone, message, enabled } = providers[id]
-          const Icon = PROVIDER_ICONS[id]
-          const power = aiProviderPower(label, enabled)
-          return (
-            <div key={id} className={`flex h-7 shrink-0 items-center rounded-md ${!tasksOpen && active === id ? 'bg-surface-3' : ''}`}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={!tasksOpen && active === id}
-                onClick={() => { open(id) }}
-                title={aiProviderTooltip(tone, message, label)}
-                className={`relative flex h-7 items-center gap-1.5 rounded-md pl-2 pr-1 text-[11px] ${!tasksOpen && active === id ? 'font-semibold text-text-1' : 'text-text-3 hover:text-text-1'} ${enabled === false ? 'opacity-60' : ''}`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${AI_PROVIDER_TONE_CLASS[tone]}`} aria-hidden="true" />
-                <Icon size={12} />
-                {label}
-              </button>
-              {id !== 'local' && <button
-                type="button"
-                aria-label={power.label}
-                aria-pressed={enabled === true}
-                title={power.label}
-                disabled={power.disabled || switching === id}
-                onClick={() => {
-                  setSwitching(id)
-                  void setAiProviderEnabled[id](power.next).finally(() => setSwitching((current) => (current === id ? null : current)))
-                }}
-                className={`mr-0.5 flex h-5 w-5 items-center justify-center rounded hover:bg-surface-4 hover:text-text-1 disabled:opacity-40 ${enabled ? 'text-success' : 'text-text-4'}`}
-              >
-                <Power size={11} />
-              </button>}
-            </div>
-          )
-        })}
-        <button type="button" role="tab" aria-selected={tasksOpen} onClick={() => { showTasks() }} className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[11px] ${tasksOpen ? 'bg-surface-3 font-semibold text-text-1' : 'text-text-3 hover:text-text-1'}`}><ListTodo size={12} />Tasks</button>
-      </div>
+    <div className="studio-chat-hub flex min-h-0 min-w-0 flex-1 flex-col">
+      {menu && <ContextMenu x={menu.x} y={menu.y} appearance="studio" items={[
+        ...AI_PROVIDERS.map(item => ({ id: item.id, label: item.label, icon: PROVIDER_ICONS[item.id], checked: item.id === active && !tasksOpen })),
+        ...(active === 'local' ? [] : [{ id: 'power', label: power.label, icon: Power, separatorBefore: true, disabled: power.disabled || switching === active }]),
+      ]} onClose={() => setMenu(null)} onSelect={id => { setMenu(null); if (id === 'power' && active !== 'local') { setSwitching(active); void setAiProviderEnabled[active](power.next).finally(() => setSwitching(null)) } else if (isChatPane(id)) open(id) }} />}
+      <CodeStudioChatHeader.Provider value={chrome}>
+      {tasksOpen && <header className="studio-chat-header">{chrome}</header>}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {active === 'local' && !tasksOpen ? <Suspense fallback={<p role="status" className="p-3 text-xs text-text-3">Loading local chat…</p>}><LocalLlmChat key={session.id} session={session} document={document} /></Suspense> : tasksOpen ? <CodeStudioAgentTasks session={session} document={document} /> : active === 'pi' ? <CodeStudioPiChat session={session} document={document} /> : active === 'copilot' ? <CodeStudioCopilotChat session={session} document={document} /> : active === 'milk' ? <CodeStudioMilkChat session={session} document={document} /> : <CodeStudioClaudeChat session={session} document={document} />}
       </div>
+      </CodeStudioChatHeader.Provider>
     </div>
   )
 }

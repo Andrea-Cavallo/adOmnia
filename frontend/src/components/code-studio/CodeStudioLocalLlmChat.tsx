@@ -1,3 +1,4 @@
+import { useCodeStudioChatHeader } from './CodeStudioChatChrome'
 import { useEffect, useRef, useState } from 'react'
 import { Cpu, Paperclip, RefreshCw, Send, Square, Trash2, X } from 'lucide-react'
 import DOMPurify from 'dompurify'
@@ -28,6 +29,7 @@ function Proposal({ session, edit }: { session: GoIDESession; edit: LocalEditPro
 }
 
 export function CodeStudioLocalLlmChat({ session, document }: { session: GoIDESession; document: GoIDEEditorDocument | null }) {
+  const chrome = useCodeStudioChatHeader()
   const root = session.project.realPath
   const [config, setConfig] = useState(initialConfig), [apiKey, setApiKey] = useState(''), [text, setText] = useState('')
   const [models, setModels] = useState<string[]>([]), [status, setStatus] = useState(''), [error, setError] = useState(''), [discovering, setDiscovering] = useState(false)
@@ -62,7 +64,7 @@ export function CodeStudioLocalLlmChat({ session, document }: { session: GoIDESe
     requestAnimationFrame(() => transcript.current?.scrollTo({ top: transcript.current.scrollHeight, behavior: 'smooth' }))
   }
   return <section className="local-llm-chat" aria-label="Local LLM project chat">
-    <header className="local-llm-heading"><div><h2><Cpu size={15} />Local LLM</h2><p>LM Studio · Ollama · project context</p></div><button type="button" title="New local conversation" aria-label="New local conversation" disabled={busy} onClick={() => clearLocalChat(root)}><Trash2 size={14} /></button></header>
+    <header className="local-llm-heading"><div>{chrome ?? <h2><Cpu size={15} />Local LLM</h2>}<p>LM Studio · Ollama · project context</p></div><button type="button" title="New local conversation" aria-label="New local conversation" disabled={busy} onClick={() => clearLocalChat(root)}><Trash2 size={14} /></button></header>
     <details className="local-llm-connection" open={!config.model || undefined}><summary>Connection <span>{config.model || 'Choose a model'}</span></summary>
       <fieldset disabled={busy || discovering}>
         <div className="local-llm-presets"><button type="button" onClick={() => { change({ endpoint: 'http://localhost:1234/v1', model: '', vision: false }); setModels([]) }}>LM Studio</button><button type="button" onClick={() => { change({ endpoint: 'http://localhost:11434/v1', model: '', vision: false }); setModels([]) }}>Ollama</button></div>

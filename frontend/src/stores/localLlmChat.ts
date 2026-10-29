@@ -70,12 +70,12 @@ export async function sendLocalChat(session: GoIDESession, config: LocalLlmConfi
         if (!call.id || !call.function.name) throw new Error('The local model returned an incomplete tool call')
         toolLog.push(call.function.name)
         turn({ tools: [...toolLog] })
-        let content: string
+        let toolContent: string
         try {
-          content = await executeLocalTool(session, call, edit => { signal.throwIfAborted(); proposals.push(edit); turn({ proposals: [...proposals] }) })
-        } catch (error) { content = JSON.stringify({ error: error instanceof Error ? error.message : String(error) }) }
+          toolContent = await executeLocalTool(session, call, edit => { signal.throwIfAborted(); proposals.push(edit); turn({ proposals: [...proposals] }) })
+        } catch (error) { toolContent = JSON.stringify({ error: error instanceof Error ? error.message : String(error) }) }
         signal.throwIfAborted()
-        exchange.push({ role: 'tool', tool_call_id: call.id, content })
+        exchange.push({ role: 'tool', tool_call_id: call.id, content: toolContent })
       }
     }
     if (!completed) throw new Error('Project tool limit reached. Ask a narrower follow-up question.')

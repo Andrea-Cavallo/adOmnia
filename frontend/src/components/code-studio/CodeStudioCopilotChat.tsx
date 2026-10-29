@@ -1,3 +1,4 @@
+import { ChatConnectionDetails, ChatContext, useCodeStudioChatHeader } from './CodeStudioChatChrome'
 import { ProjectRulesToggle } from './ProjectRulesToggle'
 import { withContentKeys } from '@/lib/contentKeys'
 import { GitHubMark } from './CodeStudioCopilotStatus'
@@ -33,9 +34,9 @@ export function selectedRange(document: GoIDEEditorDocument | null): CopilotChat
 // Memoizzato: durante lo streaming cambia solo l'ultimo messaggio.
 const MessageView = memo(function MessageView({ message }: { message: CopilotChatMessage }) {
   return (
-    <article className={message.role === 'user' ? 'ml-4 rounded-xl rounded-br-sm bg-accent/12 p-2.5' : 'mr-1'}>
-      <div className="mb-1 flex items-center gap-1 text-[12px] font-semibold uppercase tracking-wide text-text-4">{message.role === 'user' ? 'You' : <><GitHubMark size={10} />Copilot</>}</div>
-      <div className="text-[10.5px] leading-[1.55] text-text-2"><MessageBody message={message} /></div>
+    <article className={message.role === 'user' ? 'studio-chat-message-user' : 'studio-chat-message-agent'}>
+      <div className="studio-chat-message-author">{message.role === 'user' ? 'You' : <><GitHubMark size={10} />Copilot</>}</div>
+      <div className="studio-chat-message-copy"><MessageBody message={message} /></div>
       {!!message.context?.length && <div className="mt-2 flex flex-wrap gap-1">{message.context.map((item) => <span key={item} className="rounded bg-surface-0/60 px-1.5 py-0.5 text-[11px] text-text-4">{item}</span>)}</div>}
     </article>
   )
@@ -75,14 +76,7 @@ function ChatIdentityBar({ root, model }: { root: string; model?: string }) {
     identity.account && `Account: ${identity.account}`,
     identity.model,
   ].filter(Boolean).join('\n')
-  return (
-    <div aria-label="Copilot provider and model" title={title} className="flex shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 border-b border-border-1 bg-surface-0/40 px-2 py-1 text-[12px] leading-4 text-text-4">
-      {identity.provider && <span className="font-semibold text-text-2">{identity.provider}</span>}
-      {identity.host && <span className="max-w-[12rem] truncate font-mono text-text-3">{identity.host}</span>}
-      {identity.account && <span className="max-w-[8rem] truncate text-text-3">@{identity.account}</span>}
-      <span className="ml-auto min-w-0 max-w-full truncate font-mono">{identity.model}</span>
-    </div>
-  )
+  return <ChatConnectionDetails title={title}><strong>{identity.provider}</strong><span>{identity.host}</span>{identity.account && <span>@{identity.account}</span>}<span>{identity.model}</span></ChatConnectionDetails>
 }
 
 function ContextToggle({ active, disabled, icon: Icon, label, onClick }: { active: boolean; disabled?: boolean; icon: typeof FileCode2; label: string; onClick: () => void }) {
@@ -90,6 +84,7 @@ function ContextToggle({ active, disabled, icon: Icon, label, onClick }: { activ
 }
 
 export function CodeStudioCopilotChat({ session, document }: CodeStudioCopilotChatProps) {
+  const chrome = useCodeStudioChatHeader()
   const root = session.project.realPath
   const status = useCopilotStore((state) => state.status)
   const thread = useCopilotStore((state) => state.chatThreads[root])
@@ -104,6 +99,14 @@ export function CodeStudioCopilotChat({ session, document }: CodeStudioCopilotCh
     if (next !== null) setDraft(next)
   }, [pendingDraft, setDraft])
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const modelButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!modelMenuOpen) return
+    const close = (event: PointerEvent) => { if (!(event.target as HTMLElement).closest('[data-copilot-model-menu]')) setModelMenuOpen(false) }
+    const escape = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape') { setModelMenuOpen(false); modelButton.current?.focus() } }
+    window.document.addEventListener('pointerdown', close); window.document.addEventListener('keydown', escape)
+    return () => { window.document.removeEventListener('pointerdown', close); window.document.removeEventListener('keydown', escape) }
+  }, [modelMenuOpen])
   const [includeFile, setIncludeFile] = useToolView(session.id, 'copilot', 'includeFile', true)
   const [includeSelection, setIncludeSelection] = useToolView(session.id, 'copilot', 'includeSelection', true)
   const [includeWorkspace, setIncludeWorkspace] = useToolView(session.id, 'copilot', 'includeWorkspace', true)
@@ -144,35 +147,30 @@ export function CodeStudioCopilotChat({ session, document }: CodeStudioCopilotCh
 
   return (
     <section aria-label="GitHub Copilot Chat" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="relative flex h-9 shrink-0 items-center gap-2 border-b border-border-1 px-2">
-        <GitHubMark size={14} className="text-accent" />
-        <div className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-1">{thread?.title || 'Copilot Chat'}</div>
-        <button type="button" disabled={!ready || busy} onClick={() => setModelMenuOpen((open) => !open)} aria-expanded={modelMenuOpen} title="Change model (starts a new chat)" className="flex max-w-28 items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-text-3 hover:text-text-1 disabled:opacity-45">
+      <div className="studio-chat-header relative flex h-10 shrink-0 items-center gap-2 border-b border-border-1 px-3">
+        {chrome ?? <><GitHubMark size={14} /><div className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-1">{thread?.title || 'Copilot Chat'}</div></>}
+        <button ref={modelButton} data-copilot-model-menu type="button" aria-label="Choose model" disabled={!ready || busy} onClick={() => setModelMenuOpen((open) => !open)} aria-expanded={modelMenuOpen} title="Change model (starts a new chat)" className="flex max-w-28 items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-text-3 hover:text-text-1 disabled:opacity-45">
           <span className="truncate">{selectedModel || 'Model'}</span><ChevronDown size={9} />
         </button>
         {modelMenuOpen && (
-          <div role="menu" className="absolute right-9 top-8 z-20 w-60 overflow-hidden rounded-lg border border-border-2 bg-surface-1 p-1.5 shadow-xl">
+          <div data-copilot-model-menu role="menu" className="absolute right-9 top-8 z-20 w-60 overflow-hidden rounded-lg border border-border-2 bg-surface-1 p-1.5 shadow-xl">
             <p className="px-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-text-4">Copilot model · new chat</p>
             {chatModels.map((model) => <button key={model.id} type="button" role="menuitemradio" aria-checked={selectedModel === model.id} onClick={() => { setModelMenuOpen(false); void useCopilotStore.getState().selectChatModel(root, model.id) }} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left ${selectedModel === model.id ? 'bg-accent/12 text-accent' : 'text-text-2 hover:bg-surface-2'}`}><Check size={10} className={selectedModel === model.id ? 'opacity-100' : 'opacity-0'} /><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{model.name || model.id}</span>{model.name && model.name !== model.id && <span className="block truncate font-mono text-[11px] text-text-4">{model.id}</span>}</span>{model.isChatDefault && <span className="text-[11px] text-text-4">default</span>}</button>)}
             {!chatModels.length && <p className="px-2 py-2 text-[12px] leading-4 text-text-4">{chatModelsError || 'Loading models…'}</p>}
           </div>
         )}
+        <ChatIdentityBar root={root} model={thread?.model} />
+        <button type="button" aria-label="Copilot settings" title="Copilot settings" className="code-studio-icon-button h-7 w-7" onClick={() => useCopilotStore.getState().setDialogOpen(true)}><Settings2 size={14} /></button>
         <button type="button" onClick={() => void useCopilotStore.getState().newChat(root)} className="code-studio-icon-button h-6 w-6" title="New chat" aria-label="New chat"><Plus size={13} /></button>
       </div>
-      <ChatIdentityBar root={root} model={thread?.model} />
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div ref={scrollRef} className="studio-chat-transcript min-h-0 flex-1 overflow-y-auto p-4">
         {!ready ? (
-          <div className="mt-6 rounded-xl border border-border-1 bg-surface-0 p-3 text-center">
-            <GitHubMark size={22} className="mx-auto mb-2 text-text-4" />
-            <p className="text-[13px] font-medium text-text-2">Copilot Chat needs an active Copilot account.</p>
-            <p className="mt-1 text-[12px] leading-4 text-text-4">Enable Copilot, install its language server, then sign in. gopls and Code Studio keep working independently.</p>
-            <button type="button" onClick={() => useCopilotStore.getState().setDialogOpen(true)} className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-on-accent"><Settings2 size={11} />Open settings</button>
-          </div>
+          <div className="studio-chat-welcome"><GitHubMark size={26} /><h2>Start a conversation.</h2><p>Connect your Copilot account to explore code, ask questions and work with your project.</p><button type="button" onClick={() => useCopilotStore.getState().setDialogOpen(true)}><Settings2 size={14} />Connect Copilot</button></div>
         ) : !thread?.messages.length ? (
-          <div className="mt-4 text-center">
-            <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent"><GitHubMark size={18} /></div>
-            <p className="mt-2 text-[13px] font-semibold text-text-2">Ask about your Go project</p>
+          <div className="studio-chat-welcome">
+            <GitHubMark size={26} />
+            <h2>Ask about your project.</h2>
             <p className="mt-1 text-[12px] leading-4 text-text-4">Only context enabled below is attached. Secrets and <code className="font-mono">.adomnia/aiignore</code> paths stay local.</p>
             <div className="mt-3 space-y-1">
               {['Explain the selected code', 'Find likely bugs in this file', 'How does this project fit together?'].map((prompt) => <button key={prompt} type="button" onClick={() => setDraft(prompt)} className="block w-full rounded-lg border border-border-1 bg-surface-0 px-2 py-1.5 text-left text-[13px] text-text-3 hover:border-accent/30 hover:text-text-1">{prompt}</button>)}
@@ -186,15 +184,16 @@ export function CodeStudioCopilotChat({ session, document }: CodeStudioCopilotCh
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border-1 p-2">
-        <div className="mb-1.5 flex flex-wrap gap-1">
+      <div className="studio-chat-composer">
+        <ChatContext summary={includeFile && document ? document.document.relativePath : includeWorkspace ? session.project.name : undefined}>
           <ContextToggle icon={FileCode2} label={document?.document.relativePath || 'No file'} active={includeFile && !!document} disabled={!document} onClick={() => setIncludeFile(!includeFile)} />
           <ContextToggle icon={TextSelect} label="Selection" active={includeSelection} disabled={!document} onClick={() => setIncludeSelection(!includeSelection)} />
           <ProjectRulesToggle included={includeRules} onChange={setIncludeRules} />
           <ContextToggle icon={FolderTree} label="Workspace" active={includeWorkspace} onClick={() => setIncludeWorkspace(!includeWorkspace)} />
-        </div>
-        <div className="rounded-xl border border-border-2 bg-surface-0 focus-within:border-accent/50">
-          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }} disabled={!ready || busy} rows={3} placeholder={ready ? 'Ask Copilot…' : 'Set up Copilot to chat'} className="block w-full resize-none bg-transparent px-2.5 pt-2 text-[13px] leading-4 text-text-1 outline-none placeholder:text-text-4 disabled:opacity-50" />
+          <p>Only enabled context is attached. Project exclusions and secret filtering apply.</p>
+        </ChatContext>
+        <div className="studio-chat-input">
+          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }} disabled={!ready || busy} aria-label="Message Copilot" rows={3} placeholder={ready ? 'Ask Copilot…' : 'Set up Copilot to chat'} className="block w-full resize-none bg-transparent px-2.5 pt-2 text-[13px] leading-4 text-text-1 outline-none placeholder:text-text-4 disabled:opacity-50" />
           <div className="flex h-8 items-center px-2 text-[11px] text-text-4"><span>Enter send · Shift+Enter newline</span><span className="flex-1" />{busy ? <button type="button" onClick={() => void useCopilotStore.getState().stopChat(root)} className="flex h-6 items-center gap-1 rounded-md bg-danger/10 px-2 text-danger hover:bg-danger/20"><Square size={9} fill="currentColor" />Stop</button> : <button type="button" onClick={send} disabled={!ready || !draft.trim()} className="code-studio-icon-button h-6 w-6 disabled:opacity-35" title="Send" aria-label="Send"><Send size={12} /></button>}</div>
         </div>
       </div>
