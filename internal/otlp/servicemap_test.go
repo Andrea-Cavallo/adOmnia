@@ -164,23 +164,34 @@ func TestAnnotateConnectionsWithRealSockets(t *testing.T) {
 		{TraceID: "t", SpanID: "s", Service: "orders", Kind: "server", Category: "http", Attributes: map[string]string{"server.port": serverPort}},
 		{TraceID: "t", SpanID: "q", ParentSpanID: "s", Service: "orders", Kind: "client", Category: "db", Attributes: map[string]string{"db.system": "postgresql", "server.port": dbPort}},
 	})
-	m := store.ServiceMap()
-	// Every fixture opens new ephemeral ports. A previous test's cached socket
-	// snapshot (5 s TTL) cannot describe them, especially under -count.
-	sockets.Lock()
-	sockets.at = time.Time{}
-	sockets.Unlock()
-	conns, listeners, ok := liveSockets(context.Background())
-	if !ok {
-		t.Skip("no socket listing tool")
-	}
-	AnnotateConnections(&m, conns, listeners)
-	for _, node := range m.Nodes {
-		if node.ID == "svc:orders" && node.PID != os.Getpid() {
-			t.Fatalf("orders PID = %d, want %d", node.PID, os.Getpid())
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		// TCP state publication can lag Accept on Windows. Sample fresh sockets
+		// until both accepted connections are observable, without reusing the cache.
+		sockets.Lock()
+		sockets.at = time.Time{}
+		sockets.Unlock()
+		conns, listeners, ok := liveSockets(context.Background())
+		if !ok {
+			if runtime.GOOS != "windows" {
+				t.Skip("no socket listing tool")
+			}
+			t.Fatal("cannot read local TCP sockets")
 		}
-	}
-	if m.Edges[0].ActiveConnections != 2 {
-		t.Fatalf("edge connections = %d, want 2: %+v", m.Edges[0].ActiveConnections, m.Edges[0])
+		m := store.ServiceMap()
+		AnnotateConnections(&m, conns, listeners)
+		ownPID := false
+		for _, node := range m.Nodes {
+			if node.ID == "svc:orders" {
+				ownPID = node.PID == os.Getpid()
+			}
+		}
+		if ownPID && len(m.Edges) == 1 && m.Edges[0].ActiveConnections == 2 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("TCP snapshot did not resolve the service PID and two connections: %+v", m)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
