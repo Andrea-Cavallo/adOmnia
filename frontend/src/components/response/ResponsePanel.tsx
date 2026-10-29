@@ -171,7 +171,7 @@ type Token = { type: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'array' 
 
 function tokenizeJSON(text: string): Token[] {
   const tokens: Token[] = []
-  const re = /"(?:\\.|[^"\\])*"(?=\s*:)|"(?:\\.|[^"\\])*"|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\],:]|(\s+)/g
+  const re = /"(?:\\.|[^"\\])*"(?=\s*:)|"(?:\\.|[^"\\])*"|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],:]|(\s+)/g
   let lastIdx = 0
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
@@ -465,7 +465,7 @@ function FullscreenBodyModal({
   onClose: () => void
 }) {
   const tr = useUiTranslation()
-  const isJson = contentType.includes('json') || body.trim().match(/^[\[{]/) != null
+  const isJson = contentType.includes('json') || body.trim().match(/^[[{]/) != null
   let display = body
   if (isJson) {
     try { display = prettyJson(body) } catch { /* keep raw */ }
@@ -665,7 +665,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
     let cancelled = false
     void readSpilledBody(response).then((body) => {
       if (cancelled || body === null) return
-      const current = useTabsStore.getState().tabs.find((tab) => tab.id === tabId)?.response
+      const current = useTabsStore.getState().tabs.find((candidate) => candidate.id === tabId)?.response
       if (!current || current.bodyRef !== response.bodyRef) return
       useTabsStore.getState().setResponse(tabId, { ...current, body, bodyRef: undefined })
     })
@@ -674,7 +674,7 @@ export function ResponsePanel({ tabId, response, loading, oaSpec, oaPath, oaMeth
   // Cap heavy syntax highlighting / pretty-printing for very large payloads.
   const bodySizeKB = displayBody.length / 1024
   const tooLargeToRender = bodySizeKB > responseMaxRenderSizeKB
-  const isJson = response ? (response.contentType.includes('json') || displayBody.trim().match(/^[\[{]/) != null) : false
+  const isJson = response ? (response.contentType.includes('json') || displayBody.trim().match(/^[[{]/) != null) : false
   // One parse per body: the validation badge, the pretty view and the graph all
   // read the same result instead of re-parsing on every render.
   const parsedBody = useMemo(() => {

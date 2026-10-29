@@ -38,16 +38,16 @@ describe('runtime lens', () => {
 describe('runtimeByNode', () => {
   it('gives routes their server spans and functions the spans inside them', async () => {
     const { runtimeByNode, runtimeText } = await import('./runtimeLens')
-    const stat = (file: string, line: number, name: string, count: number, p95Ms: number, errors = 0) => ({ file, line, name, count, errors, p95Ms } as never)
+    const spanStat = (file: string, line: number, name: string, count: number, p95Ms: number, errors = 0) => ({ file, line, name, count, errors, p95Ms } as never)
     const nodes = [
       { id: 'r', kind: 'endpoint', label: 'GET /orders' },
       { id: 'h', kind: 'function', label: 'api.List', file: 'api/api.go', line: 10 },
       { id: 'f', kind: 'function', label: 'api.find', file: 'api/api.go', line: 20 },
     ]
     const result = runtimeByNode([
-      stat(['C:', 'proj', 'api', 'api.go'].join(String.fromCharCode(92)), 12, 'GET /orders', 4, 30),
-      stat('C:/proj/api/api.go', 22, 'SELECT orders', 4, 12, 1),
-      stat('api.go', 25, 'SELECT more', 1, 50),
+      spanStat(['C:', 'proj', 'api', 'api.go'].join(String.fromCharCode(92)), 12, 'GET /orders', 4, 30),
+      spanStat('C:/proj/api/api.go', 22, 'SELECT orders', 4, 12, 1),
+      spanStat('api.go', 25, 'SELECT more', 1, 50),
     ], ['C:', 'proj'].join(String.fromCharCode(92)), nodes)
     expect(result.get('r')).toEqual({ count: 4, errors: 0, p95Ms: 30 })
     expect(result.get('h')).toEqual({ count: 4, errors: 0, p95Ms: 30 })

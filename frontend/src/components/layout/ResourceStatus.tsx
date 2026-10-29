@@ -70,7 +70,7 @@ export function ResourceDetails({ sample, failed, history, className = '', recor
   const [chartProcess,setChartProcess]=useState('all')
   const processOptions=Array.from(new Map(history.current.flatMap(s=>s.processes.map(p=>[`${p.pid}:${p.createdAt}`,p] as const))).entries())
   const chartSamples=chartProcess==='all'?history.current:history.current.map(s=>{
-    const p=s.processes.find(p=>`${p.pid}:${p.createdAt}`===chartProcess)
+    const p=s.processes.find(proc=>`${proc.pid}:${proc.createdAt}`===chartProcess)
     return {...s,ram:p?.ram??0,cpu:p?.cpu??0,processes:p?[p]:[]}
   })
   const stats=resourceStats(history.current)

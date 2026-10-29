@@ -156,9 +156,9 @@ export function CodeStudioProblems({ sessionId, buildProblems, onOpenBuildProble
       {visibleBuild.length > 0 && (
         <div role="treeitem" aria-expanded="true">
           <div className="flex h-6 items-center gap-1.5 px-2 font-medium text-text-2">Last build output<span className="text-[11px] text-text-4">{visibleBuild.length}</span></div>
-          {visibleBuild.map((problem, index) => (
-            <button key={`${problem.path}:${problem.line}:${index}`} type="button" onClick={() => onOpenBuildProblem(problem)} className="flex min-h-6 w-full items-start gap-1.5 py-0.5 pl-6 pr-2 text-left font-mono text-[12px] text-text-2 hover:bg-surface-3 focus:bg-surface-3 focus:outline-none">
-              <AlertCircle size={11} className="mt-0.5 shrink-0 text-danger" /><span className="min-w-0 flex-1 whitespace-pre-wrap break-all">{problem.text}</span>
+          {visibleBuild.map((buildProblem, index) => (
+            <button key={`${buildProblem.path}:${buildProblem.line}:${index}`} type="button" onClick={() => onOpenBuildProblem(buildProblem)} className="flex min-h-6 w-full items-start gap-1.5 py-0.5 pl-6 pr-2 text-left font-mono text-[12px] text-text-2 hover:bg-surface-3 focus:bg-surface-3 focus:outline-none">
+              <AlertCircle size={11} className="mt-0.5 shrink-0 text-danger" /><span className="min-w-0 flex-1 whitespace-pre-wrap break-all">{buildProblem.text}</span>
             </button>
           ))}
         </div>

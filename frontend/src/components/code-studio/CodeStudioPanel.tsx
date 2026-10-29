@@ -375,9 +375,9 @@ export function CodeStudioPanel() {
       detail.handled = true
       void (async () => {
         try {
-          const store = useCodeStudioStore.getState()
-          if (!store.sessions.some((session) => session.id === detail.goSessionId)) return detail.done?.('The project is no longer open in Code Studio.')
-          if (store.activeSessionId !== detail.goSessionId) await store.selectSession(detail.goSessionId)
+          const studioStore = useCodeStudioStore.getState()
+          if (!studioStore.sessions.some((session) => session.id === detail.goSessionId)) return detail.done?.('The project is no longer open in Code Studio.')
+          if (studioStore.activeSessionId !== detail.goSessionId) await studioStore.selectSession(detail.goSessionId)
           await new Promise((resolve) => setTimeout(resolve, 60)) // i comandi leggono la sessione appena selezionata
           const command = detail.command ?? 'debug.debug'
           const availability = availabilityRef.current(command)

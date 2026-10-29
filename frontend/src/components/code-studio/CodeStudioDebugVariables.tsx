@@ -108,6 +108,7 @@ function RegistersToggle({ view }: { view: GoIDEDebugView }) {
 
 export function CodeStudioDebugVariables({ view, sessionId }: { view: GoIDEDebugView; sessionId: string }) {
   const watches = useCodeStudioDebugStore((state) => state.watches[sessionId] ?? EMPTY_WATCHES)
+  // oxlint-disable-next-line react/hooks -- Zustand store access (getState), not a hook call
   const { addWatch, removeWatch, loadChildren } = useCodeStudioDebugStore.getState()
   const [draft, setDraft] = useState('')
   const [inspected, setInspected] = useState<{ variable: GoIDEDebugVariable; expression: string } | null>(null)

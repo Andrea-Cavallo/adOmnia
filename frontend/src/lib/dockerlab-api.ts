@@ -62,8 +62,17 @@ export interface LabInfo {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 // Wails 3 has no `window.go` global; services come from generated bindings.
-function getBinding(): any {
-  return DockerLabBindings
+interface LabBindings {
+  GenerateLab(ids: string[]): Promise<LabOutput>
+  LabUp(ids: string[]): Promise<LabRunResult>
+  LabDown(projectName: string): Promise<string>
+  LabStatus(projectName: string): Promise<ContainerStatus[]>
+  LabLogs(projectName: string, lines: number): Promise<string>
+  LabList(): Promise<LabInfo[]>
+}
+
+function getBinding(): LabBindings {
+  return DockerLabBindings as LabBindings
 }
 
 export async function generateLab(ids: string[]): Promise<LabOutput> {

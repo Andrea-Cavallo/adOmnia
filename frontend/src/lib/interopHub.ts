@@ -74,16 +74,22 @@ function detectInteropFormat(filename: string, text: string): InteropFormat {
   if (lower.endsWith('.proto')) return 'grpc'
   if (trimmed.includes('<definitions') || trimmed.includes('<wsdl:definitions')) return 'wsdl'
   if (json) {
-    if ((json as any).log?.entries) return 'har'
-    if ((json as any).info?.schema?.includes?.('postman')) return 'postman'
-    if ((json as any)._type === 'export' || Array.isArray((json as any).resources)) return 'insomnia'
-    if ((json as any).openapi) return 'openapi'
-    if ((json as any).swagger) return 'swagger'
-    if ((json as any).format?.startsWith?.('adomnia') || Array.isArray((json as any).collections)) return 'adomnia'
-    if (Array.isArray((json as any).mappings) || (json as any).request && (json as any).response) return 'wiremock'
-    if ((json as any).routes && Array.isArray((json as any).routes)) return 'mockoon'
-    if ((json as any).v && ((json as any).collections || (json as any).requests)) return 'hoppscotch'
-    if ((json as any).collection?.name || Array.isArray((json as any).items)) return 'bruno'
+    // Duck-typed reads over loosely structured import payloads: narrow through
+    // small structural views instead of `any`, keeping the exact runtime accesses.
+    const logField = json.log as { entries?: unknown } | undefined
+    if (logField?.entries) return 'har'
+    const schemaField = (json.info as { schema?: { includes?: (needle: string) => boolean } } | undefined)?.schema
+    if (schemaField?.includes?.('postman')) return 'postman'
+    if (json._type === 'export' || Array.isArray(json.resources)) return 'insomnia'
+    if (json.openapi) return 'openapi'
+    if (json.swagger) return 'swagger'
+    const formatField = json.format as { startsWith?: (prefix: string) => boolean } | undefined
+    if (formatField?.startsWith?.('adomnia') || Array.isArray(json.collections)) return 'adomnia'
+    if (Array.isArray(json.mappings) || (json.request && json.response)) return 'wiremock'
+    if (json.routes && Array.isArray(json.routes)) return 'mockoon'
+    if (json.v && (json.collections || json.requests)) return 'hoppscotch'
+    const collectionField = json.collection as { name?: unknown } | undefined
+    if (collectionField?.name || Array.isArray(json.items)) return 'bruno'
   }
   if (/^query\s|^mutation\s|^subscription\s|fragment\s/m.test(trimmed)) return 'graphql'
   if (/^(GET|QUERY|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S+/m.test(trimmed)) return 'http'
@@ -97,7 +103,7 @@ export function parseInteropFile(filename: string, text: string): InteropBundle 
   if (format === 'postman' || format === 'insomnia' || format === 'bruno' || format === 'adomnia' || format === 'openapi' || format === 'swagger') {
     const imported = format === 'swagger'
       ? { collections: [openApiToCollection(text)], format: 'openapi' as const, warnings: ['Swagger/OpenAPI 2.0 import is normalized to adOmnia HTTP requests.'] }
-      : importCollectionsFromText(text, format as any)
+      : importCollectionsFromText(text, format)
     return { ...base, format: format === 'swagger' ? 'swagger' : imported.format, collections: imported.collections, warnings: imported.warnings }
   }
   if (format === 'curl') return { ...base, collections: [parseCurlCollection(text)] }
@@ -180,10 +186,10 @@ function yamlVariables(value: unknown): ReturnType<typeof kv>[] {
     })
   }
   if (!isRecord(value)) return []
-  return Object.entries(value).map(([key, value]) => ({
+  return Object.entries(value).map(([key, entry]) => ({
     id: uid(),
     key,
-    value: yamlValue(value),
+    value: yamlValue(entry),
     enabled: true,
     type: SECRET_KEY.test(key) ? 'secret' as const : 'text' as const,
   }))
@@ -207,7 +213,7 @@ function parseEnvYaml(text: string): Environment[] {
   try {
     parsed = parseYamlLenient(text)
   } catch (error) {
-    throw new Error(`Invalid env.yaml: ${error instanceof Error ? error.message : 'YAML parsing failed.'}`)
+    throw new Error(`Invalid env.yaml: ${error instanceof Error ? error.message : 'YAML parsing failed.'}`, { cause: error })
   }
   if (!isRecord(parsed)) throw new Error('env.yaml must contain an environment map.')
 
@@ -232,13 +238,40 @@ function parseEnvYaml(text: string): Environment[] {
   return [yamlEnvironment('Imported environment', parsed)]
 }
 
+/** Loose payload shapes for the JSON importers below (real-world files are duck-typed). */
+interface HarHeader { name?: string; value?: string }
+interface HarRequest {
+  url?: string
+  method?: string
+  headers?: HarHeader[]
+  postData?: { text?: string; mimeType?: string }
+}
+interface HarEntry { request?: HarRequest }
+interface WireMockMapping { name?: string; request?: { method?: string; url?: string; urlPath?: string } }
+interface MockoonRoute { label?: string; method?: string; endpoint?: string }
+interface HoppscotchHeader { key?: string; name?: string; value?: string }
+interface HoppscotchItem {
+  name?: string
+  label?: string
+  method?: string
+  endpoint?: string
+  url?: string
+  headers?: HoppscotchHeader[]
+  body?: { body?: string }
+  folders?: HoppscotchItem[]
+  requests?: HoppscotchItem[]
+}
+
 function parseHarCollection(filename: string, text: string): Collection {
   const har = JSON.parse(text)
   const entries = har.log?.entries ?? []
-  const requests = entries.map((entry: any, index: number) => {
-    const req = request(entry.request?.url ? `${entry.request.method || 'GET'} ${new URL(entry.request.url).pathname || '/'}` : `HAR Request ${index + 1}`, method(entry.request?.method), entry.request?.url || '')
-    req.headers = Array.isArray(entry.request?.headers) && entry.request.headers.length ? entry.request.headers.map((h: any) => kv(h.name, h.value)) : [kv()]
-    if (entry.request?.postData?.text) req.bodies = [{ ...req.bodies[0], type: 'raw', raw: entry.request.postData.text, lang: entry.request.postData.mimeType?.includes('xml') ? 'xml' : 'json' }]
+  const requests = entries.map((entry: HarEntry, index: number) => {
+    const harRequest = entry.request
+    const harHeaders = harRequest?.headers
+    const postData = harRequest?.postData
+    const req = request(harRequest?.url ? `${harRequest.method || 'GET'} ${new URL(harRequest.url).pathname || '/'}` : `HAR Request ${index + 1}`, method(harRequest?.method), harRequest?.url || '')
+    req.headers = Array.isArray(harHeaders) && harHeaders.length ? harHeaders.map((h: HarHeader) => kv(h.name, h.value)) : [kv()]
+    if (postData?.text) req.bodies = [{ ...req.bodies[0], type: 'raw', raw: postData.text, lang: postData.mimeType?.includes('xml') ? 'xml' : 'json' }]
     return req
   })
   return collection(filename.replace(/\.har$/i, ''), requests)
@@ -271,25 +304,25 @@ function parseWsdlCollection(filename: string, text: string): Collection {
 function parseWireMock(filename: string, text: string, base: InteropBundle): InteropBundle {
   const json = JSON.parse(text)
   const mappings = Array.isArray(json.mappings) ? json.mappings : [json]
-  const requests = mappings.map((mapping: any) => request(mapping.name || `${mapping.request?.method || 'GET'} ${mapping.request?.url || mapping.request?.urlPath || '/'}`, method(mapping.request?.method), mapping.request?.url || mapping.request?.urlPath || ''))
+  const requests = mappings.map((mapping: WireMockMapping) => request(mapping.name || `${mapping.request?.method || 'GET'} ${mapping.request?.url || mapping.request?.urlPath || '/'}`, method(mapping.request?.method), mapping.request?.url || mapping.request?.urlPath || ''))
   return { ...base, collections: [collection(filename.replace(/\.json$/i, ''), requests)], artifacts: [{ type: 'mock', name: filename, data: json }] }
 }
 
 function parseMockoon(filename: string, text: string, base: InteropBundle): InteropBundle {
   const json = JSON.parse(text)
   const routes = Array.isArray(json.routes) ? json.routes : []
-  const requests = routes.map((route: any) => request(route.label || `${route.method || 'GET'} ${route.endpoint || '/'}`, method(route.method), route.endpoint || ''))
+  const requests = routes.map((route: MockoonRoute) => request(route.label || `${route.method || 'GET'} ${route.endpoint || '/'}`, method(route.method), route.endpoint || ''))
   return { ...base, collections: [collection(json.name || filename.replace(/\.json$/i, ''), requests)], artifacts: [{ type: 'mock', name: json.name || filename, data: json }] }
 }
 
 function parseHoppscotch(filename: string, text: string, base: InteropBundle): InteropBundle {
   const json = JSON.parse(text)
-  const walk = (items: any[]): TreeNode[] => items.map((item) => {
+  const walk = (items: HoppscotchItem[]): TreeNode[] => items.map((item) => {
     if (Array.isArray(item.folders) || Array.isArray(item.requests)) {
       return { id: uid(), name: item.name || 'Folder', type: 'folder' as const, children: [...walk(item.folders || []), ...walk(item.requests || [])] }
     }
     const req = request(item.name || item.label || 'Hoppscotch Request', method(item.method), item.endpoint || item.url || '')
-    req.headers = Array.isArray(item.headers) && item.headers.length ? item.headers.map((h: any) => kv(h.key || h.name, h.value)) : [kv()]
+    req.headers = Array.isArray(item.headers) && item.headers.length ? item.headers.map((h: HoppscotchHeader) => kv(h.key || h.name, h.value)) : [kv()]
     if (item.body?.body) req.bodies = [{ ...req.bodies[0], type: 'raw', raw: item.body.body, lang: 'json' }]
     return req
   })

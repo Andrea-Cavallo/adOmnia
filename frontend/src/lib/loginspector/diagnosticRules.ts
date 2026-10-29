@@ -154,7 +154,7 @@ export function validateDiagnosticRule(value: unknown): { rule?: DiagnosticRule;
   if (!Array.isArray(rule.all) || !rule.all.length) errors.push('At least one condition is required.')
   else for (const condition of rule.all) {
     if (!condition.field || !['contains', 'matches', 'equals', 'exists', 'gte', 'lte'].includes(condition.operator)) errors.push('A condition has an invalid field or operator.')
-    if (condition.operator === 'matches') try { new RegExp(String(condition.value ?? '')) } catch { errors.push(`Invalid regex for ${condition.field}.`) }
+    if (condition.operator === 'matches') try { RegExp(String(condition.value ?? '')) } catch { errors.push(`Invalid regex for ${condition.field}.`) }
   }
   if (!Number.isInteger(rule.minMatches) || rule.minMatches < 1) errors.push('minMatches must be a positive integer.')
   if (!rule.evidence || !rule.action) errors.push('evidence and action are required.')

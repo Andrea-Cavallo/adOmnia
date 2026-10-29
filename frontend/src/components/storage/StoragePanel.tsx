@@ -73,8 +73,8 @@ export function StoragePanel() {
     if (route === '/storage/status') {
       const all = await Promise.all(STORAGE_BUCKETS.map(async (name) => {
         try {
-          const entries = await StorageGetAll(name)
-          return { bucket: name, entries }
+          const bucketEntries = await StorageGetAll(name)
+          return { bucket: name, entries: bucketEntries }
         } catch {
           return { bucket: name, entries: [] as WailsStorageEntry[] }
         }
@@ -96,8 +96,8 @@ export function StoragePanel() {
       return { ok: true }
     }
     if (route === '/storage/export') {
-      const entries = await StorageGetAll(bucketName)
-      return redactSensitiveData(Object.fromEntries(entries.map((entry) => [entry.key, parseStorageValue(entry.value)])))
+      const exportEntries = await StorageGetAll(bucketName)
+      return redactSensitiveData(Object.fromEntries(exportEntries.map((entry) => [entry.key, parseStorageValue(entry.value)])))
     }
     if (route === '/storage/import') {
       const data = body && typeof body === 'object' ? body as Record<string, unknown> : {}
@@ -108,8 +108,8 @@ export function StoragePanel() {
       const q = (params.get('q') || '').toLowerCase()
       const hits: Array<{ bucket: string; key: string; value: string }> = []
       for (const name of STORAGE_BUCKETS) {
-        const entries = await StorageGetAll(name).catch(() => [] as WailsStorageEntry[])
-        for (const entry of entries) {
+        const searchEntries = await StorageGetAll(name).catch(() => [] as WailsStorageEntry[])
+        for (const entry of searchEntries) {
           if (entry.key.toLowerCase().includes(q) || entry.value.toLowerCase().includes(q)) {
             hits.push({ bucket: name, key: entry.key, value: entry.value.slice(0, 200) })
             if (hits.length >= 50) break
@@ -156,11 +156,11 @@ export function StoragePanel() {
       const text = await res.text()
       if (!res.ok) throw new Error(text || res.statusText)
       return text ? parseStorageValue(text) : {}
-    } catch (error) {
-      if (error instanceof TypeError && String(error.message).includes('Failed to fetch')) {
+    } catch (e) {
+      if (e instanceof TypeError && String(e.message).includes('Failed to fetch')) {
         return wailsApi(path, body)
       }
-      throw error
+      throw e
     }
   }, [bucket, port, wailsApi])
 

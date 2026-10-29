@@ -183,7 +183,7 @@ function normalizeNode(value: unknown, index: number): FlowNodeDefinition {
       retryCount: numberValue(config.retryCount, 0),
       delayMs: Math.max(0, numberValue(config.delayMs, 0)),
       timeoutMs: numberValue(config.timeoutMs, 0),
-      extractions: Array.isArray(config.extractions) ? config.extractions.map((mapping, index) => normalizeMapping(mapping, index)) : [],
+      extractions: Array.isArray(config.extractions) ? config.extractions.map((mapping, mappingIndex) => normalizeMapping(mapping, mappingIndex)) : [],
       condition: type === 'condition' ? normalizeCondition(config.condition) : undefined,
       endState: config.endState === 'failed' ? 'failed' : 'success',
       note: stringValue(config.note),
@@ -439,7 +439,7 @@ export function normalizeFlowDefinitions(value: unknown): SavedFlowDefinition[] 
     const name = stringValue(source.name, `Flow ${index + 1}`)
     const graph = source.graph
       ? normalizeGraph(source.graph)
-      : graphFromLegacySteps(Array.isArray(source.steps) ? source.steps.map((step, index) => normalizeStep(step, index)) : [])
+      : graphFromLegacySteps(Array.isArray(source.steps) ? source.steps.map((step, stepIndex) => normalizeStep(step, stepIndex)) : [])
     return {
       id,
       name,

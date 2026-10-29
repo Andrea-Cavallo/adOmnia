@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { projectProfile } from './projectProfile'
 
-const root = 'C:\work\shop'
+const root = 'C:workshop'
 const names = { typescript: 'TypeScript / JavaScript', html: 'HTML' }
 const unit = (language: string, kind: string, folder = '') => ({ language, kind, root: folder ? `${root}\${folder}` : root, name: '', manifest: '' })
 
 describe('projectProfile', () => {
   it('keeps the Go summary for Go projects', () => {
-    const profile = projectProfile({ rootPath: root, units: [{ ...unit('go', 'module'), manifest: `${root}\go.mod` }] }, names)
+    const profile = projectProfile({ rootPath: root, units: [{ ...unit('go', 'module'), manifest: `${root}go.mod` }] }, names)
     expect(profile).toMatchObject({ hasGo: true, primaryLanguage: 'go', summary: '1 module · go.mod' })
   })
 

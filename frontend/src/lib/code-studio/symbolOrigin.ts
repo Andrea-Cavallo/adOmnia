@@ -29,11 +29,11 @@ export function symbolOrigin(
   if (language === 'go') {
     const unit = (project.units ?? [])
       .filter(
-        (unit) =>
-          unit.language === 'go' &&
-          unit.kind === 'module' &&
-          unit.name &&
-          inside(file, norm(unit.root)),
+        (candidate) =>
+          candidate.language === 'go' &&
+          candidate.kind === 'module' &&
+          candidate.name &&
+          inside(file, norm(candidate.root)),
       )
       .sort((a, b) => b.root.length - a.root.length)[0]
     return unit ? `${unit.name}${dir.slice(norm(unit.root).length)}` : null

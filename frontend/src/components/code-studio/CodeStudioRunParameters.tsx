@@ -45,8 +45,10 @@ interface TaskListProps extends Props {
   exclude?: readonly string[]
 }
 
+const NO_EXCLUSIONS: readonly string[] = []
+
 /** Ordered list of other configurations run before or after this one. */
-export function RunTaskList({ draft, configs, patch, field, title, hint, exclude = [] }: TaskListProps) {
+export function RunTaskList({ draft, configs, patch, field, title, hint, exclude = NO_EXCLUSIONS }: TaskListProps) {
   const ids = draft[field] ?? []
   const available = configs.filter((config) => config.id && config.id !== draft.id && !ids.includes(config.id)
     && !exclude.includes(config.id) && config.kind !== GoIDERunConfigurationKind.RunKindCompound)

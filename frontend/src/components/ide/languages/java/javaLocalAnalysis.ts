@@ -109,10 +109,10 @@ export function analyzeJavaFile(source: string): JavaLocalAnalysis {
     add(i, kind, detail, owner[i], true)
     if (t[end].text === '{') {
       scopeNodes.set(end, method)
-      for (let k = i + 2; k < close; k++) parameterScope.set(k, end)
+      for (let param = i + 2; param < close; param++) parameterScope.set(param, end)
     } else {
       // Abstract/interface method: parameters are not fields; scope them to the parameter list.
-      for (let k = i + 2; k < close; k++) parameterScope.set(k, i + 1)
+      for (let param = i + 2; param < close; param++) parameterScope.set(param, i + 1)
     }
   }
   // Lambda parameters belong to their body/expression, rather than the containing method.

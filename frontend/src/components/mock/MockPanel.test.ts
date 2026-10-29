@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+// oxlint-disable-next-line import/default -- Vite `?raw` modules default-export the file contents
 import source from './MockPanel.tsx?raw'
 
 describe('MockPanel', () => {

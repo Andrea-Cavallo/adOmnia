@@ -282,7 +282,7 @@ function dedupe(items: string[]): string[] {
 
 function normalizeIdent(raw: string): string {
   const last = raw.split('.').pop() ?? raw
-  return last.replace(/^[`"\[]|[`"\]]$/g, '')
+  return last.replace(/^[`"[]|[`"\]]$/g, '')
 }
 
 function riskOf(writes: boolean, destructive: boolean): QueryRisk {

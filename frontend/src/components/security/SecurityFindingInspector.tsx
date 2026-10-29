@@ -175,10 +175,10 @@ export function SecurityFindingInspector({
 
         <Section title="Why this priority" hint={`${finding.risk.priority} · ${finding.risk.band}`}>
           <ul className="space-y-1.5">
-            {(finding.risk.reasons ?? []).map((reason) => (
-              <li key={reason} className="flex gap-2 text-[11px] leading-relaxed text-text-2">
+            {(finding.risk.reasons ?? []).map((rationale) => (
+              <li key={rationale} className="flex gap-2 text-[11px] leading-relaxed text-text-2">
                 <span className="mt-[5px] h-1 w-1 shrink-0 rounded-full bg-accent" />
-                {reason}
+                {rationale}
               </li>
             ))}
           </ul>

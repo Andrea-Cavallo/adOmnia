@@ -62,7 +62,7 @@ const FORGE_CORE_WORKSPACE: WorkspaceV1 = {
           {"id":"r20","name":"OPTIONS CORS preflight","type":"request","method":"OPTIONS","url":"{{base_url}}/v1/auth/login","params":[],"headers":[{"id":"h1","key":"Origin","value":"{{allowed_origin}}","enabled":true},{"id":"h2","key":"Access-Control-Request-Method","value":"POST","enabled":true}],"bodies":[{"id":"b1","type":"none","raw":"","lang":"json","form":[],"name":"Body 1"}],"activeBodyIdx":0,"auth":{"type":"none","token":"","username":"","password":""}}
         ]}
       ],
-    } as any,
+    } as Collection,
     {
       id: 'col-soap',
       name: 'SOAP / Enterprise Services',
@@ -218,7 +218,7 @@ const FORGE_CORE_WORKSPACE: WorkspaceV1 = {
             activeBodyIdx:0,auth:{type:'none',token:'',username:'',password:''}},
         ]},
       ],
-    } as any,
+    } as Collection,
     {
       id: 'col-pubsub',
       name: 'Pub/Sub Event Bus',
@@ -273,7 +273,7 @@ const FORGE_CORE_WORKSPACE: WorkspaceV1 = {
             activeBodyIdx:0,auth:{type:'none',token:'',username:'',password:''}},
         ]},
       ],
-    } as any,
+    } as Collection,
     {
       id: 'col-ws',
       name: 'WebSocket Playground',
@@ -322,7 +322,7 @@ const FORGE_CORE_WORKSPACE: WorkspaceV1 = {
             activeBodyIdx:0,auth:{type:'bearer',token:'{{access_token}}',username:'',password:''}},
         ]},
       ],
-    } as any,
+    } as Collection,
   ],
   environments: [
     {

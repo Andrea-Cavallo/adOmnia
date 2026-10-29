@@ -171,8 +171,10 @@ const locate = (gl, program, names) => {
   return result;
 };
 
+const DEFAULT_COLOR = [1, 1, 1];
+
 const Threads = ({
-  color = [1, 1, 1],
+  color = DEFAULT_COLOR,
   accentColor,
   amplitude = 1.7,
   distance = 0.4,
@@ -389,6 +391,7 @@ const Threads = ({
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      // oxlint-disable-next-line react/hooks -- WebGL API call, not a React hook
       gl.useProgram(lineProgram);
       gl.uniform1f(lineUniforms.uTime, state.time);
       gl.uniform2f(lineUniforms.uResolution, w, h);
@@ -415,6 +418,7 @@ const Threads = ({
       gl.viewport(0, 0, w, h);
       gl.disable(gl.BLEND);
       gl.clear(gl.COLOR_BUFFER_BIT);
+      // oxlint-disable-next-line react/hooks -- WebGL API call, not a React hook
       gl.useProgram(screenProgram);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, target);

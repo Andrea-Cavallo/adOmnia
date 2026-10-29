@@ -25,8 +25,8 @@ export function moveCollectionNodes(collections: Collection[], sources: NodeLoca
   if (!target || (parentId && (parent?.collectionId !== collectionId || parent.node.type !== 'folder'))) return collections
   const ids = new Map(sources.map(s => [s.nodeId, s.collectionId]))
   const selected: NonNullable<ReturnType<typeof locateNode>>[] = []
-  const walk = (nodes: TreeNode[], owner: string, parent: string | null) => nodes.forEach((node, index) => {
-    if (ids.get(node.id) === owner) selected.push({ node, nodeId: node.id, collectionId: owner, parentId: parent, index })
+  const walk = (nodes: TreeNode[], owner: string, walkParent: string | null) => nodes.forEach((node, nodeIndex) => {
+    if (ids.get(node.id) === owner) selected.push({ node, nodeId: node.id, collectionId: owner, parentId: walkParent, index: nodeIndex })
     else if (node.type === 'folder') walk(node.children, owner, node.id)
   })
   collections.forEach(c => walk(c.children, c.id, null))

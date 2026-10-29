@@ -1246,7 +1246,8 @@ export function FlowsPanel() {
     setConditionOverrides({})
   }
 
-  const loadFlow = (flow: SavedFlowDefinition) => {
+  // Function declaration (hoisted) so `createMockDemo` can call it before this line.
+  function loadFlow(flow: SavedFlowDefinition) {
     setActiveFlowId(flow.id)
     setFlowName(flow.name)
     setMermaid(flow.mermaidSource || '')

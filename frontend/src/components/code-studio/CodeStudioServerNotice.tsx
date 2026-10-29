@@ -16,6 +16,7 @@ export function CodeStudioServerNotice({ document }: { document: GoIDEEditorDocu
   const installing = useIdeLanguageServersStore((state) => !!(languageId && state.installing[sessionId]?.[languageId]))
   if (!languageId || !entry || dismissed || (entry.state !== 'missing' && !installing)) return null
   const name = ideLanguage(languageId)?.languageServer ?? 'language server'
+  // oxlint-disable-next-line react/hooks -- Zustand store access (getState), not a hook call
   const actions = useIdeLanguageServersStore.getState()
 
   return (

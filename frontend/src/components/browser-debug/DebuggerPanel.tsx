@@ -160,7 +160,7 @@ function renderHighlightedJS(line: string) {
 
 function renderHighlightedHTML(line: string) {
   const tokenPattern =
-    /(<!--[\s\S]*?-->|<\/?[A-Za-z][\w:-]*|\/?>|(?<![A-Za-z_:])[A-Za-z_:][\w:.-]*(?=\=)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g
+    /(<!--[\s\S]*?-->|<\/?[A-Za-z][\w:-]*|\/?>|(?<![A-Za-z_:])[A-Za-z_:][\w:.-]*(?==)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g
   const parts: Array<string | JSX.Element> = []
   let cursor = 0
   let match: RegExpExecArray | null

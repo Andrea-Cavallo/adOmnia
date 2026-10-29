@@ -1560,7 +1560,7 @@ export function MockPanel() {
                         <span className="font-medium text-text-1">{check.endpointPath} · {check.responseName}</span>
                         <span className={cn('font-semibold', check.result.valid ? 'text-success' : 'text-error')}>{check.result.valid ? 'Valid' : `${check.result.errors.length} issue${check.result.errors.length === 1 ? '' : 's'}`}</span>
                       </div>
-                      {!check.result.valid && <ul className="mt-2 list-disc space-y-1 pl-4 text-text-3">{check.result.errors.map((error, index) => <li key={`${check.responseId}-${index}`}>{error.message}</li>)}</ul>}
+                      {!check.result.valid && <ul className="mt-2 list-disc space-y-1 pl-4 text-text-3">{check.result.errors.map((issue, index) => <li key={`${check.responseId}-${index}`}>{issue.message}</li>)}</ul>}
                       {check.result.warnings.length > 0 && <p className="mt-2 text-warning">{check.result.warnings.map((warning) => warning.message).join(' ')}</p>}
                     </div>
                   ))}

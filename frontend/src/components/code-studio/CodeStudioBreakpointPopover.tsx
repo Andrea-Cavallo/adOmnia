@@ -29,6 +29,7 @@ export function CodeStudioBreakpointPopover() {
   }, [target])
 
   if (!target) return null
+  // oxlint-disable-next-line react/hooks -- Zustand store access (getState), not a hook call
   const debug = useCodeStudioDebugStore.getState()
   const apply = () => {
     if (!canApply(draft)) return

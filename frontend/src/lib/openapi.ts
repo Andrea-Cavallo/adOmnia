@@ -894,7 +894,7 @@ export function exportToOpenApi(collections: Collection[]): string {
         } else if (body.type === 'urlencoded' || body.type === 'formdata') {
           const ct = body.type === 'urlencoded' ? 'application/x-www-form-urlencoded' : 'multipart/form-data'
           const props: Record<string, unknown> = {}
-          for (const f of body.form.filter((f) => f.key)) {
+          for (const f of body.form.filter((field) => field.key)) {
             props[f.key] = { type: 'string', ...(f.value ? { example: f.value } : {}) }
           }
           op.requestBody = { required: true, content: { [ct]: { schema: { type: 'object', properties: props } } } }

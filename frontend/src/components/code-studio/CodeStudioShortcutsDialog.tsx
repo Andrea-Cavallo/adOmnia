@@ -25,6 +25,7 @@ export function CodeStudioShortcutsDialog({ open, onClose }: CodeStudioShortcuts
   const conflictCount = [...conflicts.values()].reduce((total, list) => total + list.length, 0)
   if (!open) return null
 
+  // oxlint-disable-next-line react/hooks -- Zustand store access (getState), not a hook call
   const state = useCodeStudioKeymap.getState()
   const needle = query.trim().toLowerCase()
   const matches = (id: CodeStudioCommandId, label: string, shortcut: string) => !needle || `${label} ${bindingSearchText(shortcut)}`.toLowerCase().includes(needle) || id.includes(needle)

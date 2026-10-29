@@ -29,6 +29,7 @@ export function CodeStudioCloseGuard({ windowId = MAIN_CODE_STUDIO_WINDOW }: Cod
   // dallo store quando serve davvero (render del dialogo, salvataggio).
   const dirtyKey = useCodeStudioStore(goIDEDirtyKey)
   const saveDocument = useCodeStudioStore((state) => state.saveDocument)
+  // oxlint-disable-next-line react/hooks -- Zustand store access (getState), not a hook call
   const dirtyDocuments = goIDEDirtyDocuments(useCodeStudioStore.getState())
   const [request, setRequest] = useState<CloseRequest | null>(null)
   const [saving, setSaving] = useState(false)
