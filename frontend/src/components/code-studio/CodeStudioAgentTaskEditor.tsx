@@ -76,7 +76,7 @@ export function CodeStudioAgentTaskEditor({ session, task, open, onClose }: Prop
           <section className="agent-composer-files" aria-label="Project files">
             <div className="agent-composer-files-heading"><span className="gs-label">Project files</span><span>{draft.paths.length}</span></div>
             <p className="gs-hint">Read during context preview. Excluded files are never attached.</p>
-            {!!draft.paths.length ? <ul className="agent-composer-file-list">{draft.paths.map((path) => <li key={path}><FileCode2 size={14} /><span title={path}>{path}</span><button type="button" aria-label={`Remove ${path}`} onClick={() => setDraft({ ...draft, paths: draft.paths.filter((item) => item !== path) })}><X size={13} /></button></li>)}</ul> : <p className="agent-composer-no-files">No files selected</p>}
+            {draft.paths.length > 0 ? <ul className="agent-composer-file-list">{draft.paths.map((path) => <li key={path}><FileCode2 size={14} /><span title={path}>{path}</span><button type="button" aria-label={`Remove ${path}`} onClick={() => setDraft({ ...draft, paths: draft.paths.filter((item) => item !== path) })}><X size={13} /></button></li>)}</ul> : <p className="agent-composer-no-files">No files selected</p>}
             <CodeStudioButton small icon={Plus} onClick={() => setPickerOpen(true)}>Add project file</CodeStudioButton>
           </section>
           <details className="agent-composer-limits"><summary>Execution limits<span>{draft.limits.timeoutMinutes} min · {Math.round(draft.limits.maxContextBytes / 1024)} KiB</span></summary>

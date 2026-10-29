@@ -231,9 +231,10 @@ func (s *piSession) event(kind string, data []byte) {
 		if json.Unmarshal(data, &event) != nil {
 			return
 		}
-		if event.Delta.Type == "text_delta" {
+		switch event.Delta.Type {
+		case "text_delta":
 			s.text("agent_message_chunk", event.Delta.Delta)
-		} else if event.Delta.Type == "thinking_delta" {
+		case "thinking_delta":
 			s.text("agent_thought_chunk", event.Delta.Delta)
 		}
 	case "message_end":
@@ -443,7 +444,8 @@ func (b *bridge) HandleRequest(ctx context.Context, method string, params jsonv1
 			value = input.ModelID
 			input.ConfigID = "model"
 		}
-		if input.ConfigID == "model" {
+		switch input.ConfigID {
+		case "model":
 			provider, model, ok := strings.Cut(value, "/")
 			if !ok {
 				return nil, errors.New("Pi model must include provider/id")
@@ -451,11 +453,11 @@ func (b *bridge) HandleRequest(ctx context.Context, method string, params jsonv1
 			if _, err := s.call(ctx, "set_model", map[string]any{"provider": provider, "modelId": model}); err != nil {
 				return nil, err
 			}
-		} else if input.ConfigID == "thinking" {
+		case "thinking":
 			if _, err := s.call(ctx, "set_thinking_level", map[string]any{"level": value}); err != nil {
 				return nil, err
 			}
-		} else {
+		default:
 			return nil, errors.New("unknown Pi session control")
 		}
 		options, err := s.controls(ctx)
@@ -469,11 +471,12 @@ func (b *bridge) HandleRequest(ctx context.Context, method string, params jsonv1
 		var text []string
 		var images []map[string]string
 		for _, block := range input.Prompt {
-			if block.Type == "text" {
+			switch block.Type {
+			case "text":
 				text = append(text, block.Text)
-			} else if block.Type == "image" {
+			case "image":
 				images = append(images, map[string]string{"type": "image", "mimeType": block.MimeType, "data": block.Data})
-			} else {
+			default:
 				return nil, fmt.Errorf("Pi does not support prompt block %s", block.Type)
 			}
 		}

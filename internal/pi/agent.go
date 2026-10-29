@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -56,11 +57,10 @@ func environment(extra map[string]string) []string {
 	result := netpolicy.Environ()
 	for key, value := range extra {
 		prefix := key + "="
-		for index := len(result) - 1; index >= 0; index-- {
-			if strings.EqualFold(strings.SplitN(result[index], "=", 2)[0], key) {
-				result = append(result[:index], result[index+1:]...)
-			}
-		}
+		result = slices.DeleteFunc(result, func(entry string) bool {
+			name, _, _ := strings.Cut(entry, "=")
+			return strings.EqualFold(name, key)
+		})
 		result = append(result, prefix+value)
 	}
 	return result

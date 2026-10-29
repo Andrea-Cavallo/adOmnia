@@ -52,7 +52,7 @@ func tcpOwnerTable(ctx context.Context, family, tableClass uint32) ([]byte, erro
 			return nil, err
 		}
 		// TCP_TABLE_OWNER_PID_CONNECTIONS=4; TCP_TABLE_OWNER_PID_LISTENER=3.
-		status, _, _ := getExtendedTCPTable.Call(uintptr(unsafe.Pointer(&table[0])), uintptr(unsafe.Pointer(&size)), 1, uintptr(family), uintptr(tableClass), 0)
+		status, _, _ := getExtendedTCPTable.Call(uintptr(unsafe.Pointer(&table[0])), uintptr(unsafe.Pointer(&size)), 1, uintptr(family), uintptr(tableClass), 0) // nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block -- required for Win32 GetExtendedTcpTable interop
 		runtime.KeepAlive(table)
 		if status == 0 {
 			if size < 4 || uint64(size) > uint64(len(table)) {
@@ -87,8 +87,8 @@ func decodeTCPOwnerTable(table []byte, family uint32, listenerTable bool) ([]Con
 	}
 	var connections []Connection
 	var listeners []PortEntry
-	for index := uint32(0); index < count; index++ {
-		row := table[4+int(index)*rowSize : 4+(int(index)+1)*rowSize]
+	for index := range int(count) {
+		row := table[4+index*rowSize : 4+(index+1)*rowSize]
 		owner := int(binary.LittleEndian.Uint32(row[pid:]))
 		port := int(binary.BigEndian.Uint16(row[localPort:]))
 		socketState := binary.LittleEndian.Uint32(row[state:])

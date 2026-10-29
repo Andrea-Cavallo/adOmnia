@@ -118,11 +118,9 @@ func selectFileLines(text string, line, limit int) (string, bool) {
 	if start >= len(lines) {
 		return "", true
 	}
-	end := len(lines)
+	end := min(start+maxACPReadLines, len(lines))
 	if limit > 0 {
-		end = min(start+limit, start+maxACPReadLines, len(lines))
-	} else {
-		end = min(start+maxACPReadLines, len(lines))
+		end = min(start+limit, end)
 	}
 	return strings.Join(lines[start:end], ""), end < len(lines)
 }

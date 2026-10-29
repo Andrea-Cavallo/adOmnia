@@ -75,11 +75,11 @@ type Attempt struct {
 	Context    ContextReceipt `json:"context"`
 	// Prompt è il messaggio approvato nell'anteprima, troncato e redatto:
 	// senza di esso l'export non permette di ricostruire cosa è stato inviato.
-	Prompt string `json:"prompt,omitempty"`
-	StartedAt  time.Time      `json:"startedAt"`
-	EndedAt    *time.Time     `json:"endedAt,omitempty"`
-	Error      string         `json:"error,omitempty"`
-	Events     []Event        `json:"events"`
+	Prompt    string     `json:"prompt,omitempty"`
+	StartedAt time.Time  `json:"startedAt"`
+	EndedAt   *time.Time `json:"endedAt,omitempty"`
+	Error     string     `json:"error,omitempty"`
+	Events    []Event    `json:"events"`
 }
 
 type Task struct {
