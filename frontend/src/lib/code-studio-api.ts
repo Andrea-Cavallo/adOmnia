@@ -2,6 +2,7 @@ import type { JavaJDKReport, JavaJFRRecording, PythonInterpreterReport, PythonUn
 import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/python/models'
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
+import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -953,3 +954,8 @@ export async function getSpringEndpoints(sessionId: string): Promise<SpringEndpo
 export async function refreshSpringMetadata(sessionId: string, limit = 20000): Promise<SpringMetadataReport> {
   return GoIDEBindings.SpringMetadataRefresh(sessionId, limit)
 }
+
+export type { CertificateInfo }
+
+/** Blocchi PEM del testo dell'editor: certificati con i dettagli, chiavi private solo come tipo, bit e cifratura. */
+export const inspectCertificate = (text: string): Promise<CertificateInfo[]> => GoIDEBindings.InspectCertificate(text).then((items) => items ?? [])

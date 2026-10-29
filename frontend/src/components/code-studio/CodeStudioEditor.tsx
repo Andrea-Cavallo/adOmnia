@@ -15,6 +15,8 @@ import { isGeneratedGoFile } from './codeStudioExtraLanguages'
 import { coverageForDocument } from './codeStudioCoverage'
 import { CodeStudioMarkdownDocument, isMarkdownDocument } from './CodeStudioMarkdownView'
 import { CodeStudioImageView, isImageDocument } from './CodeStudioImageView'
+import { CodeStudioCertificateDocument } from './CodeStudioCertificateView'
+import { isCertificateDocument } from '@/lib/code-studio/certificateDocument'
 import { CodeStudioHtmlView, isHtmlDocument, type CodeStudioHtmlMode } from './CodeStudioHtmlView'
 import { CodeStudioLivePreview } from './CodeStudioLivePreview'
 import { CodeStudioServerNotice } from './CodeStudioServerNotice'
@@ -154,6 +156,11 @@ export function CodeStudioEditor({ documents, active, onCursor, onRequestClose, 
             document={active}
             mode={htmlModes[active.document.id] ?? (previewInSplit || previewInTab ? 'editor' : 'split')}
             onModeChange={(mode) => setHtmlModes((modes) => ({ ...modes, [active.document.id]: mode }))}
+            editor={<CodeStudioCodeEditor document={active} handlesReveal onCursor={onCursor} onRunTarget={onRunTarget} />}
+          />
+        ) : isCertificateDocument(active.document.relativePath, active.buffer) ? (
+          <CodeStudioCertificateDocument
+            document={active}
             editor={<CodeStudioCodeEditor document={active} handlesReveal onCursor={onCursor} onRunTarget={onRunTarget} />}
           />
         ) : isMarkdownDocument(active) ? (
