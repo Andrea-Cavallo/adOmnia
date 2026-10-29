@@ -27,6 +27,8 @@ interface CodeStudioAssistantState {
   /** La tab Tasks dell'hub AI resta aperta cambiando provider e rimontando il pannello. */
   tasksOpen: boolean
   open: (pane: Exclude<CodeStudioAssistantPane, null>) => void
+  /** Sceglie l'agente senza aprire la chat (Security Center): resta lo stesso del bottone AI. */
+  choose: (pane: CodeStudioChatPane) => void
   openWithDraft: (pane: Exclude<CodeStudioAssistantPane, null>, draft: string) => void
   showTasks: () => void
   hideTasks: () => void
@@ -41,6 +43,7 @@ export const useCodeStudioAssistantStore = create<CodeStudioAssistantState>((set
   lastProvider: loadLastProvider(),
   tasksOpen: false,
   open: (pane) => set(isChatPane(pane) ? { pane, tasksOpen: false, lastProvider: rememberLastProvider(pane) } : { pane, tasksOpen: false }),
+  choose: (pane) => set({ lastProvider: rememberLastProvider(pane) }),
   openWithDraft: (pane, draft) => set(isChatPane(pane) ? { pane, draft, tasksOpen: false, lastProvider: rememberLastProvider(pane) } : { pane, draft, tasksOpen: false }),
   showTasks: () => set({ tasksOpen: true }),
   hideTasks: () => set({ tasksOpen: false }),

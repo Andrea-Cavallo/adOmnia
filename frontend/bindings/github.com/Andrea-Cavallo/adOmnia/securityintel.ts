@@ -21,6 +21,48 @@
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
 /**
+ * AuditSkillInfo dice se la skill è installata e dove.
+ */
+export function AuditSkillInfo(): $CancellablePromise<string> {
+    return $Call.ByID(2448416698);
+}
+
+/**
+ * AuditSkillInstall scarica la skill al commit fissato; confirmed deve essere true.
+ */
+export function AuditSkillInstall(confirmed: boolean): $CancellablePromise<string> {
+    return $Call.ByID(288099569, confirmed);
+}
+
+/**
+ * AuditSkillInstallPlan è il download da mostrare nella conferma.
+ */
+export function AuditSkillInstallPlan(): $CancellablePromise<string> {
+    return $Call.ByID(3534729374);
+}
+
+/**
+ * AuditSkillPrepare sceglie la cartella della prossima run e scrive il prompt per l'agente.
+ */
+export function AuditSkillPrepare(root: string, profile: string, focus: string): $CancellablePromise<string> {
+    return $Call.ByID(3573896809, root, profile, focus);
+}
+
+/**
+ * AuditSkillReport legge findings.json e REPORT.md della run indicata.
+ */
+export function AuditSkillReport(root: string, run: number): $CancellablePromise<string> {
+    return $Call.ByID(2723746040, root, run);
+}
+
+/**
+ * AuditSkillRuns elenca le run del progetto.
+ */
+export function AuditSkillRuns(root: string): $CancellablePromise<string> {
+    return $Call.ByID(2918794384, root);
+}
+
+/**
  * ExportFormats elenca i formati di esportazione disponibili, con l'estensione.
  */
 export function ExportFormats(): $CancellablePromise<string> {

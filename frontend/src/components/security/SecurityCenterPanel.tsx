@@ -17,6 +17,7 @@ import {
 import { SecurityFindingInspector } from './SecurityFindingInspector'
 import { SecurityProjectPicker } from './SecurityProjectPicker'
 import { SecurityStrixPanel } from './SecurityStrixPanel'
+import { SecurityAuditSkillPanel } from './SecurityAuditSkillPanel'
 
 /**
  * Security Center: adOmnia Security Intelligence per tutto il workspace.
@@ -93,7 +94,7 @@ export function SecurityCenterPanel() {
   const [ecosystem, setEcosystem] = useState<SecurityEcosystem | 'all'>('all')
   const [hideIgnored, setHideIgnored] = useState(true)
   const [selected, setSelected] = useState<SecurityFinding | null>(null)
-  const [view, setView] = useState<'dependencies' | 'strix'>('dependencies')
+  const [view, setView] = useState<'dependencies' | 'strix' | 'audit'>('dependencies')
   const [exportOpen, setExportOpen] = useState(false)
   const [rebuilding, setRebuilding] = useState(false)
   const exportMenu = useRef<HTMLDivElement>(null)
@@ -225,7 +226,8 @@ Command: ${plan.command}`, confirmLabel: 'Rebuild' })
         <h1 className="sec-title">Security</h1>
         <div role="tablist" aria-label="Security tools" className="sec-tabs">
           <button type="button" role="tab" className="sec-tab" aria-selected={dependencyView} onClick={() => setView('dependencies')}>Dependencies</button>
-          <button type="button" role="tab" className="sec-tab" aria-selected={!dependencyView} onClick={() => setView('strix')}>Pentest · Strix</button>
+          <button type="button" role="tab" className="sec-tab" aria-selected={view === 'strix'} onClick={() => setView('strix')}>Pentest · Strix</button>
+          <button type="button" role="tab" className="sec-tab" aria-selected={view === 'audit'} onClick={() => setView('audit')}>Audit · Agent skill</button>
         </div>
       </header>
 
@@ -264,8 +266,11 @@ Command: ${plan.command}`, confirmLabel: 'Rebuild' })
         </div>
       )}
 
-      <div className={cn('min-h-0 flex-1', dependencyView && 'hidden')}>
+      <div className={cn('min-h-0 flex-1', view !== 'strix' && 'hidden')}>
         <SecurityStrixPanel initialProject={workspace} />
+      </div>
+      <div className={cn('min-h-0 flex-1', view !== 'audit' && 'hidden')}>
+        <SecurityAuditSkillPanel initialProject={workspace} />
       </div>
 
       <div className={cn('sec-body', !dependencyView && 'hidden')}>
