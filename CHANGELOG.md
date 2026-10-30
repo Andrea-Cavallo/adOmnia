@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.22] — 2026-10-30
+
+Release notes: [docs/releases/v1.0.22.md](docs/releases/v1.0.22.md).
+
+- **Local LLM chat with Ollama.** Start `ollama serve` and pull a model with progress from the local chat.
+- **Pi agent and redesigned AI chat.** One shared chat header with a provider switcher and a tasks button; Pi joins the coding agents.
+- **Security audit skill.** A Security Center tab runs Cloudflare's security-audit skill through the chosen coding agent.
+- **Flows and network tools.** Delete canvas blocks from the context menu; native Windows TCP snapshots for process observers.
 - **Certificates open decoded in Code Studio.** A `.pem`, `.crt`, `.cer` or `.key` file shows its certificates (subject, issuer, validity and days left, SANs, key usage, fingerprints) and its private keys (type, size, encrypted or not, never the key itself) without going through Power Tools; *Decrypt…* hands an encrypted key to the Power Tools encryptor for the password. The reading is the one Power Tools already used, now shared as `nettools.InspectPEM`.
 
 ## [1.0.21] — 2026-10-28
