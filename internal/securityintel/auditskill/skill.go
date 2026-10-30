@@ -186,6 +186,9 @@ func extract(reader *tar.Reader, target string) error {
 		}
 		total += header.Size
 		destination := filepath.Join(target, filepath.FromSlash(relative))
+		if inside, err := filepath.Rel(target, destination); err != nil || !filepath.IsLocal(inside) {
+			return fmt.Errorf("the downloaded archive has an unsafe path (%s)", relative)
+		}
 		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 			return err
 		}
