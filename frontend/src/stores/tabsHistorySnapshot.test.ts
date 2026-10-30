@@ -6,7 +6,7 @@ import { useTabsStore } from './tabs'
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 it('isolates recorded and reopened nested snapshots from subsequent mutation', () => {
   vi.stubGlobal('window', { dispatchEvent: vi.fn() })
-  vi.stubGlobal('CustomEvent', class {})
+  vi.stubGlobal('CustomEvent', class { readonly type = '' })
   vi.spyOn(useTabsStore.getState(), 'save').mockImplementation(() => undefined)
   const request = { ...blankRequest(), _xExtensions: { nested: { flags: ['original'] } } }
   const response: ResponseData = { status: 200, statusText: 'OK', headers: { test: 'original' }, body: 'x'.repeat(250_000), contentType: 'text/plain', ms: 1, size: 250_000 }

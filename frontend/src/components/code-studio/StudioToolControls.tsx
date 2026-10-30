@@ -14,7 +14,7 @@ export function StudioToolControls({ session, tool, defaultPlacement = 'bottom' 
         options={[{ value: 'bottom', label: 'Bottom' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }]}
         onChange={(value) => placeTool(key, value as ToolPlacement)} />
       <button type="button" className="code-studio-icon-button h-7 w-7" title={maximized ? 'Restore tool size' : 'Maximize tool'} aria-label={maximized ? 'Restore tool size' : 'Maximize tool'} onClick={() => useStudioTools.setState({ maximized: maximized ? null : key })}>{maximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
-      <button type="button" className="code-studio-icon-button h-7 w-7" title="Open tool in separate window" aria-label="Open tool in separate window" onClick={() => void openStudioTool(session, tool)}><ExternalLink size={14} /></button>
+      {tool !== 'local' && <button type="button" className="code-studio-icon-button h-7 w-7" title="Open tool in separate window" aria-label="Open tool in separate window" onClick={() => void openStudioTool(session, tool)}><ExternalLink size={14} /></button>}
     </>}
   </div>
 }

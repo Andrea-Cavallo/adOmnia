@@ -187,7 +187,16 @@ func (c *Conn) answer(message wireMessage) {
 	var result any
 	err := ErrMethodNotFound
 	if c.handler != nil {
-		result, err = c.handler.HandleRequest(context.Background(), message.Method, message.Params)
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			select {
+			case <-c.done:
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+		result, err = c.handler.HandleRequest(ctx, message.Method, message.Params)
+		cancel()
 	}
 	reply := map[string]any{"jsonrpc": "2.0", "id": jsonv1.RawMessage(message.ID)}
 	switch {

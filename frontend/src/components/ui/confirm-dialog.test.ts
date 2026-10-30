@@ -3,10 +3,10 @@ import { splitConfirmMessage } from './confirm-dialog'
 
 describe('splitConfirmMessage', () => {
   it('turns leading Command / Working directory lines into mono details', () => {
-    const result = splitConfirmMessage('Command: go get github.com/x/y@latest\nWorking directory: C:\Users\a\pdld-core\n\nThis may contact the configured Go proxy.')
+    const result = splitConfirmMessage('Command: go get github.com/x/y@latest\nWorking directory: C:Usersapdld-core\n\nThis may contact the configured Go proxy.')
     expect(result.details).toEqual([
       { label: 'Command', value: 'go get github.com/x/y@latest', mono: true },
-      { label: 'Working directory', value: 'C:\Users\a\pdld-core', mono: true },
+      { label: 'Working directory', value: 'C:Usersapdld-core', mono: true },
     ])
     expect(result.message).toBe('This may contact the configured Go proxy.')
   })

@@ -238,10 +238,10 @@ function raceHistory(report: RaceReport, latest: string | null): string {
 }
 
 async function analyzeRaceWithAI(report: RaceReport): Promise<void> {
-  const [{ raceAIDraft }, { useCodeStudioStore }, { getGoIDEAIPolicy }, { isChatPane, useCodeStudioAssistantStore }] = await Promise.all([
+  const [{ raceAIDraft }, { useCodeStudioStore: codeStudioStore }, { getGoIDEAIPolicy }, { isChatPane, useCodeStudioAssistantStore }] = await Promise.all([
     import('@/lib/code-studio/debugAI'), import('@/stores/codeStudio'), import('@/lib/code-studio-api'), import('@/stores/codeStudioAssistant'),
   ])
-  const sessionId = useCodeStudioStore.getState().activeSessionId
+  const sessionId = codeStudioStore.getState().activeSessionId
   if (!sessionId || (await getGoIDEAIPolicy(sessionId)) !== 'allowed') return
   const assistant = useCodeStudioAssistantStore.getState()
   assistant.openWithDraft(isChatPane(assistant.pane) ? assistant.pane : 'claude', raceAIDraft(report))

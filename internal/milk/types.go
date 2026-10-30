@@ -2,6 +2,7 @@ package milk
 
 import (
 	"encoding/json/v2"
+	"time"
 )
 
 // State è lo stato dell'integrazione mostrato nella status bar.
@@ -20,14 +21,24 @@ const (
 )
 
 // Status è lo stato pubblicato al frontend.
+type Capabilities struct {
+	ProtocolVersion int  `json:"protocolVersion"`
+	LoadSession     bool `json:"loadSession"`
+	ResumeSession   bool `json:"resumeSession"`
+	CloseSession    bool `json:"closeSession"`
+	PromptImages    bool `json:"promptImages"`
+	ReadTextFile    bool `json:"readTextFile"`
+}
+
 type Status struct {
-	State       State  `json:"state"`
-	Message     string `json:"message,omitempty"`
-	Binary      string `json:"binary,omitempty"`
-	Version     string `json:"version,omitempty"`
-	Running     bool   `json:"running"`
-	Restarts    int    `json:"restarts"`
-	ActiveAgent string `json:"activeAgent,omitempty"`
+	State        State        `json:"state"`
+	Message      string       `json:"message,omitempty"`
+	Binary       string       `json:"binary,omitempty"`
+	Version      string       `json:"version,omitempty"`
+	Running      bool         `json:"running"`
+	Restarts     int          `json:"restarts"`
+	ActiveAgent  string       `json:"activeAgent,omitempty"`
+	Capabilities Capabilities `json:"capabilities"`
 	// Backend è chi serve i turni secondo l'agente (Claude Code: "AWS Bedrock", "Claude Pro"…).
 	Backend string `json:"backend,omitempty"`
 	// Model è il modello dell'ultima sessione aperta.
@@ -37,10 +48,15 @@ type Status struct {
 // PromptRequest descrive un turno di chat milk. Token è generato dal frontend e
 // collega progress/cancel; Root è la cartella del progetto attivo.
 type PromptRequest struct {
-	Token   string            `json:"token"`
-	Root    string            `json:"root,omitempty"`
-	Message string            `json:"message"`
-	Images  []ImageAttachment `json:"images,omitempty"`
+	Token      string            `json:"token"`
+	Root       string            `json:"root,omitempty"`
+	SessionKey string            `json:"sessionKey,omitempty"`
+	Message    string            `json:"message"`
+	Images     []ImageAttachment `json:"images,omitempty"`
+	// TimeLimit, se impostato, sostituisce il timeout del turno configurato:
+	// i task hanno un proprio limite esplicito e non devono essere tagliati
+	// dal timeout globale della chat.
+	TimeLimit time.Duration `json:"-"`
 }
 
 type ImageAttachment struct {
@@ -133,6 +149,7 @@ type ChatEvent struct {
 	Token      string      `json:"token"`
 	Root       string      `json:"root"`
 	SessionID  string      `json:"sessionId,omitempty"`
+	SessionKey string      `json:"sessionKey,omitempty"`
 	Kind       string      `json:"kind"` // begin | text | thought | tool | end | route | warning | error
 	Reply      string      `json:"reply,omitempty"`
 	Tool       *ToolUpdate `json:"tool,omitempty"`
@@ -159,6 +176,7 @@ type PermissionOption struct {
 type PermissionEvent struct {
 	RequestID   string             `json:"requestId"`
 	SessionID   string             `json:"sessionId"`
+	SessionKey  string             `json:"sessionKey,omitempty"`
 	ToolCallID  string             `json:"toolCallId"`
 	Title       string             `json:"title"`
 	Description string             `json:"description"`

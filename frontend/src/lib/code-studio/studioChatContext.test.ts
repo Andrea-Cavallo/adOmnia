@@ -5,7 +5,7 @@ const fixture = vi.hoisted(() => ({
   state: {
     sessions: [{ id: 's1', project: { realPath: '/project', name: 'Example' } }],
     activeDocumentBySession: { s1: 'doc1' },
-    documents: [{ document: { id: 'doc1', sessionId: 's1', relativePath: 'src/Example.java' }, buffer: 'class Example {\n  String value = "unsaved";\n}', dirty: true }],
+    documents: [{ document: { id: 'doc1', sessionId: 's1', relativePath: 'src/Example.java' }, buffer: 'class Example {\n  String value = "unsaved";\n}', savedContent: 'class Example {\n  String value = "saved";\n}', dirty: true }],
     directoryEntries: { s1: { '': [{ relativePath: 'src', ignored: false }, { relativePath: '.env', ignored: false }] } },
   },
 }))
@@ -15,7 +15,10 @@ vi.mock('@/lib/code-studio-api', () => ({
   getGoIDEProjectRules: vi.fn(async () => fixture.rules),
   listGoIDEAIExcludedPaths: vi.fn(async () => fixture.excluded),
   quickOpenGoIDEFiles: vi.fn(async () => [{ relativePath: 'src/unexpanded/Other.java' }]),
+  openGoIDEDocument: vi.fn(async (_sessionId: string, path: string) => ({ document: { id: `opened-${path}` }, content: 'explicit file contents' })),
+  closeGoIDEDocument: vi.fn(async () => undefined),
 }))
+import { closeGoIDEDocument, openGoIDEDocument } from '@/lib/code-studio-api'
 import { prepareStudioChat } from './studioChatContext'
 
 beforeEach(() => {
@@ -120,5 +123,39 @@ describe('local agent context', () => {
     await expect(prepareStudioChat('/project', 'Explain', enabled)).rejects.toThrow('local AI')
     fixture.policy = 'off'
     await expect(prepareStudioChat('/project', 'Explain', enabled, false, true)).rejects.toThrow('turned off')
+  })
+})
+
+describe('agent task context preview', () => {
+  it('uses saved contents by default and reports a complete receipt', async () => {
+    const prompt = await prepareStudioChat('/project', 'Fix', { ...enabled, includeUnsaved: false })
+    expect(prompt.message).toContain('String value = "saved"')
+    expect(prompt.message).not.toContain('String value = "unsaved"')
+    expect(prompt.includesUnsaved).toBe(false)
+    expect(prompt.bytes).toBe(new TextEncoder().encode(prompt.message).length)
+    expect(prompt.sources).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'document', path: 'src/Example.java', unsaved: false })]))
+    expect(prompt.excludedPaths).toContain('.env')
+  })
+  it('includes unsaved contents only by explicit opt-in', async () => {
+    const prompt = await prepareStudioChat('/project', 'Fix', { ...enabled, includeUnsaved: true })
+    expect(prompt.message).toContain('String value = "unsaved"')
+    expect(prompt.includesUnsaved).toBe(true)
+  })
+  it('reads explicit files, closes temporary documents and never reads excluded paths', async () => {
+    vi.mocked(openGoIDEDocument).mockClear()
+    vi.mocked(closeGoIDEDocument).mockClear()
+    fixture.excluded.push('src/Secret.java')
+    const prompt = await prepareStudioChat('/project', 'Fix', { ...enabled, additionalPaths: ['src/Other.java', 'src/Secret.java'] })
+    expect(prompt.message).toContain('Explicit project file: src/Other.java\nexplicit file contents')
+    expect(openGoIDEDocument).toHaveBeenCalledWith('s1', 'src/Other.java')
+    expect(openGoIDEDocument).not.toHaveBeenCalledWith('s1', 'src/Secret.java')
+    expect(closeGoIDEDocument).toHaveBeenCalledWith('s1', 'opened-src/Other.java')
+    expect(prompt.sources).toEqual(expect.arrayContaining([expect.objectContaining({ path: 'src/Secret.java', excluded: true })]))
+  })
+  it('honours the task byte limit and marks truncation', async () => {
+    fixture.state.documents[0].buffer = '文'.repeat(2000)
+    const prompt = await prepareStudioChat('/project', 'Fix', { ...enabled, maxContextBytes: 1024 })
+    expect(prompt.bytes).toBeLessThanOrEqual(1024)
+    expect(prompt.truncated).toBe(true)
   })
 })

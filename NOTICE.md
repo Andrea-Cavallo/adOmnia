@@ -21,6 +21,12 @@ adOmnia includes or depends on the following third-party software:
 - **Copyright**: Copyright (c) 2014-present Sebastian McKenzie and other contributors
 - **Repository**: https://github.com/babel/babel
 
+### Cloudflare security-audit skill
+- **License**: MIT License
+- **Copyright**: Copyright (c) 2025-2026 Cloudflare, Inc.
+- **Repository**: https://github.com/cloudflare/security-audit-skill
+- Not bundled: the Security Center downloads it on request, with its LICENSE, into `~/.agents/skills/security-audit`.
+
 ---
 
 ## Disclaimer

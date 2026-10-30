@@ -153,14 +153,14 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
       // ha all'avvio e ciò che viene scritto prima del fit resta spezzato per sempre. La vista si
       // riallinea appena montata; questo è il miglior tentativo prima ancora che esista.
       const host = viewsRef.current
-      const visible = host && host.clientWidth > 0 && host.clientHeight > 0
+      const hostVisible = host && host.clientWidth > 0 && host.clientHeight > 0
       const opened = await openGoIDETerminal({
         sessionId: session.id,
         profile: chosenProfile,
         name,
         workingDirectory,
-        columns: visible ? Math.max(40, Math.floor((host.clientWidth - 24) / 8)) : 80,
-        rows: visible ? Math.max(10, Math.floor((host.clientHeight - 12) / 17)) : 24,
+        columns: hostVisible ? Math.max(40, Math.floor((host.clientWidth - 24) / 8)) : 80,
+        rows: hostVisible ? Math.max(10, Math.floor((host.clientHeight - 12) / 17)) : 24,
       })
       openedProfiles.current.set(opened.id, chosenProfile)
       setTerminals((current) => [...current, opened])

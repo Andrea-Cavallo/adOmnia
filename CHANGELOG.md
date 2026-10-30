@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+- **Certificates open decoded in Code Studio.** A `.pem`, `.crt`, `.cer` or `.key` file shows its certificates (subject, issuer, validity and days left, SANs, key usage, fingerprints) and its private keys (type, size, encrypted or not, never the key itself) without going through Power Tools; *Decrypt…* hands an encrypted key to the Power Tools encryptor for the password. The reading is the one Power Tools already used, now shared as `nettools.InspectPEM`.
+
 ## [1.0.21] — 2026-10-28
 
 Release notes: [docs/releases/v1.0.21.md](docs/releases/v1.0.21.md).

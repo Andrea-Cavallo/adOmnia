@@ -218,7 +218,7 @@ export function parseShellDoc(input: string, label: string, fallback: BsonDoc | 
     try {
       parsed = JSON.parse(shellToJson(text))
     } catch (e) {
-      throw new Error(`${label}: ${e instanceof Error ? e.message.replace(/^JSON\.parse: /, '') : 'invalid syntax'}`)
+      throw new Error(`${label}: ${e instanceof Error ? e.message.replace(/^JSON\.parse: /, '') : 'invalid syntax'}`, { cause: e })
     }
   }
   if (!isPlainObject(parsed)) throw new Error(`${label} must be an object, e.g. { field: 'value' }`)
@@ -236,7 +236,7 @@ export function parseEditorDocuments(input: string): BsonDoc[] {
     try {
       parsed = JSON.parse(shellToJson(text))
     } catch (e) {
-      throw new Error(e instanceof Error ? e.message.replace(/^JSON\.parse: /, '') : 'Invalid JSON')
+      throw new Error(e instanceof Error ? e.message.replace(/^JSON\.parse: /, '') : 'Invalid JSON', { cause: e })
     }
   }
   const docs = Array.isArray(parsed) ? parsed : [parsed]

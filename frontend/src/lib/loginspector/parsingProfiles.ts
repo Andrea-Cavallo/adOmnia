@@ -79,7 +79,7 @@ export function validateParsingProfile(value: unknown): { profile?: ParsingProfi
     const pattern = multiline?.[key]
     if (pattern === undefined || pattern === '') continue
     if (typeof pattern !== 'string' || pattern.length > 500) errors.push(`${key} must be a regex string up to 500 characters.`)
-    else try { new RegExp(pattern) } catch { errors.push(`${key} is not a valid JavaScript regex.`) }
+    else try { RegExp(pattern) } catch { errors.push(`${key} is not a valid JavaScript regex.`) }
   }
 
   const limits = input.limits as Record<string, unknown> | undefined

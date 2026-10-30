@@ -8,7 +8,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/nettools"
 )
 
-// The map refreshes every 2 s; netstat/tasklist run at most once per socketsTTL.
+// The map refreshes every 2 s; socket discovery runs at most once per socketsTTL.
 const socketsTTL = 5 * time.Second
 
 var sockets struct {
@@ -29,11 +29,7 @@ func liveSockets(ctx context.Context) ([]Conn, []Listener, bool) {
 	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
 	defer cancel()
 	sockets.at, sockets.ok = time.Now(), false
-	established, err := nettools.ListEstablished(ctx)
-	if err != nil {
-		return nil, nil, false
-	}
-	listening, err := nettools.ListListeningPorts(ctx)
+	established, listening, err := nettools.ListTCPSockets(ctx)
 	if err != nil {
 		return nil, nil, false
 	}

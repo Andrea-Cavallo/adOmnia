@@ -23,7 +23,7 @@ export function layoutFlow(graph: FlowGraphDefinition): FlowGraphDefinition {
   if (!queue.length && graph.nodes[0]) queue.push(graph.nodes[0].id)
   for (const id of queue) {
     if (!ranks.has(id)) ranks.set(id, 0)
-    for (const edge of graph.edges.filter(edge => edge.source === id)) {
+    for (const edge of graph.edges.filter(outgoing => outgoing.source === id)) {
       if (queue.includes(edge.target)) continue
       ranks.set(edge.target, Math.max(ranks.get(edge.target) ?? 0, (ranks.get(id) ?? 0) + 1))
       remaining.set(edge.target, (remaining.get(edge.target) ?? 1) - 1)

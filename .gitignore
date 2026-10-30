@@ -15,6 +15,10 @@ ehthumbs.db
 *.swo
 *~
 
+.opencode/
+adOmnia-vault/
+graphify-out/
+
 # Local env / secrets
 .env
 .env.*

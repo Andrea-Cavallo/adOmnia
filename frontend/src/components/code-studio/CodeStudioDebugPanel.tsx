@@ -58,6 +58,7 @@ function DebugToolbar({ view, sessionId, tab, onTab, alerts, request }: { view: 
   useCodeStudioKeymap()
   const shortcut = (id: CodeStudioCommandId) => { const command = CODE_STUDIO_COMMANDS.find(item => item.id === id); return command ? commandShortcut(command) : undefined }
   const debuggers = useCodeStudioDebugStore((state) => state.debuggers)
+  // oxlint-disable-next-line react/hooks -- Zustand store access (getState), not a hook call
   const { step, stop, restart, selectDebugger } = useCodeStudioDebugStore.getState()
   const paused = view.info.state === 'stopped'
   const live = view.info.state !== 'terminated'

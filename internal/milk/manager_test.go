@@ -18,6 +18,16 @@ func TestSessionsAreForgottenWithTheProcess(t *testing.T) {
 	}
 }
 
+func TestNegotiatedProtocolMustMatchRequestedVersion(t *testing.T) {
+	agent := Agent{Name: "fixture", Protocol: 1}
+	if err := validateNegotiatedProtocol(agent, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateNegotiatedProtocol(agent, 2); err == nil {
+		t.Fatal("expected an incompatible ACP version to be rejected")
+	}
+}
+
 func TestPermissionWithoutMatchingOptionIsCancelled(t *testing.T) {
 	allow, deny := permissionOptionIDs(nil)
 	if allow != "" || deny != "" {

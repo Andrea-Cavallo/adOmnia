@@ -1290,7 +1290,7 @@ export function WebSocketPanel() {
     return response.json()
   }, [getResolvedVars, port])
 
-  const handleConnect = useCallback(async (overrideUrl?: string) => {
+  const handleConnect = useCallback(async function reconnect(overrideUrl?: string) {
     if (!port) {
       addSystem('Sidecar server is not ready yet.', 'error')
       return
@@ -1330,7 +1330,7 @@ export function WebSocketPanel() {
           reconnectAttemptsRef.current += 1
           setStatus('reconnecting')
           addSystem(`Auto-reconnect scheduled (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})`)
-          reconnectTimer.current = setTimeout(() => void handleConnect(), configRef.current.reconnectDelay * 1000)
+          reconnectTimer.current = setTimeout(() => void reconnect(), configRef.current.reconnectDelay * 1000)
         }
       }
 

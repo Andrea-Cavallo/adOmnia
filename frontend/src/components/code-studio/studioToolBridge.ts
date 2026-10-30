@@ -2,6 +2,7 @@ import { Events } from '@wailsio/runtime'
 import * as AppBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioWindowsStore } from '@/stores/codeStudioWindows'
+import { usePiAgentStore } from '@/stores/piAgent'
 import { useMilkStore } from '@/stores/milk'
 import { useClaudeCodeStore } from '@/stores/claudeCode'
 import type { AgentChatStore } from '@/stores/agentChat'
@@ -21,7 +22,7 @@ const SNAPSHOT = 'studio-tool:snapshot'
 interface Request { session: string; tool: StudioTool; id: string; action: string; args: unknown[] }
 type Snapshot = ReturnType<typeof snapshot>
 /** ACP agent chats (internal/milk on the backend): same store shape, same forwarding. */
-const agentStore = (tool: StudioTool): AgentChatStore | null => tool === 'milk' ? useMilkStore : tool === 'claude' ? useClaudeCodeStore : null
+const agentStore = (tool: StudioTool): AgentChatStore | null => tool === 'milk' ? useMilkStore : tool === 'claude' ? useClaudeCodeStore : tool === 'pi' ? usePiAgentStore : null
 let ownerStarted = false
 let clientStarted = false
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
@@ -40,7 +41,7 @@ function snapshot(sessionId: string, tool: StudioTool) {
   const document = ide.documents.find((item) => item.document.id === ide.activeDocumentBySession[sessionId])
   return {
     key: toolKey(sessionId, tool), session,
-    document: tool === 'copilot' || agent ? document ?? null : null,
+    document: tool === 'copilot' || tool === 'local' || agent ? document ?? null : null,
     executions, activeRun: ide.activeRunBySession[sessionId],
     consoleByRun: tool === 'run' || tool === 'logs' ? Object.fromEntries(executions.map((run) => [run.id, ide.consoleByRun[run.id] ?? []])) : {},
     agent: agent ? { status: agent.status, settings: agent.settings, chatThreads: { [root]: agent.chatThreads[root] }, permissions: agent.permissions } : null,
@@ -87,12 +88,13 @@ export function startStudioToolOwner() {
   useCodeStudioStore.subscribe((state, previous) => {
     if (state.sessions !== previous.sessions) schedule(STUDIO_TOOLS)
     if (state.executions !== previous.executions || state.consoleByRun !== previous.consoleByRun || state.activeRunBySession !== previous.activeRunBySession) schedule(['run', 'logs'])
-    if (state.documents !== previous.documents || state.activeDocumentBySession !== previous.activeDocumentBySession) schedule(['copilot', 'milk', 'claude'])
+    if (state.documents !== previous.documents || state.activeDocumentBySession !== previous.activeDocumentBySession) schedule(['copilot', 'milk', 'claude', 'pi'])
   })
+  usePiAgentStore.subscribe(() => schedule(['pi']))
   useMilkStore.subscribe(() => schedule(['milk']))
   useClaudeCodeStore.subscribe(() => schedule(['claude']))
   useCopilotStore.subscribe(() => schedule(['copilot']))
-  useCodeStudioAssistantStore.subscribe(() => schedule(['milk', 'claude', 'copilot']))
+  useCodeStudioAssistantStore.subscribe(() => schedule(['milk', 'claude', 'copilot', 'pi']))
   useCodeStudioLspStore.subscribe((state, previous) => { if (state.terminalRequest !== previous.terminalRequest) schedule(['terminal']) })
   useStudioTools.subscribe((state, previous) => {
     if (state.detached !== previous.detached) schedule(STUDIO_TOOLS)

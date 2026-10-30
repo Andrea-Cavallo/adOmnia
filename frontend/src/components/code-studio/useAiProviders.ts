@@ -1,4 +1,5 @@
 import { useCopilotStore } from '@/stores/copilot'
+import { usePiAgentStore } from '@/stores/piAgent'
 import { useMilkStore } from '@/stores/milk'
 import { useClaudeCodeStore } from '@/stores/claudeCode'
 import type { CodeStudioChatPane } from '@/stores/codeStudioAssistant'
@@ -13,10 +14,11 @@ export interface AiProviderState {
 }
 
 /** Accende o spegne un provider: salva l'impostazione e il backend ferma o avvia il processo. */
-export const setAiProviderEnabled: Record<CodeStudioChatPane, (enabled: boolean) => Promise<boolean>> = {
+export const setAiProviderEnabled: Record<Exclude<CodeStudioChatPane, 'local'>, (enabled: boolean) => Promise<boolean>> = {
   copilot: (enabled) => useCopilotStore.getState().setEnabled(enabled),
   milk: (enabled) => useMilkStore.getState().setEnabled(enabled),
   claude: (enabled) => useClaudeCodeStore.getState().setEnabled(enabled),
+  pi: enabled => usePiAgentStore.getState().setEnabled(enabled),
 }
 
 /** Stato dei tre provider AI, per i pallini della hub e del bottone unico della stripe. */
@@ -27,7 +29,11 @@ export function useAiProviders(): Record<CodeStudioChatPane, AiProviderState> {
   const copilotEnabled = useCopilotStore((state) => state.settings?.enabled)
   const milkEnabled = useMilkStore((state) => state.settings?.enabled)
   const claudeEnabled = useClaudeCodeStore((state) => state.settings?.enabled)
+  const pi = usePiAgentStore(state => state.status)
+  const piEnabled = usePiAgentStore(state => state.settings?.enabled)
   return {
+    pi: { tone: aiProviderTone(pi?.state), message: pi?.message ?? null, enabled: piEnabled ?? null },
+    local: { tone: 'idle', message: 'Local endpoint; connect or list models in the Local LLM tab.', enabled: true },
     copilot: { tone: aiProviderTone(copilot?.state), message: copilot?.message ?? null, enabled: copilotEnabled ?? null },
     milk: { tone: aiProviderTone(milk?.state), message: milk?.message ?? null, enabled: milkEnabled ?? null },
     claude: { tone: aiProviderTone(claude?.state), message: claude?.message ?? null, enabled: claudeEnabled ?? null },
@@ -40,6 +46,7 @@ export function useAiProviders(): Record<CodeStudioChatPane, AiProviderState> {
  */
 export function ensureAiProviders(): void {
   void useCopilotStore.getState().ensure()
+  void usePiAgentStore.getState().ensure()
   void useMilkStore.getState().ensure()
   void useClaudeCodeStore.getState().ensure()
 }

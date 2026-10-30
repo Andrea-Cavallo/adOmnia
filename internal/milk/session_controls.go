@@ -31,7 +31,7 @@ func (m *Manager) SessionControls(root string) (SessionControls, error) {
 	if strings.TrimSpace(root) == "" {
 		return SessionControls{}, errors.New("open a project first")
 	}
-	if _, err := m.sessionFor(root); err != nil {
+	if _, err := m.sessionFor(root, ""); err != nil {
 		return SessionControls{}, err
 	}
 	m.mu.Lock()

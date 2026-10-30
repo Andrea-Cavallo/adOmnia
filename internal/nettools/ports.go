@@ -32,7 +32,7 @@ type listeningPortsResponse struct {
 
 // listeningPortsHandler returns the TCP ports currently in LISTEN state on the
 // local machine, each annotated with the owning process. It picks the right
-// native tool per OS (netstat on Windows, ss/netstat on Linux, lsof on macOS).
+// native source per OS (TCP tables on Windows, ss/netstat on Linux, lsof on macOS).
 func listeningPortsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
@@ -65,12 +65,15 @@ func runCmd(ctx context.Context, name string, args ...string) (string, error) {
 func listListeningPorts(ctx context.Context) (string, []PortEntry, error) {
 	switch runtime.GOOS {
 	case "windows":
-		out, err := runCmd(ctx, "netstat", "-ano", "-p", "tcp")
+		_, entries, err := ListTCPSockets(ctx)
 		if err != nil {
 			return "", nil, err
 		}
 		names := windowsPIDNames(ctx)
-		return "netstat -ano", parseNetstatWindows(out, names), nil
+		for index := range entries {
+			entries[index].Process = names[entries[index].PID]
+		}
+		return "Windows TCP table", entries, nil
 	case "darwin":
 		out, err := runCmd(ctx, "lsof", "-nP", "-iTCP", "-sTCP:LISTEN")
 		if err != nil {

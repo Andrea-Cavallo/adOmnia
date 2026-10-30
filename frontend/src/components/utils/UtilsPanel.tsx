@@ -267,51 +267,52 @@ function diffCounts(rows: JsonDiffRow[]): Record<JsonDiffStatus, number> {
 // =========== JSON Graph visualizer ===========
 
 function JsonGraphView({ json }: { json: string }) {
+  let data: unknown
   try {
-    const data = JSON.parse(json)
-    const renderNode = (obj: unknown, depth: number = 0): React.ReactNode => {
-      if (obj === null) return <span className="text-json-null">null</span>
-      if (typeof obj === 'boolean') return <span className="text-json-bool">{String(obj)}</span>
-      if (typeof obj === 'number') return <span className="text-json-number">{obj}</span>
-      if (typeof obj === 'string') return <span className="text-json-string">"{obj}"</span>
-      if (Array.isArray(obj)) {
-        return (
-          <div className="ml-4">
-            <span className="text-text-3">[</span>
-            {obj.map((item, i) => (
-              <div key={i} className="flex gap-1">
-                <span className="text-text-4 text-[10px]">{i}:</span>
-                {renderNode(item, depth + 1)}
-                {i < obj.length - 1 && <span className="text-text-3">,</span>}
-              </div>
-            ))}
-            <span className="text-text-3">]</span>
-          </div>
-        )
-      }
-      if (typeof obj === 'object') {
-        const keys = Object.keys(obj)
-        return (
-          <div className="ml-4">
-            <span className="text-text-3">{'{'}</span>
-            {keys.map((k) => (
-              <div key={k} className="flex gap-1">
-                <span className="text-json-key">"{k}"</span>
-                <span className="text-text-3">:</span>
-                {renderNode((obj as Record<string, unknown>)[k], depth + 1)}
-                {k !== keys[keys.length - 1] && <span className="text-text-3">,</span>}
-              </div>
-            ))}
-            <span className="text-text-3">{'}'}</span>
-          </div>
-        )
-      }
-      return <span>{String(obj)}</span>
-    }
-    return <div className="font-mono text-xs">{renderNode(data)}</div>
+    data = JSON.parse(json)
   } catch {
     return <span className="text-xs text-error">Invalid JSON</span>
   }
+  const renderNode = (obj: unknown, depth: number = 0): React.ReactNode => {
+    if (obj === null) return <span className="text-json-null">null</span>
+    if (typeof obj === 'boolean') return <span className="text-json-bool">{String(obj)}</span>
+    if (typeof obj === 'number') return <span className="text-json-number">{obj}</span>
+    if (typeof obj === 'string') return <span className="text-json-string">"{obj}"</span>
+    if (Array.isArray(obj)) {
+      return (
+        <div className="ml-4">
+          <span className="text-text-3">[</span>
+          {obj.map((item, i) => (
+            <div key={i} className="flex gap-1">
+              <span className="text-text-4 text-[10px]">{i}:</span>
+              {renderNode(item, depth + 1)}
+              {i < obj.length - 1 && <span className="text-text-3">,</span>}
+            </div>
+          ))}
+          <span className="text-text-3">]</span>
+        </div>
+      )
+    }
+    if (typeof obj === 'object') {
+      const keys = Object.keys(obj)
+      return (
+        <div className="ml-4">
+          <span className="text-text-3">{'{'}</span>
+          {keys.map((k) => (
+            <div key={k} className="flex gap-1">
+              <span className="text-json-key">"{k}"</span>
+              <span className="text-text-3">:</span>
+              {renderNode((obj as Record<string, unknown>)[k], depth + 1)}
+              {k !== keys[keys.length - 1] && <span className="text-text-3">,</span>}
+            </div>
+          ))}
+          <span className="text-text-3">{'}'}</span>
+        </div>
+      )
+    }
+    return <span>{String(obj)}</span>
+  }
+  return <div className="font-mono text-xs">{renderNode(data)}</div>
 }
 
 // =========== XML Tools ===========

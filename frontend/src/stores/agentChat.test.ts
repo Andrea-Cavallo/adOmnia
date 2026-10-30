@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/code-studio/studioChatContext', () => ({ prepareStudioChat: async (_root: string, message: string) => ({ message: `prepared ${message}`, labels: ['project', 'current.py (unsaved)'] }) }))
-import { createAgentChatStore, type AgentChatApi } from './agentChat'
+import { applyAgentChatEvent, createAgentChatStore, type AgentChatApi } from './agentChat'
 
 describe('shared agent prompt transport', () => {
   it('sends images separately from project text and never stores image bytes in the transcript', async () => {
@@ -18,5 +18,9 @@ describe('shared agent prompt transport', () => {
     expect(await store.getState().sendChat('/project', 'Explain')).toBe(false)
     expect(store.getState().chatThreads['/project'].error).toBe('agent offline')
     expect(store.getState().chatThreads['/project'].busyToken).toBeNull()
+  })
+  it('keeps scoped task events out of provider chats', () => {
+    const threads = {}
+    expect(applyAgentChatEvent(threads, { token: 'attempt-one', root: '/project', sessionKey: 'attempt-one', kind: 'begin' })).toBe(threads)
   })
 })

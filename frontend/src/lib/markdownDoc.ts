@@ -515,7 +515,7 @@ export function extractMarkdownEdges(
     })
   }
 
-  const standard = /(?<![!\[])!?\[[^\]]*]\(([^)]+)\)/g
+  const standard = /(?<![![])!?\[[^\]]*]\(([^)]+)\)/g
   let match: RegExpExecArray | null
   while ((match = standard.exec(content))) pushTarget(match[1], match[1], 'markdown')
 

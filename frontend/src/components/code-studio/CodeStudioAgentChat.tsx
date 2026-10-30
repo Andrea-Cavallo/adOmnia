@@ -1,3 +1,4 @@
+import { ChatConnectionDetails, ChatContext, ChatSessionOptions, useCodeStudioChatHeader } from './CodeStudioChatChrome'
 import { ProjectRulesToggle } from './ProjectRulesToggle'
 import { CodeStudioAgentReviewBar } from './CodeStudioAgentReviewBar'
 import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent, type MouseEvent } from 'react'
@@ -24,7 +25,7 @@ import { listGoIDEDirectory } from '@/lib/code-studio-api'
 export interface ChatAgent {
   sessionControls?: (root: string) => Promise<AgentSessionControls>
   setSessionControl?: (root: string, id: string, value: unknown) => Promise<AgentSessionControls>
-  tool: 'milk' | 'claude'
+  tool: 'milk' | 'claude' | 'pi'
   name: string
   store: AgentChatStore
   Logo: ComponentType<{ size?: number }>
@@ -150,13 +151,14 @@ const Reply = memo(function Reply({ agent, message, command }: { agent: ChatAgen
 })
 
 export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgentChatProps) {
+  const chrome = useCodeStudioChatHeader()
   const { store, Logo, name, tool } = agent
   const root = session.project.realPath
   const activeRoot = useRef(root)
   activeRoot.current = root
   const status = store((state) => state.status)
   const thread = store((state) => state.chatThreads[root])
-  const permissions = store((state) => state.permissions)
+  const permissions = store((state) => state.permissions).filter((permission) => !permission.sessionKey)
   const advertisedCommands = store((state) => state.commandsByRoot[root])
   const [draft, setDraft] = useToolView(session.id, tool, 'draft', '')
   const [includeFile, setIncludeFile] = useToolView(session.id, tool, 'includeFile', true)
@@ -275,14 +277,10 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
 
   return (
     <section aria-label={`${name} chat`} className="milk-chat">
-      <header className="milk-bar">
-        <Logo size={16} />
-        <span className="milk-bar-title">{name}</span>
-        {status?.version && <span className="milk-bar-version">{status.version}</span>}
-        {/* Who serves the turns (Claude Code: plan, API key, AWS Bedrock, Vertex AI, gateway) and with which model. */}
-        {(status?.backend || status?.model) && <span className="milk-bar-version min-w-0 truncate" title={[status.backend, status.model].filter(Boolean).join(' · ')}>{[status.backend, status.model].filter(Boolean).join(' · ')}</span>}
-        <span className="flex-1" />
-        <CodeStudioAgentSessionOptions controls={currentControls} disabled={busy || controlsBusy} onChange={changeControl} />
+      <header className="milk-bar studio-chat-header">
+        {chrome ?? <><Logo size={16} /><span className="milk-bar-title">{name}</span><span className="flex-1" /></>}
+        {!!currentControls?.controls.length && <ChatSessionOptions label={String(currentControls.controls.find(control => control.category === 'model')?.currentValue ?? status?.model ?? 'Model')}><CodeStudioAgentSessionOptions controls={currentControls} disabled={busy || controlsBusy} onChange={changeControl} /></ChatSessionOptions>}
+        <ChatConnectionDetails><strong>{name}</strong>{status?.version && <span>Version {status.version}</span>}{status?.backend && <span>{status.backend}</span>}{status?.model && <span>{status.model}</span>}<span>{status?.message || 'Provider configuration and model controls are managed in settings.'}</span></ChatConnectionDetails>
         <button type="button" onClick={openSettings} className="code-studio-icon-button h-7 w-7" title={`${name} settings`} aria-label={`${name} settings`}><Settings2 size={14} /></button>
         <button type="button" disabled={busy || controlsBusy} onClick={() => { void store.getState().newChat(root).then(() => { setControls(null); setControlsRetry(value => value + 1) }) }} className="code-studio-icon-button h-7 w-7" title="New chat" aria-label="New chat"><Plus size={15} /></button>
       </header>
@@ -334,13 +332,15 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
           </p>
         )}
         <CodeStudioAgentReviewBar root={root} busy={busy} />
-        <div className="mb-2 flex flex-wrap gap-2 text-[10px] text-text-3" aria-label={`${name} context`}>
+        <ChatContext summary={includeFile && document ? document.document.relativePath : includeWorkspace ? session.project.name : undefined}>
+        <div className="flex flex-wrap gap-2 text-xs text-text-2" aria-label={`${name} context`}>
           <ProjectRulesToggle included={includeRules} onChange={setIncludeRules} />
           <button type="button" disabled={!document} aria-pressed={includeFile && !!document} onClick={() => setIncludeFile(!includeFile)} title={document?.document.relativePath || 'No active file'} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeFile ? '✓ ' : ''}{document?.document.relativePath || 'No active file'}</button>
           <button type="button" disabled={!document} aria-pressed={includeSelection} onClick={() => setIncludeSelection(!includeSelection)} className="rounded border border-border-1 px-2 py-1">{includeSelection ? '✓ ' : ''}Selection</button>
           <button type="button" aria-pressed={includeWorkspace} onClick={() => setIncludeWorkspace(!includeWorkspace)} title={session.project.name} className="max-w-full truncate rounded border border-border-1 px-2 py-1">{includeWorkspace ? '✓ ' : ''}{session.project.name}</button>
         </div>
         <p className="mb-2 text-[10px] text-text-4">Enabled context and selected attachments are sent to {name}. Unsaved editor changes are included; excluded paths and text secrets are filtered.</p>
+        </ChatContext>
         {!!attachments.length && <div className="mb-2 flex flex-wrap gap-1">{attachments.map((item, index) => <span key={`${item.name}-${index}`} className="flex items-center gap-1 rounded border border-border-1 px-2 py-1 text-[11px] text-text-2"><Paperclip size={11} />{item.name}<button type="button" disabled={busy} aria-label={`Remove ${item.name}`} onClick={() => setAttachmentsByRoot(current => ({ ...current, [root]: attachments.filter((_, position) => position !== index) }))}><X size={11} /></button></span>)}</div>}
         {attachmentError && <p role="alert" className="milk-error">{attachmentError}</p>}
         {!!attachments.length && imageMode === 'file' && attachments.some(item => item.kind === 'image') && <p className="mb-2 text-[10px] text-text-4">Images travel as <span className="font-mono">@file</span> references: milk’s ACP has no vision block yet, so an agent that reads images (Claude Code) can see them; a text-only local model cannot.</p>}

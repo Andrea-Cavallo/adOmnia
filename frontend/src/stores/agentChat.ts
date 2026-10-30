@@ -110,6 +110,7 @@ function upsertTool(tools: AgentToolActivity[] | undefined, update: MilkToolUpda
 }
 
 export function applyAgentChatEvent(threads: Record<string, AgentChatThread>, event: MilkChatEvent): Record<string, AgentChatThread> {
+  if (event.sessionKey) return threads
   const match = Object.entries(threads).find(([, thread]) => thread.busyToken === event.token)
   let root: string
   let thread: AgentChatThread

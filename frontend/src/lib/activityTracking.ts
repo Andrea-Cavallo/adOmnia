@@ -12,7 +12,10 @@ export function startActivityTracking(): () => void {
     if (sending) return
     sending = true
     try {
-      while (pending && !disposed) {
+      while (pending) {
+        // `disposed` is flipped by the dispose() callback between awaits, so it must
+        // be re-checked on every iteration rather than only in the loop condition.
+        if (disposed) break
         const value = pending; pending = null
         await reportActivity(value.phase, value.scopes).catch(() => undefined)
       }

@@ -182,22 +182,20 @@ loop:
 			break loop
 		case <-ticker.C:
 			poll, cancel := context.WithTimeout(ctx, 3*time.Second)
-			if conns, err := nettools.ListEstablished(poll); err == nil {
-				for _, conn := range conns {
-					if conn.PID == pid && !seenRemote[conn.RemotePort] {
-						seenRemote[conn.RemotePort] = true
-						add("connect", Kind(conn.RemotePort))
-					}
+			// Preserve available results if one of the Unix socket tools fails.
+			conns, ports, _ := nettools.ListTCPSockets(poll)
+			for _, conn := range conns {
+				if conn.PID == pid && !seenRemote[conn.RemotePort] {
+					seenRemote[conn.RemotePort] = true
+					add("connect", Kind(conn.RemotePort))
 				}
 			}
 			if timeline.Port == 0 {
-				if ports, err := nettools.ListListeningPorts(poll); err == nil {
-					for _, port := range ports {
-						if port.PID == pid {
-							timeline.Port = port.Port
-							add("listen", ":"+strconv.Itoa(port.Port))
-							break
-						}
+				for _, port := range ports {
+					if port.PID == pid {
+						timeline.Port = port.Port
+						add("listen", ":"+strconv.Itoa(port.Port))
+						break
 					}
 				}
 			}

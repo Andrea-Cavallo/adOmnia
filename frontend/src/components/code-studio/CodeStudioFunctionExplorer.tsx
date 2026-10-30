@@ -33,6 +33,7 @@ import {
 } from './functionExplorerGraph'
 
 type Mode = 'explorer' | 'graph'
+const EMPTY_ANCESTORS = new Set<string>()
 function CallTree({
   item,
   direction,
@@ -40,7 +41,7 @@ function CallTree({
   selected,
   onSelect,
   onOpen,
-  ancestors = new Set<string>(),
+  ancestors = EMPTY_ANCESTORS,
   query,
   level = 0,
 }: {
@@ -65,8 +66,8 @@ function CallTree({
       .then((value) => {
         if (!stale) setChildren(value)
       })
-      .catch((error) => {
-        if (!stale) setError(String(error))
+      .catch((err) => {
+        if (!stale) setError(String(err))
       })
     return () => {
       stale = true

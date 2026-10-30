@@ -135,7 +135,7 @@ export function ServiceView({ session }: { session: LiveSession }) {
           action={tools.sql
             ? <SmallButton active onClick={() => void run(() => stopSqlCapture(session.id))}>Stop SQL capture</SmallButton>
             : null}>
-          <SqlCapture tools={tools} sources={sqlSources} onStart={(kind, target, port) => void run(() => startSqlCapture(session.id, kind, target, port))} />
+          <SqlCapture tools={tools} sources={sqlSources} onStart={(kind, address, port) => void run(() => startSqlCapture(session.id, kind, address, port))} />
         </Node>
         <Node icon={<MessageSquare size={13} />} title="Kafka" detail={`${topics.length} topic${topics.length === 1 ? '' : 's'} in the code`}
           action={tools.kafka ? <SmallButton active onClick={() => void run(() => unwatchLiveKafka(session.id))}>Stop watching</SmallButton> : null}>

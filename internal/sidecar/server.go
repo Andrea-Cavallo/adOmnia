@@ -3,6 +3,7 @@ package sidecar
 
 import (
 	"context"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
 	"github.com/Andrea-Cavallo/adOmnia/internal/broker"
 	"github.com/Andrea-Cavallo/adOmnia/internal/database"
 	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
@@ -62,6 +63,9 @@ func Start() int {
 	devlog.Info("startHTTPServer", "porta assegnata dal SO", map[string]any{"port": port})
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/ai/local/chat", ai.LocalChatHandler)
+	mux.HandleFunc("/ai/local/ollama/start", ai.OllamaStartHandler)
+	mux.HandleFunc("/ai/local/ollama/pull", ai.OllamaPullHandler)
 
 	// Kafka
 	kafka.RegisterHandlers(mux)

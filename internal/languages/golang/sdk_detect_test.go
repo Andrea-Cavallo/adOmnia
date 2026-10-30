@@ -146,6 +146,21 @@ func TestDetectFallsBackToGoVersionOutsideTheProjectAndRevalidatesAChangedBinary
 	if again := manager.Detect(session.ID, session.Root); again.Cached {
 		t.Fatalf("un binario cambiato non deve usare la cache: %+v", again)
 	}
+	// Ogni Detect lancia go env in background: aspettali, o scrivono nel log mentre TempDir lo cancella.
+	waitForLog(t, logFile, "env|", 2)
+}
+
+func waitForLog(t *testing.T, logFile, marker string, count int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if data, _ := os.ReadFile(logFile); strings.Count(string(data), marker) >= count {
+			time.Sleep(50 * time.Millisecond) // il processo finto chiude il file dopo averci scritto
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("go env in background non è partito %d volte", count)
 }
 
 func TestProcessEnvironmentInheritsCorporateVariablesWithoutOverriding(t *testing.T) {

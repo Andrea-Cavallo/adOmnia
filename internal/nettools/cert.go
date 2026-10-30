@@ -2,11 +2,13 @@ package nettools
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,9 +33,13 @@ type rdnFields struct {
 	L  string `json:"l,omitempty"`
 }
 
-type certInspectResult struct {
-	Error              string    `json:"error,omitempty"`
-	BlockType          string    `json:"blockType"`
+// CertificateInfo descrive un blocco PEM: un certificato con tutti i dettagli, oppure una chiave privata
+// ridotta a tipo, dimensione e stato di cifratura (il materiale della chiave non esce mai).
+type CertificateInfo struct {
+	Error     string `json:"error,omitempty"`
+	BlockType string `json:"blockType"`
+	// Encrypted vale per le chiavi private: serve la password per usarle.
+	Encrypted          bool      `json:"encrypted,omitzero"`
 	Subject            rdnFields `json:"subject"`
 	Issuer             rdnFields `json:"issuer"`
 	SerialNumber       string    `json:"serialNumber,omitempty"`
@@ -111,7 +117,7 @@ func certExtKeyUsageNames(usages []x509.ExtKeyUsage) []string {
 	return names
 }
 
-func parseCertToResult(cert *x509.Certificate) certInspectResult {
+func parseCertToResult(cert *x509.Certificate) CertificateInfo {
 	now := time.Now()
 
 	// Fingerprints
@@ -168,7 +174,7 @@ func parseCertToResult(cert *x509.Certificate) certInspectResult {
 		L:  strings.Join(cert.Issuer.Locality, ", "),
 	}
 
-	return certInspectResult{
+	return CertificateInfo{
 		BlockType:          "CERTIFICATE",
 		Subject:            subj,
 		Issuer:             iss,
@@ -190,6 +196,73 @@ func parseCertToResult(cert *x509.Certificate) certInspectResult {
 	}
 }
 
+// InspectPEM legge ogni blocco PEM del testo, nell'ordine: certificati con soggetto, emittente, validità,
+// SAN, usi e impronte; chiavi private con tipo, bit e cifratura; gli altri blocchi con un messaggio.
+func InspectPEM(text string) ([]CertificateInfo, error) {
+	if len(text) > maxPEMInputBytes {
+		return nil, errors.New("PEM too large (1 MB maximum)")
+	}
+	var results []CertificateInfo
+	rest := []byte(strings.TrimSpace(text))
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		results = append(results, inspectBlock(block))
+	}
+	if len(results) == 0 {
+		return nil, errors.New("no PEM blocks found in input")
+	}
+	return results, nil
+}
+
+func inspectBlock(block *pem.Block) CertificateInfo {
+	failed := func(blockType, message string) CertificateInfo {
+		return CertificateInfo{BlockType: blockType, SANs: []string{}, KeyUsage: []string{}, ExtKeyUsage: []string{}, Error: message}
+	}
+	if block.Type == "CERTIFICATE" {
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return failed(block.Type, "Failed to parse: "+err.Error())
+		}
+		return parseCertToResult(cert)
+	}
+	if info, isKey := privateKeyInfo(block); isKey {
+		return info
+	}
+	return failed(block.Type, "Not a CERTIFICATE or private key block: it cannot be inspected here")
+}
+
+// privateKeyInfo riassume una chiave privata senza esporla; false se il blocco non è una chiave privata.
+func privateKeyInfo(block *pem.Block) (CertificateInfo, bool) {
+	if !strings.HasSuffix(block.Type, "PRIVATE KEY") {
+		return CertificateInfo{}, false
+	}
+	info := CertificateInfo{BlockType: block.Type, SANs: []string{}, KeyUsage: []string{}, ExtKeyUsage: []string{}}
+	if block.Type == "ENCRYPTED PRIVATE KEY" || strings.Contains(block.Headers["Proc-Type"], "ENCRYPTED") {
+		info.Encrypted = true
+		return info, true
+	}
+	key, _, err := plainPrivateKey(block)
+	if err != nil {
+		info.Error = err.Error()
+		return info, true
+	}
+	switch k := key.(type) {
+	case *rsa.PrivateKey:
+		info.PublicKeyAlgorithm, info.KeyBits = "RSA", k.N.BitLen()
+	case *ecdsa.PrivateKey:
+		info.PublicKeyAlgorithm, info.KeyBits = "ECDSA", k.Curve.Params().BitSize
+	case ed25519.PrivateKey:
+		info.PublicKeyAlgorithm, info.KeyBits = "Ed25519", 256
+	default:
+		info.PublicKeyAlgorithm = fmt.Sprintf("%T", key)
+	}
+	return info, true
+}
+
 func certInspectHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
@@ -200,46 +273,9 @@ func certInspectHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to read body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	pemData := strings.TrimSpace(string(body))
-	if pemData == "" {
-		http.Error(w, "empty PEM data", http.StatusBadRequest)
-		return
-	}
-
-	var results []certInspectResult
-	rest := []byte(pemData)
-	for {
-		var block *pem.Block
-		block, rest = pem.Decode(rest)
-		if block == nil {
-			break
-		}
-		if block.Type != "CERTIFICATE" {
-			results = append(results, certInspectResult{
-				BlockType:   block.Type,
-				SANs:        []string{},
-				KeyUsage:    []string{},
-				ExtKeyUsage: []string{},
-				Error:       "Not a CERTIFICATE block — keys and CSRs cannot be inspected here",
-			})
-			continue
-		}
-		cert, parseErr := x509.ParseCertificate(block.Bytes)
-		if parseErr != nil {
-			results = append(results, certInspectResult{
-				BlockType:   "CERTIFICATE",
-				SANs:        []string{},
-				KeyUsage:    []string{},
-				ExtKeyUsage: []string{},
-				Error:       "Failed to parse: " + parseErr.Error(),
-			})
-			continue
-		}
-		results = append(results, parseCertToResult(cert))
-	}
-
-	if len(results) == 0 {
-		http.Error(w, "no PEM blocks found in input", http.StatusBadRequest)
+	results, err := InspectPEM(string(body))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

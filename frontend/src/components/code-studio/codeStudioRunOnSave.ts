@@ -23,7 +23,7 @@ const NATIVE_SCRIPTS = new Set(['dev', 'serve', 'watch'])
 
 /** Il comando ricarica già da solo (Vite, air, nodemon, `npm run dev`…): riavviarlo dal processo sarebbe un doppio riavvio. */
 export function reloadsByItself(config: RestartConfig): boolean {
-  const tool = (config.target ?? '').split(/[\/]/).pop()?.replace(/\.(cmd|exe)$/i, '') ?? ''
+  const tool = (config.target ?? '').split(/[/]/).pop()?.replace(/\.(cmd|exe)$/i, '') ?? ''
   return NATIVE_WATCHERS.has(tool) || (config.programArguments ?? []).some((argument) => NATIVE_SCRIPTS.has(argument))
 }
 

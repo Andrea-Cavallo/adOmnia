@@ -17,15 +17,12 @@ type Connection struct {
 }
 
 // ListEstablished returns the machine's established TCP connections (IPv4 and IPv6)
-// with their owning PID: netstat on Windows, ss/netstat on Linux, lsof on macOS.
+// with their owning PID: native TCP tables on Windows, ss/netstat on Linux, lsof on macOS.
 func ListEstablished(ctx context.Context) ([]Connection, error) {
 	switch runtime.GOOS {
 	case "windows":
-		out, err := runCmd(ctx, "netstat", "-ano")
-		if err != nil {
-			return nil, err
-		}
-		return parseEstablishedNetstatWindows(out), nil
+		connections, _, err := ListTCPSockets(ctx)
+		return connections, err
 	case "darwin":
 		out, err := runCmd(ctx, "lsof", "-nP", "-iTCP", "-sTCP:ESTABLISHED")
 		if err != nil {

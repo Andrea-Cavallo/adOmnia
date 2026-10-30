@@ -61,33 +61,36 @@ type permission struct {
 // Manager possiede il processo di un agente ACP (milk, Claude Code): avvio, handshake,
 // sessioni per progetto, turni di chat, autorizzazioni e riavvio con backoff.
 type Manager struct {
-	agent         Agent
-	mu            sync.Mutex
-	sessionMu     sync.Mutex
-	store         *SettingsStore
-	settings      Settings
-	status        Status
-	current       *process
-	launching     bool
-	stopping      bool
-	crashes       int
-	root          string
-	sessions      map[string]string // root -> sessionId
-	controls      map[string][]SessionControl
-	commands      map[string][]Command // root -> slash command annunciate dall'agente
-	imagePrompts  bool
-	rootBySession map[string]string
-	turns         map[string]string // sessionId -> token
-	ambient       map[string]string // sessionId -> token dei turni avviati da milk (background follow-up)
-	ambientSeq    int
-	launchKey     string // Launch.Key del processo in esecuzione
-	pending       map[string]*permission
-	log           []string
-	emit          Emitter
-	mcpServers    func() []MCPServer // context server condivisi, letti a ogni session/new
-	turnObserver  TurnObserver
-	lastUsed      time.Time // ultimo Prompt, per lo spegnimento da inattività
-	idleStopped   bool      // spento da reapWhenIdle: riparte al prossimo Prompt
+	agent          Agent
+	mu             sync.Mutex
+	sessionMu      sync.Mutex
+	store          *SettingsStore
+	settings       Settings
+	status         Status
+	current        *process
+	launching      bool
+	stopping       bool
+	crashes        int
+	root           string
+	sessions       map[string]string // sessionMapKey(root, scope) -> sessionId
+	controls       map[string][]SessionControl
+	commands       map[string][]Command // root -> slash command annunciate dall'agente
+	imagePrompts   bool
+	rootBySession  map[string]string
+	scopeBySession map[string]string
+	turns          map[string]string // sessionId -> token
+	ambient        map[string]string // sessionId -> token dei turni avviati da milk (background follow-up)
+	ambientSeq     int
+	launchKey      string // Launch.Key del processo in esecuzione
+	pending        map[string]*permission
+	log            []string
+	emit           Emitter
+	listeners      map[int]Emitter
+	listenerSeq    int
+	mcpServers     func() []MCPServer // context server condivisi, letti a ogni session/new
+	turnObserver   TurnObserver
+	lastUsed       time.Time // ultimo Prompt, per lo spegnimento da inattività
+	idleStopped    bool      // spento da reapWhenIdle: riparte al prossimo Prompt
 }
 
 // TurnObserver è avvisato prima di ogni turno di chat; la funzione restituita viene chiamata a turno finito
@@ -105,17 +108,33 @@ func NewManager(store *SettingsStore) *Manager {
 func NewAgentManager(store *SettingsStore, agent Agent) *Manager {
 	settings := store.Load()
 	return &Manager{
-		agent:         agent,
-		store:         store,
-		settings:      settings,
-		status:        Status{State: StateDisabled},
-		sessions:      map[string]string{},
-		controls:      map[string][]SessionControl{},
-		commands:      map[string][]Command{},
-		rootBySession: map[string]string{},
-		turns:         map[string]string{},
-		ambient:       map[string]string{},
-		pending:       map[string]*permission{},
+		agent:          agent,
+		store:          store,
+		settings:       settings,
+		status:         Status{State: StateDisabled},
+		sessions:       map[string]string{},
+		controls:       map[string][]SessionControl{},
+		commands:       map[string][]Command{},
+		rootBySession:  map[string]string{},
+		scopeBySession: map[string]string{},
+		turns:          map[string]string{},
+		ambient:        map[string]string{},
+		pending:        map[string]*permission{},
+		listeners:      map[int]Emitter{},
+	}
+}
+
+// AddListener osserva gli stessi eventi del desktop; la funzione restituita rimuove la sottoscrizione.
+func (m *Manager) AddListener(listener Emitter) func() {
+	m.mu.Lock()
+	m.listenerSeq++
+	id := m.listenerSeq
+	m.listeners[id] = listener
+	m.mu.Unlock()
+	return func() {
+		m.mu.Lock()
+		delete(m.listeners, id)
+		m.mu.Unlock()
 	}
 }
 
@@ -345,6 +364,25 @@ func isExecutableFile(path string) bool {
 	return err == nil && !info.IsDir()
 }
 
+// capabilityFlag reads an ACP session capability: older agents send `true`, newer ones (claude-agent-acp ≥ 0.89)
+// an options object such as `{}`. Any present, non-false value means supported.
+type capabilityFlag bool
+
+func (f *capabilityFlag) UnmarshalJSON(data []byte) error {
+	value := strings.TrimSpace(string(data))
+	*f = capabilityFlag(value != "" && value != "false" && value != "null")
+	return nil
+}
+
+func validateNegotiatedProtocol(agent Agent, negotiated int) error {
+	if negotiated == agent.Protocol {
+		return nil
+	}
+	// Il dialetto del client (v1/v2) è scelto da agent.Protocol prima
+	// dell'handshake: una versione diversa renderebbe il dialogo incoerente.
+	return fmt.Errorf("%s negotiated ACP version %d but Code Studio configured version %d; update %s or change its settings", agent.Name, negotiated, agent.Protocol, agent.Name)
+}
+
 func (m *Manager) launch(command Launch, root string) error {
 	m.mu.Lock()
 	m.launchKey = command.Key
@@ -390,9 +428,14 @@ func (m *Manager) launch(command Launch, root string) error {
 	var result struct {
 		ProtocolVersion   int `json:"protocolVersion"`
 		AgentCapabilities struct {
+			LoadSession        bool `json:"loadSession"`
 			PromptCapabilities struct {
 				Image bool `json:"image"`
 			} `json:"promptCapabilities"`
+			SessionCapabilities struct {
+				Resume capabilityFlag `json:"resume"`
+				Close  capabilityFlag `json:"close"`
+			} `json:"sessionCapabilities"`
 		} `json:"agentCapabilities"`
 		Info struct {
 			Version string `json:"version"`
@@ -406,6 +449,11 @@ func (m *Manager) launch(command Launch, root string) error {
 		m.waitStartupDrain(running)
 		return errors.New(startupFailureMessage(m.agent.Name, err, running.stderrSnapshot(), running.exitCode()))
 	}
+	if err := validateNegotiatedProtocol(m.agent, result.ProtocolVersion); err != nil {
+		m.abandon(running)
+		m.waitStartupDrain(running)
+		return err
+	}
 	if result.Info.Version == "" {
 		result.Info.Version = result.AgentInfo.Version
 	}
@@ -416,6 +464,14 @@ func (m *Manager) launch(command Launch, root string) error {
 	m.setStatus(func(status *Status) {
 		status.State = StateReady
 		status.Message = ""
+		status.Capabilities = Capabilities{
+			ProtocolVersion: result.ProtocolVersion,
+			LoadSession:     result.AgentCapabilities.LoadSession,
+			ResumeSession:   bool(result.AgentCapabilities.SessionCapabilities.Resume),
+			CloseSession:    bool(result.AgentCapabilities.SessionCapabilities.Close),
+			PromptImages:    result.AgentCapabilities.PromptCapabilities.Image,
+			ReadTextFile:    true,
+		}
 		if result.Info.Version != "" {
 			status.Version = result.Info.Version
 		}
@@ -529,7 +585,8 @@ func startupFailureMessage(agent string, cause error, stderr []string, exitCode 
 		code = fmt.Sprintf(" (exit code %d)", *exitCode)
 	}
 	if detail == "" {
-		detail = "agent process is not available"
+		// Without stderr the protocol error is the only clue (e.g. the process closed stdout); never hide it.
+		detail = "agent process is not available (" + cause.Error() + ")"
 	}
 	return fmt.Sprintf("%s exited during startup%s: %s", agent, code, detail)
 }
@@ -634,24 +691,78 @@ func (m *Manager) abandon(running *process) {
 func (m *Manager) forgetSessionsLocked() {
 	m.sessions = map[string]string{}
 	m.rootBySession = map[string]string{}
+	m.scopeBySession = map[string]string{}
 	m.controls = map[string][]SessionControl{}
 	m.commands = map[string][]Command{}
 	m.ambient = map[string]string{}
 }
 
-// ResetSession dimentica la sessione di una cartella: il prossimo prompt ne apre
-// una nuova, senza la conversazione precedente (milk non espone session/close).
+// ResetSession dimentica solo la chat di una cartella; le sessioni dei task hanno una chiave separata.
 func (m *Manager) ResetSession(root string) {
 	m.sessionMu.Lock()
 	defer m.sessionMu.Unlock()
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	var conn *Conn
+	var sessionID string
 	if id, ok := m.sessions[root]; ok {
+		sessionID = id
 		delete(m.sessions, root)
 		delete(m.rootBySession, id)
+		delete(m.scopeBySession, id)
 		delete(m.controls, root)
 		delete(m.commands, root)
+		if m.status.Capabilities.CloseSession && m.current != nil {
+			conn = m.current.conn
+		}
 	}
+	m.mu.Unlock()
+	if conn != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = conn.Call(ctx, "session/close", map[string]any{"sessionId": sessionID}, nil)
+	}
+}
+
+// ForgetScopedSession dimentica la sessione di un tentativo di task e, se
+// l'agente supporta session/close, la chiude. Evita che ogni tentativo lasci
+// una sessione viva nel processo dell'agente fino al riavvio dell'app.
+func (m *Manager) ForgetScopedSession(root, scope string) {
+	scope = strings.TrimSpace(scope)
+	if scope == "" {
+		return
+	}
+	m.sessionMu.Lock()
+	defer m.sessionMu.Unlock()
+	key := sessionMapKey(strings.TrimSpace(root), scope)
+	m.mu.Lock()
+	sessionID, ok := m.sessions[key]
+	if !ok {
+		for candidate, id := range m.sessions {
+			if strings.HasSuffix(candidate, "\x00"+scope) {
+				key, sessionID, ok = candidate, id, true
+				break
+			}
+		}
+	}
+	var conn *Conn
+	if ok {
+		delete(m.sessions, key)
+		delete(m.rootBySession, sessionID)
+		delete(m.scopeBySession, sessionID)
+		delete(m.turns, sessionID)
+		delete(m.ambient, sessionID)
+		if m.status.Capabilities.CloseSession && m.current != nil {
+			conn = m.current.conn
+		}
+	}
+	m.mu.Unlock()
+	if conn == nil {
+		return
+	}
+	// Best effort: una chiusura fallita non invalida l'esito del task.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = conn.Call(ctx, "session/close", map[string]any{"sessionId": sessionID}, nil)
 }
 
 func (m *Manager) isCurrent(running *process) bool {
@@ -669,12 +780,14 @@ func (m *Manager) connection() (*Conn, error) {
 	return m.current.conn, nil
 }
 
-// sessionFor restituisce (creandola al primo uso) la sessione milk per una cartella.
-func (m *Manager) sessionFor(root string) (string, error) {
+// sessionFor restituisce (creandola al primo uso) la sessione per root e scope.
+// Lo scope vuoto è la chat; ogni tentativo di task usa una chiave distinta.
+func (m *Manager) sessionFor(root, scope string) (string, error) {
 	m.sessionMu.Lock()
 	defer m.sessionMu.Unlock()
+	key := sessionMapKey(root, scope)
 	m.mu.Lock()
-	if id, ok := m.sessions[root]; ok && id != "" {
+	if id, ok := m.sessions[key]; ok && id != "" {
 		m.mu.Unlock()
 		return id, nil
 	}
@@ -708,9 +821,12 @@ func (m *Manager) sessionFor(root string) (string, error) {
 		m.mu.Unlock()
 		return "", ErrClosed
 	}
-	m.sessions[root] = result.SessionID
+	m.sessions[key] = result.SessionID
 	m.rootBySession[result.SessionID] = root
-	delete(m.commands, root) // una nuova sessione riceve le proprie command
+	m.scopeBySession[result.SessionID] = scope
+	if scope == "" {
+		delete(m.commands, root) // una nuova chat riceve le proprie command
+	}
 	options := result.ConfigOptions
 	hasModel := false
 	for index := range options {
@@ -728,12 +844,21 @@ func (m *Manager) sessionFor(root string) (string, error) {
 		}
 		options = append(options, model)
 	}
-	m.controls[root] = options
+	if scope == "" {
+		m.controls[root] = options
+	}
 	m.mu.Unlock()
 	if model := result.Models.CurrentModelID; model != "" {
 		m.setStatus(func(status *Status) { status.Model = model })
 	}
 	return result.SessionID, nil
+}
+
+func sessionMapKey(root, scope string) string {
+	if scope == "" {
+		return root
+	}
+	return root + "\x00" + scope
 }
 
 // sessionParams è il payload di session/new. milk v0.7+ accepts mcpServers too
@@ -791,7 +916,7 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 	if m.Status().State != StateReady {
 		return PromptResponse{}, fmt.Errorf("%s is not ready; enable it in its settings", m.agent.Name)
 	}
-	sessionID, err := m.sessionFor(root)
+	sessionID, err := m.sessionFor(root, strings.TrimSpace(request.SessionKey))
 	if err != nil {
 		return PromptResponse{}, err
 	}
@@ -820,6 +945,11 @@ func (m *Manager) Prompt(parent context.Context, request PromptRequest) (PromptR
 	endTurn := m.beginTurn(root)
 	defer endTurn()
 	timeout := m.turnTimeout()
+	if request.TimeLimit > 0 {
+		// Un task ha un limite esplicito scelto dall'utente: prevale sul
+		// timeout globale dei turni di chat.
+		timeout = request.TimeLimit
+	}
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	var result struct {
@@ -958,6 +1088,11 @@ func (m *Manager) publishStatus() {
 }
 
 func (m *Manager) publishChat(event ChatEvent) {
+	if event.SessionID != "" && event.SessionKey == "" {
+		m.mu.Lock()
+		event.SessionKey = m.scopeBySession[event.SessionID]
+		m.mu.Unlock()
+	}
 	m.publish("chat", event)
 }
 
@@ -965,26 +1100,33 @@ func (m *Manager) publishChat(event ChatEvent) {
 func (m *Manager) publish(event string, payload any) {
 	m.mu.Lock()
 	emit := m.emit
+	listeners := make([]Emitter, 0, len(m.listeners))
+	for _, listener := range m.listeners {
+		listeners = append(listeners, listener)
+	}
 	m.mu.Unlock()
+	name := m.agent.Event + "." + event
 	if emit != nil {
-		emit(m.agent.Event+"."+event, payload)
+		emit(name, payload)
+	}
+	for _, listener := range listeners {
+		listener(name, payload)
 	}
 }
 
 // initializeParams è l'handshake nel dialetto dell'agente.
 func (m *Manager) initializeParams() map[string]any {
 	if m.agent.Protocol == 1 {
-		// Niente fs/terminal lato client: l'agente usa i suoi tool e chiede i permessi.
 		return map[string]any{
 			"protocolVersion":    1,
 			"clientInfo":         map[string]string{"name": editorName},
-			"clientCapabilities": map[string]any{"fs": map[string]bool{"readTextFile": false, "writeTextFile": false}, "terminal": false},
+			"clientCapabilities": map[string]any{"fs": map[string]bool{"readTextFile": true, "writeTextFile": false}, "terminal": false},
 		}
 	}
 	return map[string]any{
 		"protocolVersion": 2,
 		"info":            map[string]string{"name": editorName},
-		"capabilities":    map[string]any{},
+		"capabilities":    map[string]any{"fs": map[string]bool{"readTextFile": true, "writeTextFile": false}, "terminal": false},
 	}
 }
 

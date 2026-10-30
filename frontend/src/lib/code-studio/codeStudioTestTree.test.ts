@@ -153,16 +153,16 @@ describe('JS/TS test runs', () => {
 })
 
 describe('Java roll-up and multi-method rerun', () => {
-  const javaRun = (results: GoIDETestResult[]): GoIDETestRun => ({ ...run(results), request: { ...run(results).request, language: 'java', workingDirectory: '' } } as GoIDETestRun)
+  const javaRun = (testResults: GoIDETestResult[]): GoIDETestRun => ({ ...run(testResults), request: { ...run(testResults).request, language: 'java', workingDirectory: '' } } as GoIDETestRun)
   const file = 'src/test/java/a/FooTest.java'
-  const results = [node(file, '', 'fail'), node(file, 'one', 'fail'), node(file, 'two', 'fail'), node(file, 'three', 'pass'), node(file, 'four', 'skip')]
+  const javaResults = [node(file, '', 'fail'), node(file, 'one', 'fail'), node(file, 'two', 'fail'), node(file, 'three', 'pass'), node(file, 'four', 'skip')]
 
   it('counts the leaves of a class', () => {
-    expect(rollupOf(buildTestTree(results)[0])).toEqual({ passed: 1, failed: 2, skipped: 1 })
+    expect(rollupOf(buildTestTree(javaResults)[0])).toEqual({ passed: 1, failed: 2, skipped: 1 })
   })
 
   it('reruns several failed methods of one class together', () => {
-    expect(rerunFailedRequest(javaRun(results))).toMatchObject({ packages: [file], run: 'one,two' })
+    expect(rerunFailedRequest(javaRun(javaResults))).toMatchObject({ packages: [file], run: 'one,two' })
   })
 
   it('falls back to the whole class when a failed test has a display name', () => {
@@ -171,8 +171,8 @@ describe('Java roll-up and multi-method rerun', () => {
 })
 
 describe('Python test runs', () => {
-  const pyRun = (results: GoIDETestResult[], workingDirectory = ''): GoIDETestRun =>
-    ({ ...run(results, workingDirectory), request: { ...run(results, workingDirectory).request, language: 'python', workingDirectory, packages: ['tests'], coverage: false } }) as GoIDETestRun
+  const pyRun = (testResults: GoIDETestResult[], workingDirectory = ''): GoIDETestRun =>
+    ({ ...run(testResults, workingDirectory), request: { ...run(testResults, workingDirectory).request, language: 'python', workingDirectory, packages: ['tests'], coverage: false } }) as GoIDETestRun
 
   it('tells pytest runs from the other runners', () => {
     expect(isPythonTestRun(pyRun([]))).toBe(true)
@@ -196,22 +196,22 @@ describe('Python test runs', () => {
   })
 
   it('reruns failed node ids, or the whole file when the file failed without failed tests', () => {
-    const results = [
+    const pytestResults = [
       node('tests/test_a.py', '', 'fail'),
       node('tests/test_a.py', 'TestA/test_one', 'fail'),
       node('tests/test_a.py', 'TestA/test_two', 'pass'),
       node('tests/test_b.py', '', 'fail'),
     ]
     const expected = { packages: ['tests/test_a.py::TestA::test_one', 'tests/test_b.py'], run: '', coverage: false }
-    expect(pythonRerunFailedRequest(pyRun(results))).toMatchObject(expected)
-    expect(rerunFailedRequest(pyRun(results))).toMatchObject(expected)
+    expect(pythonRerunFailedRequest(pyRun(pytestResults))).toMatchObject(expected)
+    expect(rerunFailedRequest(pyRun(pytestResults))).toMatchObject(expected)
     expect(pythonRerunFailedRequest(pyRun([node('tests/test_ok.py', '', 'pass'), node('tests/test_ok.py', 'TestOk', 'pass')]))).toBeNull()
   })
 })
 
 describe('Rust test runs', () => {
-  const rustRun = (results: GoIDETestResult[]): GoIDETestRun =>
-    ({ ...run(results, 'crates/api'), request: { ...run(results, 'crates/api').request, language: 'rust', packages: [], coverage: false } }) as GoIDETestRun
+  const rustRun = (testResults: GoIDETestResult[]): GoIDETestRun =>
+    ({ ...run(testResults, 'crates/api'), request: { ...run(testResults, 'crates/api').request, language: 'rust', packages: [], coverage: false } }) as GoIDETestRun
 
   it('reruns a single test by its libtest path, not a Vitest or Go pattern', () => {
     const test = node('api', 'tests/it_works', 'fail')
@@ -233,8 +233,8 @@ describe('Rust test runs', () => {
   })
 
   it('reruns every failed leaf test in one request, or everything when the build failed', () => {
-    const results = [node('api', 'tests', 'fail'), node('api', 'tests/a', 'fail'), node('api', 'tests/b', 'fail'), node('api', 'tests/c', 'pass')]
-    expect(rerunFailedRequest(rustRun(results))).toMatchObject({ packages: [], run: 'tests::a\ntests::b' })
+    const rustResults = [node('api', 'tests', 'fail'), node('api', 'tests/a', 'fail'), node('api', 'tests/b', 'fail'), node('api', 'tests/c', 'pass')]
+    expect(rerunFailedRequest(rustRun(rustResults))).toMatchObject({ packages: [], run: 'tests::a\ntests::b' })
     expect(rerunFailedRequest(rustRun([node('api', '', 'fail', { buildFailed: true })]))?.run).toBe('')
     expect(rerunFailedRequest(rustRun([node('api', 'tests/c', 'pass')]))).toBeNull()
   })

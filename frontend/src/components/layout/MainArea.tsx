@@ -911,16 +911,6 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     return affected.filter((t) => t.dirty && !t.pinned)
   }, [tabs])
 
-  // Attempt close — show dialog if there are dirty tabs
-  const attemptClose = useCallback((pending: PendingClose) => {
-    const dirty = getDirtyTabsForPending(pending)
-    if (confirmBeforeClosingDirtyTabs && dirty.length > 0) {
-      setPendingClose(pending)
-    } else {
-      executePendingClose(pending, false)
-    }
-  }, [confirmBeforeClosingDirtyTabs, getDirtyTabsForPending]) // eslint-disable-line react-hooks/exhaustive-deps
-
   const executePendingClose = useCallback((pending: PendingClose, doSave: boolean) => {
     if (doSave) {
       const dirty = getDirtyTabsForPending(pending)
@@ -932,6 +922,16 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     else closeAllTabs()
     setPendingClose(null)
   }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs])
+
+  // Attempt close — show dialog if there are dirty tabs
+  const attemptClose = useCallback((pending: PendingClose) => {
+    const dirty = getDirtyTabsForPending(pending)
+    if (confirmBeforeClosingDirtyTabs && dirty.length > 0) {
+      setPendingClose(pending)
+    } else {
+      executePendingClose(pending, false)
+    }
+  }, [confirmBeforeClosingDirtyTabs, getDirtyTabsForPending]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const flashMockFeedback = useCallback((msg: string, ok: boolean) => {
     setMockFeedback({ msg, ok })

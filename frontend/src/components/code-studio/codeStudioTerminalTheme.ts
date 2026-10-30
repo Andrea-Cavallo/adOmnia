@@ -53,8 +53,8 @@ const lightTheme: ITheme = {
   brightWhite: '#0F172A',
 }
 
-export function codeStudioTerminalTheme(theme: 'light' | 'dark', customAccent?: string, preset?: string): ITheme {
-  const selected = TERMINAL_THEMES.find((item) => item.id === preset)
+export function codeStudioTerminalTheme(theme: 'light' | 'dark', customAccent?: string, presetId?: string): ITheme {
+  const selected = TERMINAL_THEMES.find((item) => item.id === presetId)
   if (selected && selected.id !== 'adomnia-dark' && selected.id !== 'adomnia-light') return { ...selected.colors }
   if (selected?.id === 'adomnia-light') return { ...lightTheme }
   const base = selected?.id === 'adomnia-dark' ? darkTheme : theme === 'light' ? lightTheme : darkTheme

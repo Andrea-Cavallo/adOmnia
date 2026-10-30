@@ -1,3 +1,5 @@
+import { ContextMenu } from '@/components/ui/ContextMenu'
+import { deleteFlowNode } from '@/lib/flowEditing'
 import '@/styles/studioNothing.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -273,6 +275,8 @@ function FlowCanvas({
   onSelect,
   onMove,
   onArrange,
+  onDelete,
+  editingDisabled,
   fitVersion,
 }: {
   graph: FlowGraphDefinition
@@ -285,8 +289,12 @@ function FlowCanvas({
   onMove: (id: string, position: { x: number; y: number }) => void
   onArrange: () => void
   fitVersion: number
+  onDelete: (id: string) => void
+  editingDisabled: boolean
 }) {
   const { scrollRef, panning, changeZoom, resetScroll, startPan, startDrag } = useFlowCanvasInteraction({ zoom, onZoom, onSelect, onMove })
+  const [nodeMenu, setNodeMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const menuNode = graph.nodes.find(node => node.id === nodeMenu?.id)
   const liveNodes = graph.nodes.map((node) => ({ ...node, x: positions[node.id]?.x ?? node.x, y: positions[node.id]?.y ?? node.y }))
   const byId = new Map(liveNodes.map((node) => [node.id, node]))
   const maxX = Math.max(900, ...liveNodes.map((node) => node.x + nodeSize(node).w + 180))
@@ -387,12 +395,14 @@ function FlowCanvas({
               selected={selectedNodeId === node.id}
               onPointerDown={startDrag}
               onSelect={onSelect}
+              onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); setNodeMenu({ id: node.id, x: event.clientX, y: event.clientY }) }}
             />
           ))}
         </div>
         </div>
       </div>
 
+      {nodeMenu && menuNode && <ContextMenu x={nodeMenu.x} y={nodeMenu.y} appearance="studio" compact items={[{ id: 'delete', label: 'Delete block', danger: true, disabled: editingDisabled || menuNode.type === 'start' || menuNode.type === 'end', disabledReason: editingDisabled ? 'Stop execution before editing the flow.' : 'Start and end blocks are required.' }]} onSelect={() => { onDelete(nodeMenu.id); setNodeMenu(null) }} onClose={() => setNodeMenu(null)} />}
       <div className="absolute bottom-4 left-4 z-20 flex h-[34px] items-center gap-0.5 rounded border border-border-1 bg-surface-1 px-1">
         <button title="Zoom out" onClick={() => changeZoom(zoom - 0.1)} className="grid h-[26px] w-[26px] place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1"><ZoomOut size={13} /></button>
         <button title="Reset zoom" onClick={() => changeZoom(1)} className="min-w-[42px] rounded-md px-1 text-center text-[12px] text-text-2 hover:bg-surface-2 hover:text-text-1">{Math.round(zoom * 100)}%</button>
@@ -429,18 +439,21 @@ function FlowBoardNode({
   selected,
   onPointerDown,
   onSelect,
+  onContextMenu,
 }: {
   node: FlowNodeDefinition
   runtime?: RuntimeByNode[string]
   selected: boolean
   onPointerDown: (event: React.PointerEvent, node: FlowNodeDefinition) => void
   onSelect: (id: string) => void
+  onContextMenu: (event: React.MouseEvent) => void
 }) {
   const size = nodeSize(node)
   const request = node.config.request
   const status = runtime?.status ?? (node.type === 'request' && !request?.url.trim() ? 'missing-binding' : 'idle')
   const common = {
     'data-flow-node': node.id,
+    onContextMenu,
     onPointerDown: (event: React.PointerEvent) => onPointerDown(event, node),
     onClick: (event: React.MouseEvent) => { event.stopPropagation(); if (event.detail === 0) onSelect(node.id) },
   }
@@ -1233,7 +1246,8 @@ export function FlowsPanel() {
     setConditionOverrides({})
   }
 
-  const loadFlow = (flow: SavedFlowDefinition) => {
+  // Function declaration (hoisted) so `createMockDemo` can call it before this line.
+  function loadFlow(flow: SavedFlowDefinition) {
     setActiveFlowId(flow.id)
     setFlowName(flow.name)
     setMermaid(flow.mermaidSource || '')
@@ -1269,6 +1283,16 @@ export function FlowsPanel() {
 
   const patchNodeConfig = (nodeId: string, patch: Partial<FlowNodeDefinition['config']>) => {
     updateFlowNode(nodeId, (node) => ({ ...node, config: { ...node.config, ...patch } }))
+  }
+
+  const removeNode = (id: string) => {
+    if (running || stressRunning) return
+    const next = deleteFlowNode(graph, id)
+    if (next === graph) return
+    setMermaid('')
+    setDirectGraph({ ...next, nodes: next.nodes.map(node => ({ ...node, ...positions[node.id] })) })
+    setSelectedNodeId(current => current === id ? null : current)
+    setRuntime({})
   }
 
   const arrangeNodes = () => {
@@ -1530,6 +1554,8 @@ export function FlowsPanel() {
           onZoom={setZoom}
           onSelect={selectNode}
           onArrange={arrangeNodes}
+          onDelete={removeNode}
+          editingDisabled={running || stressRunning}
           onMove={(id, position) => setPositions((current) => ({ ...current, [id]: position }))}
         />
         <FlowDockPanel title="Execution timeline" side="bottom" open={timelineOpen && !focusMode} onClose={() => setTimelineOpen(false)}><FlowRunTimeline entries={lastRun} running={running} selectedNodeId={selectedNodeId} onSelect={selectNode} onClear={() => setLastRun([])} /></FlowDockPanel>
