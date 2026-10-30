@@ -64,6 +64,8 @@ func Start() int {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ai/local/chat", ai.LocalChatHandler)
+	mux.HandleFunc("/ai/local/ollama/start", ai.OllamaStartHandler)
+	mux.HandleFunc("/ai/local/ollama/pull", ai.OllamaPullHandler)
 
 	// Kafka
 	kafka.RegisterHandlers(mux)

@@ -63,7 +63,28 @@ func environment(extra map[string]string) []string {
 		})
 		result = append(result, prefix+value)
 	}
-	return result
+	return withKeyAliases(result)
+}
+
+// keyAliases maps the names users commonly export to the ones Pi's providers read
+// (Xiaomi documents MIMO_API_KEY, Pi only checks XIAOMI_API_KEY).
+var keyAliases = map[string]string{"XIAOMI_API_KEY": "MIMO_API_KEY"}
+
+func withKeyAliases(env []string) []string {
+	lookup := func(name string) string {
+		for _, entry := range env {
+			if key, value, ok := strings.Cut(entry, "="); ok && strings.EqualFold(key, name) {
+				return value
+			}
+		}
+		return ""
+	}
+	for target, alias := range keyAliases {
+		if lookup(target) == "" && lookup(alias) != "" {
+			env = append(env, target+"="+lookup(alias))
+		}
+	}
+	return env
 }
 
 func ResolveCommand(custom, directory string) ([]string, error) {

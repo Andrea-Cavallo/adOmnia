@@ -68,3 +68,39 @@ export async function localCompletion(config: LocalLlmConfig, messages: LocalMes
   if (!response.body) throw new Error('The local server returned no stream')
   return parseLocalStream(response.body, onText)
 }
+
+export const isOllamaEndpoint = (endpoint: string): boolean => { try { return new URL(endpoint).port === '11434' } catch { return false } }
+
+async function ollamaRequest(action: 'start' | 'pull', endpoint: string, model = '', signal?: AbortSignal) {
+  const port = await getServerPort()
+  if (!port) throw new Error('The desktop sidecar is not ready. Reopen the project and try again.')
+  const response = await sidecarFetch(serverUrl(port, `/ai/local/ollama/${action}`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal, body: JSON.stringify({ endpoint: localEndpoint(endpoint), model }) })
+  if (!response.ok) throw new Error((await response.text()).trim().slice(0, 4096))
+  return response
+}
+
+/** Starts `ollama serve` in the background when it is not running. Resolves true when adOmnia started it. */
+export async function ensureOllama(endpoint: string, signal?: AbortSignal): Promise<boolean> {
+  const data = await (await ollamaRequest('start', endpoint, '', signal)).json() as { started?: boolean }
+  return data.started === true
+}
+
+/** Downloads a model (`ollama pull`), reporting progress as a 0–100 percentage when Ollama knows the size. */
+export async function pullOllamaModel(endpoint: string, model: string, onProgress: (status: string, percent?: number) => void, signal?: AbortSignal): Promise<void> {
+  const response = await ollamaRequest('pull', endpoint, model, signal)
+  if (!response.body) throw new Error('Ollama returned no progress stream')
+  const reader = response.body.getReader(), decoder = new TextDecoder()
+  let pending = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    pending += decoder.decode(value, { stream: !done })
+    const lines = pending.split('\n')
+    pending = done ? '' : lines.pop() ?? ''
+    for (const line of lines.filter(item => item.trim())) {
+      const event = JSON.parse(line) as { status?: string; error?: string; total?: number; completed?: number }
+      if (event.error) throw new Error(event.error)
+      onProgress(event.status ?? '', event.total ? Math.trunc((event.completed ?? 0) * 100 / event.total) : undefined)
+    }
+    if (done) return
+  }
+}

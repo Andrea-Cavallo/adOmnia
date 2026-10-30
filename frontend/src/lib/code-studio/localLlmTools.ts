@@ -1,10 +1,11 @@
-import { closeGoIDEDocument, getGoIDEAIPolicy, listGoIDEAIExcludedPaths, openGoIDEDocument, quickOpenGoIDEFiles, type GoIDESession } from '@/lib/code-studio-api'
+import { closeGoIDEDocument, createGoIDEFiles, getGoIDEAIPolicy, listGoIDEAIExcludedPaths, openGoIDEDocument, quickOpenGoIDEFiles, type GoIDESession } from '@/lib/code-studio-api'
 import { requestWorkspaceSymbols } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { createAIRedactor } from '@/lib/aiRedaction'
 import type { LocalToolCall } from '@/lib/localLlm'
 
-export interface LocalEditProposal { path: string; original: string; updated: string; applied?: boolean }
+/** `create` marks a new file: `original` is empty and applying writes it to disk instead of an editor buffer. */
+export interface LocalEditProposal { path: string; original: string; updated: string; applied?: boolean; create?: boolean }
 const tool = (name: string, description: string, properties: Record<string, unknown>, required: string[]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } } })
 const string = { type: 'string' }
 export const LOCAL_PROJECT_TOOLS = [
@@ -12,6 +13,7 @@ export const LOCAL_PROJECT_TOOLS = [
   tool('read_project_file', 'Read a project-relative file, including its unsaved editor buffer. AI exclusions apply.', { path: string }, ['path']),
   tool('search_project_symbols', 'Find functions, classes and symbols using the project language servers.', { query: string }, ['query']),
   tool('propose_edit', 'Propose one exact text replacement in an existing project file. The user must preview and apply it. It does not write files.', { path: string, before: string, after: string }, ['path', 'before', 'after']),
+  tool('propose_create_file', 'Propose a new project file with its full content. The user must preview and create it. Fails if the file already exists.', { path: string, content: string }, ['path', 'content']),
 ]
 
 export function projectRelativePath(path: string): string {
@@ -61,12 +63,27 @@ export async function executeLocalTool(session: GoIDESession, call: LocalToolCal
       result = { status: 'awaiting_user_review', path: file.path, applied: false }
       break
     }
+    case 'propose_create_file': {
+      const path = projectRelativePath(value('path')), content = value('content')
+      if (content.length > 64000) throw new Error('Propose a smaller file')
+      if ((await listGoIDEAIExcludedPaths(session.id, [path], true)).length) throw new Error('File excluded by project AI rules')
+      if ((await quickOpenGoIDEFiles(session.id, path, 60)).some(file => file.relativePath.replace(/\\/g, '/') === path)) throw new Error('The file already exists: use propose_edit')
+      propose({ path, original: '', updated: content, create: true })
+      result = { status: 'awaiting_user_review', path, created: false }
+      break
+    }
     default: throw new Error(`Unsupported tool: ${call.function.name}`)
   }
   return redactor.redact(JSON.stringify(result)).slice(0, 24000)
 }
 
 export async function applyLocalProposal(session: GoIDESession, proposal: LocalEditProposal) {
+  if (proposal.create) {
+    // createGoIDEFiles never overwrites: a file created meanwhile makes the apply fail instead of losing it.
+    await createGoIDEFiles(session.id, [{ relativePath: projectRelativePath(proposal.path), content: proposal.updated }])
+    if (useCodeStudioStore.getState().activeSessionId === session.id) await useCodeStudioStore.getState().openDocument(proposal.path)
+    return
+  }
   const current = await readLocalProjectFile(session, proposal.path)
   if (current.content !== proposal.original) throw new Error('The file changed since this proposal. Ask for a new edit.')
   const store = useCodeStudioStore.getState()

@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import type { LocalToolCall } from '@/lib/localLlm'
 const fixture = vi.hoisted(() => ({
-  policy: 'allowed', excluded: [] as string[], open: vi.fn(), close: vi.fn(), update: vi.fn(),
+  policy: 'allowed', excluded: [] as string[], open: vi.fn(), create: vi.fn(), close: vi.fn(), update: vi.fn(),
   state: { activeSessionId: 's1', documents: [{ document: { id: 'd1', sessionId: 's1', relativePath: 'main.go', readOnly: false }, buffer: 'func original() {}' }], openDocument: vi.fn(), updateDocument: vi.fn() },
 }))
-vi.mock('@/lib/code-studio-api', () => ({ getGoIDEAIPolicy: async () => fixture.policy, listGoIDEAIExcludedPaths: async () => fixture.excluded, openGoIDEDocument: fixture.open, closeGoIDEDocument: fixture.close, quickOpenGoIDEFiles: async () => [{ relativePath: 'main.go' }, { relativePath: '.env' }] }))
+vi.mock('@/lib/code-studio-api', () => ({ getGoIDEAIPolicy: async () => fixture.policy, listGoIDEAIExcludedPaths: async () => fixture.excluded, openGoIDEDocument: fixture.open, closeGoIDEDocument: fixture.close, createGoIDEFiles: fixture.create, quickOpenGoIDEFiles: async () => [{ relativePath: 'main.go' }, { relativePath: '.env' }] }))
 vi.mock('@/lib/code-studio-lsp-api', () => ({ requestWorkspaceSymbols: async () => [] }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => fixture.state } }))
 vi.mock('@/lib/aiRedaction', () => ({ createAIRedactor: () => ({ redact: (text: string) => text.replace('SECRET', '[redacted]') }) }))
@@ -48,5 +48,16 @@ describe('local project tools', () => {
     await applyLocalProposal(session, edit)
     expect(fixture.state.updateDocument).toHaveBeenCalledWith('d1', edit.updated)
     await expect(executeLocalTool(session, call('propose_edit', { path: 'main.go', before: 'absent', after: 'x' }), propose)).rejects.toThrow('exactly once')
+  })
+  it('proposes new files only for missing paths and creates them on apply', async () => {
+    const propose = vi.fn()
+    await expect(executeLocalTool(session, call('propose_create_file', { path: 'main.go', content: 'x' }), propose)).rejects.toThrow('already exists')
+    await expect(executeLocalTool(session, call('propose_create_file', { path: '../x.go', content: 'x' }), propose)).rejects.toThrow()
+    expect(await executeLocalTool(session, call('propose_create_file', { path: String.raw`pkg\doc.go`, content: 'package pkg' }), propose)).toContain('awaiting_user_review')
+    const edit = propose.mock.calls[0][0]
+    expect(edit).toMatchObject({ path: 'pkg/doc.go', create: true, updated: 'package pkg' })
+    expect(fixture.create).not.toHaveBeenCalled()
+    await applyLocalProposal(session, edit)
+    expect(fixture.create).toHaveBeenCalledWith('s1', [{ relativePath: 'pkg/doc.go', content: 'package pkg' }])
   })
 })

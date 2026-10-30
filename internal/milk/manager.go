@@ -364,6 +364,16 @@ func isExecutableFile(path string) bool {
 	return err == nil && !info.IsDir()
 }
 
+// capabilityFlag reads an ACP session capability: older agents send `true`, newer ones (claude-agent-acp ≥ 0.89)
+// an options object such as `{}`. Any present, non-false value means supported.
+type capabilityFlag bool
+
+func (f *capabilityFlag) UnmarshalJSON(data []byte) error {
+	value := strings.TrimSpace(string(data))
+	*f = capabilityFlag(value != "" && value != "false" && value != "null")
+	return nil
+}
+
 func validateNegotiatedProtocol(agent Agent, negotiated int) error {
 	if negotiated == agent.Protocol {
 		return nil
@@ -423,8 +433,8 @@ func (m *Manager) launch(command Launch, root string) error {
 				Image bool `json:"image"`
 			} `json:"promptCapabilities"`
 			SessionCapabilities struct {
-				Resume bool `json:"resume"`
-				Close  bool `json:"close"`
+				Resume capabilityFlag `json:"resume"`
+				Close  capabilityFlag `json:"close"`
 			} `json:"sessionCapabilities"`
 		} `json:"agentCapabilities"`
 		Info struct {
@@ -457,8 +467,8 @@ func (m *Manager) launch(command Launch, root string) error {
 		status.Capabilities = Capabilities{
 			ProtocolVersion: result.ProtocolVersion,
 			LoadSession:     result.AgentCapabilities.LoadSession,
-			ResumeSession:   result.AgentCapabilities.SessionCapabilities.Resume,
-			CloseSession:    result.AgentCapabilities.SessionCapabilities.Close,
+			ResumeSession:   bool(result.AgentCapabilities.SessionCapabilities.Resume),
+			CloseSession:    bool(result.AgentCapabilities.SessionCapabilities.Close),
 			PromptImages:    result.AgentCapabilities.PromptCapabilities.Image,
 			ReadTextFile:    true,
 		}
@@ -575,7 +585,8 @@ func startupFailureMessage(agent string, cause error, stderr []string, exitCode 
 		code = fmt.Sprintf(" (exit code %d)", *exitCode)
 	}
 	if detail == "" {
-		detail = "agent process is not available"
+		// Without stderr the protocol error is the only clue (e.g. the process closed stdout); never hide it.
+		detail = "agent process is not available (" + cause.Error() + ")"
 	}
 	return fmt.Sprintf("%s exited during startup%s: %s", agent, code, detail)
 }
