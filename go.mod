@@ -8,8 +8,8 @@ require (
 	github.com/IBM/sarama v1.61.1
 	github.com/aws/aws-sdk-go-v2 v1.47.4
 	github.com/aws/aws-sdk-go-v2/config v1.33.10
-	github.com/aws/aws-sdk-go-v2/service/bedrock v1.73.5
-	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.5
+	github.com/aws/aws-sdk-go-v2/service/bedrock v1.74.1
+	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.7
 	github.com/aymanbagabas/go-pty v0.2.3
 	// Pinned: pdf v0.2.0 unexports Reader.Resolve, which pdfsign v0.9.0 still
 	// calls. Unpin only together with pdfsign >= v1.0.0 (currently rc only).
@@ -37,7 +37,7 @@ require (
 	github.com/tidwall/gjson v1.20.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/wI2L/jsondiff v0.7.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.34
+	github.com/wailsapp/wails/v3 v3.0.0
 	github.com/xdg-go/scram v1.2.0
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	github.com/zalando/go-keyring v0.2.8
@@ -49,10 +49,10 @@ require (
 	golang.org/x/net v0.61.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/tools v0.52.0
-	google.golang.org/grpc v1.84.0
+	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.60.1
+	modernc.org/sqlite v1.61.0
 	software.sslmate.com/src/go-pkcs12 v0.7.4
 )
 
@@ -60,7 +60,7 @@ require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	filippo.io/hpke v0.4.0 // indirect
 	github.com/adrg/xdg v0.5.3 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.22 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.24 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.7 // indirect
