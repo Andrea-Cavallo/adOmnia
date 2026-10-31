@@ -66,7 +66,7 @@ var builtinTemplates = []ProjectTemplate{
 	{ID: emptyProjectTemplate, Name: "Empty module", Description: "Only go.mod (go mod init)."},
 	{ID: "cli", Name: "CLI", Description: "Command-line tool with flags and a test."},
 	{ID: "rest", Name: "REST service", Description: "net/http API with routing, JSON and graceful shutdown."},
-	{ID: "grpc", Name: "gRPC service", Description: "gRPC server with health, reflection and a sample .proto.", Requires: []string{"google.golang.org/grpc@v1.84.0"}},
+	{ID: "grpc", Name: "gRPC service", Description: "gRPC server with health, reflection and a sample .proto.", Requires: []string{"google.golang.org/grpc@v1.85.0"}},
 	{ID: "worker", Name: "Worker", Description: "Background job loop with graceful shutdown."},
 	{ID: "kafka", Name: "Kafka producer/consumer", Description: "Producer and consumer group on IBM/sarama.", Requires: []string{"github.com/IBM/sarama@v1.61.0"}},
 	{ID: "library", Name: "Library", Description: "Importable package with a test and an Example."},
