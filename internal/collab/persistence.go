@@ -219,6 +219,9 @@ func (m *Manager) checkpointDocument(id string) {
 // immediate: cambiano di rado e sono piccole.
 var documentCheckpointDelay = 400 * time.Millisecond
 
+// afterFunc arms the checkpoint timer; tests replace it so they do not depend on how fast the machine is.
+var afterFunc = time.AfterFunc
+
 // scheduleDocumentCheckpoint accoda il salvataggio di un documento aggiornato: il timer scrive una
 // sola volta tutti i documenti in attesa, quindi anche l'ultimo aggiornamento arriva a destinazione
 // entro il ritardo.
@@ -233,7 +236,7 @@ func (m *Manager) scheduleDocumentCheckpoint(id string) {
 	}
 	m.pendingDocs[id] = true
 	if m.docFlush == nil {
-		m.docFlush = time.AfterFunc(documentCheckpointDelay, m.flushDocumentCheckpoints)
+		m.docFlush = afterFunc(documentCheckpointDelay, m.flushDocumentCheckpoints)
 	}
 }
 

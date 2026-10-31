@@ -67,11 +67,18 @@ func (s *countingStore) count() int64 { return s.documents.Load() }
 // Un aggiornamento Yjs non deve riscrivere (cifrata, con fsync) l'intera cronologia del documento:
 // le scritture sono raggruppate, e l'ultimo aggiornamento arriva comunque a destinazione entro il
 // ritardo. RS/A5: il recovery resta coerente senza pesare sull'editor.
+//
+// The timer is captured instead of waiting in real time: with a real 40 ms delay a slow CI runner fired
+// the flush mid-burst (the intended behavior) and the test failed.
 func TestDocumentCheckpointsAreCoalesced(t *testing.T) {
 	openRecoveryStorage(t)
-	original := documentCheckpointDelay
-	documentCheckpointDelay = 40 * time.Millisecond
-	t.Cleanup(func() { documentCheckpointDelay = original })
+	var armed []func()
+	originalAfterFunc := afterFunc
+	afterFunc = func(_ time.Duration, flush func()) *time.Timer {
+		armed = append(armed, flush)
+		return time.NewTimer(time.Hour)
+	}
+	t.Cleanup(func() { afterFunc = originalAfterFunc })
 
 	host := NewPersistentManager(nil)
 	counter := &countingStore{recoveryStore: host.store}
@@ -89,7 +96,7 @@ func TestDocumentCheckpointsAreCoalesced(t *testing.T) {
 		t.Fatalf("l'apertura deve scrivere subito il documento: %d scritture", opened)
 	}
 
-	// Dieci aggiornamenti ravvicinati: una sola scrittura dopo il ritardo, non dieci.
+	// Ten updates in a row: one timer, and no write until it fires.
 	for index := range 10 {
 		update := base64.StdEncoding.EncodeToString([]byte{byte(index)})
 		if err := host.Document(DocumentMessage{ID: id, Action: "update", Data: update}); err != nil {
@@ -99,8 +106,14 @@ func TestDocumentCheckpointsAreCoalesced(t *testing.T) {
 	if counter.count() != opened {
 		t.Fatalf("gli aggiornamenti non sono accodati: %d scritture", counter.count())
 	}
-	waitFor(t, func() bool { return counter.count() == opened+1 })
+	if len(armed) != 1 {
+		t.Fatalf("a burst must arm one timer, armed %d", len(armed))
+	}
 
+	armed[0]()
+	if counter.count() != opened+1 {
+		t.Fatalf("the timer must write once when it fires: %d writes", counter.count()-opened)
+	}
 	var stored storedDocument
 	if found, err := counter.loadJSON(recoveryDocumentKey+id, &stored); err != nil || !found {
 		t.Fatalf("documento non salvato: found=%v err=%v", found, err)
@@ -172,17 +185,4 @@ func TestClosingADocumentDropsItsStoredCopyImmediately(t *testing.T) {
 	if found {
 		t.Fatalf("un documento chiuso resta nel recovery: %+v", stored)
 	}
-}
-
-// waitFor attende una condizione con un limite: i test del coalescing dipendono dal timer.
-func waitFor(t *testing.T, condition func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if condition() {
-			return
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	t.Fatal("condizione non raggiunta entro il limite")
 }
