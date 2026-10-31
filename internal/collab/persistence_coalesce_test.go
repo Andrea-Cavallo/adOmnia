@@ -68,8 +68,8 @@ func (s *countingStore) count() int64 { return s.documents.Load() }
 // le scritture sono raggruppate, e l'ultimo aggiornamento arriva comunque a destinazione entro il
 // ritardo. RS/A5: il recovery resta coerente senza pesare sull'editor.
 //
-// Il timer è catturato invece di aspettare il tempo reale: con un ritardo vero di 40 ms un runner CI
-// lento faceva scattare il flush a metà raffica (comportamento corretto) e il test falliva.
+// The timer is captured instead of waiting in real time: with a real 40 ms delay a slow CI runner fired
+// the flush mid-burst (the intended behavior) and the test failed.
 func TestDocumentCheckpointsAreCoalesced(t *testing.T) {
 	openRecoveryStorage(t)
 	var armed []func()
@@ -96,7 +96,7 @@ func TestDocumentCheckpointsAreCoalesced(t *testing.T) {
 		t.Fatalf("l'apertura deve scrivere subito il documento: %d scritture", opened)
 	}
 
-	// Dieci aggiornamenti ravvicinati: un solo timer e nessuna scrittura finché non scatta.
+	// Ten updates in a row: one timer, and no write until it fires.
 	for index := range 10 {
 		update := base64.StdEncoding.EncodeToString([]byte{byte(index)})
 		if err := host.Document(DocumentMessage{ID: id, Action: "update", Data: update}); err != nil {
@@ -107,12 +107,12 @@ func TestDocumentCheckpointsAreCoalesced(t *testing.T) {
 		t.Fatalf("gli aggiornamenti non sono accodati: %d scritture", counter.count())
 	}
 	if len(armed) != 1 {
-		t.Fatalf("una raffica deve armare un solo timer, armati %d", len(armed))
+		t.Fatalf("a burst must arm one timer, armed %d", len(armed))
 	}
 
 	armed[0]()
 	if counter.count() != opened+1 {
-		t.Fatalf("lo scatto del timer deve scrivere una volta: %d scritture", counter.count()-opened)
+		t.Fatalf("the timer must write once when it fires: %d writes", counter.count()-opened)
 	}
 	var stored storedDocument
 	if found, err := counter.loadJSON(recoveryDocumentKey+id, &stored); err != nil || !found {
