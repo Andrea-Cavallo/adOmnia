@@ -219,7 +219,7 @@ func (m *Manager) checkpointDocument(id string) {
 // immediate: cambiano di rado e sono piccole.
 var documentCheckpointDelay = 400 * time.Millisecond
 
-// afterFunc arma il timer del checkpoint; i test lo sostituiscono per non dipendere dalla velocità della macchina.
+// afterFunc arms the checkpoint timer; tests replace it so they do not depend on how fast the machine is.
 var afterFunc = time.AfterFunc
 
 // scheduleDocumentCheckpoint accoda il salvataggio di un documento aggiornato: il timer scrive una
