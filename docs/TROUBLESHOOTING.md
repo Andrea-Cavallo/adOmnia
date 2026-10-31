@@ -56,7 +56,7 @@ If dependencies are stale, remove `frontend/node_modules` and run `npm ci` again
 Install the pinned Wails CLI:
 
 ```bash
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
 ```
 
 Make sure your Go bin directory is on `PATH`.
