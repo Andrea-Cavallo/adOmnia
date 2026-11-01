@@ -284,7 +284,7 @@ Every tool carries a title and read-only / destructive / open-world hints, so cl
 
 ### Create an API collection from Code Studio
 
-Route discovery reuses the Developer Context detectors already used by Code Studio. It currently covers Go, Java/Spring, Python, Rust and OpenAPI contracts. The scan is static: it does not execute the project, start language servers or return `.env` values.
+Route discovery reuses the Developer Context detectors already used by Code Studio. It currently covers Go, Java/Spring, Python, Rust, ASP.NET (minimal APIs and controllers), Laravel, Symfony, Rails, Sinatra, Phoenix, Vapor and OpenAPI contracts. The scan is static: it does not execute the project, start language servers or return `.env` values.
 
 Ask the agent, replacing both paths with real folders:
 
