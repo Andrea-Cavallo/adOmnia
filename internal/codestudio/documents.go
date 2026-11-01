@@ -437,6 +437,7 @@ var languageByExtension = map[string]string{
 	".c": "cpp", ".h": "cpp", ".cpp": "cpp", ".hpp": "cpp",
 	".tf": "hcl", ".hcl": "hcl", ".lua": "lua", ".rb": "ruby", ".php": "php",
 	".dockerfile": "dockerfile", ".mk": "makefile",
+	".http": "http", ".rest": "http",
 }
 
 func languageForPath(path string) string {

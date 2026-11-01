@@ -60,6 +60,21 @@ const MAKEFILE: monaco.languages.IMonarchLanguage = {
   },
 }
 
+/** .http / .rest request files: method and URL, headers, {{variables}}, ### separators and comments. */
+const HTTP_FILE: monaco.languages.IMonarchLanguage = {
+  tokenizer: {
+    root: [
+      [/^\s*###.*$/, 'comment.doc'],
+      [/^\s*(#|\/\/).*$/, 'comment'],
+      [/^(GET|QUERY|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)(?=\s)/i, 'keyword'],
+      [/\{\{[^}]*\}\}/, 'variable'],
+      [/^[\w-]+(?=:\s)/, 'type'],
+      [/HTTP\/[\d.]+/, 'keyword'],
+      [/https?:\/\/[^\s{]+/, 'string'],
+    ],
+  },
+}
+
 /** Registra una sola volta i linguaggi di supporto di Code Studio. */
 export function registerCodeStudioExtraLanguages(): void {
   if (registered) return
@@ -98,6 +113,9 @@ export function registerCodeStudioExtraLanguages(): void {
   monaco.languages.setLanguageConfiguration('haskell', { comments: { lineComment: '--', blockComment: ['{-', '-}'] } })
   monaco.languages.register({ id: 'zig', extensions: ['.zig', '.zon'] })
   monaco.languages.setLanguageConfiguration('zig', { comments: { lineComment: '//' } })
+  monaco.languages.register({ id: 'http', extensions: ['.http', '.rest'] })
+  monaco.languages.setMonarchTokensProvider('http', HTTP_FILE)
+  monaco.languages.setLanguageConfiguration('http', { comments: { lineComment: '#' } })
   monaco.languages.register({ id: 'makefile', filenames: ['Makefile', 'makefile', 'GNUmakefile'], extensions: ['.mk'] })
   monaco.languages.setMonarchTokensProvider('makefile', MAKEFILE)
   monaco.languages.setLanguageConfiguration('makefile', { comments: { lineComment: '#' } })
