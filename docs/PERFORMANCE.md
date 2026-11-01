@@ -221,6 +221,7 @@ separately and state dataset sizes in `--conditions`.
 | `gostudio-small` / `gostudio-large` | Open a small / large Go project in Code Studio, let gopls settle | 5 min each | gopls RAM/CPU, backend-go heap |
 | `workspaces-3-5` | Keep 3–5 workspaces open across tabs/windows | 10 min | per-component RAM growth |
 | `typing-continuous` | Type continuously in a large file with completion and diagnostics on | 10 min | input p95, gopls CPU, heap |
+| `hover-browse` | Open a method in a package not loaded yet, hover in synopsis and in full mode | 2 min each | gopls RSS/CPU per hover kind, hover latency |
 | `large-files-json` | Open very large files / complex JSON payloads, scroll and edit | 10 min | heap max, webview2 RAM |
 | `rapid-tabs` | Switch rapidly between modules/tabs and panels | 5 min | CPU spikes, input p95 |
 | `open-close-10x` | Ten open/close cycles of the same project | one run | no resource growth (RAM/goroutine first vs last) |
@@ -356,6 +357,12 @@ The resource monitor now controls the backend Go GC budget live and saves/restar
 ## gopls memory budget under continuous typing (2026-10-24)
 
 The gopls budget stays at 768 MiB. Ten 10-minute typing runs (five per budget, large repository and a four-file module) measured both limits through the real `LSPManager`: 512 MiB saved 218 MiB of RSS but made completion four times slower (p50 444 ms versus 114 ms, p95 571 ms versus 173 ms) and used 7.6 times the CPU (3.50 versus 0.46 cores). On a small module the two budgets were indistinguishable and 512 MiB saved nothing, so the budget is not sized automatically per project. The resource monitor now offers both values as presets and states the measured cost. Data and method: [typing campaign](performance/typing-2026-10-24.md). What the ~7 s workspace load is made of: [gopls load profile](performance/gopls-load-2026-10-24.md).
+
+## gopls hover detail (2026-11-01)
+
+`hoverKind` is a user preference and defaults to `SynopsisDocumentation`, not to the value gopls ships with. With `FullDocumentation` a hover resolves the documentation of the symbol *and of every dependency it references*, so looking at a method inside a package that is not loaded yet pays the documentation of the whole referenced set on top of the type-check that navigation already triggers. A 50 s recording of this repository showed the pattern: opening the workspace spawned four `go list` children (up to 17% of total CPU), and the analysis that followed put gopls alone at 32.5% with 675 MiB resident, 88% of its 768 MiB budget. Navigation, not hover, still pays that package load; what the synopsis removes is the documentation stacked on top of it. `Hover detail` in settings (synopsis, full, signature only) restarts gopls like the other server settings.
+
+What the measurement harness already establishes ([scope and budget campaign](performance/gopls-scope-2026-11-01.md)) is that the load itself dominates: 8.4-10.1 s and 2.6-21 CPU-seconds per workspace load, unchanged by scope and budget, while the synopsis choice leaves warm hover (59-72 ms) and warm symbol search untouched. Saving several hundred MiB needs a narrower view (full repository 706.6 MiB versus 303.5 MiB on a subdirectory at the same budget), and that costs symbol coverage (35 of 100 symbols under an explicit filter), which is why neither the scope nor the budget changes by default. Do not lower the budget to compensate: the typing campaign above measured that trade. The documentation saving of synopsis itself is stated as rational, not as measured: the `hover-browse` scenario above is what closes that gap.
 
 ## Background projects and CLI cold start (2026-10-25)
 

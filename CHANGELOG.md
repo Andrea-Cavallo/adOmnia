@@ -15,6 +15,22 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Ask for correction with the selected evidence.** The new attempt receives only the evidence you select and is linked to the attempt it corrects; adOmnia re-runs the same verifications on the new content. Consecutive corrections are capped per task (default 3, 1–10); at the limit the decision goes back to the user.
 - **Review next to the evidence.** The diff review shows the task's verifications beside the changed files. Nothing is committed, pushed or merged automatically.
 - **Trust.** Creating a workspace, starting a task and running verifications require a project already trusted for tooling.
+- **The correction loop stops by itself.** A correction is refused when a selected verification passed and then failed again twice, and the automatic re-run is skipped when a permission was denied or timed out during the correction; the timeline says why.
+- **Compare and integrate.** *Compare* shows what the task changed, what the project branch received meanwhile, the files changed on both sides and how many verifications passed on that exact content. *Check* runs a dry `git apply --3way`; *Integrate* applies the workspace to the project's current branch with a 3-way merge, staged and never committed, conflicts left to the Git panel.
+- **Open the workspace in Code Studio.** The task worktree opens as a project with the trust of the project it came from (never saved), so terminal, Run, Test, Debug and language servers work in it.
+- **Review comments and side-by-side diff.** Click a line number (Shift+click for a range) to comment on the agent version or on the version before it, then *Ask for correction*: the agent receives file, side, lines, the commented text and the comment. Comments go *open → sent → re-review → resolved*. The review switches to a side-by-side diff, shows moved files as renames, links to task, attempt, agent and workspace, and blocks rejects over unsaved editor changes.
+- **Plans with verified steps.** A task plan has steps with goal, expected files, dependencies and the verifications that complete them; each revision must be approved. A step is completed only when its verifications pass, or by an explicit confirmation when it has none (marked as such). A completed step can be committed on the task branch, never on the project branch; mixed changes of several steps are refused.
+- **Evidence depends on content only.** The fingerprint is the patch from the starting commit (new files included), so committing the same content keeps evidence valid.
+- **What a request touched.** HTTP and page verifications record the calls the mock server received meanwhile (or *not collected* when it is stopped), and the first stack trace (Go, Java, Python, Rust, Node) found in the started service's output.
+- **Page verifications.** *Page (headless browser)* opens a loopback URL in a separate headless Chromium/Edge with a temporary profile and records a screenshot (kept in the app data, outside the project), the page title, uncaught errors, rejected promises, `console.error` and failed requests. Correction prompts say the screenshot was not sent.
+- **Acceptance scenarios.** Requirements versioned in `.adomnia/acceptance/<id>.json` (see `docs/architecture/adr-0001-acceptance-scenarios.md`) with explicit links to routes and files and criteria with an optional check. *Add to task* turns the checks into linked verifications and puts the criteria in the agent prompts; scenarios whose linked files changed are flagged with *Re-run*.
+- **Pull request draft.** *Draft from evidence* builds an editable title and description that states what adOmnia verified and what it did not. It is copied, never pushed.
+- **Revoking trust stops the tasks.** Revoking a project's trust stops its running attempts, verifications in progress, the services they started and pending re-runs.
+- **Task list.** Each task shows its workspace branch, verifications in progress and last activity.
+
+### Agent tool permissions
+
+- **Rules by category.** milk and Claude Code settings set Ask, Allow or Deny for Read, Write, Shell, Network and Other tool calls (classified by the ACP tool kind). A Deny also wins over *Approve every tool call without asking*. Prompts show the category, and decisions taken by a rule are published and recorded in the Agent Task timeline; milk now reports the outcome of every permission it resolves.
 
 ### Code Studio: faster project open
 
@@ -29,6 +45,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - Git blame button in the editor tabs (author, commit and date per line; disabled on unsaved files).
 - Higher-contrast syntax and gutter colors for light and dark themes; header, tabs and project tree spacing aligned.
 - Local LLM chat: a guide to choose where the model runs (Unsloth, Ollama, LM Studio or any OpenAI-compatible server).
+
+### Code Studio: language server and WebView memory
+
+- Hover detail is a setting: *Synopsis* (signature and first paragraph, now the default), *Full documentation* or *Signature only*. gopls defaults to the full doc comment, which on a package you have not loaded yet resolves documentation for the whole referenced set every time you look at a method.
+- The WebView2 renderer starts with a 512 MiB V8 heap budget (`--js-flags=--max-old-space-size=512`), so a large workspace with many editor models triggers GC instead of growing without a ceiling. It is a soft JS-heap limit, not an RSS cap: measure it with the resource monitor.
 
 ### Resource monitor
 
