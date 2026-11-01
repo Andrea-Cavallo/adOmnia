@@ -1084,7 +1084,32 @@ func (s *Service) restore() error {
 	s.viewMu.Unlock()
 	s.restored.Store(true)
 	s.noteLoad("restore", started)
+	if restoredDetectionDelay > 0 && len(sessions) > 0 {
+		go s.refreshRestoredUnits(sessionIDs(sessions))
+	}
 	return nil
+}
+
+// restoredDetectionDelay keeps the re-detection of restored projects off the startup path.
+var restoredDetectionDelay = 2 * time.Second
+
+// refreshRestoredUnits re-detects the restored projects (static manifest reads, no commands) and
+// publishes session.updated only for those whose units changed.
+func (s *Service) refreshRestoredUnits(ids []SessionID) {
+	time.Sleep(restoredDetectionDelay)
+	for _, id := range ids {
+		if s.workspace.RedetectUnits(context.Background(), id) {
+			s.unitsDetected(id)
+		}
+	}
+}
+
+func sessionIDs(sessions []Session) []SessionID {
+	ids := make([]SessionID, 0, len(sessions))
+	for _, session := range sessions {
+		ids = append(ids, session.ID)
+	}
+	return ids
 }
 
 // saveState persiste uno snapshot coerente. saveMu copre snapshot e scrittura

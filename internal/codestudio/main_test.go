@@ -15,5 +15,7 @@ func TestMain(m *testing.M) {
 	defaultDetectionWait = time.Minute
 	// Nessun warm dell'indice in background: i test contano le costruzioni e cancellano le TempDir.
 	defaultIndexWarmDelay = 0
+	// Nessuna nuova detection delle sessioni ripristinate: la prova la abilita da sé.
+	restoredDetectionDelay = 0
 	idetest.Main(m)
 }

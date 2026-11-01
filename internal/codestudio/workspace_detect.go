@@ -2,6 +2,7 @@ package codestudio
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -81,4 +82,22 @@ func (m *WorkspaceManager) CancelDetections() {
 		cancel()
 		delete(m.detections, id)
 	}
+}
+
+// RedetectUnits refreshes the units of a restored session. Persisted units go stale when the project
+// gains or loses a manifest (go.mod, pyproject.toml, pom.xml…) while adOmnia is closed, and a
+// session restored at startup never ran detection. Reports whether the units changed.
+func (m *WorkspaceManager) RedetectUnits(ctx context.Context, id SessionID) bool {
+	m.mu.RLock()
+	session, ok := m.sessions[id]
+	m.mu.RUnlock()
+	if !ok {
+		return false
+	}
+	units := detectUnits(ctx, m.languages, session.Project.RootPath)
+	if slices.Equal(units, session.Project.Units) {
+		return false
+	}
+	_, open := m.finishDetection(id, units)
+	return open
 }
