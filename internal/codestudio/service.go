@@ -36,12 +36,18 @@ var modulePathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
 type Service struct {
 	// serviceTaps raccoglie l'output dei servizi avviati dalle verifiche dei task (SessionID → *serviceTap).
 	serviceTaps sync.Map
-	loadPerf    loadPerformance
-	warmer      *indexWarmer
-	vcsMu       sync.Mutex
-	vcsSelected map[SessionID]string
-	extensions  extensionHost
-	workspace   *WorkspaceManager
+	// agentWorktrees è la cartella dei worktree dei task: aprirne uno in Code Studio
+	// eredita la fiducia del progetto da cui è stato creato.
+	agentWorktrees atomic.Value
+	// trustRevoked è chiamata quando l'utente revoca la fiducia di un progetto: gli Agent
+	// Task di quel progetto fermano agenti, verifiche e servizi avviati.
+	trustRevoked atomic.Value
+	loadPerf     loadPerformance
+	warmer       *indexWarmer
+	vcsMu        sync.Mutex
+	vcsSelected  map[SessionID]string
+	extensions   extensionHost
+	workspace    *WorkspaceManager
 	// studioWorkspaces raggruppa le sessioni in workspace Code Studio, separati da quelli di adOmnia.
 	studioWorkspaces *studioWorkspaceRegistry
 	documents        *DocumentManager
@@ -246,7 +252,7 @@ func (s *Service) OpenProject(path string) (Session, error) {
 		return Session{}, err
 	}
 	s.rememberProject(session.Project, session.UpdatedAt)
-	if session.Project.Authorization != AuthorizationPermitted && s.isTrusted(session.Project.RealPath) {
+	if session.Project.Authorization != AuthorizationPermitted && (s.isTrusted(session.Project.RealPath) || s.worktreeTrusted(session.Project.RealPath)) {
 		if session, err = s.workspace.SetToolAuthorization(session.ID, true); err != nil {
 			return Session{}, err
 		}
@@ -405,6 +411,9 @@ func (s *Service) SetToolAuthorization(id string, allowed bool) (Session, error)
 		s.lsp.StopSession(session.ID)
 		s.terminal.CloseSession(session.ID)
 		s.debug.StopSession(session.ID)
+		if revoked, ok := s.trustRevoked.Load().(func(string)); ok {
+			revoked(session.Project.RealPath)
+		}
 	}
 	s.setTrusted(session.Project.RealPath, allowed)
 	if err := s.saveState(); err != nil {

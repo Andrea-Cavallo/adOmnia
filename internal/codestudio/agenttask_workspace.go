@@ -225,3 +225,108 @@ func withinRoot(root, path string) bool {
 	}
 	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
+
+var _ agenttask.WorkspaceIntegrator = (*GitWorkspaceProvider)(nil)
+
+// Compare reads the workspace changes and the project branch that would receive them.
+func (provider *GitWorkspaceProvider) Compare(workspace agenttask.Workspace) (agenttask.WorkspaceComparison, error) {
+	fingerprint, _, err := git.WorkingTreeFingerprint(workspace.Path, workspace.BaseSHA)
+	if err != nil {
+		return agenttask.WorkspaceComparison{}, fmt.Errorf("read the workspace changes: %w", err)
+	}
+	_, files, err := git.WorkspacePatch(workspace.Path, workspace.BaseSHA)
+	if err != nil {
+		return agenttask.WorkspaceComparison{}, fmt.Errorf("read the workspace changes: %w", err)
+	}
+	target, err := git.CompareTarget(workspace.Repository, workspace.BaseSHA)
+	if err != nil {
+		return agenttask.WorkspaceComparison{}, fmt.Errorf("read the project branch: %w", err)
+	}
+	return agenttask.WorkspaceComparison{
+		Fingerprint: fingerprint, ChangedFiles: nonNil(files),
+		TargetBranch: target.Branch, TargetHead: target.Head, TargetCommits: target.CommitsSinceBase,
+		TargetChanged: nonNil(target.ChangedSinceBase), LocalChanges: nonNil(target.LocalChanges),
+	}, nil
+}
+
+// Integrate applies the workspace to the project's current branch with a 3-way merge,
+// staged and never committed. With check nothing changes.
+func (provider *GitWorkspaceProvider) Integrate(workspace agenttask.Workspace, check bool) (agenttask.Integration, error) {
+	fingerprint, _, err := git.WorkingTreeFingerprint(workspace.Path, workspace.BaseSHA)
+	if err != nil {
+		return agenttask.Integration{}, fmt.Errorf("read the workspace changes: %w", err)
+	}
+	patch, files, err := git.WorkspacePatch(workspace.Path, workspace.BaseSHA)
+	if err != nil {
+		return agenttask.Integration{}, fmt.Errorf("read the workspace changes: %w", err)
+	}
+	if len(files) == 0 {
+		return agenttask.Integration{}, errors.New("the workspace has no changes to integrate")
+	}
+	target, err := git.CompareTarget(workspace.Repository, workspace.BaseSHA)
+	if err != nil {
+		return agenttask.Integration{}, fmt.Errorf("read the project branch: %w", err)
+	}
+	result, err := git.IntegratePatch(workspace.Repository, patch, check)
+	if err != nil {
+		return agenttask.Integration{}, err
+	}
+	return agenttask.Integration{
+		Applied: result.Applied, TargetBranch: target.Branch, TargetHead: target.Head,
+		Fingerprint: fingerprint, Files: files, Conflicts: nonNil(result.Conflicts), Output: result.Output,
+	}, nil
+}
+
+func nonNil(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
+}
+
+// SetAgentWorktreeRoot tells the service where agent task worktrees live, so a task
+// workspace opened in Code Studio inherits the trust of its project.
+func (s *Service) SetAgentWorktreeRoot(root string) {
+	s.agentWorktrees.Store(filepath.Clean(root))
+}
+
+// worktreeTrusted reports whether realPath is an adOmnia-managed task worktree whose
+// project the user already trusted. The trust is derived at every open and never
+// saved: revoking the project's trust also stops it from reaching the worktree.
+func (s *Service) worktreeTrusted(realPath string) bool {
+	root, _ := s.agentWorktrees.Load().(string)
+	if root == "" || !withinRoot(root, realPath) || samePath(root, realPath) {
+		return false
+	}
+	repo, err := git.MainRepository(realPath)
+	if err != nil {
+		return false
+	}
+	if resolved, err := filepath.EvalSymlinks(repo); err == nil {
+		repo = resolved
+	}
+	return s.isTrusted(repo)
+}
+
+// OnTrustRevoked registers what to stop when the user revokes a project's trust.
+func (s *Service) OnTrustRevoked(stop func(realPath string)) {
+	s.trustRevoked.Store(stop)
+}
+
+var _ agenttask.WorkspaceCommitter = (*GitWorkspaceProvider)(nil)
+
+// PendingFiles lists the uncommitted changes of the task workspace.
+func (provider *GitWorkspaceProvider) PendingFiles(workspace agenttask.Workspace) ([]string, error) {
+	return git.PendingFiles(workspace.Path)
+}
+
+// Commit records the pending changes on the task branch, inside the workspace only.
+func (provider *GitWorkspaceProvider) Commit(workspace agenttask.Workspace, message string) (string, []string, error) {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	sha, files, err := git.CommitWorktree(workspace.Path, message)
+	if err != nil {
+		return "", nil, fmt.Errorf("commit the step: %w", err)
+	}
+	return sha, files, nil
+}

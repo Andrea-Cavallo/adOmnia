@@ -481,6 +481,12 @@ export class Settings {
     "skipPermissions": boolean;
 
     /**
+     * PermissionRules decide per categoria (read, write, shell, network, other): allow o
+     * deny senza chiedere. Una categoria assente chiede all'utente. Deny vale anche con SkipPermissions.
+     */
+    "permissionRules"?: { [_ in string]?: string };
+
+    /**
      * IgnoreAPIKey (solo Claude Code) toglie ANTHROPIC_API_KEY dall'ambiente
      * dell'agente: vale il login di `claude` (abbonamento) invece della chiave API.
      */
@@ -527,14 +533,18 @@ export class Settings {
      * Creates a new Settings instance from a string or object.
      */
     static createFrom($$source: any = {}): Settings {
-        const $$createField5_0 = $$createType7;
-        const $$createField6_0 = $$createType4;
+        const $$createField3_0 = $$createType7;
+        const $$createField6_0 = $$createType7;
+        const $$createField7_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("permissionRules" in $$parsedSource) {
+            $$parsedSource["permissionRules"] = $$createField3_0($$parsedSource["permissionRules"]);
+        }
         if ("env" in $$parsedSource) {
-            $$parsedSource["env"] = $$createField5_0($$parsedSource["env"]);
+            $$parsedSource["env"] = $$createField6_0($$parsedSource["env"]);
         }
         if ("extraArgs" in $$parsedSource) {
-            $$parsedSource["extraArgs"] = $$createField6_0($$parsedSource["extraArgs"]);
+            $$parsedSource["extraArgs"] = $$createField7_0($$parsedSource["extraArgs"]);
         }
         return new Settings($$parsedSource as Partial<Settings>);
     }

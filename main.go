@@ -122,11 +122,7 @@ func main() {
 	claudeService.manager.SetTurnObserver(goIDE.agentReview)
 	piService.manager.SetTurnObserver(goIDE.agentReview)
 	agentTasks := NewAgentTasks(milkService.manager, claudeService.manager, piService.manager)
-	agentTasks.configure(
-		filepath.Join(dataDir(), "code-studio", "worktrees"),
-		goIDE.service.AgentTaskVerifier(),
-		goIDE.service.Trusted,
-	)
+	agentTasks.configure(filepath.Join(dataDir(), "code-studio", "worktrees"), goIDE.service)
 	collabService := NewCollab(goIDE.sessionRoot)
 
 	var mainWindow *application.WebviewWindow
@@ -174,6 +170,13 @@ func main() {
 		},
 		Windows: application.WindowsOptions{
 			WebviewUserDataPath: dataDir(),
+			// Tetto all'heap V8 dei renderer: senza, un workspace grande con molti modelli
+			// Monaco fa crescere il renderer e non lo restituisce, e ogni finestra pannello
+			// staccata aggiunge un renderer. 512 MiB restano molto sopra l'uso osservato
+			// (~265 MB RSS) e fermano solo la crescita anomala: oltre la soglia V8 fa GC
+			// più spesso invece di allocare. Non è un tetto RSS: si misura con il monitor
+			// risorse integrato, non si assume.
+			AdditionalBrowserArgs: []string{"--js-flags=--max-old-space-size=512"},
 		},
 		Linux: application.LinuxOptions{
 			ProgramName: "adomnia",

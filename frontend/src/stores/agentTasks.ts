@@ -10,6 +10,17 @@ import {
   removeAgentTaskWorkspace,
   startAgentTask,
   startAgentTaskCorrection,
+  addAgentTaskComment,
+  setAgentTaskPlan,
+  approveAgentTaskPlan,
+  startAgentTaskStep,
+  confirmAgentTaskStep,
+  commitAgentTaskStep,
+  addScenarioToAgentTask,
+  type AgentPlanStepDraft,
+  setAgentTaskCommentStatus,
+  removeAgentTaskComment,
+  type AgentReviewCommentDraft,
   startAgentTaskVerifications,
   stopAgentTask,
   subscribeAgentTaskChanges,
@@ -39,7 +50,16 @@ interface AgentTaskState {
   addVerification: (id: string, draft: AgentVerificationDraft) => Promise<AgentTask>
   removeVerification: (id: string, verificationId: string) => Promise<AgentTask>
   startVerifications: (id: string, verificationIds: string[]) => Promise<AgentTask>
-  askCorrection: (id: string, evidenceIds: string[], note: string) => Promise<AgentTask>
+  askCorrection: (id: string, evidenceIds: string[], note: string, commentIds?: string[]) => Promise<AgentTask>
+  addComment: (id: string, draft: AgentReviewCommentDraft) => Promise<AgentTask>
+  setPlan: (id: string, steps: AgentPlanStepDraft[]) => Promise<AgentTask>
+  approvePlan: (id: string) => Promise<AgentTask>
+  startStep: (id: string, stepId: string) => Promise<AgentTask>
+  confirmStep: (id: string, stepId: string) => Promise<AgentTask>
+  commitStep: (id: string, stepId: string) => Promise<AgentTask>
+  addScenario: (id: string, scenarioId: string) => Promise<AgentTask>
+  setCommentStatus: (id: string, commentId: string, resolved: boolean) => Promise<AgentTask>
+  removeComment: (id: string, commentId: string) => Promise<AgentTask>
 }
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
@@ -148,6 +168,15 @@ export const useAgentTaskStore = create<AgentTaskState>((set, get) => {
     addVerification: (id, draft) => runAction(id, () => addAgentTaskVerification(id, draft)),
     removeVerification: (id, verificationId) => runAction(id, () => removeAgentTaskVerification(id, verificationId)),
     startVerifications: (id, verificationIds) => runAction(id, () => startAgentTaskVerifications(id, verificationIds)),
-    askCorrection: (id, evidenceIds, note) => runAction(id, () => startAgentTaskCorrection(id, evidenceIds, note)),
+    askCorrection: (id, evidenceIds, note, commentIds = []) => runAction(id, () => startAgentTaskCorrection(id, evidenceIds, note, commentIds)),
+    addComment: (id, draft) => runAction(id, () => addAgentTaskComment(id, draft)),
+    setPlan: (id, steps) => runAction(id, () => setAgentTaskPlan(id, steps)),
+    approvePlan: (id) => runAction(id, () => approveAgentTaskPlan(id)),
+    startStep: (id, stepId) => runAction(id, () => startAgentTaskStep(id, stepId)),
+    confirmStep: (id, stepId) => runAction(id, () => confirmAgentTaskStep(id, stepId)),
+    commitStep: (id, stepId) => runAction(id, () => commitAgentTaskStep(id, stepId)),
+    addScenario: (id, scenarioId) => runAction(id, () => addScenarioToAgentTask(id, scenarioId)),
+    setCommentStatus: (id, commentId, resolved) => runAction(id, () => setAgentTaskCommentStatus(id, commentId, resolved)),
+    removeComment: (id, commentId) => runAction(id, () => removeAgentTaskComment(id, commentId)),
   }
 })

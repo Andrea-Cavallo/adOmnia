@@ -19,6 +19,7 @@ type ClaudeCode struct {
 func NewClaudeCode() *ClaudeCode {
 	manager := milk.NewAgentManager(milk.NewSettingsStoreFile(dataDir(), "claude-code.json"), claudecode.Agent())
 	manager.SetMCPServers(milk.NewMCPServerStore(dataDir()).Load)
+	manager.SetProjectPermissions(projectPermissions().Rules)
 	return &ClaudeCode{manager: manager}
 }
 

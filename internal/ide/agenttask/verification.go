@@ -19,6 +19,8 @@ const (
 	VerificationTest VerificationKind = "test"
 	// VerificationRequest esegue una richiesta HTTP su un ambiente locale approvato.
 	VerificationRequest VerificationKind = "request"
+	// VerificationPage apre una pagina in un browser headless: screenshot, errori JS e richieste.
+	VerificationPage VerificationKind = "page"
 )
 
 // VerificationHeader è un'intestazione HTTP della verifica, in ordine stabile.
@@ -49,12 +51,19 @@ type Verification struct {
 	ExpectedStatus int                  `json:"expectedStatus,omitempty"`
 	// AllowRemote consente un host non locale. Vuoto significa: solo loopback.
 	AllowRemote bool `json:"allowRemote,omitempty"`
+	// SettleSeconds (pagina) è l'attesa dopo la navigazione prima dello screenshot.
+	SettleSeconds int `json:"settleSeconds,omitempty"`
 	// Service avvia nel workspace del task, prima della richiesta, una configurazione
 	// di Run approvata dall'utente, e la ferma a fine verifica.
 	Service ServiceLaunch `json:"service,omitzero"`
+	// Watch elenca i topic del broker osservati durante la verifica (messaggi prodotti).
+	Watch VerificationWatch `json:"watch,omitzero"`
 
 	TimeoutSeconds int       `json:"timeoutSeconds"`
 	CreatedAt      time.Time `json:"createdAt"`
+	// ScenarioID/CriterionID link a verification to the acceptance criterion it executes.
+	ScenarioID  string `json:"scenarioId,omitempty"`
+	CriterionID string `json:"criterionId,omitempty"`
 }
 
 // VerificationDraft è ciò che arriva dal renderer: nessun ID, nessun timestamp.
@@ -72,8 +81,60 @@ type VerificationDraft struct {
 	Body             string               `json:"body,omitempty"`
 	ExpectedStatus   int                  `json:"expectedStatus,omitempty"`
 	AllowRemote      bool                 `json:"allowRemote,omitempty"`
+	SettleSeconds    int                  `json:"settleSeconds,omitempty"`
 	Service          ServiceLaunch        `json:"service,omitzero"`
+	Watch            VerificationWatch    `json:"watch,omitzero"`
 	TimeoutSeconds   int                  `json:"timeoutSeconds,omitempty"`
+}
+
+// VerificationWatch è ciò che la verifica osserva mentre gira: i messaggi prodotti sui topic Kafka
+// e le query eseguite su una connessione database salvata. Solo indirizzi e un riferimento opaco
+// alla connessione, nessuna credenziale: i broker non locali richiedono AllowRemote.
+type VerificationWatch struct {
+	Brokers []string `json:"brokers,omitempty"`
+	Topics  []string `json:"topics,omitempty"`
+	// Database è l'ID di una connessione salvata in Database; le credenziali restano in Go.
+	Database string `json:"database,omitempty"`
+}
+
+// Enabled dice se la verifica osserva dei topic.
+func (watch VerificationWatch) Enabled() bool { return len(watch.Topics) > 0 }
+
+const maxWatchedTopics = 10
+
+func normalizeWatch(watch VerificationWatch, allowRemote bool) (VerificationWatch, error) {
+	clean := func(values []string) []string {
+		var out []string
+		for _, value := range values {
+			if value = strings.TrimSpace(value); value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	}
+	watch = VerificationWatch{Brokers: clean(watch.Brokers), Topics: clean(watch.Topics), Database: strings.TrimSpace(watch.Database)}
+	if len(watch.Database) > 128 {
+		return VerificationWatch{}, errors.New("database connection reference is too long")
+	}
+	if !watch.Enabled() {
+		return VerificationWatch{Database: watch.Database}, nil
+	}
+	if len(watch.Topics) > maxWatchedTopics {
+		return VerificationWatch{}, fmt.Errorf("at most %d topics can be watched", maxWatchedTopics)
+	}
+	if len(watch.Brokers) == 0 {
+		return VerificationWatch{}, errors.New("watched topics need a broker address")
+	}
+	for _, broker := range watch.Brokers {
+		host, _, err := net.SplitHostPort(broker)
+		if err != nil {
+			return VerificationWatch{}, fmt.Errorf("broker %q must be host:port", broker)
+		}
+		if !allowRemote && !IsLoopbackHost(host) {
+			return VerificationWatch{}, fmt.Errorf("broker %q is not local: approve remote hosts on the verification first", broker)
+		}
+	}
+	return watch, nil
 }
 
 // ServiceLaunch è la configurazione di Run che una verifica avvia prima della richiesta.
@@ -192,12 +253,39 @@ func normalizeVerificationDraft(draft VerificationDraft) (VerificationDraft, err
 		if draft.Service, err = normalizeServiceLaunch(draft.Service); err != nil {
 			return VerificationDraft{}, err
 		}
+		if draft.Watch, err = normalizeWatch(draft.Watch, draft.AllowRemote); err != nil {
+			return VerificationDraft{}, err
+		}
 		// Il servizio avviato da adOmnia gira su questa macchina: la richiesta resta locale.
 		if draft.Service.Enabled() && !draft.AllowRemote && !IsLoopbackHost(parsed.Hostname()) {
 			return VerificationDraft{}, errors.New("a request to a service started by adOmnia must target a loopback host")
 		}
+	case VerificationPage:
+		draft.Method = "GET"
+		parsed, err := url.Parse(draft.URL)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return VerificationDraft{}, errors.New("an absolute http or https URL is required for a page verification")
+		}
+		if draft.SettleSeconds == 0 {
+			draft.SettleSeconds = 2
+		}
+		if draft.SettleSeconds < 1 || draft.SettleSeconds > 30 {
+			return VerificationDraft{}, errors.New("the page must settle within 1 and 30 seconds")
+		}
+		if draft.TimeoutSeconds == 0 {
+			draft.TimeoutSeconds = 60
+		}
+		if draft.Label == "" {
+			draft.Label = "Page " + parsed.Host + parsed.Path
+		}
+		if draft.Service, err = normalizeServiceLaunch(draft.Service); err != nil {
+			return VerificationDraft{}, err
+		}
+		if draft.Service.Enabled() && !draft.AllowRemote && !IsLoopbackHost(parsed.Hostname()) {
+			return VerificationDraft{}, errors.New("a page served by adOmnia must use a loopback host")
+		}
 	default:
-		return VerificationDraft{}, errors.New("verification kind must be test or request")
+		return VerificationDraft{}, errors.New("verification kind must be test, request or page")
 	}
 	if len(draft.Label) > maxVerificationLabel {
 		return VerificationDraft{}, errors.New("verification label is too long")

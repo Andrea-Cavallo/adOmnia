@@ -225,8 +225,9 @@ func (service *Service) AddVerification(id string, draft VerificationDraft) (Tas
 		Packages: normalized.Packages, Run: normalized.Run, Coverage: normalized.Coverage,
 		Method: normalized.Method, URL: normalized.URL, Headers: normalized.Headers,
 		Body: normalized.Body, ExpectedStatus: normalized.ExpectedStatus,
-		AllowRemote: normalized.AllowRemote, Service: normalized.Service, TimeoutSeconds: normalized.TimeoutSeconds,
-		CreatedAt: service.now().UTC(),
+		AllowRemote: normalized.AllowRemote, Service: normalized.Service, Watch: normalized.Watch, TimeoutSeconds: normalized.TimeoutSeconds,
+		SettleSeconds: normalized.SettleSeconds,
+		CreatedAt:     service.now().UTC(),
 	})
 	task.UpdatedAt = service.now().UTC()
 	service.tasks[id] = task
@@ -352,8 +353,22 @@ func selectVerifications(task Task, ids []string) ([]Verification, error) {
 // runVerifications esegue le verifiche una alla volta, registrando un'evidenza per
 // ciascuna: un errore o un contenuto non eseguibile non diventano mai "superato".
 func (service *Service) runVerifications(id string, ids []string) {
+	parent, cancelAll := context.WithCancel(context.Background())
+	service.mu.Lock()
+	service.verifyCancel[id] = cancelAll
+	service.mu.Unlock()
+	defer func() {
+		cancelAll()
+		service.mu.Lock()
+		delete(service.verifyCancel, id)
+		service.mu.Unlock()
+	}()
 	for _, verificationID := range ids {
-		verification, request, ok := service.prepareVerification(id, verificationID)
+		if parent.Err() != nil {
+			// Verifiche annullate: quelle non ancora partite non producono alcuna evidenza.
+			break
+		}
+		verification, request, ok := service.prepareVerification(id, verificationID, parent)
 		if !ok {
 			continue
 		}
@@ -383,7 +398,7 @@ type verificationRun struct {
 
 // prepareVerification legge lo stato del task e calcola l'impronta del contenuto
 // PRIMA di eseguire la verifica: l'evidenza dichiara esattamente cosa ha misurato.
-func (service *Service) prepareVerification(id, verificationID string) (Verification, verificationRun, bool) {
+func (service *Service) prepareVerification(id, verificationID string, parent context.Context) (Verification, verificationRun, bool) {
 	service.mu.Lock()
 	task, ok := service.tasks[id]
 	verifier := service.verifier
@@ -416,7 +431,7 @@ func (service *Service) prepareVerification(id, verificationID string) (Verifica
 	service.mu.Unlock()
 
 	timeout := time.Duration(normalizeTimeout(verification.TimeoutSeconds)) * time.Second
-	run.context, run.cancel = context.WithTimeout(context.Background(), timeout)
+	run.context, run.cancel = context.WithTimeout(parent, timeout)
 	if provider != nil {
 		ref := ""
 		if run.workspace != nil && run.workspace.State == WorkspaceReady {
@@ -469,6 +484,7 @@ func (service *Service) recordEvidence(id string, verification Verification, evi
 		task.Evidences = append([]Evidence(nil), task.Evidences[len(task.Evidences)-maxEvidencePerTask:]...)
 	}
 	task.VerifyingIDs = removeString(task.VerifyingIDs, verification.ID)
+	evaluateSteps(&task, now)
 	task.UpdatedAt = now
 	service.tasks[id] = task
 	if err := service.saveLocked(); err != nil {
@@ -543,7 +559,7 @@ func boundText(text string, limit int) (string, bool) {
 
 // StartCorrection invia all'agente lo stesso task con le sole evidenze scelte
 // dall'utente. Quando il tentativo finisce, adOmnia riesegue quelle verifiche.
-func (service *Service) StartCorrection(id string, evidenceIDs []string, note string) (Task, error) {
+func (service *Service) StartCorrection(id string, evidenceIDs, commentIDs []string, note string) (Task, error) {
 	service.mu.Lock()
 	task, ok := service.tasks[id]
 	if !ok {
@@ -562,17 +578,30 @@ func (service *Service) StartCorrection(id string, evidenceIDs []string, note st
 		service.mu.Unlock()
 		return Task{}, fmt.Errorf("the task reached its limit of %d consecutive corrections; review the evidence, then run the task again or raise the limit", limit)
 	}
+	if len(evidenceIDs) == 0 && len(commentIDs) == 0 {
+		service.mu.Unlock()
+		return Task{}, errors.New("select at least one verification result or review comment")
+	}
 	selected, err := selectEvidence(task, evidenceIDs)
 	if err != nil {
 		service.mu.Unlock()
 		return Task{}, err
 	}
+	comments, err := selectComments(task, commentIDs)
+	if err != nil {
+		service.mu.Unlock()
+		return Task{}, err
+	}
+	if label := repeatedRegression(task, verificationIDsOf(selected)); label != "" {
+		service.mu.Unlock()
+		return Task{}, fmt.Errorf("%q passed and then failed again %d times: the corrections are going in circles; review the changes before asking for another one", label, maxRegressions)
+	}
 	lastAttempt := task.Attempts[len(task.Attempts)-1]
 	verificationIDs := verificationIDsOf(selected)
-	message, _ := boundText(correctionMessage(task, selected, note), task.Limits.MaxContextBytes)
+	message, _ := boundText(correctionMessage(task, selected, note)+commentsMessage(comments), task.Limits.MaxContextBytes)
 	receipt := task.LastContext
 	service.mu.Unlock()
-	return service.start(id, message, receipt, lastAttempt.ID, evidenceIDs, verificationIDs)
+	return service.start(id, message, receipt, startOptions{correctionOf: lastAttempt.ID, evidenceIDs: evidenceIDs, autoVerify: verificationIDs, commentIDs: commentIDs})
 }
 
 // consecutiveCorrections conta i tentativi di correzione in coda al task: una nuova
@@ -585,10 +614,39 @@ func consecutiveCorrections(task Task) int {
 	return count
 }
 
-func selectEvidence(task Task, ids []string) ([]Evidence, error) {
-	if len(ids) == 0 {
-		return nil, errors.New("select at least one verification result")
+// maxRegressions è il numero di regressioni della stessa verifica oltre il quale il
+// ciclo di correzione si ferma da solo.
+const maxRegressions = 2
+
+// repeatedRegression restituisce l'etichetta della prima verifica che è passata e poi
+// tornata a fallire almeno maxRegressions volte. Contano solo esiti misurati: errori e
+// verifiche non eseguite non sono né superamenti né regressioni.
+func repeatedRegression(task Task, verificationIDs []string) string {
+	for _, verificationID := range verificationIDs {
+		regressions, passed, label := 0, false, ""
+		for _, evidence := range task.Evidences {
+			if evidence.VerificationID != verificationID {
+				continue
+			}
+			label = evidence.Label
+			switch evidence.Outcome {
+			case EvidencePassed:
+				passed = true
+			case EvidenceFailed:
+				if passed {
+					regressions++
+					passed = false
+				}
+			}
+		}
+		if regressions >= maxRegressions {
+			return label
+		}
 	}
+	return ""
+}
+
+func selectEvidence(task Task, ids []string) ([]Evidence, error) {
 	selected := make([]Evidence, 0, len(ids))
 	seen := map[string]bool{}
 	for _, id := range ids {
@@ -628,9 +686,14 @@ func verificationIDsOf(evidences []Evidence) []string {
 // entro il limite di contesto approvato per il task.
 func correctionMessage(task Task, evidences []Evidence, note string) string {
 	var builder strings.Builder
-	builder.WriteString("Correction requested. adOmnia ran these verifications on the previous attempt and measured the results below.\n")
-	builder.WriteString("Change the code. The same verifications will be re-run by adOmnia: a claim in your reply is not a passing check.\n\n")
+	if len(evidences) > 0 {
+		builder.WriteString("Correction requested. adOmnia ran these verifications on the previous attempt and measured the results below.\n")
+		builder.WriteString("Change the code. The same verifications will be re-run by adOmnia: a claim in your reply is not a passing check.\n\n")
+	} else {
+		builder.WriteString("Correction requested from the user's review of your changes. Address each review comment below by changing the code.\n\n")
+	}
 	fmt.Fprintf(&builder, "Task intent: %s\nObjective:\n%s\n", task.Intent, task.Objective)
+	builder.WriteString(scenariosMessage(task.Scenarios))
 	if len(task.Criteria) > 0 {
 		builder.WriteString("Completion criteria:\n")
 		for _, criterion := range task.Criteria {
@@ -643,6 +706,10 @@ func correctionMessage(task Task, evidences []Evidence, note string) string {
 		builder.WriteString(label)
 		budget -= len(label)
 		detail := fmt.Sprintf("command: %s\nworkdir: %s\nenvironment: %s\ndiff: %s (%d changed files)\n", evidence.Command, evidence.Workdir, evidence.Environment, evidence.DiffFingerprint, evidence.ChangedFiles)
+		if evidence.Kind == VerificationPage {
+			// Il prompt è solo testo: lo screenshot resta locale e lo si dichiara, invece di farlo credere inviato.
+			detail += "screenshot: recorded locally and not sent (this correction carries text only: page errors and failed requests are below)\n"
+		}
 		if budget > 0 && len(detail) < budget {
 			builder.WriteString(detail)
 			budget -= len(detail)

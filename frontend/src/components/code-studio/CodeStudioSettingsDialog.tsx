@@ -5,8 +5,10 @@ import { EDITOR_FONT_SIZE, useCodeStudioLspStore, type GoIDEEditorPreferences } 
 import type { GoIDELanguageServerSettings } from '@/lib/code-studio-lsp-api'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
+import { ProjectAgentPermissionRules } from './AgentPermissionRules'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 
-type Section = 'Editor' | 'Save actions' | 'Language server' | 'Performance' | 'Keymap & tools'
+type Section = 'Editor' | 'Save actions' | 'Language server' | 'Performance' | 'Agent permissions' | 'Keymap & tools'
 
 interface ToggleSetting {
   section: Section
@@ -22,7 +24,10 @@ interface SelectSetting {
   label: string
   hint: string
   kind: 'select'
-  pref: 'resourceMode' | 'editorMode' | 'autoSaveDelayMs'
+  /** Preferenza dell'editor, salvata con il resto delle preferenze. */
+  pref?: 'resourceMode' | 'editorMode' | 'autoSaveDelayMs'
+  /** Impostazione del language server, inviata a gopls (riavvia il server). */
+  server?: 'hoverKind'
   options: Array<{ value: string; label: string }>
 }
 
@@ -55,6 +60,7 @@ const SETTINGS: Setting[] = [
   { section: 'Save actions', label: 'Trim trailing whitespace', hint: 'For non-Go files; Go files are already formatted.', kind: 'toggle', pref: 'trimTrailingWhitespace' },
   { section: 'Save actions', label: 'Auto save', hint: 'Save every modified file after a pause in typing.', kind: 'select', pref: 'autoSaveDelayMs', options: [{ value: '0', label: 'Off' }, { value: '1000', label: 'After 1 second' }, { value: '2000', label: 'After 2 seconds' }, { value: '5000', label: 'After 5 seconds' }, { value: '10000', label: 'After 10 seconds' }] },
   { section: 'Save actions', label: 'Save on focus change', hint: 'Save modified files when the editor loses focus or you switch file.', kind: 'toggle', pref: 'autoSave' },
+  { section: 'Language server', label: 'Hover detail', hint: 'Synopsis shows the signature and first paragraph; full loads the complete doc comment of the symbol and its dependencies on every hover (costlier). Restarts gopls.', kind: 'select', server: 'hoverKind', options: [{ value: 'synopsis', label: 'Synopsis (recommended)' }, { value: 'full', label: 'Full documentation' }, { value: 'none', label: 'Signature only' }] },
   { section: 'Language server', label: 'Deep diagnostics on save', hint: 'Run deep diagnostics after saving; completion, hover and navigation remain available.', kind: 'toggle', server: 'diagnosticsOnSave' },
   { section: 'Language server', label: 'gofumpt style', hint: 'Stricter formatting rules (restarts gopls).', kind: 'toggle', server: 'gofumpt' },
   { section: 'Language server', label: 'staticcheck analyzers', hint: 'Extra analyzers inside gopls (restarts gopls).', kind: 'toggle', server: 'staticcheck' },
@@ -67,7 +73,7 @@ const SETTINGS: Setting[] = [
   { section: 'Keymap & tools', label: 'GitHub Copilot', hint: 'Accounts, proxy and ignored paths.', kind: 'link', command: 'tools.copilot' },
 ]
 
-const SECTIONS: Section[] = ['Editor', 'Save actions', 'Language server', 'Performance', 'Keymap & tools']
+const SECTIONS: Section[] = ['Editor', 'Save actions', 'Language server', 'Performance', 'Agent permissions', 'Keymap & tools']
 
 interface CodeStudioSettingsDialogProps {
   open: boolean
@@ -83,6 +89,7 @@ export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }
   const updatePreferences = useCodeStudioLspStore((state) => state.updatePreferences)
   const updateSettings = useCodeStudioLspStore((state) => state.updateSettings)
   const [section, setSection] = useState<Section>('Editor')
+  const projectRoot = useCodeStudioStore((state) => state.sessions.find((session) => session.id === sessionId)?.project.realPath ?? '')
   const [query, setQuery] = useState('')
   const needle = query.trim().toLowerCase()
   const visible = useMemo(() => SETTINGS.filter((item) => (needle ? `${item.label} ${item.hint} ${item.section}`.toLowerCase().includes(needle) : item.section === section)), [needle, section])
@@ -97,13 +104,18 @@ export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }
       )
     }
     if (item.kind === 'select') {
+      const value = item.pref ? String(preferences[item.pref]) : String(settings[item.server!] ?? '')
       return (
-        <select value={String(preferences[item.pref])} onChange={(event) => {
+        <select value={value} onChange={(event) => {
+          if (item.server) {
+            void updateSettings(sessionId, { [item.server]: event.target.value } as Partial<GoIDELanguageServerSettings>)
+            return
+          }
           if (item.pref === 'resourceMode') {
             const value = event.target.value as 'normal' | 'low' | 'auto'
             if (value === 'low') void useCodeStudioLowResources.getState().activate()
             else void useCodeStudioLowResources.getState().deactivate(value)
-          } else updatePreferences({ [item.pref]: item.pref === 'autoSaveDelayMs' ? Number(event.target.value) : event.target.value } as Partial<GoIDEEditorPreferences>)
+          } else updatePreferences({ [item.pref!]: item.pref === 'autoSaveDelayMs' ? Number(event.target.value) : event.target.value } as Partial<GoIDEEditorPreferences>)
         }} aria-label={item.label} className="gs-input w-auto min-w-[150px]">
           {item.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
@@ -149,7 +161,7 @@ export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }
         </nav>
         <div className="min-w-0 flex-1 overflow-auto px-6 py-4">
           <h3 className="mb-2 text-[15px] font-semibold text-text-1">{needle ? `Results for “${query}”` : section}</h3>
-          {visible.length === 0 && <p className="gs-list-empty">No setting matches “{query}”.</p>}
+          {visible.length === 0 && !(section === 'Agent permissions' && !needle) && <p className="gs-list-empty">No setting matches “{query}”.</p>}
           <div className="flex flex-col">
             {visible.map((item) => (
               <div key={`${item.section}:${item.label}`} className="flex min-h-[56px] items-center gap-4 border-b border-border-1/60 py-3 last:border-b-0">
@@ -175,6 +187,7 @@ export function CodeStudioSettingsDialog({ open, sessionId, onCommand, onClose }
             <label className="flex items-center gap-2 text-[12px] text-text-2"><input type="checkbox" checked={settings.expandWorkspaceToModule !== false} onChange={(event) => void updateSettings(sessionId, { expandWorkspaceToModule: event.target.checked })} />Analyze the whole module</label>
             <p className="gs-hint">Keep enabled unless intentionally working in a nested folder. Verify cross-package search and refactoring after narrowing the scope.</p>
           </div>}
+          {!needle && section === 'Agent permissions' && <ProjectAgentPermissionRules root={projectRoot} />}
           {!needle && section === 'Language server' && <p className="gs-hint mt-3">Language server settings apply to every project and restart gopls for the active one.</p>}
         </div>
       </div>

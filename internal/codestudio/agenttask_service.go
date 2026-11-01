@@ -213,7 +213,7 @@ func (launched *launchedService) annotate(evidence agenttask.Evidence) agenttask
 		output = "(no output collected)"
 	}
 	evidence.Log = strings.TrimRight(evidence.Log, "\n") + "\n\n--- service output (last " + fmt.Sprintf("%d", serviceTapLimit/1024) + " KiB) ---\n" + output
-	return evidence
+	return withStackTrace(evidence, launched.tap.String())
 }
 
 // stop ends the service and every process of its temporary session, then closes it.

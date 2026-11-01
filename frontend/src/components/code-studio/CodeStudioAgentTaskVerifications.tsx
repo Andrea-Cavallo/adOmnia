@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, CircleAlert, CircleSlash, Loader2, Play, Plus, Send, Trash2, Wrench, XCircle } from 'lucide-react'
 import { VerificationKind, type AgentEvidence, type AgentTask, type AgentVerification, type AgentVerificationDraft } from '@/lib/agent-task-api'
 import { useAgentTaskStore } from '@/stores/agentTasks'
+import { evidenceImage } from '@/lib/agent-task-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
+import { samePath } from '@/lib/code-studio/projectUnits'
 import { listGoIDERunConfigurations, type GoIDERunConfiguration } from '@/lib/code-studio-api'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioField } from './CodeStudioModal'
+import { safeStorageGet } from '@/lib/wailsStorage'
 
-type VerificationType = 'test' | 'request'
+type VerificationType = 'test' | 'request' | 'page'
 
 const isActive = (task: AgentTask) => ['running', 'waiting_permission', 'stopping'].includes(task.status)
 
@@ -123,6 +126,7 @@ export function CodeStudioAgentTaskVerifications({ task, ready }: Props) {
           </div>
           <details className="text-[11px]"><summary className="cursor-pointer text-text-3">Log and observations</summary>
             {evidence.log && <pre className="milk-output agent-task-preview mt-1">{evidence.log}</pre>}
+            {evidence.observations?.some((observation) => observation.name === 'screenshot' && !observation.value.startsWith('not saved')) && <EvidenceScreenshot taskId={task.id} evidenceId={evidence.id} />}
             {!!evidence.observations?.length && <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-text-3">{evidence.observations.map((observation) => <li key={observation.name}>{observation.name}: {observation.value}</li>)}</ul>}
             <p className="mt-1 text-[10px] text-text-4">Attempt {evidence.attemptId ? evidence.attemptId.slice(-8) : 'none'} · {evidence.workdir}</p>
           </details>
@@ -140,8 +144,6 @@ export function CodeStudioAgentTaskVerifications({ task, ready }: Props) {
   </section>
 }
 
-const normalizePath = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
-const samePath = (a: string, b: string) => normalizePath(a) === normalizePath(b)
 
 /** Run configurations of the task's project, from its open Code Studio session (empty when the project is not open). */
 function useProjectRunConfigurations(root: string, enabled: boolean): GoIDERunConfiguration[] {
@@ -154,6 +156,23 @@ function useProjectRunConfigurations(root: string, enabled: boolean): GoIDERunCo
     return () => { live = false }
   }, [enabled, sessionId])
   return enabled && sessionId ? configs : []
+}
+
+/** Saved PostgreSQL connections of the Database panel: only an opaque id leaves the renderer. */
+function usePostgresConnections(enabled: boolean): Array<{ id: string; name: string }> {
+  const [connections, setConnections] = useState<Array<{ id: string; name: string }>>([])
+  useEffect(() => {
+    if (!enabled) return
+    let live = true
+    void safeStorageGet('database', 'connections').then((raw) => {
+      let list: unknown = []
+      try { list = JSON.parse(raw || '[]') } catch { /* unreadable list: no connection to offer */ }
+      const items = Array.isArray(list) ? list.filter((item): item is { id: string; name?: string; driver?: string } => typeof item?.id === 'string' && item.id !== '' && ['postgres', 'postgresql', 'pg'].includes(String(item.driver))) : []
+      if (live) setConnections(items.map((item) => ({ id: item.id, name: item.name || item.id })))
+    })
+    return () => { live = false }
+  }, [enabled])
+  return enabled ? connections : []
 }
 
 const launchBlocker = (config: GoIDERunConfiguration) => config.kind === 'compound' ? 'compound configurations are not supported yet' : config.environment?.some((entry) => entry.secret) ? 'needs secret values' : ''
@@ -176,13 +195,20 @@ function VerificationForm({ root, kind, setKind, busy, onAdd }: {
   const [timeout, setTimeout] = useState(0)
   const [serviceId, setServiceId] = useState('')
   const [readyTimeout, setReadyTimeout] = useState(60)
-  const runConfigs = useProjectRunConfigurations(root, kind === 'request')
+  const [settle, setSettle] = useState(2)
+  const [topics, setTopics] = useState('')
+  const [brokers, setBrokers] = useState('localhost:9092')
+  const [databaseId, setDatabaseId] = useState('')
+  const databases = usePostgresConnections(kind === 'request')
+  const runConfigs = useProjectRunConfigurations(root, kind !== 'test')
   const serviceConfig = runConfigs.find((config) => config.id === serviceId && !launchBlocker(config))
   const submit = () => {
+    const service = serviceConfig ? { name: serviceConfig.name, configuration: JSON.stringify(serviceConfig), readyTimeoutSeconds: readyTimeout } : {}
     const draft: AgentVerificationDraft = kind === 'test'
       ? { kind: VerificationKind.VerificationTest, label: label.trim() || 'Language tests', language: 'go', packages: packages.split(',').map((item) => item.trim()).filter(Boolean), run: runFilter.trim(), coverage, timeoutSeconds: timeout }
-      : { kind: VerificationKind.VerificationRequest, label: label.trim() || `${method} ${url}`, method, url: url.trim(), body, expectedStatus, timeoutSeconds: timeout,
-        service: serviceConfig ? { name: serviceConfig.name, configuration: JSON.stringify(serviceConfig), readyTimeoutSeconds: readyTimeout } : {} }
+      : kind === 'page'
+        ? { kind: VerificationKind.VerificationPage, label: label.trim() || `Page ${url}`, url: url.trim(), settleSeconds: settle, timeoutSeconds: timeout, service }
+        : { kind: VerificationKind.VerificationRequest, label: label.trim() || `${method} ${url}`, method, url: url.trim(), body, expectedStatus, timeoutSeconds: timeout, service, watch: { topics: splitList(topics), brokers: splitList(brokers), database: databases.some((item) => item.id === databaseId) ? databaseId : '' } }
     void onAdd(draft)
   }
   return <div className="flex flex-col gap-2 rounded border border-border-1 p-2">
@@ -191,6 +217,7 @@ function VerificationForm({ root, kind, setKind, busy, onAdd }: {
         <select className="gs-input h-7 text-[11px]" value={kind} onChange={(event) => setKind(event.target.value as VerificationType)} aria-label="Verification type">
           <option value="test">Language test</option>
           <option value="request">HTTP request</option>
+          <option value="page">Page (headless browser)</option>
         </select>
       </CodeStudioField>
       <CodeStudioField label="Label" className="min-w-40 flex-1"><input className="gs-input h-7 text-[11px]" value={label} placeholder={kind === 'test' ? 'Unit tests' : 'Health check'} onChange={(event) => setLabel(event.target.value)} /></CodeStudioField>
@@ -202,9 +229,9 @@ function VerificationForm({ root, kind, setKind, busy, onAdd }: {
       <label className="gs-check"><input type="checkbox" checked={coverage} onChange={(event) => setCoverage(event.target.checked)} />Coverage</label>
     </div> : <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-end gap-2">
-        <CodeStudioField label="Method"><select className="gs-input h-7 w-24 text-[11px]" value={method} onChange={(event) => setMethod(event.target.value)} aria-label="HTTP method">{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((item) => <option key={item} value={item}>{item}</option>)}</select></CodeStudioField>
+        {kind === 'request' && <CodeStudioField label="Method"><select className="gs-input h-7 w-24 text-[11px]" value={method} onChange={(event) => setMethod(event.target.value)} aria-label="HTTP method">{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((item) => <option key={item} value={item}>{item}</option>)}</select></CodeStudioField>}
         <CodeStudioField label="URL" className="min-w-60 flex-1" hint="Loopback only unless the host is approved"><input className="gs-input h-7 font-mono text-[11px]" value={url} onChange={(event) => setUrl(event.target.value)} /></CodeStudioField>
-        <CodeStudioField label="Expected status"><input type="number" min={100} max={599} className="gs-input h-7 w-28 text-[11px]" value={expectedStatus} onChange={(event) => setExpectedStatus(Number(event.target.value) || 200)} /></CodeStudioField>
+{kind === 'request' ? <CodeStudioField label="Expected status"><input type="number" min={100} max={599} className="gs-input h-7 w-28 text-[11px]" value={expectedStatus} onChange={(event) => setExpectedStatus(Number(event.target.value) || 200)} /></CodeStudioField> : <CodeStudioField label="Settle (s)" hint="Wait before the screenshot"><input type="number" min={1} max={30} className="gs-input h-7 w-24 text-[11px]" value={settle} onChange={(event) => setSettle(Number(event.target.value) || 2)} /></CodeStudioField>}
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <CodeStudioField label="Start before the request" className="min-w-60 flex-1" hint={runConfigs.length ? 'Started in the task workspace, stopped when the verification ends' : 'Open this project in Code Studio to pick one of its run configurations'}>
@@ -215,7 +242,17 @@ function VerificationForm({ root, kind, setKind, busy, onAdd }: {
         </CodeStudioField>
         {serviceConfig && <CodeStudioField label="Ready within (s)"><input type="number" min={1} max={300} className="gs-input h-7 w-24 text-[11px]" value={readyTimeout} onChange={(event) => setReadyTimeout(Number(event.target.value) || 60)} /></CodeStudioField>}
       </div>
-      <CodeStudioField label="Body" hint="Optional; sent as-is"><textarea className="gs-input min-h-14 font-mono text-[11px]" value={body} onChange={(event) => setBody(event.target.value)} /></CodeStudioField>
+      {kind === 'request' && <div className="flex flex-wrap items-end gap-2">
+        <CodeStudioField label="Watch topics" className="min-w-40 flex-1" hint="Kafka topics whose new messages become evidence; comma separated"><input className="gs-input h-7 font-mono text-[11px]" value={topics} placeholder="orders, payments" onChange={(event) => setTopics(event.target.value)} /></CodeStudioField>
+        {topics.trim() && <CodeStudioField label="Broker" hint="host:port, local only"><input className="gs-input h-7 w-44 font-mono text-[11px]" value={brokers} onChange={(event) => setBrokers(event.target.value)} /></CodeStudioField>}
+        <CodeStudioField label="Watch database queries" className="min-w-48" hint={databases.length ? 'PostgreSQL with pg_stat_statements; counts every client of that database' : 'Save a PostgreSQL connection in the Database panel first'}>
+          <select className="gs-input h-7 text-[11px]" value={databases.some((item) => item.id === databaseId) ? databaseId : ''} onChange={(event) => setDatabaseId(event.target.value)} aria-label="Database connection to observe" disabled={!databases.length}>
+            <option value="">Don't watch</option>
+            {databases.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </CodeStudioField>
+      </div>}
+      {kind === 'request' && <CodeStudioField label="Body" hint="Optional; sent as-is"><textarea className="gs-input min-h-14 font-mono text-[11px]" value={body} onChange={(event) => setBody(event.target.value)} /></CodeStudioField>}
     </div>}
     <div className="flex flex-wrap items-center gap-2">
       <CodeStudioButton small variant="primary" icon={kind === 'test' ? Play : Send} loading={busy} onClick={submit}>Add verification</CodeStudioButton>
@@ -224,9 +261,25 @@ function VerificationForm({ root, kind, setKind, busy, onAdd }: {
   </div>
 }
 
+function splitList(value: string): string[] {
+  return value.split(',').map((item) => item.trim()).filter(Boolean)
+}
+
 function consecutiveCorrections(task: { attempts?: Array<{ correctionOf?: string }> | null }): number {
   const attempts = task.attempts ?? []
   let count = 0
   for (let index = attempts.length - 1; index >= 0 && attempts[index].correctionOf; index--) count++
   return count
+}
+
+/** Screenshot of a page verification, loaded on request from the local evidence folder. */
+function EvidenceScreenshot({ taskId, evidenceId }: { taskId: string; evidenceId: string }) {
+  const [image, setImage] = useState('')
+  const [error, setError] = useState('')
+  const load = () => {
+    setError('')
+    void evidenceImage(taskId, evidenceId).then(setImage).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
+  }
+  if (image) return <img className="mt-1 max-h-64 rounded border border-border-1" alt="Page screenshot recorded by the verification" src={`data:image/png;base64,${image}`} />
+  return <p className="mt-1 text-[10px]"><button type="button" className="text-accent hover:underline" onClick={load}>Show screenshot</button>{error && <span className="ml-2 text-danger">{error}</span>}</p>
 }

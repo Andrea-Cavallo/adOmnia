@@ -65,11 +65,20 @@ export function MCPServers(): $CancellablePromise<milk$0.MCPServer[]> {
 }
 
 /**
+ * ProjectPermissionRules restituisce le regole di permesso del progetto (valgono per ogni agente).
+ */
+export function ProjectPermissionRules(root: string): $CancellablePromise<{ [_ in string]?: string }> {
+    return $Call.ByID(2798842980, root).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
  * Prompt invia un turno di chat. I delta arrivano come evento milk.chat.
  */
 export function Prompt(request: milk$0.PromptRequest): $CancellablePromise<milk$0.PromptResponse> {
     return $Call.ByID(1998047459, request).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType6($result);
     });
 }
 
@@ -104,17 +113,26 @@ export function SaveMCPServers(servers: milk$0.MCPServer[]): $CancellablePromise
 }
 
 /**
+ * SaveProjectPermissionRules salva le regole del progetto; valgono dalla prossima richiesta di permesso.
+ */
+export function SaveProjectPermissionRules(root: string, rules: { [_ in string]?: string }): $CancellablePromise<{ [_ in string]?: string }> {
+    return $Call.ByID(2881789445, root, rules).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
  * SaveSettings valida, salva e applica la configurazione.
  */
 export function SaveSettings(settings: milk$0.Settings): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(4063823965, settings).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
 export function SessionControls(root: string): $CancellablePromise<milk$0.SessionControls> {
     return $Call.ByID(2911452761, root).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
@@ -127,7 +145,7 @@ export function SetActiveWorkspace(root: string): $CancellablePromise<void> {
 
 export function SetSessionControl(root: string, id: string, value: any): $CancellablePromise<milk$0.SessionControls> {
     return $Call.ByID(4072898334, root, id, value).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
@@ -136,7 +154,7 @@ export function SetSessionControl(root: string, id: string, value: any): $Cancel
  */
 export function Settings(): $CancellablePromise<milk$0.Settings> {
     return $Call.ByID(3002270608).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
@@ -167,6 +185,7 @@ const $$createType1 = milk$0.Status.createFrom;
 const $$createType2 = $Create.Array($Create.Any);
 const $$createType3 = milk$0.MCPServer.createFrom;
 const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = milk$0.PromptResponse.createFrom;
-const $$createType6 = milk$0.Settings.createFrom;
-const $$createType7 = milk$0.SessionControls.createFrom;
+const $$createType5 = $Create.Map($Create.Any, $Create.Any);
+const $$createType6 = milk$0.PromptResponse.createFrom;
+const $$createType7 = milk$0.Settings.createFrom;
+const $$createType8 = milk$0.SessionControls.createFrom;

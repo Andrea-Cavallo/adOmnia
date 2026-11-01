@@ -24,6 +24,11 @@ export class FileChange {
     "reviewable": boolean;
     "agent": string;
 
+    /**
+     * From is the previous path of a renamed file. Accepting or rejecting a rename applies to both paths.
+     */
+    "from"?: string;
+
     /** Creates a new FileChange instance. */
     constructor($$source: Partial<FileChange> = {}) {
         if (!("path" in $$source)) {
@@ -69,6 +74,11 @@ export enum FileStatus {
     StatusAdded = "added",
     StatusModified = "modified",
     StatusDeleted = "deleted",
+
+    /**
+     * StatusRenamed: a deleted file and a created file with the same content, shown as one move.
+     */
+    StatusRenamed = "renamed",
 };
 
 /**

@@ -209,7 +209,7 @@ func TestVerificationRecordsEvidenceAndCorrectionRerunsTheSameChecks(t *testing.
 	}
 
 	// Chiedi correzione: il nuovo tentativo cita l'evidenza e riesegue la stessa verifica.
-	if _, err := service.StartCorrection(task.ID, []string{evidence.ID}, "handle the nil map"); err != nil {
+	if _, err := service.StartCorrection(task.ID, []string{evidence.ID}, nil, "handle the nil map"); err != nil {
 		t.Fatal(err)
 	}
 	correction := <-attempts
@@ -310,7 +310,7 @@ func TestStoppedCorrectionDoesNotRerunVerificationsLater(t *testing.T) {
 		t.Fatal(err)
 	}
 	verified := waitForEvidence(t, service, task.ID, 1)
-	if _, err := service.StartCorrection(task.ID, []string{verified.Evidences[0].ID}, ""); err != nil {
+	if _, err := service.StartCorrection(task.ID, []string{verified.Evidences[0].ID}, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	<-started
@@ -364,7 +364,7 @@ func TestCorrectionLoopStopsAtTheLimit(t *testing.T) {
 	stored.Evidences = []Evidence{{ID: "e1", VerificationID: "v1"}}
 	service.tasks[task.ID] = stored
 	service.mu.Unlock()
-	if _, err := service.StartCorrection(task.ID, []string{"e1"}, ""); err == nil || !strings.Contains(err.Error(), "limit of 2") {
+	if _, err := service.StartCorrection(task.ID, []string{"e1"}, nil, ""); err == nil || !strings.Contains(err.Error(), "limit of 2") {
 		t.Fatalf("expected the correction limit to stop the loop, got %v", err)
 	}
 	// Una nuova esecuzione normale azzera la catena.
@@ -390,5 +390,198 @@ func TestServiceLaunchIsValidatedAndStaysLocal(t *testing.T) {
 		if _, err := normalizeVerificationDraft(draft); err == nil {
 			t.Errorf("%s: expected a validation error", name)
 		}
+	}
+}
+
+func TestRepeatedRegressionStopsTheCorrectionLoop(t *testing.T) {
+	task := Task{Evidences: []Evidence{
+		{VerificationID: "v1", Label: "health", Outcome: EvidenceFailed},
+		{VerificationID: "v1", Label: "health", Outcome: EvidencePassed},
+		{VerificationID: "v1", Label: "health", Outcome: EvidenceFailed},
+		{VerificationID: "v1", Label: "health", Outcome: EvidenceError}, // non misurato: non conta
+		{VerificationID: "v1", Label: "health", Outcome: EvidencePassed},
+	}}
+	if got := repeatedRegression(task, []string{"v1"}); got != "" {
+		t.Fatalf("one regression must not stop the loop, got %q", got)
+	}
+	task.Evidences = append(task.Evidences, Evidence{VerificationID: "v1", Label: "health", Outcome: EvidenceFailed})
+	if got := repeatedRegression(task, []string{"v1"}); got != "health" {
+		t.Fatalf("two regressions must stop the loop, got %q", got)
+	}
+}
+
+func TestDeniedPermissionStopsTheAutomaticReverification(t *testing.T) {
+	service, _ := newTestService(t)
+	verifier := &fakeVerifier{outcome: EvidenceFailed}
+	service.SetVerifier(verifier)
+	var calls atomic.Int32
+	service.RegisterRuntime("fake", runtimeFunc(func(ctx context.Context, request RunRequest, publish func(Event)) error {
+		if calls.Add(1) == 2 {
+			publish(Event{Kind: "permission", RequestID: "r1", Message: "write file"})
+			publish(Event{Kind: "permission_resolved", RequestID: "r1", Message: "denied"})
+		}
+		return nil
+	}))
+	task, err := service.Create(testDraft(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.AddVerification(task.ID, VerificationDraft{Kind: VerificationTest, Packages: []string{"./..."}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Start(task.ID, "approved context", ContextReceipt{Bytes: 100}); err != nil {
+		t.Fatal(err)
+	}
+	waitForStatus(t, service, task.ID, StatusCompleted)
+	if _, err := service.StartVerifications(task.ID, nil); err != nil {
+		t.Fatal(err)
+	}
+	evidence := waitForEvidence(t, service, task.ID, 1).Evidences[0]
+	if _, err := service.StartCorrection(task.ID, []string{evidence.ID}, nil, ""); err != nil {
+		t.Fatal(err)
+	}
+	waitForStatus(t, service, task.ID, StatusCompleted)
+	time.Sleep(100 * time.Millisecond) // a re-verification, if wrongly started, would have recorded by now
+	final, _ := service.Get(task.ID)
+	if len(final.Evidences) != 1 {
+		t.Fatalf("a denied permission must stop the automatic re-verification: %d evidences", len(final.Evidences))
+	}
+	events := final.Attempts[len(final.Attempts)-1].Events
+	if !strings.Contains(events[len(events)-1].Message, "permission was denied") {
+		t.Fatalf("the stop is not explained: %+v", events[len(events)-1])
+	}
+}
+
+type integratingProvider struct {
+	fakeProvider
+	checks, applies int
+}
+
+func (provider *integratingProvider) Compare(Workspace) (WorkspaceComparison, error) {
+	return WorkspaceComparison{Fingerprint: "fp", ChangedFiles: []string{"a.go", "b.go"}, TargetBranch: "main", TargetChanged: []string{"b.go"}, LocalChanges: []string{"a.go"}}, nil
+}
+
+func (provider *integratingProvider) Integrate(_ Workspace, check bool) (Integration, error) {
+	if check {
+		provider.checks++
+	} else {
+		provider.applies++
+	}
+	return Integration{Applied: true, TargetBranch: "main", Fingerprint: "fp", Files: []string{"a.go", "b.go"}}, nil
+}
+
+func TestWorkspaceComparisonAndIntegrationAreRecorded(t *testing.T) {
+	service, _ := newTestService(t)
+	provider := &integratingProvider{}
+	service.SetWorkspaceProvider(provider)
+	task, err := service.Create(testDraft(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CompareWorkspace(task.ID); err == nil {
+		t.Fatal("a task without workspace cannot be compared")
+	}
+	if _, err := service.CreateWorkspace(task.ID, "", false); err != nil {
+		t.Fatal(err)
+	}
+	comparison, err := service.CompareWorkspace(task.ID)
+	if err != nil || len(comparison.Overlaps) != 1 || comparison.Overlaps[0] != "b.go" || len(comparison.LocalOverlaps) != 1 || comparison.LocalOverlaps[0] != "a.go" {
+		t.Fatalf("comparison = %+v, %v", comparison, err)
+	}
+	if _, err := service.IntegrateWorkspace(task.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if checked, _ := service.Get(task.ID); checked.Workspace.Integration.Applied {
+		t.Fatal("a dry run must not be recorded")
+	}
+	if _, err := service.IntegrateWorkspace(task.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	integrated, _ := service.Get(task.ID)
+	if !integrated.Workspace.Integration.Applied || integrated.Workspace.Integration.At.IsZero() || provider.checks != 1 || provider.applies != 1 {
+		t.Fatalf("integration not recorded: %+v", integrated.Workspace.Integration)
+	}
+}
+
+func TestReviewCommentsTravelWithTheCorrectionAndComeBackForReview(t *testing.T) {
+	service, _ := newTestService(t)
+	attempts := make(chan RunRequest, 2)
+	service.RegisterRuntime("fake", runtimeFunc(func(ctx context.Context, request RunRequest, publish func(Event)) error {
+		attempts <- request
+		return nil
+	}))
+	task, err := service.Create(testDraft(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Start(task.ID, "approved context", ContextReceipt{Bytes: 100}); err != nil {
+		t.Fatal(err)
+	}
+	<-attempts
+	waitForStatus(t, service, task.ID, StatusCompleted)
+
+	for _, bad := range []ReviewCommentDraft{
+		{Path: "../outside.go", StartLine: 1, EndLine: 1, Body: "x"},
+		{Path: "a.go", StartLine: 3, EndLine: 2, Body: "x"},
+		{Path: "a.go", StartLine: 1, EndLine: 1, Body: "  "},
+	} {
+		if _, err := service.AddComment(task.ID, bad); err == nil {
+			t.Fatalf("invalid comment accepted: %+v", bad)
+		}
+	}
+	commented, err := service.AddComment(task.ID, ReviewCommentDraft{Path: "handler.go", StartLine: 10, EndLine: 12, Excerpt: "return nil", Body: "return the error instead"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	comment := commented.Comments[0]
+	if comment.Status != CommentOpen || comment.AttemptID != commented.Attempts[0].ID || comment.Side != "new" {
+		t.Fatalf("comment not linked: %+v", comment)
+	}
+	if _, err := service.StartCorrection(task.ID, nil, []string{comment.ID}, ""); err != nil {
+		t.Fatal(err)
+	}
+	correction := <-attempts
+	if !strings.Contains(correction.Message, "handler.go:10-12") || !strings.Contains(correction.Message, "return the error instead") || !strings.Contains(correction.Message, "return nil") {
+		t.Fatalf("the comment did not reach the agent: %s", correction.Message)
+	}
+	waitForStatus(t, service, task.ID, StatusCompleted)
+	afterCorrection, _ := service.Get(task.ID)
+	if got := afterCorrection.Comments[0]; got.Status != CommentToReview || got.SentInAttemptID != correction.Attempt.ID {
+		t.Fatalf("the comment must come back for review on the new revision: %+v", got)
+	}
+	if _, err := service.SetCommentStatus(task.ID, comment.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.StartCorrection(task.ID, nil, []string{comment.ID}, ""); err == nil {
+		t.Fatal("a resolved comment must be reopened before it is sent again")
+	}
+	if _, err := service.RemoveComment(task.ID, comment.ID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestVerificationWatchIsValidatedAndStaysLocal(t *testing.T) {
+	base := VerificationDraft{Kind: VerificationRequest, URL: "http://127.0.0.1:8080/orders", Watch: VerificationWatch{Brokers: []string{" localhost:9092 "}, Topics: []string{"orders", " "}}}
+	normalized, err := normalizeVerificationDraft(base)
+	if err != nil || len(normalized.Watch.Topics) != 1 || normalized.Watch.Brokers[0] != "localhost:9092" {
+		t.Fatalf("a valid watch was rejected or not cleaned: %+v, %v", normalized.Watch, err)
+	}
+	for name, change := range map[string]func(*VerificationDraft){
+		"no broker":     func(d *VerificationDraft) { d.Watch.Brokers = nil },
+		"no port":       func(d *VerificationDraft) { d.Watch.Brokers = []string{"localhost"} },
+		"remote broker": func(d *VerificationDraft) { d.Watch.Brokers = []string{"kafka.example.com:9092"} },
+	} {
+		draft := base
+		change(&draft)
+		if _, err := normalizeVerificationDraft(draft); err == nil {
+			t.Errorf("%s: expected a validation error", name)
+		}
+	}
+	remote := base
+	remote.AllowRemote = true
+	remote.URL = "http://example.com/orders"
+	remote.Watch.Brokers = []string{"kafka.example.com:9092"}
+	if _, err := normalizeVerificationDraft(remote); err != nil {
+		t.Fatalf("an approved remote broker must be accepted: %v", err)
 	}
 }

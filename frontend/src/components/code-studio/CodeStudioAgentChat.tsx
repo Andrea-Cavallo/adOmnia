@@ -20,6 +20,7 @@ import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { selectedRange } from './CodeStudioCopilotChat'
 import { CodeStudioAgentSessionOptions } from './CodeStudioAgentSessionOptions'
 import { listGoIDEDirectory } from '@/lib/code-studio-api'
+import { permissionCategoryLabel } from './AgentPermissionRules'
 
 /** One ACP agent as the chat shows it: milk and Claude Code share everything else. */
 export interface ChatAgent {
@@ -315,7 +316,7 @@ export function CodeStudioAgentChat({ agent, session, document }: CodeStudioAgen
         )}
         {permissions.map((permission) => (
           <div key={permission.requestId} className="milk-permission" role="alertdialog" aria-label="Tool permission">
-            <p className="milk-permission-title">{permission.title || `${name} wants to run a tool`}</p>
+            <p className="milk-permission-title">{permissionCategoryLabel(permission.category) && <span className="mr-1.5 text-[10px] uppercase tracking-wide text-text-3">{permissionCategoryLabel(permission.category)}</span>}{permission.title || `${name} wants to run a tool`}</p>
             {permission.description && <p className="milk-permission-detail">{permission.description}</p>}
             <div className="milk-permission-actions">
               <button type="button" onClick={() => void store.getState().respondPermission(permission.requestId, true)} className="gs-btn gs-btn-primary gs-btn-sm">Allow</button>

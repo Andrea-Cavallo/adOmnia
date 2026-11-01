@@ -42,11 +42,20 @@ export function CodeStudioAgentTasks({ session, document }: { session: GoIDESess
       <div className="agent-task-list" role="listbox" aria-label="Saved agent tasks">
         {loading && !tasks.length ? <p className="gs-list-empty" role="status">Loading saved tasks…</p>
           : tasks.length === 0 ? <div className="gs-list-empty"><p>No agent tasks in this project.</p><p>Create a draft to prepare the first attempt.</p></div>
-            : tasks.map((task) => <button key={task.id} type="button" role="option" aria-selected={task.id === selected?.id} className="agent-task-row" onClick={() => useAgentTaskStore.getState().select(root, task.id)}><span className="agent-task-row-title" title={task.objective}>{task.objective}</span><span className="flex items-center justify-between gap-2 text-[10px] text-text-3"><span>{task.agent === 'pi' ? 'Pi' : task.agent === 'claude' ? 'Claude Code' : task.agent}</span><span>{task.status.replace(/_/g, ' ')}</span></span></button>)}
+            : tasks.map((task) => <button key={task.id} type="button" role="option" aria-selected={task.id === selected?.id} className="agent-task-row" onClick={() => useAgentTaskStore.getState().select(root, task.id)}><span className="agent-task-row-title" title={task.objective}>{task.objective}</span><span className="flex items-center justify-between gap-2 text-[10px] text-text-3"><span>{task.agent === 'pi' ? 'Pi' : task.agent === 'claude' ? 'Claude Code' : task.agent}</span><span>{task.status.replace(/_/g, ' ')}{task.verifyingIds?.length ? ` · verifying ${task.verifyingIds.length}` : ''}</span></span><span className="flex items-center justify-between gap-2 text-[10px] text-text-4"><span className="truncate font-mono" title={task.workspace?.path ?? task.root}>{task.workspace?.state === 'ready' ? task.workspace.branch : 'project tree'}</span><span title={new Date(task.updatedAt).toLocaleString()}>{lastActivity(task.updatedAt)}</span></span></button>)}
       </div>
       {selected ? <CodeStudioAgentTaskDetail key={selected.id} session={session} document={document} task={selected} onEdit={() => setEditor({ open: true, taskId: selected.id })} /> : <div className="milk-empty self-center"><ListTodo size={32} /><h2>One task, one explicit attempt</h2><p>Inspect the context, follow the agent output and review its changes without mixing them into your chat.</p></div>}
     </div>
     {tasks.length > 0 && <p className="agent-tasks-note" role="note">The 200 most recently updated tasks are kept locally. Export a task to save its full history.</p>}
     {editor.open && <CodeStudioAgentTaskEditor key={editor.taskId ?? 'new'} session={session} task={editingTask} open={editor.open} onClose={() => setEditor({ open: false, taskId: null })} />}
   </section>
+}
+
+/** Short "last activity" label for the task list. */
+export function lastActivity(updatedAt: string | Date, now: number = Date.now()): string {
+  const seconds = Math.max(0, Math.round((now - new Date(updatedAt).getTime()) / 1000))
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`
+  return new Date(updatedAt).toLocaleDateString()
 }

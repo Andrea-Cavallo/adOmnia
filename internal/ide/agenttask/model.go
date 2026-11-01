@@ -98,6 +98,9 @@ type Attempt struct {
 	// evidenze selezionate: la cronologia non perde mai il primo fallimento.
 	CorrectionOf string   `json:"correctionOf,omitempty"`
 	EvidenceIDs  []string `json:"evidenceIds,omitempty"`
+	CommentIDs   []string `json:"commentIds,omitempty"`
+	// StepID è lo step del piano su cui ha lavorato il tentativo.
+	StepID string `json:"stepId,omitempty"`
 }
 
 type Task struct {
@@ -123,6 +126,13 @@ type Task struct {
 	Verifications []Verification `json:"verifications,omitempty"`
 	// Evidences è il registro di ciò che le verifiche hanno misurato, in ordine di esecuzione.
 	Evidences []Evidence `json:"evidences,omitempty"`
+	// Plan è il piano approvabile del task, con gli step e il loro stato.
+	Plan *Plan `json:"plan,omitempty"`
+	// Comments sono le osservazioni dell'utente sul diff o sulle evidenze, inviabili come correzione.
+	Comments []ReviewComment `json:"comments,omitempty"`
+	// Scenarios are the acceptance scenarios the user added to the task: their criteria
+	// travel in the agent prompts (selected by the user, bounded by the context limit).
+	Scenarios []ScenarioRef `json:"scenarios,omitempty"`
 	// VerifyingIDs elenca le verifiche in corso; vuoto quando nessuna sta girando.
 	VerifyingIDs []string `json:"verifyingIds,omitempty"`
 }
@@ -282,7 +292,7 @@ func verificationDraftOf(verification Verification) VerificationDraft {
 		Run: verification.Run, Coverage: verification.Coverage, Method: verification.Method,
 		URL: verification.URL, Headers: verification.Headers, Body: verification.Body,
 		ExpectedStatus: verification.ExpectedStatus, AllowRemote: verification.AllowRemote,
-		TimeoutSeconds: verification.TimeoutSeconds,
+		Watch: verification.Watch, TimeoutSeconds: verification.TimeoutSeconds,
 	}
 }
 
@@ -301,6 +311,10 @@ func cloneTask(task Task) Task {
 		clone.Verifications[index] = verification
 		clone.Verifications[index].Packages = append([]string(nil), verification.Packages...)
 		clone.Verifications[index].Headers = append([]VerificationHeader(nil), verification.Headers...)
+		clone.Verifications[index].Watch = VerificationWatch{
+			Brokers: append([]string(nil), verification.Watch.Brokers...),
+			Topics:  append([]string(nil), verification.Watch.Topics...),
+		}
 	}
 	clone.Evidences = make([]Evidence, len(task.Evidences))
 	for index, evidence := range task.Evidences {
@@ -311,10 +325,18 @@ func cloneTask(task Task) Task {
 			clone.Evidences[index].ExitCode = &exitCode
 		}
 	}
+	clone.Comments = append([]ReviewComment(nil), task.Comments...)
+	clone.Scenarios = make([]ScenarioRef, len(task.Scenarios))
+	for index, scenario := range task.Scenarios {
+		clone.Scenarios[index] = scenario
+		clone.Scenarios[index].Criteria = append([]string(nil), scenario.Criteria...)
+	}
+	clone.Plan = clonePlan(task.Plan)
 	clone.Attempts = make([]Attempt, len(task.Attempts))
 	for index, attempt := range task.Attempts {
 		clone.Attempts[index] = attempt
 		clone.Attempts[index].EvidenceIDs = append([]string(nil), attempt.EvidenceIDs...)
+		clone.Attempts[index].CommentIDs = append([]string(nil), attempt.CommentIDs...)
 		clone.Attempts[index].Events = make([]Event, len(attempt.Events))
 		for eventIndex, event := range attempt.Events {
 			clone.Attempts[index].Events[eventIndex] = event

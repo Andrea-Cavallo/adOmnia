@@ -12,6 +12,9 @@ import { usePiAgentStore } from '@/stores/piAgent'
 import { useMilkStore } from '@/stores/milk'
 import { agentTaskDraft, agentTaskMessage, agentTaskReceipt, type AgentTaskPreview } from './agentTaskComposer'
 import { CodeStudioAgentTaskVerifications } from './CodeStudioAgentTaskVerifications'
+import { CodeStudioAgentTaskPlan } from './CodeStudioAgentTaskPlan'
+import { CodeStudioAgentTaskScenarios } from './CodeStudioAgentTaskScenarios'
+import { CodeStudioAgentTaskPullRequest } from './CodeStudioAgentTaskPullRequest'
 import { CodeStudioAgentTaskWorkspace } from './CodeStudioAgentTaskWorkspace'
 import { selectedRange } from './CodeStudioCopilotChat'
 import { CodeStudioAlert, CodeStudioButton } from './CodeStudioModal'
@@ -133,10 +136,14 @@ export function CodeStudioAgentTaskDetail({ session, document, task, onEdit }: P
     {permissions.map((permission) => <div key={permission.requestId} className="milk-permission" role="alertdialog" aria-label="Task tool permission"><p className="milk-permission-title">{permission.title || 'The agent requests tool access'}</p>{permission.description && <p className="milk-permission-detail">{permission.description}</p>}<div className="milk-permission-actions"><CodeStudioButton small variant="primary" onClick={() => respondPermission(permission.requestId, true)}>Allow</CodeStudioButton><CodeStudioButton small onClick={() => respondPermission(permission.requestId, false)}>Deny</CodeStudioButton></div></div>)}
 
     <CodeStudioAgentTaskVerifications task={task} ready={ready} />
+    <CodeStudioAgentTaskPlan task={task} active={active} />
+    <CodeStudioAgentTaskScenarios task={task} active={active} />
+    <CodeStudioAgentTaskPullRequest task={task} />
 
     {task.attempts.length > 0 && <section className="agent-task-section flex flex-col gap-2">
       <div className="flex items-center gap-2"><h3 className="gs-section-title flex-1">Attempt output</h3><select aria-label="Attempt" className="gs-input h-7 w-auto text-[11px]" value={attempt?.id ?? ''} onChange={(event) => setAttemptChoice(event.target.value)}>{[...task.attempts].reverse().map((item, index) => <option key={item.id} value={item.id}>Attempt {task.attempts.length - index} · {item.status.replace(/_/g, ' ')}</option>)}</select></div>
       {attempt?.error && <CodeStudioAlert>{attempt.error}</CodeStudioAlert>}
+      {attempt?.stepId && <p className="text-[11px] text-text-3">Plan step: {task.plan?.steps.find((step) => step.id === attempt.stepId)?.title ?? attempt.stepId}</p>}
       {attempt?.correctionOf && <p className="text-[11px] text-text-3">Correction of attempt {attempt.correctionOf.slice(-8)}{attempt.evidenceIds?.length ? ` · ${attempt.evidenceIds.length} selected result${attempt.evidenceIds.length === 1 ? '' : 's'}` : ''}. The same verifications are re-run when it finishes.</p>}
       {attempt?.prompt && <details className="milk-thought"><summary>Approved prompt</summary><pre className="milk-output agent-task-preview">{attempt.prompt}</pre></details>}
       {!!plan?.length && <details className="milk-thought" open><summary>Plan · {plan.filter((item) => item.status === 'completed').length}/{plan.length}</summary><ol className="flex flex-col gap-1 py-2">{plan.map((item) => <li key={`${item.content}-${item.status}`} className="text-[11px]"><span className="text-text-3">{item.status.replace(/_/g, ' ')}: </span>{item.content}</li>)}</ol></details>}

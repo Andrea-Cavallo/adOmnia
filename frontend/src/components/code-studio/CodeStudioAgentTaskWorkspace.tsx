@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { GitBranch, GitFork, Trash2 } from 'lucide-react'
+import { FolderOpen, GitBranch, GitFork, Trash2 } from 'lucide-react'
 import * as GitSync from '@/wailsjs/go/main/GitSync'
 import type { AgentTask } from '@/lib/agent-task-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useAgentTaskStore } from '@/stores/agentTasks'
 import { useAgentReviewStore } from '@/stores/codeStudioAgentReview'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioField } from './CodeStudioModal'
+import { CodeStudioAgentTaskIntegration } from './CodeStudioAgentTaskIntegration'
 
 const isActive = (task: AgentTask) => ['running', 'waiting_permission', 'stopping'].includes(task.status)
 
@@ -107,8 +109,10 @@ export function CodeStudioAgentTaskWorkspace({ task }: { task: AgentTask }) {
         {!!workspace.includedLocalChanges && <><dt className="text-text-3">Included</dt><dd className="min-w-0 truncate">{workspace.includedLocalChanges} file{workspace.includedLocalChanges === 1 ? '' : 's'} with local changes copied from the project</dd></>}
         <dt className="text-text-3">Changes</dt><dd className="min-w-0 truncate">{status ? status.dirty ? `${status.modified?.length ?? 0} modified · ${status.untracked?.length ?? 0} untracked` : 'Clean working tree' : 'Unavailable'}</dd>
       </dl>
+      {workspace.state === 'ready' && <CodeStudioAgentTaskIntegration task={task} disabled={active || busy || (task.verifyingIds?.length ?? 0) > 0} />}
       {workspace.state === 'missing' && <CodeStudioAlert tone="warning">{workspace.notice || 'The workspace folder no longer exists. The task is kept; the agent cannot work in it.'}</CodeStudioAlert>}
       <div className="flex flex-wrap gap-2">
+        <CodeStudioButton small icon={FolderOpen} disabled={workspace.state !== 'ready'} title="Open the workspace as a project: terminal, Run, Test and language servers work in this folder with the project's trust" onClick={() => void useCodeStudioStore.getState().openProject(workspace.path)}>Open in Code Studio</CodeStudioButton>
         <CodeStudioButton small icon={GitBranch} disabled={active || busy} title={active ? 'Stop the task first' : 'Review the changes made in this workspace'} onClick={() => useAgentReviewStore.getState().open(workspace.path)}>Workspace changes</CodeStudioButton>
         <CodeStudioButton small variant="danger" icon={Trash2} disabled={active || busy} title={active ? 'Stop the task first' : 'Remove the isolated folder'} onClick={() => void remove()}>Remove</CodeStudioButton>
       </div>

@@ -26,6 +26,8 @@ type TaskVerifier struct {
 	languages *language.Registry
 	// service avvia le configurazioni di Run delle verifiche; nil = non disponibile.
 	service *Service
+	// evidenceDir conserva i file delle evidenze (screenshot); vuoto = non salvati.
+	evidenceDir string
 }
 
 func NewTaskVerifier(languages *language.Registry) *TaskVerifier {
@@ -34,9 +36,9 @@ func NewTaskVerifier(languages *language.Registry) *TaskVerifier {
 
 // AgentTaskVerifier gives the agent-task service a verifier bound to this IDE's
 // language registry, so a verification runs the registered adapter and not a copy.
-func (s *Service) AgentTaskVerifier() agenttask.Verifier {
+func (s *Service) AgentTaskVerifier(evidenceDir string) agenttask.Verifier {
 	verifier := NewTaskVerifier(s.workspace.languages)
-	verifier.service = s
+	verifier.service, verifier.evidenceDir = s, evidenceDir
 	return verifier
 }
 
@@ -56,6 +58,8 @@ func (verifier *TaskVerifier) Run(ctx context.Context, request agenttask.VerifyR
 		return verifier.runTest(ctx, request)
 	case agenttask.VerificationRequest:
 		return verifier.runRequest(ctx, request)
+	case agenttask.VerificationPage:
+		return verifier.runPage(ctx, request)
 	default:
 		return agenttask.Evidence{Outcome: agenttask.EvidenceError, Log: "unknown verification kind"}
 	}
@@ -181,16 +185,34 @@ func (verifier *TaskVerifier) runRequest(ctx context.Context, request agenttask.
 		evidence.Log = fmt.Sprintf("%s is not a loopback host. A request with external effects is never sent automatically: approve remote hosts on the verification first.", parsed.Hostname())
 		return evidence
 	}
-	if verification.Service.Enabled() {
-		launched, started := verifier.startService(ctx, request, parsed)
-		if launched == nil {
+	return verifier.withServiceAndMock(ctx, request, parsed, evidence, func(base agenttask.Evidence) agenttask.Evidence {
+		return verifier.sendRequest(request.TaskID, verification, base)
+	})
+}
+
+// withServiceAndMock runs probe, first starting the verification's service when it has
+// one, and records the mock server calls made meanwhile. Shared by requests and pages.
+func (verifier *TaskVerifier) withServiceAndMock(ctx context.Context, request agenttask.VerifyRequest, target *url.URL, evidence agenttask.Evidence, probe func(agenttask.Evidence) agenttask.Evidence) agenttask.Evidence {
+	// Le chiamate al mock server, i messaggi del broker e le query durante la verifica sono misure, non deduzioni.
+	observation := observeMock()
+	messages := observeBroker(request.Verification.Watch)
+	queries := observeDatabase(ctx, request.Verification.Watch.Database)
+	observed := func(result agenttask.Evidence) agenttask.Evidence {
+		return queries.annotate(ctx, messages.annotate(ctx, observation.annotate(result)))
+	}
+	if !request.Verification.Service.Enabled() {
+		return observed(probe(evidence))
+	}
+	launched, started := verifier.startService(ctx, request, target)
+	if launched == nil {
+		if started.Outcome == agenttask.EvidenceNotRun {
 			return started
 		}
-		result := verifier.sendRequest(request.TaskID, verification, started)
-		launched.stop()
-		return launched.annotate(result)
+		return observed(started)
 	}
-	return verifier.sendRequest(request.TaskID, verification, evidence)
+	result := probe(started)
+	launched.stop()
+	return observed(launched.annotate(result))
 }
 
 func (verifier *TaskVerifier) sendRequest(taskID string, verification agenttask.Verification, evidence agenttask.Evidence) agenttask.Evidence {

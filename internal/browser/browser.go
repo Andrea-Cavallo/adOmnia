@@ -69,6 +69,7 @@ type BrowserDebug struct {
 	stopCh     chan struct{}
 	debugPort  int    // dynamically assigned CDP port for this session
 	profileDir string // per-session temporary profile directory
+	headless   bool   // no window: used by automatic page captures
 }
 
 // NewBrowserDebug creates a new BrowserDebug instance.

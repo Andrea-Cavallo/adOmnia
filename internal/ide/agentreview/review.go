@@ -30,6 +30,8 @@ const (
 	StatusAdded    FileStatus = "added"
 	StatusModified FileStatus = "modified"
 	StatusDeleted  FileStatus = "deleted"
+	// StatusRenamed: a deleted file and a created file with the same content, shown as one move.
+	StatusRenamed FileStatus = "renamed"
 )
 
 // ErrStale: il file è cambiato su disco dopo che la review è stata mostrata.
@@ -45,6 +47,8 @@ type FileChange struct {
 	// Reviewable è false per i file binari o troppo grandi: si possono solo accettare.
 	Reviewable bool   `json:"reviewable"`
 	Agent      string `json:"agent"`
+	// From is the previous path of a renamed file. Accepting or rejecting a rename applies to both paths.
+	From string `json:"from,omitempty"`
 }
 
 // Review è lo stato della revisione di un progetto.
@@ -175,8 +179,45 @@ func (t *Tracker) Get(root string) Review {
 	for relative, file := range project.files {
 		review.Files = append(review.Files, describe(root, relative, file))
 	}
+	review.Files = pairRenames(review.Files)
 	sort.Slice(review.Files, func(left, right int) bool { return review.Files[left].Path < review.Files[right].Path })
 	return review
+}
+
+// pairRenames shows a deleted file and a created file with identical content as a rename.
+// ponytail: exact content only; a move with edits stays delete + create (similarity scoring if users need it).
+func pairRenames(files []FileChange) []FileChange {
+	deleted := map[string]int{}
+	for index, file := range files {
+		if file.Status == StatusDeleted && file.Baseline != "" {
+			if _, taken := deleted[file.Baseline]; !taken {
+				deleted[file.Baseline] = index
+			}
+		}
+	}
+	if len(deleted) == 0 {
+		return files
+	}
+	consumed := map[int]bool{}
+	for index := range files {
+		file := &files[index]
+		if file.Status != StatusAdded || !file.Reviewable {
+			continue
+		}
+		source, ok := deleted[file.Current]
+		if !ok || consumed[source] {
+			continue
+		}
+		consumed[source] = true
+		file.Status, file.From, file.Baseline = StatusRenamed, files[source].Path, files[source].Baseline
+	}
+	kept := files[:0:0]
+	for index, file := range files {
+		if !consumed[index] {
+			kept = append(kept, file)
+		}
+	}
+	return kept
 }
 
 func describe(root, relative string, file *pendingFile) FileChange {

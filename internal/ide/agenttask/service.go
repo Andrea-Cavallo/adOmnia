@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -42,6 +44,8 @@ type Service struct {
 	// autoVerify contiene le verifiche da rieseguire quando una correzione è completata.
 	// Vive solo in memoria: dopo un riavvio nessuna verifica riparte da sola.
 	autoVerify map[string][]string
+	// verifyCancel annulla le verifiche in corso di un task (stop o revoca della fiducia).
+	verifyCancel map[string]context.CancelFunc
 }
 
 // streamPublishInterval limita la frequenza degli aggiornamenti verso la UI
@@ -58,6 +62,7 @@ func NewService(store Store) (*Service, error) {
 		store: store, tasks: map[string]Task{}, runtimes: map[string]Runtime{},
 		running: map[string]context.CancelFunc{}, now: time.Now,
 		verifying: map[string]bool{}, autoVerify: map[string][]string{},
+		verifyCancel: map[string]context.CancelFunc{},
 	}
 	for _, task := range snapshot.Tasks {
 		service.tasks[task.ID] = cloneTask(task)
@@ -157,12 +162,21 @@ func (service *Service) Update(id string, draft Draft) (Task, error) {
 }
 
 func (service *Service) Start(id, message string, receipt ContextReceipt) (Task, error) {
-	return service.start(id, message, receipt, "", nil, nil)
+	return service.start(id, message, receipt, startOptions{})
 }
 
-// start avvia un tentativo. correctionOf/evidenceIDs legano una correzione alle evidenze
-// selezionate; autoVerify elenca le verifiche da rieseguire quando il tentativo finisce.
-func (service *Service) start(id, message string, receipt ContextReceipt, correctionOf string, evidenceIDs, autoVerify []string) (Task, error) {
+// startOptions lega un tentativo a ciò che lo ha originato. correctionOf/evidenceIDs/commentIDs
+// collegano una correzione a ciò che l'utente ha selezionato; autoVerify elenca le verifiche
+// da rieseguire quando il tentativo finisce; stepID è lo step del piano su cui lavora.
+type startOptions struct {
+	correctionOf string
+	evidenceIDs  []string
+	autoVerify   []string
+	commentIDs   []string
+	stepID       string
+}
+
+func (service *Service) start(id, message string, receipt ContextReceipt, options startOptions) (Task, error) {
 	service.mu.Lock()
 	task, ok := service.tasks[id]
 	if !ok {
@@ -199,15 +213,25 @@ func (service *Service) start(id, message string, receipt ContextReceipt, correc
 	attempt := Attempt{
 		ID: newID("attempt"), Status: StatusRunning, NewSession: true,
 		Context: receipt, Prompt: redactAndLimit(message), StartedAt: now, Events: []Event{},
-		CorrectionOf: correctionOf, EvidenceIDs: append([]string(nil), evidenceIDs...),
+		CorrectionOf: options.correctionOf, EvidenceIDs: append([]string(nil), options.evidenceIDs...),
+		CommentIDs: append([]string(nil), options.commentIDs...), StepID: options.stepID,
 	}
 	previous := cloneTask(task)
 	task.Status, task.ActiveAttemptID = StatusRunning, attempt.ID
 	task.LastContext, task.UpdatedAt = receipt, now
 	task.Attempts = append(task.Attempts, attempt)
+	// I commenti inviati restano legati al tentativo che li ha ricevuti.
+	for index := range task.Comments {
+		if slices.Contains(options.commentIDs, task.Comments[index].ID) {
+			task.Comments[index].Status, task.Comments[index].SentInAttemptID, task.Comments[index].UpdatedAt = CommentSent, attempt.ID, now
+		}
+	}
+	if options.stepID != "" {
+		stepStarted(&task, options.stepID, attempt.ID, now)
+	}
 	service.tasks[id] = task
-	if len(autoVerify) > 0 {
-		service.autoVerify[id] = append([]string(nil), autoVerify...)
+	if len(options.autoVerify) > 0 {
+		service.autoVerify[id] = append([]string(nil), options.autoVerify...)
 	}
 	if err := service.saveLocked(); err != nil {
 		service.tasks[id] = previous
@@ -269,6 +293,10 @@ func (service *Service) finish(id, attemptID string, ctx context.Context, runErr
 	}
 	task.ActiveAttemptID = ""
 	task.UpdatedAt = now
+	markCommentsFinished(&task, attemptID, now)
+	if attempt.StepID != "" {
+		stepFinished(&task, attempt.StepID, task.Status, now)
+	}
 	service.tasks[id] = task
 	rerun := service.autoVerify[id]
 	// Qualunque esito chiude la richiesta di correzione: una verifica non
@@ -276,6 +304,13 @@ func (service *Service) finish(id, attemptID string, ctx context.Context, runErr
 	delete(service.autoVerify, id)
 	if task.Status != StatusCompleted {
 		rerun = nil
+	}
+	if len(rerun) > 0 && permissionDenied(*attempt) {
+		// Un permesso negato ferma il ciclo: l'agente non ha potuto fare ciò che serviva,
+		// rieseguire le verifiche da sole misurerebbe un lavoro incompleto.
+		rerun = nil
+		service.appendEventTaskLocked(&task, attemptID, Event{Kind: "lifecycle", Message: "Verification loop stopped: a permission was denied during the correction. Run the verifications explicitly when ready."})
+		service.tasks[id] = task
 	}
 	if err := service.saveLocked(); err != nil {
 		service.reportPersistenceErrorLocked(&task, err)
@@ -438,6 +473,7 @@ func (service *Service) recoverActiveLocked() bool {
 			attempt.Error = "adOmnia restarted while this attempt was active; no agent operation was resumed automatically"
 		}
 		service.appendEventTaskLocked(&task, attemptID, Event{Kind: "lifecycle", Message: "Recovery requires a new explicit attempt"})
+		interruptSteps(&task, now)
 		service.tasks[id] = task
 		changed = true
 	}
@@ -476,4 +512,60 @@ func (service *Service) publishLocked(task Task) {
 	if service.emit != nil {
 		service.emit(ChangedEvent, cloneTask(task))
 	}
+}
+
+// permissionDenied dice se durante il tentativo una richiesta di permesso è stata
+// negata o è scaduta. Le risoluzioni senza esito (runtime che non lo riportano) non
+// contano: un dato non raccolto non diventa un rifiuto.
+func permissionDenied(attempt Attempt) bool {
+	for _, event := range attempt.Events {
+		if event.Kind == "permission_resolved" && (event.Message == "denied" || event.Message == "timeout") {
+			return true
+		}
+	}
+	return false
+}
+
+// StopForRoot stops everything the tasks of a project are doing: the running agent
+// attempt, the verifications in progress (and the services they started) and any
+// pending automatic re-verification. It is called when the project trust is revoked.
+func (service *Service) StopForRoot(root string) []string {
+	service.mu.Lock()
+	var cancels []context.CancelFunc
+	var stopped []string
+	for id, task := range service.tasks {
+		if !sameRoot(task.Root, root) && (task.Workspace == nil || !sameRoot(task.Workspace.Repository, root)) {
+			continue
+		}
+		delete(service.autoVerify, id)
+		touched := false
+		if cancel := service.verifyCancel[id]; cancel != nil {
+			cancels = append(cancels, cancel)
+			touched = true
+		}
+		if cancel := service.running[id]; cancel != nil && task.Active() {
+			task.Status = StatusStopping
+			task.UpdatedAt = service.now().UTC()
+			service.tasks[id] = task
+			service.appendEventLocked(id, task.ActiveAttemptID, Event{Kind: "lifecycle", Message: "Stopped: the project trust was revoked"})
+			service.publishLocked(task)
+			cancels = append(cancels, cancel)
+			touched = true
+		}
+		if touched {
+			stopped = append(stopped, id)
+		}
+	}
+	service.mu.Unlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
+	return stopped
+}
+
+func sameRoot(left, right string) bool {
+	if strings.TrimSpace(left) == "" || strings.TrimSpace(right) == "" {
+		return false
+	}
+	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
 }

@@ -34,6 +34,8 @@ type Workspace struct {
 	// committate sono state copiate nel worktree su richiesta esplicita dell'utente.
 	// 0 = nessuna copia: il worktree contiene solo il commit di partenza.
 	IncludedLocalChanges int `json:"includedLocalChanges,omitempty"`
+	// Integration è l'ultima applicazione del workspace al progetto, se c'è stata.
+	Integration Integration `json:"integration,omitzero"`
 }
 
 // WorkspaceRequest descrive la cartella da creare. L'ID del task determina il nome

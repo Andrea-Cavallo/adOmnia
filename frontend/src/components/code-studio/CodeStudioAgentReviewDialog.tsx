@@ -1,17 +1,21 @@
 import { useMemo, useState } from 'react'
-import { Check, CircleAlert, CircleSlash, FileDiff, FileText, Loader2, Undo2, XCircle } from 'lucide-react'
+import { Check, Columns2, FileDiff, FileText, Loader2, Rows2, Undo2 } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { confirm } from '@/lib/confirmDialog'
 import type { AgentReviewFile } from '@/lib/code-studio-api'
-import { agentReviewHunks, agentReviewStats, type AgentReviewLine } from '@/lib/code-studio/agentReview'
-import { useAgentTaskStore } from '@/stores/agentTasks'
+import { agentReviewHunks, agentReviewSplitRows, agentReviewStats, type AgentReviewLine } from '@/lib/code-studio/agentReview'
+import type { AgentReviewComment, AgentTask } from '@/lib/agent-task-api'
+import { nextSelection, ReviewCommentComposer, TaskReviewPanel, useReviewTask, type ReviewSelection } from './CodeStudioAgentReviewComments'
 import { useAgentReviewStore, pendingAgentFiles } from '@/stores/codeStudioAgentReview'
 import { useCodeStudioStore } from '@/stores/codeStudio'
+import { samePath } from '@/lib/code-studio/projectUnits'
+
 
 const STATUS_LABEL: Record<string, { letter: string; title: string; className: string }> = {
   added: { letter: 'A', title: 'Created by the agent', className: 'text-success' },
   modified: { letter: 'M', title: 'Modified by the agent', className: 'text-warning' },
   deleted: { letter: 'D', title: 'Deleted by the agent', className: 'text-danger' },
+  renamed: { letter: 'R', title: 'Moved by the agent, content unchanged', className: 'text-accent' },
 }
 
 /** Righe di un file nuovo o eliminato: un solo blocco, si decide sull'intero file. */
@@ -24,21 +28,61 @@ function wholeFileLines(file: AgentReviewFile): AgentReviewLine[] {
     : { kind: 'removed', text: line, oldNumber: index + 1 })
 }
 
-function DiffLines({ lines }: { lines: AgentReviewLine[] }) {
+/** Line picking for review comments: absent when the reviewed folder has no agent task. */
+interface LinePicker {
+  selection: ReviewSelection | null
+  pick: (side: 'new' | 'old', line: number, extend: boolean) => void
+}
+
+const lineTone = (line: AgentReviewLine) => line.kind === 'added' ? 'bg-success/10' : line.kind === 'removed' ? 'bg-danger/10' : ''
+const lineSign = (line: AgentReviewLine) => line.kind === 'added' ? '+' : line.kind === 'removed' ? '−' : ' '
+const lineKey = (line: AgentReviewLine) => `${line.kind}:${line.oldNumber ?? ''}:${line.newNumber ?? ''}`
+
+function LineNumber({ side, number, picker }: { side: 'new' | 'old'; number?: number; picker?: LinePicker }) {
+  if (number === undefined) return <span className="w-10 shrink-0 select-none pr-2" />
+  if (!picker) return <span className="w-10 shrink-0 select-none pr-2 text-right text-text-4">{number}</span>
+  const selected = picker.selection?.side === side && number >= picker.selection.start && number <= picker.selection.end
+  return <button type="button" title={`Comment on line ${number}${side === 'old' ? ' (before the agent)' : ''}`} aria-pressed={selected}
+    className={`w-10 shrink-0 select-none pr-2 text-right hover:text-accent focus-visible:outline-1 focus-visible:outline-accent ${selected ? 'bg-accent/25 text-accent' : 'text-text-4'}`}
+    onClick={(event) => picker.pick(side, number, event.shiftKey)}>{number}</button>
+}
+
+function DiffLines({ lines, picker }: { lines: AgentReviewLine[]; picker?: LinePicker }) {
   return (
     <div className="font-mono text-[11px] leading-[18px]">
-      {lines.map((line) => {
-        const tone = line.kind === 'added' ? 'bg-success/10' : line.kind === 'removed' ? 'bg-danger/10' : ''
-        const sign = line.kind === 'added' ? '+' : line.kind === 'removed' ? '−' : ' '
-        return (
-          <div key={`${line.kind}:${line.oldNumber ?? ''}:${line.newNumber ?? ''}`} className={`flex whitespace-pre ${tone}`}>
-            <span className="w-10 shrink-0 select-none pr-2 text-right text-text-4">{line.oldNumber ?? ''}</span>
-            <span className="w-10 shrink-0 select-none pr-2 text-right text-text-4">{line.newNumber ?? ''}</span>
-            <span className={`w-4 shrink-0 select-none ${line.kind === 'added' ? 'text-success' : line.kind === 'removed' ? 'text-danger' : 'text-text-4'}`}>{sign}</span>
-            <span className="text-text-1">{line.text || ' '}</span>
-          </div>
-        )
-      })}
+      {lines.map((line) => (
+        <div key={lineKey(line)} className={`flex whitespace-pre ${lineTone(line)}`}>
+          <LineNumber side="old" number={line.kind === 'added' ? undefined : line.oldNumber} picker={line.kind === 'removed' ? picker : undefined} />
+          <LineNumber side="new" number={line.newNumber} picker={picker} />
+          <span className={`w-4 shrink-0 select-none ${line.kind === 'added' ? 'text-success' : line.kind === 'removed' ? 'text-danger' : 'text-text-4'}`}>{lineSign(line)}</span>
+          <span className="text-text-1">{line.text || ' '}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SplitSide({ line, side, picker }: { line?: AgentReviewLine; side: 'new' | 'old'; picker?: LinePicker }) {
+  if (!line) return <div className="flex min-w-0 flex-1 bg-surface-2/40" />
+  const number = side === 'old' ? line.oldNumber : line.newNumber
+  const changed = side === 'old' ? line.kind === 'removed' : line.kind === 'added'
+  return <div className={`flex min-w-0 flex-1 overflow-hidden whitespace-pre ${changed ? lineTone(line) : ''}`}>
+    <LineNumber side={side} number={number} picker={side === 'new' || line.kind === 'removed' ? picker : undefined} />
+    <span className="truncate text-text-1">{line.text || ' '}</span>
+  </div>
+}
+
+/** Side-by-side diff: before the agent on the left, the agent version on the right. */
+function SplitLines({ lines, picker }: { lines: AgentReviewLine[]; picker?: LinePicker }) {
+  const rows = useMemo(() => agentReviewSplitRows(lines), [lines])
+  return (
+    <div className="font-mono text-[11px] leading-[18px]">
+      {rows.map((row, index) => (
+        <div key={`${row.left ? lineKey(row.left) : ''}|${row.right ? lineKey(row.right) : ''}|${index}`} className="flex divide-x divide-border-1">
+          <SplitSide line={row.left} side="old" picker={picker} />
+          <SplitSide line={row.right} side="new" picker={picker} />
+        </div>
+      ))}
     </div>
   )
 }
@@ -55,28 +99,50 @@ function FileRow({ file, selected, onSelect }: { file: AgentReviewFile; selected
       <span className="min-w-0 flex-1 truncate">
         {file.path.slice(slash + 1)}
         {slash > 0 && <span className="ml-1.5 text-[10px] text-text-4">{file.path.slice(0, slash)}</span>}
+        {file.from && <span className="ml-1.5 text-[10px] text-text-4">← {file.from}</span>}
       </span>
       {stats && <span className="shrink-0 font-mono text-[10px]"><span className="text-success">+{stats.added}</span> <span className="text-danger">−{stats.removed}</span></span>}
     </button>
   )
 }
 
-function FileReview({ root, file, busy }: { root: string; file: AgentReviewFile; busy: boolean }) {
+function FileReview({ root, file, busy, task, split, selection, setSelection }: {
+  root: string
+  file: AgentReviewFile
+  busy: boolean
+  task?: AgentTask
+  split: boolean
+  selection: ReviewSelection | null
+  setSelection: (selection: ReviewSelection | null) => void
+}) {
   const store = useAgentReviewStore((state) => state)
+  const picker: LinePicker | undefined = task && file.reviewable
+    ? { selection: selection?.path === file.path ? selection : null, pick: (side, line, extend) => setSelection(nextSelection(selection, file.path, side, line, extend)) }
+    : undefined
+  const Lines = split && file.status === 'modified' ? SplitLines : DiffLines
+  // Scrivere su disco sotto un buffer non salvato farebbe perdere o confondere il lavoro nell'editor.
+  const unsaved = useCodeStudioStore((state) => {
+    const session = state.sessions.find((item) => samePath(item.project.realPath, root) || samePath(item.project.rootPath, root))
+    return !!session && state.documents.some((item) => item.dirty && item.document.sessionId === session.id && item.document.relativePath === file.path)
+  })
+  const writeBlocked = busy || unsaved
+  const unsavedReason = unsaved ? 'Save or discard the unsaved changes of this file in the editor first' : undefined
   const { reviewable, status: fileStatus, baseline, current } = file
   const hunks = useMemo(() => (reviewable && fileStatus === 'modified' ? agentReviewHunks(baseline, current) : []), [reviewable, fileStatus, baseline, current])
   const canOpen = file.status !== 'deleted'
 
   const rejectFile = async () => {
-    const what = file.status === 'added' ? `Delete ${file.path}, created by the agent?` : `Restore ${file.path} as it was before the agent?`
+    const what = file.status === 'added' ? `Delete ${file.path}, created by the agent?` : file.status === 'renamed' ? `Move ${file.path} back to ${file.from}?` : `Restore ${file.path} as it was before the agent?`
     if (await confirm({ title: 'Reject changes', message: what, confirmLabel: 'Reject', variant: 'danger' })) await store.rejectFile(root, file)
   }
 
   let body
   if (!file.reviewable) {
     body = <p className="p-4 text-[12px] text-text-3">This file is binary or larger than 1 MB, so its changes cannot be shown. Accept keeps it as it is; to undo it use Git or Local History.</p>
+  } else if (file.status === 'renamed') {
+    body = <p className="p-4 text-[12px] text-text-3">Moved from <span className="font-mono">{file.from}</span>. The content is unchanged.</p>
   } else if (file.status !== 'modified') {
-    body = <DiffLines lines={wholeFileLines(file)} />
+    body = <DiffLines lines={wholeFileLines(file)} picker={picker} />
   } else if (hunks.length === 0) {
     body = <p className="p-4 text-[12px] text-text-3">Only line endings or the final newline changed.</p>
   } else {
@@ -85,10 +151,10 @@ function FileReview({ root, file, busy }: { root: string; file: AgentReviewFile;
         <header className="sticky top-0 z-[1] flex items-center gap-2 bg-surface-2 px-3 py-1 text-[11px] text-text-3">
           <span className="font-mono">@@ {hunk.oldStart},{Math.max(0, hunk.oldEnd - hunk.oldStart + 1)} → {hunk.newStart},{Math.max(0, hunk.newEnd - hunk.newStart + 1)}</span>
           <span className="flex-1" />
-          <button type="button" disabled={busy} onClick={() => void store.rejectHunk(root, file, hunk)} className="gs-btn gs-btn-secondary gs-btn-sm"><Undo2 size={12} />Reject</button>
+          <button type="button" disabled={writeBlocked} title={unsavedReason} onClick={() => void store.rejectHunk(root, file, hunk)} className="gs-btn gs-btn-secondary gs-btn-sm"><Undo2 size={12} />Reject</button>
           <button type="button" disabled={busy} onClick={() => void store.acceptHunk(root, file, hunk)} className="gs-btn gs-btn-primary gs-btn-sm"><Check size={12} />Accept</button>
         </header>
-        <DiffLines lines={lines} />
+        <Lines lines={lines} picker={picker} />
       </section>
     ))
   }
@@ -100,45 +166,15 @@ function FileReview({ root, file, busy }: { root: string; file: AgentReviewFile;
         <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-text-1" title={file.path}>{file.path}</span>
         {file.agent && <span className="shrink-0 text-[10px] text-text-4">{file.agent}</span>}
         <button type="button" disabled={!canOpen} onClick={() => { store.close(); void useCodeStudioStore.getState().openDocument(file.path) }} className="gs-btn gs-btn-ghost gs-btn-sm" title={canOpen ? 'Open in the editor' : 'The file was deleted'}>Open</button>
-        <button type="button" disabled={busy} onClick={() => void rejectFile()} className="gs-btn gs-btn-secondary gs-btn-sm"><Undo2 size={12} />Reject file</button>
+        {unsaved && <span className="shrink-0 text-[10px] text-warning">Unsaved in the editor</span>}
+        <button type="button" disabled={writeBlocked} title={unsavedReason} onClick={() => void rejectFile()} className="gs-btn gs-btn-secondary gs-btn-sm"><Undo2 size={12} />Reject file</button>
         <button type="button" disabled={busy} onClick={() => void store.acceptFile(root, file)} className="gs-btn gs-btn-primary gs-btn-sm"><Check size={12} />Accept file</button>
       </header>
-      <div className="min-h-0 flex-1 overflow-auto bg-surface-0">{body}</div>
+      <div className="min-h-0 flex-1 overflow-auto bg-surface-0">
+        {task && selection?.path === file.path && <ReviewCommentComposer key={`${selection.side}:${selection.start}`} task={task} file={file} selection={selection} onDone={() => setSelection(null)} />}
+        {body}
+      </div>
     </div>
-  )
-}
-
-const EVIDENCE_TONE: Record<string, { className: string; icon: typeof Check }> = {
-  passed: { className: 'text-success', icon: Check },
-  failed: { className: 'text-danger', icon: XCircle },
-  error: { className: 'text-warning', icon: CircleAlert },
-  not_run: { className: 'text-text-3', icon: CircleSlash },
-}
-
-/** Verifications adOmnia measured on the same content the diff shows, next to the diff. */
-function TaskEvidencePanel({ root }: { root: string }) {
-  const tasksByRoot = useAgentTaskStore((state) => state.tasksByRoot)
-  const task = useMemo(() => Object.values(tasksByRoot).flat()
-    .find((candidate) => (candidate.workspace?.state === 'ready' ? candidate.workspace.path : candidate.root) === root), [tasksByRoot, root])
-  if (!task) return null
-  const evidences = [...(task.evidences ?? [])].reverse()
-  return (
-    <section className="border-t border-border-1 p-2" aria-label="Verifications for this workspace">
-      <h3 className="gs-section-title mb-1">Verifications · {task.status.replace(/_/g, ' ')}</h3>
-      {evidences.length === 0
-        ? <p className="text-[11px] text-text-3">No verification recorded for this task. A change without evidence is not verified.</p>
-        : <ul className="flex flex-col gap-1">
-          {evidences.map((evidence) => {
-            const tone = EVIDENCE_TONE[evidence.outcome] ?? EVIDENCE_TONE.not_run
-            const Icon = tone.icon
-            return <li key={evidence.id} className="rounded px-1 py-1 text-[11px] hover:bg-surface-2">
-              <div className={`flex items-center gap-1.5 ${tone.className}`}><Icon size={11} /><span className="truncate">{evidence.label}</span></div>
-              <p className="truncate pl-4 font-mono text-[10px] text-text-4" title={evidence.command}>{evidence.command}</p>
-              {evidence.log && <details className="pl-4 text-[10px] text-text-3"><summary className="cursor-pointer">Log</summary><pre className="milk-output mt-1 max-h-40 overflow-auto whitespace-pre-wrap">{evidence.log}</pre></details>}
-            </li>
-          })}
-        </ul>}
-    </section>
   )
 }
 
@@ -150,7 +186,14 @@ export function CodeStudioAgentReviewDialog() {
   const busy = useAgentReviewStore((state) => state.busy)
   const error = useAgentReviewStore((state) => state.error)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const [split, setSplit] = useState(false)
+  const [lineSelection, setLineSelection] = useState<ReviewSelection | null>(null)
   const store = useAgentReviewStore((state) => state)
+  const task = useReviewTask(root ?? '')
+  const openComment = (comment: AgentReviewComment) => {
+    setSelectedPath(comment.path)
+    setLineSelection(null)
+  }
 
   const selected = files.find((file) => file.path === selectedPath) ?? files[0] ?? null
 
@@ -178,7 +221,10 @@ export function CodeStudioAgentReviewDialog() {
       tall
       divided
       flush
-      actions={busy ? <Loader2 size={14} className="animate-spin text-text-3" aria-label="Working" /> : undefined}
+      actions={<>
+        {busy && <Loader2 size={14} className="animate-spin text-text-3" aria-label="Working" />}
+        <button type="button" className="gs-btn gs-btn-ghost gs-btn-sm" aria-pressed={split} title={split ? 'Show the unified diff' : 'Show the diff side by side'} onClick={() => setSplit(!split)}>{split ? <Rows2 size={13} /> : <Columns2 size={13} />}{split ? 'Unified' : 'Side by side'}</button>
+      </>}
       footerStart={(error || notice) && <span role="alert" className={`text-[11px] ${error ? 'text-danger' : 'text-warning'}`}>{error || notice}</span>}
       footer={files.length > 0 && (
         <>
@@ -200,9 +246,9 @@ export function CodeStudioAgentReviewDialog() {
             <div className="min-h-0 flex-1">
               {files.map((file) => <FileRow key={file.path} file={file} selected={file.path === selected?.path} onSelect={() => setSelectedPath(file.path)} />)}
             </div>
-            <TaskEvidencePanel root={root} />
+            {task && <TaskReviewPanel task={task} onOpenComment={openComment} />}
           </nav>
-          {selected && <FileReview root={root} file={selected} busy={busy} />}
+          {selected && <FileReview root={root} file={selected} busy={busy} task={task} split={split} selection={lineSelection} setSelection={setLineSelection} />}
         </div>
       )}
     </CodeStudioModal>

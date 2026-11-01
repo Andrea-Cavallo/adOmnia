@@ -23,6 +23,9 @@ const withoutTrailingSlashes = (value: string): string => {
 
 export const normalizePath = (path: string): string => withoutTrailingSlashes(path.replace(/\\/g, '/'))
 
+/** Same folder or file, ignoring separators, trailing slashes and case (Windows paths arrive in both forms). */
+export const samePath = (left: string, right: string): boolean => normalizePath(left).toLowerCase() === normalizePath(right).toLowerCase()
+
 /**
  * Unità a cui appartiene un file: la radice **più specifica** che lo contiene (un crate dentro un
  * workspace appartiene al crate, non al workspace). `path` può essere assoluto o relativo alla

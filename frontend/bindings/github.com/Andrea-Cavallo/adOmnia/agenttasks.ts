@@ -7,10 +7,67 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as acceptance$0 from "./internal/ide/acceptance/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as agenttask$0 from "./internal/ide/agenttask/models.js";
+
+/**
+ * AddComment stores a review comment on a changed line range or on an evidence.
+ */
+export function AddComment(id: string, draft: agenttask$0.ReviewCommentDraft): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(618283763, id, draft).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * AddScenarioToTask adds the executable criteria of a project scenario as task verifications.
+ */
+export function AddScenarioToTask(id: string, scenarioID: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(1820750004, id, scenarioID).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
 
 export function AddVerification(id: string, draft: agenttask$0.VerificationDraft): $CancellablePromise<agenttask$0.Task> {
     return $Call.ByID(725904465, id, draft).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * ApprovePlan approves the current plan revision.
+ */
+export function ApprovePlan(id: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(3457605827, id).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * CommitStep commits a completed step on the task branch, inside its workspace.
+ */
+export function CommitStep(id: string, stepID: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(4286915680, id, stepID).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * CompareWorkspace shows what integrating the task workspace would change.
+ */
+export function CompareWorkspace(id: string): $CancellablePromise<agenttask$0.WorkspaceComparison> {
+    return $Call.ByID(3301812395, id).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
+ * ConfirmStep completes a step without verifications by explicit user decision.
+ */
+export function ConfirmStep(id: string, stepID: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(3413486087, id, stepID).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -27,6 +84,23 @@ export function CreateWorkspace(id: string, baseRef: string, includeLocalChanges
     });
 }
 
+/**
+ * DraftPullRequest builds an editable PR title and body from the task evidence. Nothing is pushed.
+ */
+export function DraftPullRequest(id: string): $CancellablePromise<agenttask$0.PRDraft> {
+    return $Call.ByID(1616609154, id).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
+ * EvidenceImage returns the screenshot of a page verification as base64 PNG. Only files
+ * inside the evidence folder are read, whatever the stored path says.
+ */
+export function EvidenceImage(id: string, evidenceID: string): $CancellablePromise<string> {
+    return $Call.ByID(3694345435, id, evidenceID);
+}
+
 export function Export(id: string): $CancellablePromise<string> {
     return $Call.ByID(2380829601, id);
 }
@@ -37,15 +111,51 @@ export function Get(id: string): $CancellablePromise<agenttask$0.Task> {
     });
 }
 
+/**
+ * IntegrateWorkspace applies the task workspace to the project (check = dry run).
+ */
+export function IntegrateWorkspace(id: string, check: boolean): $CancellablePromise<agenttask$0.Integration> {
+    return $Call.ByID(743187615, id, check).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
 export function List(root: string): $CancellablePromise<agenttask$0.Task[]> {
     return $Call.ByID(683602099, root).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType4($result);
+    });
+}
+
+/**
+ * ListScenarios reads the acceptance scenarios of a project (.adomnia/acceptance).
+ */
+export function ListScenarios(root: string): $CancellablePromise<acceptance$0.LoadResult> {
+    return $Call.ByID(4238009038, root).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
+ * PreviewStepCommit shows the files and message a step commit would record on the task branch.
+ */
+export function PreviewStepCommit(id: string, stepID: string): $CancellablePromise<agenttask$0.StepCommitPreview> {
+    return $Call.ByID(1088726110, id, stepID).then(($result: any) => {
+        return $$createType6($result);
     });
 }
 
 export function ReconcileWorkspaces(): $CancellablePromise<agenttask$0.Task[]> {
     return $Call.ByID(3456391783).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType4($result);
+    });
+}
+
+/**
+ * RemoveComment deletes a comment that is not part of a running correction.
+ */
+export function RemoveComment(id: string, commentID: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(2976043856, id, commentID).then(($result: any) => {
+        return $$createType0($result);
     });
 }
 
@@ -61,14 +171,50 @@ export function RemoveWorkspace(id: string): $CancellablePromise<agenttask$0.Tas
     });
 }
 
+/**
+ * SaveScenario writes a scenario as versionable JSON in the project.
+ */
+export function SaveScenario(root: string, scenario: acceptance$0.Scenario): $CancellablePromise<acceptance$0.Scenario> {
+    return $Call.ByID(1622493868, root, scenario).then(($result: any) => {
+        return $$createType7($result);
+    });
+}
+
+/**
+ * SetCommentStatus resolves a comment or reopens it.
+ */
+export function SetCommentStatus(id: string, commentID: string, resolved: boolean): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(1892203156, id, commentID, resolved).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * SetPlan saves a new revision of the task plan; it must be approved again.
+ */
+export function SetPlan(id: string, steps: agenttask$0.PlanStepDraft[]): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(2133221990, id, steps).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
 export function Start(id: string, message: string, receipt: agenttask$0.ContextReceipt): $CancellablePromise<agenttask$0.Task> {
     return $Call.ByID(1973115145, id, message, receipt).then(($result: any) => {
         return $$createType0($result);
     });
 }
 
-export function StartCorrection(id: string, evidenceIDs: string[], note: string): $CancellablePromise<agenttask$0.Task> {
-    return $Call.ByID(4194843293, id, evidenceIDs, note).then(($result: any) => {
+export function StartCorrection(id: string, evidenceIDs: string[], commentIDs: string[], note: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(4194843293, id, evidenceIDs, commentIDs, note).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * StartStep runs the agent on one approved step; its verifications decide the outcome.
+ */
+export function StartStep(id: string, stepID: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(4088742323, id, stepID).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -79,9 +225,26 @@ export function StartVerifications(id: string, verificationIDs: string[]): $Canc
     });
 }
 
+/**
+ * StepPrompt returns the exact text a step sends to the agent, for the user to approve.
+ */
+export function StepPrompt(id: string, stepID: string): $CancellablePromise<string> {
+    return $Call.ByID(1728214039, id, stepID);
+}
+
 export function Stop(id: string): $CancellablePromise<agenttask$0.Task> {
     return $Call.ByID(2101357987, id).then(($result: any) => {
         return $$createType0($result);
+    });
+}
+
+/**
+ * TouchedScenarios returns the project scenarios whose linked files the task workspace
+ * changed, so the user can re-run them. Without a workspace nothing is compared.
+ */
+export function TouchedScenarios(id: string): $CancellablePromise<string[]> {
+    return $Call.ByID(1335642478, id).then(($result: any) => {
+        return $$createType8($result);
     });
 }
 
@@ -93,4 +256,11 @@ export function Update(id: string, draft: agenttask$0.Draft): $CancellablePromis
 
 // Private type creation functions
 const $$createType0 = agenttask$0.Task.createFrom;
-const $$createType1 = $Create.Array($$createType0);
+const $$createType1 = agenttask$0.WorkspaceComparison.createFrom;
+const $$createType2 = agenttask$0.PRDraft.createFrom;
+const $$createType3 = agenttask$0.Integration.createFrom;
+const $$createType4 = $Create.Array($$createType0);
+const $$createType5 = acceptance$0.LoadResult.createFrom;
+const $$createType6 = agenttask$0.StepCommitPreview.createFrom;
+const $$createType7 = acceptance$0.Scenario.createFrom;
+const $$createType8 = $Create.Array($Create.Any);
