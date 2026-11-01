@@ -413,8 +413,7 @@ func evaluateSteps(task *Task, now time.Time) {
 }
 
 func latestOutcome(evidences []Evidence, verificationID, attemptID string) (EvidenceOutcome, bool) {
-	for index := len(evidences) - 1; index >= 0; index-- {
-		evidence := evidences[index]
+	for _, evidence := range slices.Backward(evidences) {
 		if evidence.VerificationID == verificationID && evidence.AttemptID == attemptID {
 			return evidence.Outcome, true
 		}

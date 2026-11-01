@@ -8,9 +8,9 @@ import (
 
 func largeRun() *testRun {
 	r := &testRun{tree: NewTree()}
-	for p := 0; p < 150; p++ {
+	for p := range 150 {
 		pkg := fmt.Sprintf("github.com/example/project/internal/pkg%03d", p)
-		for t := 0; t < 20; t++ {
+		for t := range 20 {
 			name := fmt.Sprintf("TestSomething%02d/case_%d", t, t)
 			r.tree.Apply(Event{Action: "run", Package: pkg, Test: name})
 			r.tree.Apply(Event{Action: "output", Package: pkg, Test: name, Output: "=== RUN   " + name + "\n    some_test.go:42: log line\n"})
@@ -42,7 +42,7 @@ func BenchmarkPublishTick(b *testing.B) {
 	b.ReportAllocs()
 	var size int
 	for b.Loop() {
-		for t := 0; t < 50; t++ {
+		for t := range 50 {
 			r.tree.Apply(Event{Action: "pass", Package: "github.com/example/project/internal/pkg010", Test: fmt.Sprintf("TestSomething%02d/case_%d", t%20, t%20)})
 		}
 		s := r.headerLocked()

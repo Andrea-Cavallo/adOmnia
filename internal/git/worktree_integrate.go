@@ -75,7 +75,7 @@ func copyIndex(worktree, target string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(target, content, 0o600)
+	return os.WriteFile(target, content, 0o600) // #nosec G703 -- target is a temp index path built by this package, not renderer input
 }
 
 // TargetComparison describes the project branch a workspace would be integrated into.

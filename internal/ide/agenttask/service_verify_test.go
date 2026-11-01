@@ -286,12 +286,12 @@ func TestStoppedCorrectionDoesNotRerunVerificationsLater(t *testing.T) {
 	service.SetWorkspaceProvider(&fakeProvider{})
 	verifier := &fakeVerifier{outcome: EvidenceFailed}
 	service.SetVerifier(verifier)
-	var calls int32
+	var calls atomic.Int32
 	started := make(chan struct{}, 4)
 	service.RegisterRuntime("fake", runtimeFunc(func(ctx context.Context, request RunRequest, publish func(Event)) error {
-		atomic.AddInt32(&calls, 1)
+		calls.Add(1)
 		started <- struct{}{}
-		if atomic.LoadInt32(&calls) == 2 {
+		if calls.Load() == 2 {
 			<-ctx.Done()
 			return ctx.Err()
 		}

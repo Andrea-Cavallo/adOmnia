@@ -3,6 +3,7 @@ package agenttask
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -105,9 +106,9 @@ func writeVerification(body *strings.Builder, task Task) {
 }
 
 func latestEvidence(evidences []Evidence, verificationID string) (Evidence, bool) {
-	for index := len(evidences) - 1; index >= 0; index-- {
-		if evidences[index].VerificationID == verificationID {
-			return evidences[index], true
+	for _, evidence := range slices.Backward(evidences) {
+		if evidence.VerificationID == verificationID {
+			return evidence, true
 		}
 	}
 	return Evidence{}, false

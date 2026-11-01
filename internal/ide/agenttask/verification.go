@@ -190,102 +190,19 @@ func normalizeVerificationDraft(draft VerificationDraft) (VerificationDraft, err
 	draft.WorkingDirectory = strings.TrimSpace(draft.WorkingDirectory)
 	draft.Method = strings.ToUpper(strings.TrimSpace(draft.Method))
 	draft.URL = strings.TrimSpace(draft.URL)
+	var err error
 	switch draft.Kind {
 	case VerificationTest:
-		if draft.Language == "" {
-			draft.Language = "go"
-		}
-		if draft.WorkingDirectory != "" {
-			cleaned := strings.ReplaceAll(draft.WorkingDirectory, "\\", "/")
-			if strings.HasPrefix(cleaned, "/") || strings.HasPrefix(cleaned, "../") || cleaned == ".." {
-				return VerificationDraft{}, errors.New("working directory must stay inside the workspace")
-			}
-			draft.WorkingDirectory = cleaned
-		}
-		if len(draft.Packages) > 64 {
-			return VerificationDraft{}, errors.New("too many test packages")
-		}
-		for _, expression := range draft.Packages {
-			if strings.HasPrefix(strings.TrimSpace(expression), "-") {
-				return VerificationDraft{}, fmt.Errorf("invalid test package %q", expression)
-			}
-		}
-		if draft.TimeoutSeconds == 0 {
-			draft.TimeoutSeconds = 120
-		}
-		if draft.Label == "" {
-			draft.Label = "Language tests"
-		}
+		draft, err = normalizeTestDraft(draft)
 	case VerificationRequest:
-		if draft.Method == "" {
-			draft.Method = "GET"
-		}
-		parsed, err := url.Parse(draft.URL)
-		if err != nil || parsed.Host == "" {
-			return VerificationDraft{}, errors.New("an absolute URL is required for a request verification")
-		}
-		if parsed.Scheme != "http" && parsed.Scheme != "https" {
-			return VerificationDraft{}, errors.New("only http and https requests can be verified")
-		}
-		if draft.ExpectedStatus == 0 {
-			draft.ExpectedStatus = 200
-		}
-		if draft.ExpectedStatus < 100 || draft.ExpectedStatus > 599 {
-			return VerificationDraft{}, errors.New("expected status must be between 100 and 599")
-		}
-		if len(draft.Headers) > maxVerificationHeaders {
-			return VerificationDraft{}, errors.New("too many headers")
-		}
-		for _, header := range draft.Headers {
-			if strings.TrimSpace(header.Name) == "" || strings.ContainsAny(header.Name, ":\r\n") {
-				return VerificationDraft{}, errors.New("invalid header name")
-			}
-		}
-		if len(draft.Body) > maxVerificationBody {
-			return VerificationDraft{}, errors.New("request body exceeds 16 KiB")
-		}
-		if draft.TimeoutSeconds == 0 {
-			draft.TimeoutSeconds = 30
-		}
-		if draft.Label == "" {
-			draft.Label = draft.Method + " " + parsed.Host + parsed.Path
-		}
-		if draft.Service, err = normalizeServiceLaunch(draft.Service); err != nil {
-			return VerificationDraft{}, err
-		}
-		if draft.Watch, err = normalizeWatch(draft.Watch, draft.AllowRemote); err != nil {
-			return VerificationDraft{}, err
-		}
-		// Il servizio avviato da adOmnia gira su questa macchina: la richiesta resta locale.
-		if draft.Service.Enabled() && !draft.AllowRemote && !IsLoopbackHost(parsed.Hostname()) {
-			return VerificationDraft{}, errors.New("a request to a service started by adOmnia must target a loopback host")
-		}
+		draft, err = normalizeRequestDraft(draft)
 	case VerificationPage:
-		draft.Method = "GET"
-		parsed, err := url.Parse(draft.URL)
-		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-			return VerificationDraft{}, errors.New("an absolute http or https URL is required for a page verification")
-		}
-		if draft.SettleSeconds == 0 {
-			draft.SettleSeconds = 2
-		}
-		if draft.SettleSeconds < 1 || draft.SettleSeconds > 30 {
-			return VerificationDraft{}, errors.New("the page must settle within 1 and 30 seconds")
-		}
-		if draft.TimeoutSeconds == 0 {
-			draft.TimeoutSeconds = 60
-		}
-		if draft.Label == "" {
-			draft.Label = "Page " + parsed.Host + parsed.Path
-		}
-		if draft.Service, err = normalizeServiceLaunch(draft.Service); err != nil {
-			return VerificationDraft{}, err
-		}
-		if draft.Service.Enabled() && !draft.AllowRemote && !IsLoopbackHost(parsed.Hostname()) {
-			return VerificationDraft{}, errors.New("a page served by adOmnia must use a loopback host")
-		}
+		draft, err = normalizePageDraft(draft)
 	default:
-		return VerificationDraft{}, errors.New("verification kind must be test, request or page")
+		err = errors.New("verification kind must be test, request or page")
+	}
+	if err != nil {
+		return VerificationDraft{}, err
 	}
 	if len(draft.Label) > maxVerificationLabel {
 		return VerificationDraft{}, errors.New("verification label is too long")
@@ -295,6 +212,115 @@ func normalizeVerificationDraft(draft VerificationDraft) (VerificationDraft, err
 	}
 	if draft.TimeoutSeconds > maxVerificationTimeout {
 		return VerificationDraft{}, fmt.Errorf("timeout must be at most %d seconds", maxVerificationTimeout)
+	}
+	return draft, nil
+}
+
+func normalizeTestDraft(draft VerificationDraft) (VerificationDraft, error) {
+	if draft.Language == "" {
+		draft.Language = "go"
+	}
+	if draft.WorkingDirectory != "" {
+		cleaned := strings.ReplaceAll(draft.WorkingDirectory, "\\", "/")
+		if strings.HasPrefix(cleaned, "/") || strings.HasPrefix(cleaned, "../") || cleaned == ".." {
+			return VerificationDraft{}, errors.New("working directory must stay inside the workspace")
+		}
+		draft.WorkingDirectory = cleaned
+	}
+	if len(draft.Packages) > 64 {
+		return VerificationDraft{}, errors.New("too many test packages")
+	}
+	for _, expression := range draft.Packages {
+		if strings.HasPrefix(strings.TrimSpace(expression), "-") {
+			return VerificationDraft{}, fmt.Errorf("invalid test package %q", expression)
+		}
+	}
+	if draft.TimeoutSeconds == 0 {
+		draft.TimeoutSeconds = 120
+	}
+	if draft.Label == "" {
+		draft.Label = "Language tests"
+	}
+	return draft, nil
+}
+
+func normalizeRequestDraft(draft VerificationDraft) (VerificationDraft, error) {
+	if draft.Method == "" {
+		draft.Method = "GET"
+	}
+	parsed, err := url.Parse(draft.URL)
+	if err != nil || parsed.Host == "" {
+		return VerificationDraft{}, errors.New("an absolute URL is required for a request verification")
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return VerificationDraft{}, errors.New("only http and https requests can be verified")
+	}
+	if draft.ExpectedStatus == 0 {
+		draft.ExpectedStatus = 200
+	}
+	if draft.ExpectedStatus < 100 || draft.ExpectedStatus > 599 {
+		return VerificationDraft{}, errors.New("expected status must be between 100 and 599")
+	}
+	if err := validateRequestPayload(draft); err != nil {
+		return VerificationDraft{}, err
+	}
+	if draft.TimeoutSeconds == 0 {
+		draft.TimeoutSeconds = 30
+	}
+	if draft.Label == "" {
+		draft.Label = draft.Method + " " + parsed.Host + parsed.Path
+	}
+	if draft.Service, err = normalizeServiceLaunch(draft.Service); err != nil {
+		return VerificationDraft{}, err
+	}
+	if draft.Watch, err = normalizeWatch(draft.Watch, draft.AllowRemote); err != nil {
+		return VerificationDraft{}, err
+	}
+	// Il servizio avviato da adOmnia gira su questa macchina: la richiesta resta locale.
+	if draft.Service.Enabled() && !draft.AllowRemote && !IsLoopbackHost(parsed.Hostname()) {
+		return VerificationDraft{}, errors.New("a request to a service started by adOmnia must target a loopback host")
+	}
+	return draft, nil
+}
+
+func validateRequestPayload(draft VerificationDraft) error {
+	if len(draft.Headers) > maxVerificationHeaders {
+		return errors.New("too many headers")
+	}
+	for _, header := range draft.Headers {
+		if strings.TrimSpace(header.Name) == "" || strings.ContainsAny(header.Name, ":\r\n") {
+			return errors.New("invalid header name")
+		}
+	}
+	if len(draft.Body) > maxVerificationBody {
+		return errors.New("request body exceeds 16 KiB")
+	}
+	return nil
+}
+
+func normalizePageDraft(draft VerificationDraft) (VerificationDraft, error) {
+	draft.Method = "GET"
+	parsed, err := url.Parse(draft.URL)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return VerificationDraft{}, errors.New("an absolute http or https URL is required for a page verification")
+	}
+	if draft.SettleSeconds == 0 {
+		draft.SettleSeconds = 2
+	}
+	if draft.SettleSeconds < 1 || draft.SettleSeconds > 30 {
+		return VerificationDraft{}, errors.New("the page must settle within 1 and 30 seconds")
+	}
+	if draft.TimeoutSeconds == 0 {
+		draft.TimeoutSeconds = 60
+	}
+	if draft.Label == "" {
+		draft.Label = "Page " + parsed.Host + parsed.Path
+	}
+	if draft.Service, err = normalizeServiceLaunch(draft.Service); err != nil {
+		return VerificationDraft{}, err
+	}
+	if draft.Service.Enabled() && !draft.AllowRemote && !IsLoopbackHost(parsed.Hostname()) {
+		return VerificationDraft{}, errors.New("a page served by adOmnia must use a loopback host")
 	}
 	return draft, nil
 }

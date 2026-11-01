@@ -284,7 +284,7 @@ func testLog(snapshot idetesting.Snapshot) string {
 		fmt.Fprintf(&builder, "--- %s %s\n%s\n", result.Package, result.Name, result.Output)
 	}
 	if shown == 0 && snapshot.Summary.Failed == 0 && snapshot.Diagnostics == "" {
-		builder.WriteString(fmt.Sprintf("%d tests passed", snapshot.Summary.Passed))
+		fmt.Fprintf(&builder, "%d tests passed", snapshot.Summary.Passed)
 	}
 	return builder.String()
 }

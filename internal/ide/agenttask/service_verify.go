@@ -69,7 +69,7 @@ func (service *Service) CreateWorkspace(id, baseRef string, includeLocalChanges 
 		service.mu.Unlock()
 		// Il task è cambiato mentre il worktree veniva creato: non lasciare cartelle orfane.
 		if removeErr := provider.Remove(workspace); removeErr != nil {
-			return Task{}, fmt.Errorf("%w; the new workspace could not be removed: %v", errTaskChanged, removeErr)
+			return Task{}, fmt.Errorf("%w; the new workspace could not be removed: %w", errTaskChanged, removeErr)
 		}
 		return Task{}, errTaskChanged
 	}
@@ -81,7 +81,7 @@ func (service *Service) CreateWorkspace(id, baseRef string, includeLocalChanges 
 		service.tasks[id] = task
 		service.mu.Unlock()
 		if removeErr := provider.Remove(workspace); removeErr != nil {
-			return Task{}, fmt.Errorf("%w; the new workspace could not be removed: %v", err, removeErr)
+			return Task{}, fmt.Errorf("%w; the new workspace could not be removed: %w", err, removeErr)
 		}
 		return Task{}, err
 	}
