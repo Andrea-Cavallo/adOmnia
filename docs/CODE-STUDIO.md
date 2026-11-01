@@ -230,7 +230,7 @@ These languages get the editor and, when their language server is on PATH, compl
 | Lua, Perl, R, Julia, Clojure | `lua-language-server`, `perlnavigator`, R `languageserver`, `LanguageServer.jl`, `clojure-lsp` |
 | Shell, XML/WSDL/XSD, Dockerfile, Terraform, GraphQL | `bash-language-server`, `lemminx`, `docker-langserver`, `terraform-ls`, `graphql-lsp` |
 
-adOmnia does not install them: when one is missing, the editor notice shows the install command for its ecosystem, and *Dismiss* hides it for the session.
+When one is missing, the editor notice says how to install it, and *Dismiss* hides it for the session. The npm-distributed servers (`bash-language-server`, `intelephense`, `docker-langserver`, `graphql-lsp`, `perlnavigator`) also get *Install…*: after confirmation, adOmnia runs `npm install` with a pinned version into its own tools folder (the one the web language servers use), never into the project, and the server starts by itself. The others come from their ecosystem's installer (dotnet, gem, ghcup or a release download) and adOmnia only shows the command.
 
 **Run and Debug of native programs.** C/C++, Objective-C, Zig and Swift have an *Executable* run configuration: pick the built program inside the project, and put the build (`make`, `cmake --build build`, `zig build`, `swift build`) in *Before launch*, so adOmnia never guesses a build system. Debug (Shift+F9) starts that executable under CodeLLDB, the same adapter Rust uses: install it with *Rust > Install CodeLLDB (debugger)…* or the CodeLLDB VS Code extension. Breakpoints, stepping, variables and the disassembly work as for Rust; build with debug info (`-g`, `-O0`) to see sources and locals.
 

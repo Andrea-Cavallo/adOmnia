@@ -8,12 +8,14 @@ package declared
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/web"
 )
 
 // server is one language server command; the first one found on PATH wins.
@@ -35,6 +37,9 @@ type definition struct {
 	hint string
 	// native: programs are native code, so the language runs and debugs a built executable.
 	native bool
+	// npm is the pinned package of the first server when npm can install it into adOmnia's tools
+	// folder (the Install… button); empty means the hint is the only way.
+	npm string
 }
 
 // lookPath is replaced in tests. exec.LookPath honours PATHEXT, so npm's .cmd shims are found on Windows.
@@ -82,35 +87,67 @@ func (a adapter) Name() string { return a.name }
 
 func (a adapter) DocumentLanguageID(path string) (string, bool) { return a.languageID(path) }
 
-func (a adapter) find() (server, string, bool) {
-	for _, candidate := range a.servers {
-		if binary, err := lookPath(candidate.command); err == nil {
-			return candidate, binary, true
+func (a adapter) find(toolsRoot string) (server, string, string, bool) {
+	if a.npm != "" && toolsRoot != "" {
+		if binary := managedBinary(toolsRoot, a.servers[0].command); binary != "" {
+			return a.servers[0], binary, "managed", true
 		}
 	}
-	return server{}, "", false
+	for _, candidate := range a.servers {
+		if binary, err := lookPath(candidate.command); err == nil {
+			return candidate, binary, "PATH", true
+		}
+	}
+	return server{}, "", "", false
 }
 
-func (a adapter) LocateServer(_, _ string) lsp.ServerInfo {
-	candidate, binary, ok := a.find()
+// managedBinary is the npm shim in adOmnia's tools folder, shared with the web language servers.
+func managedBinary(toolsRoot, name string) string {
+	directory := filepath.Join(web.ManagedPrefix(toolsRoot), "node_modules", ".bin")
+	for _, candidate := range []string{name + ".cmd", name} {
+		if info, err := os.Stat(filepath.Join(directory, candidate)); err == nil && info.Mode().IsRegular() {
+			return filepath.Join(directory, candidate)
+		}
+	}
+	return ""
+}
+
+func (a adapter) LocateServer(_, toolsRoot string) lsp.ServerInfo {
+	candidate, binary, source, ok := a.find(toolsRoot)
 	if !ok {
 		return lsp.ServerInfo{Language: a.id, Name: a.servers[0].command,
 			Error: fmt.Sprintf("%s is not on PATH: %s, then reopen the file", a.servers[0].command, a.hint)}
 	}
-	return lsp.ServerInfo{Language: a.id, Name: candidate.command, Available: true, Binary: binary, Source: "PATH"}
+	return lsp.ServerInfo{Language: a.id, Name: candidate.command, Available: true, Binary: binary, Source: source}
 }
 
 func (a adapter) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
-	candidate, binary, ok := a.find()
+	candidate, binary, _, ok := a.find(toolsRoot)
 	if !ok {
 		return lsp.ServerSpec{}, fmt.Errorf("%s", a.LocateServer(root, toolsRoot).Error)
 	}
 	return lsp.ServerSpec{Language: a.id, Name: candidate.command, Binary: binary, Arguments: candidate.args}, nil
 }
 
-// InstallPlan: these servers come from each ecosystem's own installer (dotnet, gem, npm, ghcup…),
-// so the notice shows the hint instead of an Install button.
-// ponytail: add a managed InstallPlan per language when one is worth owning (npm ones are cheap).
-func (a adapter) InstallPlan(string) (lsp.InstallPlan, error) {
-	return lsp.InstallPlan{}, fmt.Errorf("%s", a.hint)
+// InstallPlan installs npm-distributed servers into adOmnia's tools folder, after confirmation.
+// The others come from their ecosystem's installer (dotnet, gem, ghcup…): the notice shows the hint.
+func (a adapter) InstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
+	if a.npm == "" || toolsRoot == "" {
+		return lsp.InstallPlan{}, fmt.Errorf("%s", a.hint)
+	}
+	// Only a PATH lookup: this runs for every missing server when the editor lists them, so no
+	// `npm --version` here. A broken npm fails visibly in the Run console instead.
+	npm, err := lookPath(web.NPM)
+	if err != nil {
+		return lsp.InstallPlan{}, fmt.Errorf("npm is not on PATH: install Node.js to install %s here, or %s", a.servers[0].command, a.hint)
+	}
+	prefix := web.ManagedPrefix(toolsRoot)
+	return lsp.InstallPlan{
+		Task: "install-" + a.id + "-language-server", Title: "Install " + a.servers[0].command + "?", Label: "Installing " + a.servers[0].command + "…",
+		Note:       "Downloads the package from the npm registry into adOmnia's own tools folder, never into your project. It also runs its install scripts. The output appears in the Run console.",
+		Command:    "npm install --prefix <adOmnia tools folder> " + a.npm,
+		Executable: npm, Arguments: []string{"install", "--no-audit", "--no-fund", "--prefix", prefix, a.npm},
+		Directory: prefix, Prepare: func() error { return os.MkdirAll(prefix, 0o755) },
+		Languages: []string{a.id},
+	}, nil
 }

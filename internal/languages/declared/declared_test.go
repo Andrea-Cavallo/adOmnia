@@ -2,9 +2,13 @@ package declared
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/web"
 )
 
 func TestDeclaredLanguagesUseTheFirstServerOnPath(t *testing.T) {
@@ -60,5 +64,41 @@ func TestDeclaredLanguagesUseTheFirstServerOnPath(t *testing.T) {
 	}
 	if _, err := byID["csharp"].InstallPlan(""); err == nil {
 		t.Fatal("declared servers are installed by their own ecosystem, not by adOmnia")
+	}
+}
+
+func TestNpmServersPreferAdOmniasToolsFolder(t *testing.T) {
+	t.Cleanup(func() { lookPath = defaultLookPath })
+	lookPath = func(name string) (string, error) { return "/usr/bin/" + name, nil }
+	tools := t.TempDir()
+	bin := filepath.Join(web.ManagedPrefix(tools), "node_modules", ".bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "bash-language-server.cmd"), []byte("@echo off"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range Languages() {
+		a, ok := l.(adapter)
+		if !ok {
+			continue
+		}
+		info := a.LocateServer("", tools)
+		switch a.id {
+		case "shellscript":
+			if info.Source != "managed" || filepath.Dir(info.Binary) != bin {
+				t.Fatalf("managed bash-language-server not preferred: %+v", info)
+			}
+		case "csharp":
+			if info.Source != "PATH" {
+				t.Fatalf("csharp-ls comes from PATH: %+v", info)
+			}
+		}
+		if plan, err := a.InstallPlan(tools); (a.npm != "") != (err == nil) || (err == nil && plan.Arguments[len(plan.Arguments)-1] != a.npm) {
+			t.Fatalf("%s: install plan %+v %v", a.id, plan, err)
+		}
+		if a.npm != "" && !strings.Contains(a.npm, "@") {
+			t.Fatalf("%s: npm package must be pinned, got %q", a.id, a.npm)
+		}
 	}
 }
