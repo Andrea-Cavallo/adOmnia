@@ -4,6 +4,7 @@ import type { CodeStudioRunTarget } from './codeStudioRunTargets'
 import { isJavaTarget } from './codeStudioJavaTargets'
 import { isPythonTarget } from './codeStudioPythonTargets'
 import { isRustTarget, isRustTestTarget } from './codeStudioRustTargets'
+import { isNativeTarget } from './codeStudioNativeTargets'
 
 export type CodeStudioRunTargetAction = 'run' | 'debug' | 'coverage' | 'fuzz' | 'build' | 'buildRun' | 'down' | 'save'
 
@@ -16,6 +17,9 @@ interface CodeStudioRunTargetMenuProps {
 }
 
 function itemsFor(target: CodeStudioRunTarget): ContextMenuItem[] {
+  if (isNativeTarget(target)) {
+    return [{ id: 'run', label: `Build & Run '${target.name}'`, icon: Play, iconClassName: 'text-success' }]
+  }
   if (isJavaTarget(target)) {
     const label = target.kind === 'java-main' ? target.className.slice(target.className.lastIndexOf('.') + 1) : target.name
     const items: ContextMenuItem[] = [{ id: 'run', label: `Run '${label}'`, icon: Play, iconClassName: 'text-success' }]

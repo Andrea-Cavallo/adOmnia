@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
-	"github.com/Andrea-Cavallo/adOmnia/internal/languages/web"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
 func TestDeclaredLanguagesUseTheFirstServerOnPath(t *testing.T) {
@@ -24,6 +24,10 @@ func TestDeclaredLanguagesUseTheFirstServerOnPath(t *testing.T) {
 	for _, l := range Languages() {
 		if native, ok := l.(nativeAdapter); ok {
 			byID[l.ID()] = native.adapter
+		} else if script, ok := l.(scriptAdapter); ok {
+			byID[l.ID()] = script.adapter
+		} else if dotnet, ok := l.(dotnetAdapter); ok {
+			byID[l.ID()] = dotnet.adapter
 		} else {
 			byID[l.ID()] = l.(adapter)
 		}
@@ -71,7 +75,7 @@ func TestNpmServersPreferAdOmniasToolsFolder(t *testing.T) {
 	t.Cleanup(func() { lookPath = defaultLookPath })
 	lookPath = func(name string) (string, error) { return "/usr/bin/" + name, nil }
 	tools := t.TempDir()
-	bin := filepath.Join(web.ManagedPrefix(tools), "node_modules", ".bin")
+	bin := lsp.ManagedBinDirectory(tools)
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}

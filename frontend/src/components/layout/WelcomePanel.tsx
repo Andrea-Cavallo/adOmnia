@@ -15,7 +15,7 @@ import '@fontsource/geist-mono/latin-400.css'
 import './WelcomePanel.css'
 import { useActivityStore } from '@/stores/activity'
 
-const Threads = lazy(() => import('./react-bits/Threads'))
+const Silk = lazy(() => import('./react-bits/Silk'))
 
 // Code Studio stays lazy: the file icon set loads only when the Hub shows a recent file.
 const FileIcon = lazy(() => import('@/components/code-studio/CodeStudioFileIcon').then((module) => ({ default: module.CodeStudioFileIcon })))
@@ -144,6 +144,7 @@ export function WelcomePanel() {
 
   return (
     <div data-hub-page>
+      <div className="hub-silk-background" aria-hidden="true"><Suspense fallback={null}><Silk speed={5} scale={1} color="#7B7481" noiseIntensity={1.5} rotation={0} paused={animationPaused} /></Suspense></div>
       <HubSidebar />
       <main className="hub-main">
         <header className="hub-hero">
@@ -158,14 +159,6 @@ export function WelcomePanel() {
             <p className="hub-zone">{zone.map((part, index) => <span key={part}>{index > 0 && <i>•</i>}{part}</span>)}</p>
           </div>
         </header>
-
-        <div className="hub-threads" aria-hidden="true">
-          <Suspense fallback={null}>
-            <Threads color="currentColor" lineCount={24} thickness={1.6} softness={1}
-              amplitude={1.2} distance={0.12} waves={1.3} speed={0.45} split={0.3}
-              fray={0.15} angle={0} taper={0.4} brightness={1.5} enableMouseInteraction paused={animationPaused} />
-          </Suspense>
-        </div>
 
         {recent.length === 0 && <section className="hub-start" aria-labelledby="hub-start-title">
           <h2 id="hub-start-title" className="hub-eyebrow">{t('Start here')}</h2>

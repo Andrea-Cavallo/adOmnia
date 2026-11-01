@@ -8,7 +8,10 @@
 
 <p align="center">
   <strong>A local-first desktop IDE to run, test and debug the code your AI agent writes.</strong><br>
-  Routes, API client, Delve debugger, database and brokers in one window. No account, no cloud, no telemetry.
+  Routes, API client, debugger, database and brokers in one window. No account, no cloud, no telemetry.<br>
+  <sub><b>Run, test and debug:</b> Go · Java · Python · TypeScript/JavaScript · Rust (in preparation) · C/C++ · C# · F# · PHP · Swift<br>
+  <b>Run and debug:</b> Dart · Zig · Objective-C · <b>Run:</b> Ruby · Elixir · Lua · Perl · R · Julia · PowerShell<br>
+  <b>Editor with language server</b> for 20+ more, including Kotlin, Scala, Haskell, SQL, YAML, Dockerfile, Terraform and Vue.</sub>
 </p>
 
 <p align="center">

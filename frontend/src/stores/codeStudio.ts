@@ -76,7 +76,7 @@ const LAYOUT_KEY = 'adomnia.codestudio.layout.v1'
 const MAX_CLOSED_HISTORY = 20
 
 /** Comandi go lanciabili direttamente da menu, CodeLens e gutter. */
-export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script' | 'bin' | 'example'
+export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script' | 'bin' | 'example' | 'build-run'
 
 export type GoIDESplitOrientation = 'right' | 'down'
 

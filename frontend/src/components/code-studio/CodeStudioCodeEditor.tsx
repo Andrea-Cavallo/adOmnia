@@ -44,6 +44,7 @@ import { isToolTarget, toolTargetLabel } from './codeStudioToolTargets'
 import { isPythonTarget } from './codeStudioPythonTargets'
 import { isRustTarget, isRustTestTarget } from './codeStudioRustTargets'
 import { isJavaTarget } from './codeStudioJavaTargets'
+import { isNativeTarget } from './codeStudioNativeTargets'
 import { indentationFor, useEditorConfig } from './codeStudioEditorConfig'
 import { recordCaretPosition, useCodeStudioBookmarks } from './codeStudioNavigationEditor'
 import { openImplementationMarker, useCodeStudioImplementationMarkers } from './codeStudioImplementationMarkers'
@@ -319,9 +320,11 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       decorationsRef.current?.set(targets.map((target) => ({
         range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
         options: {
-          glyphMarginClassName: `code-studio-run-glyph${target.kind === 'main' || target.kind === 'java-main' || target.kind === 'python-main' || target.kind === 'rust-main' || isToolTarget(target) ? '' : ' code-studio-test-glyph'}`,
+          glyphMarginClassName: `code-studio-run-glyph${target.kind === 'main' || target.kind === 'java-main' || target.kind === 'python-main' || target.kind === 'rust-main' || target.kind === 'native-main' || isToolTarget(target) ? '' : ' code-studio-test-glyph'}`,
           glyphMarginHoverMessage: { value: isRustTestTarget(target)
             ? `▶ Run ${target.name} · cargo test`
+            : isNativeTarget(target)
+            ? `▶ Build & Run ${target.name} · compile and run`
             : isPythonTarget(target) || isRustTarget(target)
             ? `▶ Run ${target.name} · Run or Debug`
             : isToolTarget(target)

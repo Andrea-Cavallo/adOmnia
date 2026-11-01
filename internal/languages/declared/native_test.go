@@ -1,6 +1,7 @@
 package declared
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,16 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
+
+func TestOnlyNativeRowsAskTheHostForLLDB(t *testing.T) {
+	for _, adapter := range Languages() {
+		lldb, uses := adapter.(language.NativeLLDBDebugger)
+		native := adapter.ID() == "cpp" || adapter.ID() == "objective-c" || adapter.ID() == "zig" || adapter.ID() == "swift"
+		if uses != native || (uses && !lldb.UsesLLDB()) {
+			t.Fatalf("%s: NativeLLDBDebugger = %v, want %v", adapter.ID(), uses, native)
+		}
+	}
+}
 
 func TestNativeExecutableRunsAndDebugsOnlyInsideTheProject(t *testing.T) {
 	root := t.TempDir()
@@ -29,10 +40,13 @@ func TestNativeExecutableRunsAndDebugsOnlyInsideTheProject(t *testing.T) {
 		if l.ID() == "cpp" {
 			cpp = l.(nativeAdapter)
 		}
-		_, runs := l.(language.Runner)
-		_, debugs := l.(dap.DebugAdapterProvider)
-		if native := l.ID() == "cpp" || l.ID() == "objective-c" || l.ID() == "zig" || l.ID() == "swift"; runs != native || debugs != native {
-			t.Fatalf("%s: runs=%v debugs=%v", l.ID(), runs, debugs)
+		capabilities := language.CapabilitiesOf(l)
+		_, scripted := l.(scriptAdapter)
+		_, dotnet := l.(dotnetAdapter)
+		native := l.ID() == "cpp" || l.ID() == "objective-c" || l.ID() == "zig" || l.ID() == "swift"
+		debugs := native || dotnet || l.ID() == "php" || l.ID() == "dart"
+		if capabilities.Run != (native || scripted || dotnet) || capabilities.Debug != debugs {
+			t.Fatalf("%s: %+v", l.ID(), capabilities)
 		}
 	}
 
@@ -47,8 +61,14 @@ func TestNativeExecutableRunsAndDebugsOnlyInsideTheProject(t *testing.T) {
 		}
 	}
 
+	t.Cleanup(func() { lookPath = defaultLookPath })
+	lookPath = func(string) (string, error) { return "", errors.New("not found") }
 	if _, err := cpp.DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: []byte(`{"program":"build/app"}`)}); err == nil || !strings.Contains(err.Error(), "CodeLLDB") {
 		t.Fatalf("missing CodeLLDB must be explained: %v", err)
+	}
+	lookPath = func(name string) (string, error) { return "/llvm/" + name, nil }
+	if fallback, err := cpp.DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root, LanguageOptions: []byte(`{"program":"build/app"}`)}); err != nil || fallback.Executable != "/llvm/lldb-dap" || fallback.Transport != dap.Stdio {
+		t.Fatalf("lldb-dap fallback: %+v %v", fallback, err)
 	}
 	debug, err := cpp.DebugAdapter(dap.LaunchRequest{Root: root, WorkingDirectory: root,
 		LanguageOptions: []byte(`{"program":"build/app","adapter":"/tools/codelldb","programArguments":["-v"]}`)})

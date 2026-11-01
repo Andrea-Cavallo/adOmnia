@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/declared"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
@@ -139,16 +140,20 @@ func (s *Service) StartNativeDebug(request NativeDebugRequest) (DebugSessionInfo
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}
-	codeLLDB, _, warning := rust.LocateCodeLLDB(s.toolsRoot)
-	if codeLLDB == "" && warning != nil {
-		return DebugSessionInfo{}, warning
+	codeLLDB := ""
+	if lldb, uses := provider.(language.NativeLLDBDebugger); uses && lldb.UsesLLDB() {
+		var warning error
+		codeLLDB, _, warning = rust.LocateCodeLLDB(s.toolsRoot)
+		if codeLLDB == "" && warning != nil {
+			return DebugSessionInfo{}, warning
+		}
 	}
 	options, err := jsonutil.Marshal(declared.NativeOptions{Program: request.Program, ProgramArguments: request.ProgramArguments, Adapter: codeLLDB})
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}
 	spec, err := provider.DebugAdapter(dap.LaunchRequest{
-		Root: session.Project.RealPath, WorkingDirectory: workingDirectory,
+		Root: session.Project.RealPath, WorkingDirectory: workingDirectory, ToolsRoot: s.toolsRoot,
 		Environment: environment, LanguageOptions: options,
 	})
 	if err != nil {

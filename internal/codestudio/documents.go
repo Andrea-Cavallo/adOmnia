@@ -432,7 +432,7 @@ var languageByExtension = map[string]string{
 	".sh": "shell", ".bash": "shell", ".zsh": "shell",
 	".ps1": "powershell", ".psm1": "powershell", ".bat": "bat", ".cmd": "bat",
 	".ini": "ini", ".toml": "toml", ".cfg": "ini", ".conf": "ini", ".properties": "ini",
-	".gradle": "kotlin", ".kts": "kotlin",
+	".gradle": "groovy", ".kts": "kotlin",
 	".py": "python", ".rs": "rust", ".java": "java", ".kt": "kotlin",
 	".c": "cpp", ".h": "cpp", ".cpp": "cpp", ".hpp": "cpp",
 	".tf": "hcl", ".hcl": "hcl", ".lua": "lua", ".rb": "ruby", ".php": "php",

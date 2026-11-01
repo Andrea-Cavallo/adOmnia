@@ -130,7 +130,8 @@ func TestCapabilitiesListRegisteredLanguages(t *testing.T) {
 	}
 	if want := []string{golang.ID, web.ScriptID, web.HTMLID, web.CSSID, web.JSONID, java.ID, python.ID, rust.ID,
 		"cpp", "objective-c", "csharp", "fsharp", "php", "ruby", "lua", "kotlin", "swift", "dart", "shellscript", "scala", "elixir",
-		"haskell", "zig", "perl", "r", "julia", "clojure", "xml", "dockerfile", "terraform", "graphql"}; !slices.Equal(ids, want) || languages[0].Name != "Go" {
+		"haskell", "zig", "perl", "r", "julia", "clojure", "xml", "dockerfile", "terraform", "graphql", "sql", "powershell",
+		"yaml", "toml", "markdown", "nix", "latex", "ocaml", "erlang", "groovy", "cmake", "vue", "svelte", "proto"}; !slices.Equal(ids, want) || languages[0].Name != "Go" {
 		t.Fatalf("languages = %+v, want %v", languages, want)
 	}
 	if capabilities := languages[0].Capabilities; !capabilities.Run || !capabilities.Tests || !capabilities.Debug || !capabilities.Documents {

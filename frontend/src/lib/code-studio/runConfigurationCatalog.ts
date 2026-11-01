@@ -25,3 +25,15 @@ export function configurationCatalog(templates: readonly RunTemplate[], project:
     other: available.filter(template => !!template.language && !present.has(template.language)),
   }
 }
+
+/**
+ * The file open in the editor as the default script of a new `script` configuration, relative to the
+ * working directory; '' when it belongs to another language or lives outside that directory.
+ */
+export function scriptFromOpenFile(document: { relativePath: string; language: string } | null | undefined, editorLanguages: readonly string[], workingDirectory: string): string {
+  if (!document?.relativePath || !editorLanguages.includes(document.language)) return ''
+  const file = normalized(document.relativePath)
+  const directory = normalized(workingDirectory)
+  if (!directory) return file
+  return file.startsWith(`${directory}/`) ? file.slice(directory.length + 1) : ''
+}

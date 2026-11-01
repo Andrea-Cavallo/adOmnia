@@ -47,6 +47,15 @@ describe('testTargets', () => {
     expect(targets.map((target) => target.workingDirectory)).toEqual(['crates/api', 'crates/core'])
   })
 
+  it('runs a .NET solution once, not again for each project below it', () => {
+    const targets = testTargets({ rootPath: root, units: [
+      { language: 'csharp', kind: 'project', root },
+      { language: 'csharp', kind: 'project', root: `${root}\\src\\Api` },
+      { language: 'ruby', kind: 'project', root: `${root}\\tools` },
+    ] })
+    expect(targets.map((target) => target.label)).toEqual([expect.stringContaining('dotnet test')])
+  })
+
   it('keeps a Cargo workspace root that has no detected member', () => {
     const targets = testTargets({ rootPath: root, units: [{ language: 'rust', kind: 'cargo-workspace', root: `${root}\\crates` }] })
     expect(targets.map((target) => target.workingDirectory)).toEqual(['crates'])

@@ -119,6 +119,23 @@ export function registerCodeStudioExtraLanguages(): void {
   monaco.languages.register({ id: 'makefile', filenames: ['Makefile', 'makefile', 'GNUmakefile'], extensions: ['.mk'] })
   monaco.languages.setMonarchTokensProvider('makefile', MAKEFILE)
   monaco.languages.setLanguageConfiguration('makefile', { comments: { lineComment: '#' } })
+  // Declared languages without a Monaco grammar: colours come from the language server's semantic tokens.
+  monaco.languages.register({ id: 'nix', extensions: ['.nix'] })
+  monaco.languages.setLanguageConfiguration('nix', { comments: { lineComment: '#', blockComment: ['/*', '*/'] }, brackets: [['{', '}'], ['[', ']'], ['(', ')']] })
+  monaco.languages.register({ id: 'latex', extensions: ['.tex', '.ltx', '.sty', '.cls', '.dtx', '.ins', '.bbx', '.cbx'] })
+  monaco.languages.setLanguageConfiguration('latex', { comments: { lineComment: '%' }, brackets: [['{', '}'], ['[', ']'], ['(', ')']] })
+  monaco.languages.register({ id: 'ocaml', extensions: ['.ml', '.mll', '.mly'] })
+  monaco.languages.setLanguageConfiguration('ocaml', { comments: { blockComment: ['(*', '*)'] }, brackets: [['(', ')'], ['[', ']'], ['{', '}']] })
+  monaco.languages.register({ id: 'erlang', extensions: ['.erl', '.hrl', '.escript'] })
+  monaco.languages.setLanguageConfiguration('erlang', { comments: { lineComment: '%' } })
+  monaco.languages.register({ id: 'groovy', extensions: ['.groovy', '.gradle', '.gvy', '.gy', '.gsh'], filenames: ['Jenkinsfile'] })
+  monaco.languages.setLanguageConfiguration('groovy', { comments: { lineComment: '//', blockComment: ['/*', '*/'] }, brackets: [['{', '}'], ['[', ']'], ['(', ')']] })
+  monaco.languages.register({ id: 'cmake', extensions: ['.cmake'], filenames: ['CMakeLists.txt', 'CMakeCache.txt'] })
+  monaco.languages.setLanguageConfiguration('cmake', { comments: { lineComment: '#', blockComment: ['#[[', ']]'] }, brackets: [['(', ')']] })
+  monaco.languages.register({ id: 'vue', extensions: ['.vue'] })
+  monaco.languages.setLanguageConfiguration('vue', { comments: { blockComment: ['<!--', '-->'] } })
+  monaco.languages.register({ id: 'svelte', extensions: ['.svelte'] })
+  monaco.languages.setLanguageConfiguration('svelte', { comments: { blockComment: ['<!--', '-->'] } })
 }
 
 function toMonacoSymbol(node: import('@/lib/code-studio-lsp-api').GoIDESymbolNode): monaco.languages.DocumentSymbol {

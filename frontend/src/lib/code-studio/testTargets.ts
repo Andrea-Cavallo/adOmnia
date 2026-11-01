@@ -35,6 +35,12 @@ const RUNNERS: ReadonlyArray<{ language: string; kind: string; packages: string[
   { language: 'python', kind: 'python-project', packages: [], name: 'pytest' },
   { language: 'rust', kind: 'cargo-package', packages: [], name: 'cargo test' },
   { language: 'rust', kind: 'cargo-workspace', packages: [], name: 'cargo test' },
+  // Declared languages (`internal/languages/declared`): units of kind `project`, the runner writes a JUnit or TRX report.
+  { language: 'cpp', kind: 'project', packages: [], name: 'ctest' },
+  { language: 'csharp', kind: 'project', packages: [], name: 'dotnet test' },
+  { language: 'fsharp', kind: 'project', packages: [], name: 'dotnet test' },
+  { language: 'php', kind: 'project', packages: [], name: 'PHPUnit' },
+  { language: 'swift', kind: 'project', packages: [], name: 'swift test' },
 ]
 
 /** Unità del progetto che hanno un test runner strutturato, nell'ordine in cui il backend le ha rilevate. */
@@ -47,6 +53,8 @@ export function testTargets(project: ProjectLike): TestTarget[] {
   for (const unit of units) {
     const runner = RUNNERS.find((item) => item.language === unit.language && item.kind === unit.kind)
     if (!runner) continue
+    // A solution or a parent project already runs the tests of the projects below it.
+    if (unit.kind === 'project' && units.some((other) => other !== unit && other.language === unit.language && other.kind === 'project' && slash(unit.root).startsWith(`${slash(other.root)}/`))) continue
     if (unit.language === 'rust' && unit.kind === 'cargo-workspace') {
       const directory = slash(unit.root)
       if (rustPackages.some((root) => root.startsWith(`${directory}/`))) continue

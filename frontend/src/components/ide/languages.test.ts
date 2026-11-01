@@ -23,12 +23,21 @@ describe('IDE language contributions', () => {
     expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('python')
     expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java', 'python', 'rust',
       'c', 'cpp', 'objective-c', 'csharp', 'fsharp', 'php', 'ruby', 'lua', 'kotlin', 'swift', 'dart', 'shell', 'scala', 'elixir',
-      'haskell', 'zig', 'perl', 'r', 'julia', 'clojure', 'xml', 'dockerfile', 'hcl', 'graphql'])
+      'haskell', 'zig', 'perl', 'r', 'julia', 'clojure', 'xml', 'dockerfile', 'hcl', 'graphql', 'sql', 'powershell',
+      'yaml', 'toml', 'markdown', 'nix', 'latex', 'ocaml', 'erlang', 'groovy', 'cmake', 'vue', 'svelte', 'proto'])
     expect(isLanguageServerEditorLanguage('go')).toBe(true)
     expect(isLanguageServerEditorLanguage('typescript')).toBe(true)
     expect(isLanguageServerEditorLanguage('python')).toBe(true)
-    expect(isLanguageServerEditorLanguage('markdown')).toBe(false)
+    expect(isLanguageServerEditorLanguage('markdown')).toBe(true)
+    expect(isLanguageServerEditorLanguage('mermaid')).toBe(false)
     expect(new Set(IDE_LANGUAGES.map((language) => language.id)).size).toBe(IDE_LANGUAGES.length)
+  })
+
+  it('runs interpreted declared languages as scripts', () => {
+    for (const id of ['php', 'ruby', 'dart', 'elixir', 'powershell']) {
+      expect(IDE_LANGUAGES.find(language => language.id === id)?.runTemplates?.map(template => template.kind)).toEqual(['script'])
+    }
+    expect(IDE_LANGUAGES.find(language => language.id === 'yaml')?.runTemplates).toBeUndefined()
   })
 
   it('keeps the gopls-tuned features (semantic colors, inlay hints, Code Vision) on Go only', () => {

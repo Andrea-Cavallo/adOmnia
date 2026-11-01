@@ -57,10 +57,10 @@ type ServerInfo struct {
 func ServerLanguages() []string { return []string{ScriptID, HTMLID, CSSID, JSONID} }
 
 // ManagedPrefix è la cartella in cui `npm install --prefix` mette i language server gestiti.
-func ManagedPrefix(toolsRoot string) string { return filepath.Join(toolsRoot, "node") }
+func ManagedPrefix(toolsRoot string) string { return lsp.ManagedToolsPrefix(toolsRoot) }
 
 func managedBinDirectory(toolsRoot string) string {
-	return filepath.Join(ManagedPrefix(toolsRoot), "node_modules", ".bin")
+	return lsp.ManagedBinDirectory(toolsRoot)
 }
 
 // LocateServer cerca il language server di languageID: custom, node_modules/.bin del progetto e dei

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { configurationCatalog, templateWorkingDirectory } from './runConfigurationCatalog'
+import { configurationCatalog, scriptFromOpenFile, templateWorkingDirectory } from './runConfigurationCatalog'
 import type { RunTemplate } from './runFormTypes'
 
 const templates: RunTemplate[] = [
@@ -27,5 +27,15 @@ describe('project-aware configuration catalog', () => {
     expect(templateWorkingDirectory(templates[0], project)).toBe('')
     expect(templateWorkingDirectory(templates[1], { ...project, units: [...project.units, { language: 'python', root: 'C:/repo/another' }] })).toBe('')
     expect(templateWorkingDirectory(templates[1], { ...project, units: [{ language: 'python', root: 'C:/repo-other/ml' }] })).toBe('')
+  })
+})
+
+describe('scriptFromOpenFile', () => {
+  it('defaults a script configuration to the open file of the same language', () => {
+    expect(scriptFromOpenFile({ relativePath: 'app/bin/serve.php', language: 'php' }, ['php'], 'app')).toBe('bin/serve.php')
+    expect(scriptFromOpenFile({ relativePath: String.raw`tools\seed.php`, language: 'php' }, ['php'], '')).toBe('tools/seed.php')
+    expect(scriptFromOpenFile({ relativePath: 'README.md', language: 'markdown' }, ['php'], '')).toBe('')
+    expect(scriptFromOpenFile({ relativePath: 'other/x.php', language: 'php' }, ['php'], 'app')).toBe('')
+    expect(scriptFromOpenFile(null, ['php'], '')).toBe('')
   })
 })

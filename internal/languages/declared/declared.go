@@ -2,8 +2,9 @@
 // PATH: one row in table.go per language (file extensions, the server and how to install it).
 // The host treats every row like any other lsp.ServerProvider: editor notice, status, trust check.
 //
-// A language that grows Run/Debug/Test or project detection moves to its own adapter in
-// internal/languages.
+// A row may also name its project manifests (units), an interpreter (script Run), a script debugger
+// and a test command that writes a JUnit or TRX report. LimitCapabilities reports only what the row
+// really has. A language that grows framework knowledge moves to its own adapter in internal/languages.
 package declared
 
 import (
@@ -15,7 +16,6 @@ import (
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
-	"github.com/Andrea-Cavallo/adOmnia/internal/languages/web"
 )
 
 // server is one language server command; the first one found on PATH wins.
@@ -40,6 +40,19 @@ type definition struct {
 	// npm is the pinned package of the first server when npm can install it into adOmnia's tools
 	// folder (the Install… button); empty means the hint is the only way.
 	npm string
+	// manifests are lower-case file name patterns that make a folder a project unit (CMakeLists.txt, *.csproj).
+	manifests []string
+	// interpreters run one source file (the first found on PATH wins); empty means no script Run.
+	interpreters []server
+	// dotnet: projects run with `dotnet run` (C#, F#).
+	dotnet bool
+	// debugger debugs a script with a DAP adapter on PATH; nil means no script Debug.
+	debugger *debugger
+	// test runs the unit's tests into a report folder; nil means no Test.
+	test *tester
+	// build: adOmnia can compile one source file (and its folder's sources) and run it, so a C/C++
+	// file with main gets a Play action without a pre-built executable.
+	build bool
 }
 
 // lookPath is replaced in tests. exec.LookPath honours PATHEXT, so npm's .cmd shims are found on Windows.
@@ -54,9 +67,14 @@ type adapter struct{ definition }
 func Languages() []language.Language {
 	adapters := make([]language.Language, 0, len(definitions))
 	for _, d := range definitions {
-		if d.native {
+		switch {
+		case d.native:
 			adapters = append(adapters, nativeAdapter{adapter{d}})
-		} else {
+		case d.dotnet:
+			adapters = append(adapters, dotnetAdapter{adapter{d}})
+		case len(d.interpreters) > 0:
+			adapters = append(adapters, scriptAdapter{adapter{d}})
+		default:
 			adapters = append(adapters, adapter{d})
 		}
 	}
@@ -82,6 +100,15 @@ func (d definition) languageID(path string) (string, bool) {
 	return id, ok
 }
 
+// LimitCapabilities hides what this row lacks: every adapter type implements tests and unit
+// detection, and script rows implement debug, but only some rows can use them.
+func (a adapter) LimitCapabilities(c language.Capabilities) language.Capabilities {
+	c.ProjectDetection = len(a.manifests) > 0
+	c.Tests = a.test != nil
+	c.Debug = a.native || a.dotnet || a.debugger != nil
+	return c
+}
+
 func (a adapter) ID() string   { return a.id }
 func (a adapter) Name() string { return a.name }
 
@@ -103,7 +130,7 @@ func (a adapter) find(toolsRoot string) (server, string, string, bool) {
 
 // managedBinary is the npm shim in adOmnia's tools folder, shared with the web language servers.
 func managedBinary(toolsRoot, name string) string {
-	directory := filepath.Join(web.ManagedPrefix(toolsRoot), "node_modules", ".bin")
+	directory := lsp.ManagedBinDirectory(toolsRoot)
 	for _, candidate := range []string{name + ".cmd", name} {
 		if info, err := os.Stat(filepath.Join(directory, candidate)); err == nil && info.Mode().IsRegular() {
 			return filepath.Join(directory, candidate)
@@ -126,7 +153,11 @@ func (a adapter) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 	if !ok {
 		return lsp.ServerSpec{}, fmt.Errorf("%s", a.LocateServer(root, toolsRoot).Error)
 	}
-	return lsp.ServerSpec{Language: a.id, Name: candidate.command, Binary: binary, Arguments: candidate.args}, nil
+	arguments := candidate.args
+	if candidate.command == "clangd" {
+		arguments = clangdArguments(root, toolsRoot, arguments)
+	}
+	return lsp.ServerSpec{Language: a.id, Name: candidate.command, Binary: binary, Arguments: arguments}, nil
 }
 
 // InstallPlan installs npm-distributed servers into adOmnia's tools folder, after confirmation.
@@ -137,11 +168,11 @@ func (a adapter) InstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 	}
 	// Only a PATH lookup: this runs for every missing server when the editor lists them, so no
 	// `npm --version` here. A broken npm fails visibly in the Run console instead.
-	npm, err := lookPath(web.NPM)
+	npm, err := lookPath(lsp.NPM)
 	if err != nil {
 		return lsp.InstallPlan{}, fmt.Errorf("npm is not on PATH: install Node.js to install %s here, or %s", a.servers[0].command, a.hint)
 	}
-	prefix := web.ManagedPrefix(toolsRoot)
+	prefix := lsp.ManagedToolsPrefix(toolsRoot)
 	return lsp.InstallPlan{
 		Task: "install-" + a.id + "-language-server", Title: "Install " + a.servers[0].command + "?", Label: "Installing " + a.servers[0].command + "…",
 		Note:       "Downloads the package from the npm registry into adOmnia's own tools folder, never into your project. It also runs its install scripts. The output appears in the Run console.",

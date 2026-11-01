@@ -197,6 +197,13 @@ func TestLanguageForPathCoversProjectFiles(t *testing.T) {
 		// Editor-only languages (internal/languages/declared): no longer plaintext.
 		"src/Program.cs": "csharp", "lib/main.dart": "dart", "App.swift": "swift", "Main.scala": "scala", "lib/app.ex": "elixir",
 		"src/engine.cc": "cpp", "Main.hs": "haskell", "build.zig": "zig", "Gemfile": "ruby", "api/orders.http": "http", "smoke.rest": "http", "script.jl": "julia", "core.clj": "clojure",
+		// Configuration, docs and build scripts added from the OpenIDEA language table.
+		"flake.nix": "nix", "paper.tex": "latex", "lib/core.ml": "ocaml", "src/app.erl": "erlang",
+		"build.gradle": "groovy", "CMakeLists.txt": "cmake", "src/App.vue": "vue", "src/App.svelte": "svelte",
+		"db/migration.ddl": "sql",
+		// C and C++ projects (single-file C homework and Makefile C++ folders).
+		"helloworld.c": "cpp", "assignments/switch.c": "cpp", "include/stack.h": "cpp",
+		"data_structures-I/06-LList/main.cpp": "cpp", "src/stock.hpp": "cpp",
 	}
 	for path, want := range cases {
 		if got := languageForPath(path); got != want {

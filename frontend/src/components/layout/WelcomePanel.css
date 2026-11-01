@@ -1,5 +1,7 @@
 /* Hub colours follow the active application palette. */
 [data-hub-page] {
+  position: relative;
+  isolation: isolate;
   --hub-bg: var(--color-surface-0);
   /* Hub text follows the primary (accent) palette; the muted tone is the same
      accent stepped towards the surface, still AA on custom bases. */
@@ -53,7 +55,6 @@
 .hub-clock .hub-zone { margin-top: 10px; color: var(--hub-muted); }
 .hub-zone i { margin: 0 18px; font-style: normal; }
 
-.hub-threads { height: 180px; width: 100%; color: var(--hub-ink); overflow: hidden; }
 .hub-start { margin-top: 20px; }
 .hub-start-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; border-block: 1px solid var(--hub-line); }
 .hub-start-actions button { display: flex; gap: 16px; padding: 24px 16px; align-items: flex-start; }
@@ -113,3 +114,7 @@
 @media (prefers-reduced-motion: reduce) {
   .hub-nav button, .hub-nav-chevron, .hub-recent li > button { transition: none; }
 }
+
+.hub-silk-background { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; opacity: .28; }
+[data-hub-page] > .hub-side, [data-hub-page] > .hub-main { position: relative; z-index: 1; }
+.light .hub-silk-background { opacity: .06; }

@@ -26,6 +26,9 @@ const EXTENSIONS: Record<string, BrandIconSlug> = {
   kt: 'kotlin', kts: 'kotlin', php: 'php', rb: 'ruby', cs: 'dotnet', csproj: 'dotnet', fs: 'dotnet', sln: 'dotnet',
   cpp: 'cplusplus', cc: 'cplusplus', cxx: 'cplusplus', hpp: 'cplusplus', c: 'c', h: 'c', swift: 'swift', dart: 'dart', scala: 'scala',
   ex: 'elixir', exs: 'elixir', hs: 'haskell', lua: 'lua', zig: 'zig',
+  nix: 'nixos', tex: 'latex', ltx: 'latex', ml: 'ocaml', mll: 'ocaml', mly: 'ocaml',
+  erl: 'erlang', hrl: 'erlang', groovy: 'apachegroovy', gradle: 'apachegroovy', cmake: 'cmake',
+  vue: 'vuedotjs', svelte: 'svelte',
 }
 
 const GENERIC_EXTENSIONS: Record<string, Extract<CodeStudioFileIconKind, { kind: 'generic' }>['icon']> = {

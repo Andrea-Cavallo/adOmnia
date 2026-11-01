@@ -78,6 +78,16 @@ export function startNativeDebug(request: NativeDebugRequest): Promise<DebugSess
   return GoIDEBindings.StartNativeDebug(request)
 }
 
+/** Il comando esatto che installerebbe il debugger del linguaggio (PHP, C/C++), per la conferma. */
+export function previewDebuggerInstall(sessionId: string, language: string) {
+  return GoIDEBindings.PreviewDebuggerInstall(sessionId, language)
+}
+
+/** Installa il debugger del linguaggio dopo la conferma, nella cartella strumenti di adOmnia. */
+export function installDebugger(sessionId: string, language: string): Promise<Execution> {
+  return GoIDEBindings.InstallDebugger(sessionId, language, true)
+}
+
 /** Debug di un file JS/TS o di uno script del package manager con js-debug (installato in modo esplicito). */
 export function startWebDebug(request: WebDebugRequest): Promise<DebugSessionInfo> {
   return GoIDEBindings.StartWebDebug(request)

@@ -1722,6 +1722,18 @@ func (g *GoIDE) InstallRustDebugger(sessionID string, confirmed bool) (codestudi
 	return g.service.InstallRustDebugger(sessionID, confirmed)
 }
 
+// PreviewDebuggerInstall mostra il comando esatto che installerebbe il debugger del linguaggio
+// (PHP: VSIX pinnato; C/C++ e nativi: CodeLLDB).
+func (g *GoIDE) PreviewDebuggerInstall(sessionID, languageID string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewDebuggerInstall(sessionID, languageID)
+}
+
+// InstallDebugger installa il debugger del linguaggio dopo conferma esplicita; il comando gira nella
+// console Run e non tocca progetto né strumenti globali.
+func (g *GoIDE) InstallDebugger(sessionID, languageID string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallDebugger(sessionID, languageID, confirmed)
+}
+
 // StartWebDebug avvia il debug JS/TS con js-debug: un file del progetto o lo script del package manager.
 func (g *GoIDE) StartWebDebug(request codestudio.WebDebugRequest) (codestudio.DebugSessionInfo, error) {
 	return g.service.StartWebDebug(request)

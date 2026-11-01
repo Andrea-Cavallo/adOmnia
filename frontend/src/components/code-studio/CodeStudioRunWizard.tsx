@@ -3,8 +3,9 @@ import { ArrowRight, FolderOpen, Search, Terminal, Layers } from 'lucide-react'
 import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
 import { emptyRunConfiguration, templateKey, type RunTemplate } from '@/lib/code-studio/runFormTypes'
 import { runTemplates } from '@/lib/code-studio/runFormSchema'
-import { configurationCatalog, templateWorkingDirectory } from '@/lib/code-studio/runConfigurationCatalog'
-import { useCodeStudioStore } from '@/stores/codeStudio'
+import { configurationCatalog, scriptFromOpenFile, templateWorkingDirectory } from '@/lib/code-studio/runConfigurationCatalog'
+import { activeGoIDEDocument, useCodeStudioStore } from '@/stores/codeStudio'
+import { ideLanguage } from '@/components/ide/languages'
 import { CodeStudioRunSuggestions } from './CodeStudioRunSuggestions'
 interface Props {
   sessionId: string; busy: boolean
@@ -23,7 +24,11 @@ export function CodeStudioRunWizard({ sessionId, busy, onChoose }: Props) {
       onChoose({ ...emptyRunConfiguration(sessionId), name: 'Shell command', target: windows ? 'powershell.exe' : 'sh', programArguments: windows ? ['-NoProfile', '-Command', 'Write-Output "Hello"'] : ['-c', 'echo "Hello"'] })
       return
     }
-    onChoose({ ...emptyRunConfiguration(sessionId), language: item.language, kind: item.kind as GoIDERunConfiguration['kind'], target: item.target ?? '', workingDirectory: templateWorkingDirectory(item, project), name: `${item.group} · ${item.label}`, languageOptions: {} })
+    const workingDirectory = templateWorkingDirectory(item, project)
+    // A new script configuration starts from the file open in the editor, when it is of that language.
+    const open = activeGoIDEDocument(useCodeStudioStore.getState())?.document
+    const script = item.kind === 'script' && open?.sessionId === sessionId ? scriptFromOpenFile(open, ideLanguage(item.language)?.editorLanguages ?? [], workingDirectory) : ''
+    onChoose({ ...emptyRunConfiguration(sessionId), language: item.language, kind: item.kind as GoIDERunConfiguration['kind'], target: item.target ?? '', workingDirectory, name: `${item.group} · ${item.label}`, languageOptions: script ? { script } : {} })
   }
   const rows = (items: RunTemplate[]) => <div className="run-catalog-grid">{items.map(item => <button type="button" key={templateKey(item)} disabled={busy} className="run-catalog-item" onClick={() => choose(item)}>
     <span className="run-catalog-icon">{item.language ? <FolderOpen size={17} /> : item.kind === 'compound' ? <Layers size={17} /> : <Terminal size={17} />}</span>

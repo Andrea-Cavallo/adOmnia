@@ -81,6 +81,7 @@ import { isJavaTarget, javaTestRequest } from './codeStudioJavaTargets'
 import { startJavaMain } from '@/lib/code-studio-debug-api'
 import { isPythonTarget } from './codeStudioPythonTargets'
 import { isRustTarget, isRustTestTarget } from './codeStudioRustTargets'
+import { isNativeTarget } from './codeStudioNativeTargets'
 import { listGoIDERunTargets, type GoIDERunConfiguration, type GoIDERunTarget } from '@/lib/code-studio-api'
 import { useCodeStudioCloseFlow } from './useCodeStudioCloseFlow'
 import { CodeStudioCaretPopup } from './CodeStudioCaretPopup'
@@ -164,6 +165,7 @@ import { rustDebugTargetOf } from '@/lib/code-studio/rustDebug'
 import { nativeDebugTargetOf } from '@/lib/code-studio/nativeDebug'
 import { webDebugTargetOf } from '@/lib/code-studio/webDebug'
 import { runRustCommand } from './codeStudioRustCommands'
+import { runDeclaredDebuggerCommand } from './codeStudioDeclaredDebuggerCommands'
 import { runWebCommand } from './codeStudioWebCommands'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -839,6 +841,11 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       if (action === 'debug') return void useCodeStudioDebugStore.getState().startRust({ sessionId: activeSession.id, ...cargoTarget, workingDirectory: target.crateDirectory })
       return void store.startRun(target.example ? 'example' : 'bin', { language: 'rust', target: '.', workingDirectory: target.crateDirectory, languageOptions: cargoTarget })
     }
+    if (isNativeTarget(target)) {
+      if (!activeSession) return
+      if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to compile and run its code' })
+      return void store.startRun('build-run', { language: 'cpp', target: '.', workingDirectory: target.directory, languageOptions: { source: target.file } })
+    }
     if (isJavaTarget(target)) {
       if (!activeSession) return
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
@@ -929,6 +936,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (runJavaCommand(id, activeSession?.id ?? null, currentActiveDocument() ?? null, useCodeStudioCursorStore.getState().line, runTarget)) return
     if (runPythonCommand(id, activeSession?.id ?? null)) return
     if (runRustCommand(id, activeSession?.id ?? null)) return
+    if (runDeclaredDebuggerCommand(id, activeSession?.id ?? null)) return
     if (runWebCommand(id, activeSession?.id ?? null)) return
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest, configuredWebDebugRequest, configuredNativeDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)

@@ -1131,6 +1131,16 @@ export function InspectContainer(sessionID: string, name: string): $CancellableP
 }
 
 /**
+ * InstallDebugger installa il debugger del linguaggio dopo conferma esplicita; il comando gira nella
+ * console Run e non tocca progetto né strumenti globali.
+ */
+export function InstallDebugger(sessionID: string, languageID: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
+    return $Call.ByID(1190013194, sessionID, languageID, confirmed).then(($result: any) => {
+        return $$createType24($result);
+    });
+}
+
+/**
  * InstallDelve installa dlv nella cartella strumenti di adOmnia dopo conferma esplicita.
  */
 export function InstallDelve(sessionID: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
@@ -1783,11 +1793,21 @@ export function PrepareRename(sessionID: string, documentID: string, line: numbe
 }
 
 /**
+ * PreviewDebuggerInstall mostra il comando esatto che installerebbe il debugger del linguaggio
+ * (PHP: VSIX pinnato; C/C++ e nativi: CodeLLDB).
+ */
+export function PreviewDebuggerInstall(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
+    return $Call.ByID(2226808568, sessionID, languageID).then(($result: any) => {
+        return $$createType166($result);
+    });
+}
+
+/**
  * PreviewGoTool mostra il comando Go Tools esatto prima dell'esecuzione.
  */
 export function PreviewGoTool(request: codestudio$0.GoToolRequest): $CancellablePromise<codestudio$0.GoToolPreview> {
     return $Call.ByID(1722645302, request).then(($result: any) => {
-        return $$createType166($result);
+        return $$createType167($result);
     });
 }
 
@@ -1796,7 +1816,7 @@ export function PreviewGoTool(request: codestudio$0.GoToolRequest): $Cancellable
  */
 export function PreviewRustComponentInstall(sessionID: string, component: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(2916478714, sessionID, component).then(($result: any) => {
-        return $$createType167($result);
+        return $$createType166($result);
     });
 }
 
@@ -1805,7 +1825,7 @@ export function PreviewRustComponentInstall(sessionID: string, component: string
  */
 export function PreviewRustDebuggerInstall(sessionID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(1862267458, sessionID).then(($result: any) => {
-        return $$createType167($result);
+        return $$createType166($result);
     });
 }
 
@@ -1814,7 +1834,7 @@ export function PreviewRustDebuggerInstall(sessionID: string): $CancellablePromi
  */
 export function PreviewRustToolchainInstall(sessionID: string, channel: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(3726469058, sessionID, channel).then(($result: any) => {
-        return $$createType167($result);
+        return $$createType166($result);
     });
 }
 
@@ -1823,7 +1843,7 @@ export function PreviewRustToolchainInstall(sessionID: string, channel: string):
  */
 export function PreviewServerInstall(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(145453932, sessionID, languageID).then(($result: any) => {
-        return $$createType167($result);
+        return $$createType166($result);
     });
 }
 
@@ -1832,7 +1852,7 @@ export function PreviewServerInstall(sessionID: string, languageID: string): $Ca
  */
 export function PreviewWebDebuggerInstall(sessionID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(862236262, sessionID).then(($result: any) => {
-        return $$createType167($result);
+        return $$createType166($result);
     });
 }
 
@@ -3151,8 +3171,8 @@ const $$createType162 = $Create.Map($Create.Any, $$createType161);
 const $$createType163 = java$0.VersionInfo.createFrom;
 const $$createType164 = $Create.Array($$createType163);
 const $$createType165 = langserver$0.RenameTarget.createFrom;
-const $$createType166 = codestudio$0.GoToolPreview.createFrom;
-const $$createType167 = lsp$0.InstallPlan.createFrom;
+const $$createType166 = lsp$0.InstallPlan.createFrom;
+const $$createType167 = codestudio$0.GoToolPreview.createFrom;
 const $$createType168 = codestudio$0.PrivateRepoCredential.createFrom;
 const $$createType169 = codestudio$0.ProjectService.createFrom;
 const $$createType170 = $Create.Array($$createType169);
