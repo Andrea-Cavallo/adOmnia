@@ -1,4 +1,5 @@
 import { accentTokens } from './accentPalette'
+import { codeStudioSyntaxRules, codeStudioGutterColors } from './codeStudioEditorAppearance'
 import { useSettingsStore } from '@/stores/settings'
 import { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
@@ -215,8 +216,8 @@ const CODE_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
 /** Temi di Code Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
 export function applyCodeStudioMonacoThemes(m: typeof monaco): void {
   applyAdomniaMonacoTheme(m)
-  m.editor.defineTheme(CODE_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: GO_SEMANTIC_RULES_DARK, colors: { ...CODE_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark') } })
-  m.editor.defineTheme(CODE_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: GO_SEMANTIC_RULES_LIGHT, colors: { ...CODE_STUDIO_LIGHT_COLORS, ...liveSurface('light', true), ...editorAccent('light') } })
+  m.editor.defineTheme(CODE_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: [...GO_SEMANTIC_RULES_DARK, ...codeStudioSyntaxRules(false)], colors: { ...CODE_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark'), ...codeStudioGutterColors(false) } })
+  m.editor.defineTheme(CODE_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: [...GO_SEMANTIC_RULES_LIGHT, ...codeStudioSyntaxRules(true)], colors: { ...CODE_STUDIO_LIGHT_COLORS, ...liveSurface('light', true), ...editorAccent('light'), ...codeStudioGutterColors(true) } })
 }
 
 useSettingsStore.subscribe((state, previous) => {

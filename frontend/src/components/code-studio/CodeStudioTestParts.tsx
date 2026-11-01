@@ -1,5 +1,5 @@
 import { withContentKeys } from '@/lib/contentKeys'
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Bug, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Copy, Gauge, Loader2, MinusCircle, Play, Repeat, Shuffle, ShieldCheck, XCircle } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, type GoIDETestRun } from '@/lib/code-studio-tests-api'
@@ -48,7 +48,20 @@ export async function openTest(sessionId: string, run: GoIDETestRun, result: GoI
   if (match) navigateToLocation(match.location)
 }
 
-export function TestRow({ node, depth, selected, run, sessionId, records, entry = false }: { node: CodeStudioTestNode; depth: number; selected: string | null; run: GoIDETestRun; sessionId: string; records: Map<string, CodeStudioFlakyRecord>; entry?: boolean }) {
+interface TestRowProps { node: CodeStudioTestNode; depth: number; selected: string | null; run: GoIDETestRun; sessionId: string; records: Map<string, CodeStudioFlakyRecord>; entry?: boolean }
+
+/** Vero se nessun risultato del sottoalbero è cambiato: la fusione degli aggiornamenti conserva l'identità dei nodi intatti. */
+function sameSubtree(left: CodeStudioTestNode, right: CodeStudioTestNode): boolean {
+  return left.result === right.result && left.children.length === right.children.length && left.children.every((child, index) => sameSubtree(child, right.children[index]))
+}
+
+/** Una run in corso si aggiorna 4 volte al secondo: si ridisegnano solo le righe il cui sottoalbero è cambiato. */
+function sameTestRow(previous: TestRowProps, next: TestRowProps): boolean {
+  return previous.depth === next.depth && previous.selected === next.selected && previous.sessionId === next.sessionId && previous.records === next.records && previous.entry === next.entry
+    && previous.run.runId === next.run.runId && previous.run.status === next.run.status && sameSubtree(previous.node, next.node)
+}
+
+export const TestRow = memo(function TestRow({ node, depth, selected, run, sessionId, records, entry = false }: TestRowProps) {
   const [open, setOpen] = useState(depth === 0 || node.children.some((child) => isFailed(child.result)))
   const selectNode = useCodeStudioTestsStore((state) => state.selectNode)
   const rerunNode = useCodeStudioTestsStore((state) => state.rerunNode)
@@ -119,7 +132,7 @@ export function TestRow({ node, depth, selected, run, sessionId, records, entry 
       {open && node.children.map((child) => <TestRow key={child.result.id} node={child} depth={depth + 1} selected={selected} run={run} sessionId={sessionId} records={records} />)}
     </>
   )
-}
+}, sameTestRow)
 
 export function OutputLine({ line, baseDirectory }: { line: string; baseDirectory: string }) {
   const openLocation = useCodeStudioStore((state) => state.openLocation)

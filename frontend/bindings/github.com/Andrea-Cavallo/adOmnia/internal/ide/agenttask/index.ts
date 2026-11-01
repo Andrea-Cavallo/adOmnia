@@ -6,9 +6,19 @@ export {
     ContextReceipt,
     Draft,
     Event,
+    Evidence,
+    EvidenceOutcome,
     Intent,
     Limits,
+    Observation,
     PlanEntry,
+    ServiceLaunch,
     Status,
-    Task
+    Task,
+    Verification,
+    VerificationDraft,
+    VerificationHeader,
+    VerificationKind,
+    Workspace,
+    WorkspaceState
 } from "./models.js";

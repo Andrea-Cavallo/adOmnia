@@ -122,6 +122,11 @@ func main() {
 	claudeService.manager.SetTurnObserver(goIDE.agentReview)
 	piService.manager.SetTurnObserver(goIDE.agentReview)
 	agentTasks := NewAgentTasks(milkService.manager, claudeService.manager, piService.manager)
+	agentTasks.configure(
+		filepath.Join(dataDir(), "code-studio", "worktrees"),
+		goIDE.service.AgentTaskVerifier(),
+		goIDE.service.Trusted,
+	)
 	collabService := NewCollab(goIDE.sessionRoot)
 
 	var mainWindow *application.WebviewWindow

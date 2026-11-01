@@ -26,7 +26,9 @@ type TestRunSnapshot struct {
 	Summary     TestSummary    `json:"summary"`
 	Results     []TestResult   `json:"results"`
 	Overflow    bool           `json:"overflow,omitzero"`
-	StartedAt   time.Time      `json:"startedAt"`
+	// Partial: Results contiene solo i nodi cambiati dall'evento precedente (vedi testing.Snapshot).
+	Partial   bool      `json:"partial,omitzero"`
+	StartedAt time.Time `json:"startedAt"`
 	// FinishedAt è presente solo quando il processo di test è terminato; permette
 	// di distinguere la durata reale della run dalla metrica ns/op del benchmark.
 	FinishedAt *time.Time      `json:"finishedAt,omitempty"`
@@ -72,7 +74,7 @@ func (m *TestManager) hostTestSnapshot(s testing.Snapshot) TestRunSnapshot {
 	if s.Coverage != nil {
 		coverage = m.hostCoverage(s, coverage)
 	}
-	return TestRunSnapshot{RunID: s.RunID, SessionID: s.SessionID, Request: request, Command: s.Command, Status: s.Status, ExitCode: s.ExitCode, Diagnostics: diagnostics, Summary: s.Summary, Results: s.Results, Overflow: s.Overflow, StartedAt: s.StartedAt, FinishedAt: s.FinishedAt, Coverage: coverage, RaceReports: meta.RaceReports}
+	return TestRunSnapshot{RunID: s.RunID, SessionID: s.SessionID, Request: request, Command: s.Command, Status: s.Status, ExitCode: s.ExitCode, Diagnostics: diagnostics, Summary: s.Summary, Results: s.Results, Overflow: s.Overflow, Partial: s.Partial, StartedAt: s.StartedAt, FinishedAt: s.FinishedAt, Coverage: coverage, RaceReports: meta.RaceReports}
 }
 
 // hostCoverage converte il report neutro del core nel modello della vista: percorsi relativi,

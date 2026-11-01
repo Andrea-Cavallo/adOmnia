@@ -5,6 +5,7 @@ import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudi
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
 import { CodeStudioOpenFilesSwitcher } from './CodeStudioOpenFilesSwitcher'
+import { CodeStudioBlameButton } from './CodeStudioBlameButton'
 
 interface CodeStudioEditorTabsProps {
   documents: GoIDEEditorDocument[]
@@ -81,10 +82,30 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
   const [menu, setMenu] = useState<{ x: number; y: number; document: GoIDEEditorDocument } | null>(null)
   const ordered = useMemo(() => orderTabs(documents, pinned), [documents, pinned])
   const listRef = useRef<HTMLDivElement>(null)
-  // Con molte tab aperte quella attiva (Ctrl+Tab, Search Everywhere…) può stare fuori dalla riga visibile.
+  // Keep keyboard navigation and resized editor groups centered on the selected file.
   useEffect(() => {
-    listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' })
-  }, [activeId])
+    const reveal = () => listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' })
+    reveal()
+    const list = listRef.current
+    if (!list || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(reveal)
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [activeId, previewTab?.active, multiline])
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || multiline) return
+    const wheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY) || list.scrollWidth <= list.clientWidth) return
+      const scale = event.deltaMode === 1 ? 24 : event.deltaMode === 2 ? list.clientWidth : 1
+      const next = Math.max(0, Math.min(list.scrollWidth - list.clientWidth, list.scrollLeft + event.deltaY * scale))
+      if (next === list.scrollLeft) return
+      event.preventDefault()
+      list.scrollLeft = next
+    }
+    list.addEventListener('wheel', wheel, { passive: false })
+    return () => list.removeEventListener('wheel', wheel)
+  }, [multiline])
   const moveFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     const keys: Record<string, number | undefined> = { ArrowRight: 1, ArrowLeft: -1 }
     const current = ordered.findIndex((item) => item.document.id === activeId)
@@ -126,11 +147,14 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
   }
 
   return (
-    <div className={`code-studio-editor-tabbar flex min-w-0 shrink-0 items-stretch border-b border-border-1 ${multiline ? 'code-studio-editor-tabbar--multiline' : 'h-[36px]'}`}>
+    <div className={`code-studio-editor-tabbar flex min-w-0 shrink-0 items-stretch border-b border-border-1 ${multiline ? 'code-studio-editor-tabbar--multiline' : 'h-[32px]'}`}>
     <div ref={listRef} role="tablist" tabIndex={0} aria-label="Open files" onKeyDown={moveFocus} className="code-studio-editor-tablist flex min-w-0 flex-1 items-stretch overflow-x-auto px-1">
       {ordered.map((item) => {
         const active = item.document.id === activeId && !previewTab?.active
         const isPinned = !!pinned[item.document.id]
+        const label = shortTabName(item.document.name, 36)
+        const dot = item.document.name.lastIndexOf('.')
+        const extension = dot > 0 && item.document.name.length - dot <= 8 ? item.document.name.slice(dot) : ''
         return (
           <button
             key={item.document.id}
@@ -151,7 +175,7 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
           >
             <CodeStudioFileIcon name={item.document.name} relativePath={item.document.relativePath} size={13} />
             {item.document.readOnly && <Lock size={11} className="shrink-0 text-text-4" />}
-            <span className={`whitespace-nowrap ${item.document.id === previewId ? 'italic' : ''}`}>{shortTabName(item.document.name)}</span>
+            <span className={`code-studio-tab-name ${item.document.id === previewId ? 'italic' : ''}`}><span className="code-studio-tab-stem">{extension ? label.slice(0, -extension.length) : label}</span>{extension && <span className="shrink-0">{extension}</span>}</span>
             {qualifiers[item.document.id] && <span className="shrink-0 text-[11px] text-text-4">{qualifiers[item.document.id]}</span>}
             {isPinned
               ? <span className="code-studio-tab-close" aria-label="Pinned">{item.dirty ? <span className="code-studio-tab-dirty" title="Unsaved changes" /> : <Pin size={11} className="rotate-45 text-text-3" />}</span>
@@ -169,6 +193,7 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items(menu.document)} onSelect={(id) => run(id as TabAction, menu.document)} onClose={() => setMenu(null)} />}
     </div>
     <CodeStudioOpenFilesSwitcher documents={ordered} activeId={previewTab?.active ? '' : activeId} onSelect={(id) => { selectDocument(id); onSelectDocument?.() }} />
+    {!previewTab?.active && documents.filter(item => item.document.id === activeId).map(item => <CodeStudioBlameButton key={item.document.id} document={item} />)}
     {actions}
     </div>
   )

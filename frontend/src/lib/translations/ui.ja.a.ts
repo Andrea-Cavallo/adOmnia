@@ -524,4 +524,6 @@ export const JA_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
   "OIDC user": "OIDC ユーザー",
   "expires": "有効期限:",
   "Access Key ID": "アクセスキー ID",
+  "Short window: an average needs at least 20 samples over 30 s.": "計測時間が短すぎます。平均には 30 秒間で 20 サンプル以上が必要です。",
+  "{count} gaps in the recording: the charts break where the app was not sampled.": "記録に {count} 件の中断があります。サンプリングされていない区間でグラフが途切れます。",
 }

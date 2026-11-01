@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestRecordAppendsLocalTimingSample(t *testing.T) {
@@ -36,5 +37,16 @@ func TestRecordAppendsLocalTimingSample(t *testing.T) {
 func TestRecordRejectsInvalidFrontendJSON(t *testing.T) {
 	if err := Record(t.TempDir(), `{`, nil); err == nil {
 		t.Fatal("expected invalid JSON error")
+	}
+}
+
+func TestProcessCPUAdvances(t *testing.T) {
+	before := ProcessCPU()
+	deadline := time.Now().Add(50 * time.Millisecond)
+	for x := 0; time.Now().Before(deadline); x++ {
+		_ = x * x
+	}
+	if after := ProcessCPU(); after <= before {
+		t.Fatalf("CPU time did not advance: before %v, after %v", before, after)
 	}
 }

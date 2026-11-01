@@ -21,6 +21,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/preview"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/terminal"
+	"github.com/Andrea-Cavallo/adOmnia/internal/startupperf"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
@@ -33,7 +34,10 @@ const maxRecentProjects = 20
 var modulePathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._~/-]*$`)
 
 type Service struct {
+	// serviceTaps raccoglie l'output dei servizi avviati dalle verifiche dei task (SessionID → *serviceTap).
+	serviceTaps sync.Map
 	loadPerf    loadPerformance
+	warmer      *indexWarmer
 	vcsMu       sync.Mutex
 	vcsSelected map[SessionID]string
 	extensions  extensionHost
@@ -101,6 +105,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		workspace:        NewWorkspaceManager(languages),
 		studioWorkspaces: newStudioWorkspaceRegistry(),
 		documents:        NewDocumentManager(),
+		warmer:           newIndexWarmer(),
 		toolchain:        NewToolchainManager(),
 		processes:        NewProcessManager(),
 		lsp:              NewLSPManager(languages),
@@ -122,6 +127,10 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 	}
 	service.recovery = NewRecoveryManager(nil)
 	service.workspace.onDetected = func(started time.Time) { service.noteLoad("detectUnits", started) }
+	service.documents.onIndexBuilt = func(elapsed time.Duration, entries int) {
+		service.noteLoadElapsed("fileIndexBuild", elapsed)
+		service.loadPerf.set("fileIndexEntries", float64(entries))
+	}
 	// La copertura di un adapter (pytest-cov) ha bisogno della radice del progetto per i token.
 	service.tests.SetProjectRoot(func(id SessionID) string {
 		session, err := service.session(string(id))
@@ -151,6 +160,7 @@ func NewService(store Store, eventSink func(EventEnvelope)) *Service {
 		if eventType == "run.finished" {
 			service.supervisor.Finish(execution.ID)
 		}
+		service.tapServiceOutput(eventType, execution.SessionID, payload)
 		service.emit(eventType, execution.SessionID, string(execution.ID), payload)
 		if eventType == "run.finished" && execution.Diagnostics != nil {
 			service.publishBuildDiagnostics(execution)
@@ -216,11 +226,22 @@ func (s *Service) languageInfos() []language.Info {
 
 // OpenProject apre una sessione non autorizzata all'esecuzione e non avvia alcuno strumento.
 func (s *Service) OpenProject(path string) (Session, error) {
+	started, cpuStarted := time.Now(), startupperf.ProcessCPU()
+	defer func() {
+		s.noteLoad("openProject", started)
+		s.noteLoadElapsed("openProjectCpu", startupperf.ProcessCPU()-cpuStarted)
+	}()
 	s.IDEContributions()
 	if err := s.restore(); err != nil {
 		return Session{}, err
 	}
-	session, err := s.workspace.OpenProject(path, s.studioWorkspaces.activeID())
+	// Le unità rilevate dopo la risposta arrivano con session.updated, mai prima di session.opened.
+	opened := make(chan struct{})
+	defer close(opened)
+	session, err := s.workspace.OpenProject(path, s.studioWorkspaces.activeID(), func(id SessionID) {
+		<-opened
+		s.unitsDetected(id)
+	})
 	if err != nil {
 		return Session{}, err
 	}
@@ -236,6 +257,17 @@ func (s *Service) OpenProject(path string) (Session, error) {
 	s.watchSession(session)
 	s.emit("session.opened", session.ID, string(session.ID), session)
 	return session, nil
+}
+
+// unitsDetected pubblica le unità di un progetto grande, rilevate dopo che l'apertura ha già risposto.
+func (s *Service) unitsDetected(id SessionID) {
+	session, err := s.workspace.GetSession(id)
+	if err != nil {
+		return
+	}
+	// Best effort: un salvataggio fallito qui viene ripetuto dal prossimo cambio di stato.
+	_ = s.saveState()
+	s.emit("session.updated", session.ID, string(session.ID), session)
 }
 
 // CreateProject crea una cartella, inizializza il modulo e applica il template scelto
@@ -401,6 +433,7 @@ func (s *Service) CloseSession(id string) error {
 	if !s.workspace.CloseSession(sessionID) {
 		return nil
 	}
+	s.warmer.stop(sessionID)
 	s.depGraph.invalidateSession(sessionID)
 	graphs := s.graphs()
 	graphs.mu.Lock()
@@ -539,6 +572,7 @@ func (s *Service) QuickOpen(sessionID, query string, limit int) ([]QuickOpenResu
 	if err != nil {
 		return nil, err
 	}
+	defer s.noteLoad("quickOpen", time.Now())
 	return s.documents.QuickOpen(session.Project, query, limit)
 }
 
@@ -975,6 +1009,8 @@ func (s *Service) HasAnyActiveRuns() bool {
 
 // Shutdown arresta le risorse possedute dal dominio in ordine sicuro.
 func (s *Service) Shutdown() {
+	s.workspace.CancelDetections()
+	s.warmer.stopAll()
 	s.previews.Shutdown()
 	s.watcher.Shutdown()
 	s.installer.Shutdown()
@@ -1062,7 +1098,7 @@ func (s *Service) saveState() error {
 		GlobalToolchain:    &globalToolchain,
 		DetectedToolchains: s.toolchain.DetectedSnapshot(),
 		ToolVersions:       sdk.VersionsSnapshot(),
-		Sessions:           s.workspace.ListSessions(),
+		Sessions:           persistableSessions(s.workspace.ListSessions()),
 		Recent:             recent,
 		RunConfigs:         s.runConfigs.Snapshot(),
 		SessionUI:          views,
@@ -1161,6 +1197,7 @@ func (s *Service) watchSession(session Session) {
 		}
 		if err := s.watcher.Watch(session.ID, session.Project.RealPath, stillOpen); err == nil && !alreadyWatching && s.watcher.Watching(session.ID) {
 			s.noteLoad("watcherReady", started)
+			s.warmFileIndex(session.ID)
 		}
 		if _, err := s.workspace.GetSession(session.ID); err != nil {
 			s.watcher.Stop(session.ID)
@@ -1173,7 +1210,7 @@ func (s *Service) filesChanged(sessionID SessionID, batch FilesChanged) {
 	// I cambiamenti ai sorgenti alterano anche l'analisi -deps del grafo dipendenze.
 	s.depGraph.invalidateSession(sessionID)
 	if session, err := s.workspace.GetSession(sessionID); err == nil && changesFileList(batch) {
-		s.documents.InvalidateFileIndex(session.Project.RealPath)
+		s.documents.ApplyFileChanges(session.Project.RealPath, batch)
 	}
 	s.noteGraphChanges(sessionID, batch)
 	s.lsp.NotifyWatchedFiles(sessionID, batch.Changes)

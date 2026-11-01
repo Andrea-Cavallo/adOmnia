@@ -524,4 +524,6 @@ export const ZH_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
   "OIDC user": "OIDC 用户",
   "expires": "过期时间",
   "Access Key ID": "访问密钥 ID",
+  "Short window: an average needs at least 20 samples over 30 s.": "时间窗口过短：平均值至少需要 30 秒内的 20 个采样点。",
+  "{count} gaps in the recording: the charts break where the app was not sampled.": "记录中有 {count} 处中断：未被采样的区段图表会断开。",
 }

@@ -40,3 +40,28 @@ func TestGitIgnoreRules(t *testing.T) {
 		t.Error("senza .gitignore nulla va escluso")
 	}
 }
+
+func TestLoadGitIgnoreReusesUntilFileChanges(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".gitignore")
+	if err := os.WriteFile(path, []byte("*.log\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	first := LoadGitIgnore(root)
+	if second := LoadGitIgnore(root); second != first {
+		t.Fatal("file invariato: attesa la stessa istanza in cache")
+	}
+	if err := os.WriteFile(path, []byte("*.log\n*.tmp\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changed := LoadGitIgnore(root)
+	if changed == first || !changed.Ignored("a.tmp", false) {
+		t.Fatal("dopo la modifica di .gitignore le regole vanno rilette")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if LoadGitIgnore(root).Ignored("a.log", false) {
+		t.Fatal(".gitignore rimosso: nessuna regola")
+	}
+}

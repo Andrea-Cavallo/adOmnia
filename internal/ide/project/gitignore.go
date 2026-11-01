@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 )
 
 // GitIgnore è il sottoinsieme di .gitignore della radice del progetto che serve a watcher, ricerca e quick open:
@@ -21,8 +23,45 @@ type gitIgnoreRule struct {
 	negate  bool
 }
 
+// gitIgnoreCache evita di rileggere e ricompilare .gitignore a ogni cartella aperta, ricerca o indice:
+// una voce vale finché mtime e dimensione del file non cambiano. Le regole sono immutabili, quindi condivise.
+var gitIgnoreCache = struct {
+	sync.Mutex
+	byRoot map[string]cachedGitIgnore
+}{byRoot: map[string]cachedGitIgnore{}}
+
+// maxCachedGitIgnores limita la cache ai progetti recenti; oltre si riparte da vuota.
+const maxCachedGitIgnores = 64
+
+type cachedGitIgnore struct {
+	modTime time.Time
+	size    int64
+	ignore  *GitIgnore
+}
+
 // LoadGitIgnore legge <root>/.gitignore; un file assente o illeggibile equivale a nessuna regola.
 func LoadGitIgnore(root string) *GitIgnore {
+	info, err := os.Stat(filepath.Join(root, ".gitignore"))
+	if err != nil {
+		return &GitIgnore{}
+	}
+	gitIgnoreCache.Lock()
+	cached, ok := gitIgnoreCache.byRoot[root]
+	gitIgnoreCache.Unlock()
+	if ok && cached.size == info.Size() && cached.modTime.Equal(info.ModTime()) {
+		return cached.ignore
+	}
+	ignore := readGitIgnore(root)
+	gitIgnoreCache.Lock()
+	if len(gitIgnoreCache.byRoot) >= maxCachedGitIgnores {
+		gitIgnoreCache.byRoot = map[string]cachedGitIgnore{}
+	}
+	gitIgnoreCache.byRoot[root] = cachedGitIgnore{modTime: info.ModTime(), size: info.Size(), ignore: ignore}
+	gitIgnoreCache.Unlock()
+	return ignore
+}
+
+func readGitIgnore(root string) *GitIgnore {
 	file, err := os.Open(filepath.Join(root, ".gitignore"))
 	if err != nil {
 		return &GitIgnore{}

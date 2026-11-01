@@ -37,6 +37,20 @@ const (
 type Limits struct {
 	TimeoutMinutes  int `json:"timeoutMinutes"`
 	MaxContextBytes int `json:"maxContextBytes"`
+	// MaxCorrections limita le correzioni consecutive dello stesso task: oltre il
+	// limite il ciclo si ferma e la decisione torna all'utente. 0 = valore predefinito
+	// (task salvati prima dell'introduzione del campo).
+	MaxCorrections int `json:"maxCorrections,omitempty"`
+}
+
+// DefaultMaxCorrections è il limite applicato quando il task non ne dichiara uno.
+const DefaultMaxCorrections = 3
+
+func (limits Limits) correctionLimit() int {
+	if limits.MaxCorrections <= 0 {
+		return DefaultMaxCorrections
+	}
+	return limits.MaxCorrections
 }
 
 type ContextReceipt struct {
@@ -80,6 +94,10 @@ type Attempt struct {
 	EndedAt   *time.Time `json:"endedAt,omitempty"`
 	Error     string     `json:"error,omitempty"`
 	Events    []Event    `json:"events"`
+	// CorrectionOf collega un tentativo di correzione all'attempt che ha prodotto le
+	// evidenze selezionate: la cronologia non perde mai il primo fallimento.
+	CorrectionOf string   `json:"correctionOf,omitempty"`
+	EvidenceIDs  []string `json:"evidenceIds,omitempty"`
 }
 
 type Task struct {
@@ -99,6 +117,14 @@ type Task struct {
 	CreatedAt       time.Time      `json:"createdAt"`
 	UpdatedAt       time.Time      `json:"updatedAt"`
 	Attempts        []Attempt      `json:"attempts"`
+	// Workspace è la cartella isolata del task, quando ne esiste una.
+	Workspace *Workspace `json:"workspace,omitempty"`
+	// Verifications sono i controlli che adOmnia esegue su questo task.
+	Verifications []Verification `json:"verifications,omitempty"`
+	// Evidences è il registro di ciò che le verifiche hanno misurato, in ordine di esecuzione.
+	Evidences []Evidence `json:"evidences,omitempty"`
+	// VerifyingIDs elenca le verifiche in corso; vuoto quando nessuna sta girando.
+	VerifyingIDs []string `json:"verifyingIds,omitempty"`
 }
 
 type Draft struct {
@@ -160,6 +186,9 @@ func normalizeDraft(draft Draft) (Draft, error) {
 	if draft.Limits.MaxContextBytes == 0 {
 		draft.Limits.MaxContextBytes = 128 * 1024
 	}
+	if draft.Limits.MaxCorrections < 0 || draft.Limits.MaxCorrections > 10 {
+		return Draft{}, errors.New("correction limit must be between 1 and 10")
+	}
 	if draft.Limits.TimeoutMinutes < 1 || draft.Limits.TimeoutMinutes > 240 {
 		return Draft{}, errors.New("timeout must be between 1 and 240 minutes")
 	}
@@ -219,7 +248,42 @@ func (task Task) Validate() error {
 	if task.ID == "" {
 		return errors.New("task ID is required")
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	if task.Workspace != nil {
+		if strings.TrimSpace(task.Workspace.Path) == "" || !filepath.IsAbs(task.Workspace.Path) {
+			return errors.New("workspace path must be absolute")
+		}
+		if task.Workspace.State != WorkspaceReady && task.Workspace.State != WorkspaceMissing {
+			return fmt.Errorf("unknown workspace state %q", task.Workspace.State)
+		}
+	}
+	seen := map[string]bool{}
+	for _, verification := range task.Verifications {
+		if verification.ID == "" || seen[verification.ID] {
+			return errors.New("verification IDs must be unique")
+		}
+		seen[verification.ID] = true
+		if _, err := normalizeVerificationDraft(verificationDraftOf(verification)); err != nil {
+			return fmt.Errorf("invalid verification %s: %w", verification.ID, err)
+		}
+	}
+	if len(task.Evidences) > maxEvidencePerTask {
+		return fmt.Errorf("at most %d evidences can be stored per task", maxEvidencePerTask)
+	}
+	return nil
+}
+
+func verificationDraftOf(verification Verification) VerificationDraft {
+	return VerificationDraft{
+		Kind: verification.Kind, Label: verification.Label, Language: verification.Language,
+		WorkingDirectory: verification.WorkingDirectory, Packages: verification.Packages,
+		Run: verification.Run, Coverage: verification.Coverage, Method: verification.Method,
+		URL: verification.URL, Headers: verification.Headers, Body: verification.Body,
+		ExpectedStatus: verification.ExpectedStatus, AllowRemote: verification.AllowRemote,
+		TimeoutSeconds: verification.TimeoutSeconds,
+	}
 }
 
 func cloneTask(task Task) Task {
@@ -227,9 +291,30 @@ func cloneTask(task Task) Task {
 	clone.Criteria = append([]string(nil), task.Criteria...)
 	clone.Paths = append([]string(nil), task.Paths...)
 	clone.Dependencies = append([]string(nil), task.Dependencies...)
+	clone.VerifyingIDs = append([]string(nil), task.VerifyingIDs...)
+	if task.Workspace != nil {
+		workspace := *task.Workspace
+		clone.Workspace = &workspace
+	}
+	clone.Verifications = make([]Verification, len(task.Verifications))
+	for index, verification := range task.Verifications {
+		clone.Verifications[index] = verification
+		clone.Verifications[index].Packages = append([]string(nil), verification.Packages...)
+		clone.Verifications[index].Headers = append([]VerificationHeader(nil), verification.Headers...)
+	}
+	clone.Evidences = make([]Evidence, len(task.Evidences))
+	for index, evidence := range task.Evidences {
+		clone.Evidences[index] = evidence
+		clone.Evidences[index].Observations = append([]Observation(nil), evidence.Observations...)
+		if evidence.ExitCode != nil {
+			exitCode := *evidence.ExitCode
+			clone.Evidences[index].ExitCode = &exitCode
+		}
+	}
 	clone.Attempts = make([]Attempt, len(task.Attempts))
 	for index, attempt := range task.Attempts {
 		clone.Attempts[index] = attempt
+		clone.Attempts[index].EvidenceIDs = append([]string(nil), attempt.EvidenceIDs...)
 		clone.Attempts[index].Events = make([]Event, len(attempt.Events))
 		for eventIndex, event := range attempt.Events {
 			clone.Attempts[index].Events[eventIndex] = event

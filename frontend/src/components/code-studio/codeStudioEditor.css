@@ -12,7 +12,7 @@
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
   border-left: 8px solid var(--color-success, #22c55e);
-  opacity: 0.85;
+  opacity: 1;
   transition: opacity 120ms ease, transform 120ms ease;
 }
 .code-studio-run-glyph:hover::before {
@@ -84,12 +84,12 @@
   position: absolute;
   right: 6px;
   top: 50%;
-  width: 11px;
-  height: 11px;
-  margin-top: -5.5px;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
   border-radius: 50%;
   background: var(--color-danger);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger) 40%, transparent);
+  box-shadow: 0 0 0 1px var(--color-surface-0);
 }
 .monaco-editor .line-numbers.code-studio-bp-pending::after {
   background: transparent;

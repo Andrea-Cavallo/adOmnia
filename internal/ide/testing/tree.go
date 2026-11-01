@@ -98,14 +98,16 @@ type Finisher interface{ Finish() []Event }
 
 // Tree aggrega gli eventi correlandoli per Package e Test, mai dal solo testo.
 type Tree struct {
-	nodes      map[string]*TestResult
-	order      []string
-	hasChild   map[string]bool
+	nodes    map[string]*TestResult
+	order    []string
+	hasChild map[string]bool
+	// changed raccoglie i nodi toccati dall'ultima Changes: gli aggiornamenti in corsa ne pubblicano solo questi.
+	changed    map[string]bool
 	overflowed bool
 }
 
 func NewTree() *Tree {
-	return &Tree{nodes: make(map[string]*TestResult), hasChild: make(map[string]bool)}
+	return &Tree{nodes: make(map[string]*TestResult), hasChild: make(map[string]bool), changed: make(map[string]bool)}
 }
 
 func testNodeID(pkg, name string) string {
@@ -119,6 +121,7 @@ func testNodeID(pkg, name string) string {
 func (t *Tree) node(pkg, name string) *TestResult {
 	id := testNodeID(pkg, name)
 	if existing, ok := t.nodes[id]; ok {
+		t.changed[id] = true
 		return existing
 	}
 	if len(t.nodes) >= maxTestNodes {
@@ -137,6 +140,7 @@ func (t *Tree) node(pkg, name string) *TestResult {
 	created := &TestResult{ID: id, ParentID: parent, Package: pkg, Name: name, Status: TestRunning}
 	t.nodes[id] = created
 	t.order = append(t.order, id)
+	t.changed[id] = true
 	return created
 }
 
@@ -239,6 +243,7 @@ func (t *Tree) finishPackage(pkg *TestResult) {
 		if node.Package != pkg.Package || node.Name == "" || node.Status != TestRunning {
 			continue
 		}
+		t.changed[id] = true
 		switch {
 		case timedOut:
 			node.Status = TestTimedOut
@@ -262,18 +267,28 @@ func appendOutput(node *TestResult, text string) {
 	node.Output += text
 }
 
-// snapshot restituisce i nodi in ordine di apparizione, con i package ordinati per nome.
+// Snapshot restituisce i nodi in ordine di apparizione, con i package ordinati per nome.
 func (t *Tree) Snapshot() ([]TestResult, TestSummary) {
-	results := make([]TestResult, 0, len(t.order))
+	return t.collect(len(t.order), func(string) bool { return true })
+}
+
+// Changes restituisce, nello stesso ordine di Snapshot, solo i nodi cambiati dalla chiamata precedente,
+// e il riepilogo dell'intero albero. Una run da migliaia di test pubblica così pochi KB a ogni tick
+// invece dell'albero intero (≈1,5 MB con 3000 test, quattro volte al secondo).
+func (t *Tree) Changes() ([]TestResult, TestSummary) {
+	changed := t.changed
+	t.changed = make(map[string]bool)
+	return t.collect(len(changed), func(id string) bool { return changed[id] })
+}
+
+func (t *Tree) collect(capacity int, include func(string) bool) ([]TestResult, TestSummary) {
+	results := make([]TestResult, 0, capacity)
 	summary := TestSummary{}
 	for _, id := range t.order {
-		node := *t.nodes[id]
-		if node.Failure != nil {
-			location := *node.Failure
-			node.Failure = &location
+		node := t.nodes[id]
+		if include(id) {
+			results = append(results, cloneResult(*node))
 		}
-		node.BenchmarkSamples = slices.Clone(node.BenchmarkSamples)
-		results = append(results, node)
 		if t.hasChild[id] {
 			continue
 		}
@@ -295,6 +310,15 @@ func (t *Tree) Snapshot() ([]TestResult, TestSummary) {
 		return false
 	})
 	return results, summary
+}
+
+func cloneResult(node TestResult) TestResult {
+	if node.Failure != nil {
+		location := *node.Failure
+		node.Failure = &location
+	}
+	node.BenchmarkSamples = slices.Clone(node.BenchmarkSamples)
+	return node
 }
 
 func (t *Tree) Overflowed() bool                   { return t.overflowed }

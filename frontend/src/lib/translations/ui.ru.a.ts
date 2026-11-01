@@ -524,4 +524,6 @@ export const RU_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
   "OIDC user": "Пользователь OIDC",
   "expires": "истекает",
   "Access Key ID": "ID ключа доступа",
+  "Short window: an average needs at least 20 samples over 30 s.": "Окно слишком короткое: для среднего нужно не менее 20 замеров за 30 с.",
+  "{count} gaps in the recording: the charts break where the app was not sampled.": "В записи {count} разрывов: на графиках линия обрывается там, где приложение не измерялось.",
 }

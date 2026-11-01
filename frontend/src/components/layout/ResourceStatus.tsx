@@ -1,50 +1,22 @@
-import { currentActivityPhase } from '@/stores/activity'
-import { visibleInterval } from '@/lib/visiblePolling'
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { acquireResourceSampling, useResourceRecording, startResourceRecording, stopResourceRecording, resumeResourceHistory, setResourceScenario } from '@/stores/resourceRecording'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Activity, Download } from 'lucide-react'
 import type { Snapshot } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/resources/models'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { saveTextFile } from '@/lib/fileUtils'
 import { resourcesToMarkdown } from '@/lib/resourcesMarkdown'
-import { resourceReport, resourcesToCSV, resourcesToHTML, resourceStats } from '@/lib/resourceReport'
+import { reportQuality, resourceReport, resourcesToCSV, resourcesToHTML, resourceStats } from '@/lib/resourceReport'
 import { ResourceChart } from './ResourceChart'
 const ResourceLowResourceControls = lazy(() => import('./ResourceLowResourceControls').then(m => ({ default: m.ResourceLowResourceControls })))
 const ResourceMemoryControls = lazy(() => import('./ResourceMemoryControls').then(m=>({default:m.ResourceMemoryControls})))
 
-// Indicatore della status bar: ogni campione legge la tabella dei processi del sistema.
-const RESOURCE_POLL_MS = 5000
-const HISTORY_SAMPLES = 300
 const mib = (bytes: number) => `${(bytes / 1048576).toFixed(0)} MiB`
 
-/** Campiona le risorse dell'app ogni 5 s finché il componente che lo usa è montato (e la finestra è attiva). */
 export function useResourceSample() {
-  const [sample, setSample] = useState<Snapshot | null>(null)
-  const [failed, setFailed] = useState(false)
-  const history = useRef<Snapshot[]>([])
-  const [recordUntil, setRecordUntil] = useState(0)
-  const [scenario, setScenario] = useState('Observation')
-  const [hasRecording,setHasRecording]=useState(false)
-  const startRecording = (seconds: number) => { history.current = []; setHasRecording(true); setRecordUntil(Date.now() + seconds * 1000) }
-  const stopRecording = () => setRecordUntil(0)
-  const resumeHistory = () => { history.current=[]; setHasRecording(false); setRecordUntil(0) }
-  useEffect(() => {
-    let disposed = false
-    let inFlight = false
-    const poll = async () => {
-      if (inFlight || disposed) return
-      if (recordUntil && Date.now() >= recordUntil) { setRecordUntil(0); return }
-      if (currentActivityPhase() === 'Active' || (recordUntil && !document.hidden)) {
-        inFlight = true
-        try { const { ResourceUsage } = await import('../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'); const next = await ResourceUsage(); if (!disposed) { if((!hasRecording || recordUntil) && history.current[history.current.length-1]?.at !== next.at) history.current = [...history.current, next].slice(-HISTORY_SAMPLES); setSample(next); setFailed(false) } }
-        catch { if (!disposed) setFailed(true) }
-        finally { inFlight = false }
-      }
-    }
-    void poll()
-    const stop = recordUntil ? (()=>{ const timer=window.setInterval(()=>void poll(),1000); return ()=>window.clearInterval(timer) })() : visibleInterval(() => { void poll() }, RESOURCE_POLL_MS, { kind: "decorative" })
-    return () => { disposed = true; stop() }
-  }, [recordUntil,hasRecording])
-  return { sample, failed, history, recordUntil, startRecording, stopRecording, scenario, setScenario,hasRecording,resumeHistory }
+  const state = useResourceRecording()
+  useEffect(acquireResourceSampling, [])
+  const sample = state.hasRecording && !state.recordUntil ? state.samples[state.samples.length - 1] ?? state.sample : state.sample
+  return { ...state, sample, history: { current: state.samples }, startRecording: startResourceRecording, stopRecording: stopResourceRecording, resumeHistory: resumeResourceHistory, setScenario: setResourceScenario }
 }
 
 interface ResourceDetailsProps {
@@ -53,7 +25,8 @@ interface ResourceDetailsProps {
   history: { current: Snapshot[] }
   className?: string
   recordUntil: number
-  startRecording: (seconds: number) => void
+  starting: boolean
+  startRecording: (seconds: number) => void | Promise<void>
   stopRecording: () => void
   scenario: string
   setScenario: (value: string) => void
@@ -62,7 +35,7 @@ interface ResourceDetailsProps {
 }
 
 /** Il pannello "Application resources": budget, processi e l'export in Markdown. Condiviso da status bar e stripe di Code Studio. */
-export function ResourceDetails({ sample, failed, history, className = '', recordUntil, startRecording, stopRecording, scenario, setScenario,hasRecording,resumeHistory }: ResourceDetailsProps) {
+export function ResourceDetails({ sample, failed, history, className = '', recordUntil, startRecording, stopRecording, scenario, setScenario,hasRecording,resumeHistory,starting }: ResourceDetailsProps) {
   const tr = useUiTranslation()
   const [format, setFormat]=useState('json')
   const [exportError,setExportError]=useState('')
@@ -74,11 +47,15 @@ export function ResourceDetails({ sample, failed, history, className = '', recor
     return {...s,ram:p?.ram??0,cpu:p?.cpu??0,processes:p?[p]:[]}
   })
   const stats=resourceStats(history.current)
+  const quality=reportQuality(history.current)
   const exportReport=async()=>{
     if(!sample)return
     setExportError('')
-    const selected=hasRecording?history.current[history.current.length-1]??sample:sample
-    const content=format==='json'?JSON.stringify(resourceReport(selected,history.current,scenario),null,2):format==='csv'?resourcesToCSV(selected,history.current):format==='html'?resourcesToHTML(selected,history.current,scenario):resourcesToMarkdown(selected,history.current)
+    const captured = [...history.current]
+    const selected=hasRecording?captured[captured.length-1]??sample:sample
+    // Hardware and build make the numbers comparable for whoever reads the file.
+    const environment=await import('../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide').then(m=>m.ResourceEnvironment()).catch(()=>null)
+    const content=format==='json'?JSON.stringify(resourceReport(selected,captured,scenario,environment),null,2):format==='csv'?resourcesToCSV(selected,captured,scenario,environment):format==='html'?resourcesToHTML(selected,captured,scenario,environment):resourcesToMarkdown(selected,captured,scenario,environment)
     try{await saveTextFile(`adomnia-resources.${format}`,content,format==='json'?'application/json':format==='csv'?'text/csv':format==='html'?'text/html':'text/markdown')}catch(e){setExportError(String(e))}
   }
   return <div className={`max-h-[80vh] overflow-auto rounded-lg border border-border-2 bg-surface-1 p-3 text-text-2 shadow-xl ${className}`}>
@@ -94,10 +71,12 @@ export function ResourceDetails({ sample, failed, history, className = '', recor
     <div className="my-2 flex flex-wrap items-center gap-2">
       <input aria-label={tr('Recording scenario')} value={scenario} onChange={e=>setScenario(e.target.value)} maxLength={100} className="min-w-0 flex-1 rounded border border-border-1 bg-surface-0 px-2 py-1"/>
       <select aria-label={tr('Recording duration')} value={duration} disabled={!!recordUntil} onChange={e=>setDuration(Number(e.target.value))} className="rounded border border-border-1 bg-surface-0 px-1 py-1">{[30,60,120].map(s=><option key={s} value={s}>{s} s</option>)}</select>
-      <button type="button" onClick={()=>recordUntil?stopRecording():startRecording(duration)} className="rounded border border-border-2 px-2 py-1 hover:bg-surface-3">{recordUntil?tr('Stop recording'):tr('Record CPU and RAM')}</button>
+      <button type="button" disabled={starting} onClick={()=>recordUntil?stopRecording():void startRecording(duration)} className="rounded border border-border-2 px-2 py-1 hover:bg-surface-3">{starting ? tr('Measuring resources…') : recordUntil?tr('Stop recording'):tr('Record CPU and RAM')}</button>
       {hasRecording&&!recordUntil&&<button type="button" onClick={resumeHistory} className="rounded border border-border-2 px-2 py-1 hover:bg-surface-3">{tr('Live history')}</button>}
     </div>
     <p role="status" className="font-mono text-text-4">{stats.samples} {tr('Samples')} · {stats.durationSeconds.toFixed(0)} s{recordUntil?` · ${tr('Recording')} (${Math.max(0,Math.ceil((recordUntil-Date.now())/1000))} s)`:hasRecording?` · ${tr('Recording stopped; charts and export are frozen.')}`:''} · CPU {tr('Average')} {stats.cpuAverage?.toFixed(1)??'—'}% / {tr('Peak')} {stats.cpuPeak?.toFixed(1)??'—'}%</p>
+    {quality.samples > 1 && !quality.sufficient && <p role="status" className="text-text-4">{tr('Short window: an average needs at least 20 samples over 30 s.')}</p>}
+    {quality.gaps > 0 && <p role="status" className="text-warning">{tr('{count} gaps in the recording: the charts break where the app was not sampled.', { count: quality.gaps })}</p>}
     <select aria-label={tr('Chart process')} value={chartProcess} onChange={e=>setChartProcess(e.target.value)} className="my-1 max-w-full rounded border border-border-1 bg-surface-0 px-2 py-1"><option value="all">{tr('All application processes')}</option>{processOptions.map(([id,p])=><option key={id} value={id}>{p.name} #{p.pid} · {p.role}</option>)}</select>
     <ResourceChart samples={chartSamples}/>
     {sample?.incomplete&&<p role="status" className="text-warning">{tr('Incomplete process sample')}: {sample.warnings?.join('; ')}</p>}

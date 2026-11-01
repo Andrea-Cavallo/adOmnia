@@ -28,13 +28,12 @@
 .code-studio-toolbar .code-studio-titlebar-controls { height: 40px; }
 .code-studio-toolbar .code-studio-titlebar-controls button { width: 36px; }
 .code-studio-header-end > span[aria-hidden], .code-studio-run-group > span[aria-hidden] { display: none; }
-.code-studio-editor-tabbar { height: 36px; background: var(--gs-island); }
-.code-studio-editor-tablist { align-items: center; gap: 2px; padding: 4px 6px; overflow-y: hidden; }
-.code-studio-editor-tablist .code-studio-tab { height: 28px; align-self: center; padding-inline: 8px 4px; border: 1px solid transparent; border-radius: 3px; font-size: 14px; }
-.code-studio-editor-tablist .code-studio-tab { color: var(--color-text-3); }
-/* Tab attiva: fondo accent tenue, testo pieno e barretta accent in basso; le altre restano piatte. */
-.code-studio-editor-tablist .code-studio-tab[aria-selected=true] { border-color: color-mix(in srgb, var(--color-accent) 35%, transparent); background: color-mix(in srgb, var(--color-accent) 12%, var(--gs-island)); color: var(--color-text-1); font-weight: 600; }
-.code-studio-editor-tablist .code-studio-tab::after { left: 6px; right: 6px; bottom: 0; border-radius: 2px; }
+.code-studio-editor-tabbar { height: 32px; background: var(--gs-island); }
+.code-studio-editor-tablist { align-items: center; gap: 1px; padding: 2px 4px; overflow-y: hidden; }
+.code-studio-editor-tablist .code-studio-tab { height: 28px; max-width: 280px; align-self: center; padding-inline: 10px 5px; border: 1px solid transparent; border-radius: 4px 4px 0 0; font-size: 12.5px; color: var(--color-text-2); }
+.code-studio-editor-tablist .code-studio-tab[aria-selected=true] { background: var(--color-surface-2); color: var(--color-text-1); font-weight: 500; }
+.code-studio-editor-tablist .code-studio-tab::after { display: block; height: 2px; bottom: 0; left: 8px; right: 8px; border-radius: 1px; }
+.code-studio-editor-tablist .code-studio-tab:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
 .code-studio-open-files { color: var(--code-studio-icon-color, var(--color-text-3)); }
 /* Barra superiore e riga tab: ogni icona segue la palette primaria, a sinistra
    (menu, pannelli) come a destra (ricerca, run, azioni, conteggio tab). Il colore

@@ -13,6 +13,8 @@ import { useAiProviders } from './useAiProviders'
 import type { GoIDESession } from '@/lib/code-studio-api'
 import { isRunning } from '@/lib/code-studio/livePreview'
 import { selectSessionPreview, useLivePreviewStore } from '@/stores/livePreview'
+import { registerResourceStudioContext } from '@/lib/resourceObservation'
+import { useResourceRecording } from '@/stores/resourceRecording'
 
 type BadgeTone = 'danger' | 'warning' | 'success' | 'accent'
 
@@ -127,6 +129,13 @@ interface CodeStudioRightStripeProps {
 
 /** Barra destra: Structure, l'hub AI con il provider attivo e le dipendenze del modulo. */
 export function CodeStudioRightStripe({ onDependencies }: CodeStudioRightStripeProps) {
+  useEffect(() => registerResourceStudioContext(() => {
+    const state = useCodeStudioStore.getState()
+    const session = state.sessions.find(item => item.id === state.activeSessionId)
+    const documents = state.documents.filter(item => item.document.sessionId === state.activeSessionId)
+    const active = documents.find(item => item.document.id === state.activeDocumentBySession[state.activeSessionId ?? ''])
+    return { workspace: session?.project.realPath, openDocuments: documents.length, modifiedDocuments: documents.filter(item => item.dirty).length, activeFile: active?.document.relativePath, runningExecutions: state.executions.filter(item => item.status === 'running').length }
+  }), [])
   const structureOpen = useCodeStudioStore((state) => state.layout.structureOpen)
   const structureWidth = useCodeStudioStore((state) => state.layout.structureWidth)
   const updateLayout = useCodeStudioStore((state) => state.updateLayout)
@@ -135,6 +144,8 @@ export function CodeStudioRightStripe({ onDependencies }: CodeStudioRightStripeP
   const lastProvider = useCodeStudioAssistantStore((state) => state.lastProvider)
   const providers = useAiProviders()
   const [resourcesOpen, setResourcesOpen] = useState(false)
+  const recording = useResourceRecording(state => state.recordUntil > 0 || state.starting)
+  const recorded = useResourceRecording(state => state.hasRecording)
   const toggleAssistant = (pane: Exclude<CodeStudioAssistantPane, null>) => {
     if (structureOpen && assistantPane === pane) {
       useCodeStudioAssistantStore.getState().close()
@@ -155,7 +166,7 @@ export function CodeStudioRightStripe({ onDependencies }: CodeStudioRightStripeP
         onClick={() => toggleAssistant(lastProvider)}
       />
       <StripeButton label="Module Dependencies" icon={PackageSearch} pressed={false} onClick={onDependencies} />
-      <StripeButton label="Resources · RAM, CPU and processes" icon={Gauge} pressed={resourcesOpen} onClick={() => setResourcesOpen((open) => !open)} />
+      <StripeButton label="Resources · RAM, CPU and processes" tooltip={recording ? 'Recording CPU and RAM · open to view or export' : recorded ? 'Resource recording ready · open to export' : 'Resources · RAM, CPU and processes'} badge={recording ? 'danger' : recorded ? 'success' : undefined} icon={Gauge} pressed={resourcesOpen} onClick={() => setResourcesOpen((open) => !open)} />
       {resourcesOpen && <ResourcesPanel />}
     </nav>
   )

@@ -369,7 +369,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
         // can rasterize it differently from normal browser text on that layer.
         disableLayerHinting: true,
         fontSize,
-        lineHeight: Math.round(fontSize * 1.65),
+        lineHeight: Math.round(fontSize * 1.5),
         fontLigatures,
         stickyScroll: { enabled: stickyScroll, maxLineCount: 4 },
         fontFamily: 'var(--skin-font-mono, var(--font-mono))',
@@ -378,6 +378,9 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
         lineNumbers: projectEditor.lineNumbers ?? 'on',
         wordWrap: projectEditor.wordWrap ?? 'off',
         folding: true,
+        showFoldingControls: 'always',
+        lineNumbersMinChars: 3,
+        wrappingIndent: 'indent',
         // Parentesi monocromatiche: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.
         bracketPairColorization: { enabled: false },
         guides: { bracketPairs: false, indentation: true, highlightActiveIndentation: true },

@@ -108,6 +108,7 @@ export function useCodeStudioVcsGutter(editorRef: MutableRefObject<monaco.editor
   const head = useCodeStudioVCSStore((state) => state.head[headKey(sessionId, relativePath)])
   const blame = useCodeStudioVCSStore((state) => state.blame[id])
   const collectionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const beforeBlame = useRef<Pick<monaco.editor.IEditorOptions, 'lineNumbers' | 'lineNumbersMinChars'> | null>(null)
 
   useEffect(() => {
     const editor = editorRef.current
@@ -140,12 +141,17 @@ export function useCodeStudioVcsGutter(editorRef: MutableRefObject<monaco.editor
   useEffect(() => {
     const editor = editorRef.current
     if (!editor) return
-    if (!blame) {
-      editor.updateOptions({ lineNumbers: 'on', lineNumbersMinChars: 5 })
+    if (!blame || document.dirty) {
+      if (beforeBlame.current) { editor.updateOptions(beforeBlame.current); beforeBlame.current = null }
+      if (blame && document.dirty) useCodeStudioVCSStore.setState(state => ({ blame: Object.fromEntries(Object.entries(state.blame).filter(([documentId]) => documentId !== id)) }))
       return
+    }
+    if (!beforeBlame.current) {
+      const options = editor.getRawOptions()
+      beforeBlame.current = { lineNumbers: options.lineNumbers, lineNumbersMinChars: options.lineNumbersMinChars }
     }
     const byLine = new Map(blame.map((line) => [line.line, line]))
     editor.updateOptions({ lineNumbers: (line: number) => `${blameLabel(byLine.get(line))}  ${line}`, lineNumbersMinChars: BLAME_LINE_NUMBER_CHARS })
   // oxlint-disable-next-line react/exhaustive-effect-dependencies -- mountCount signals that the editor held in a ref was (re)mounted; the ref itself is not reactive
-  }, [blame, editorRef, id, mountCount])
+  }, [blame, document.dirty, editorRef, id, mountCount])
 }

@@ -50,6 +50,22 @@ func TestSampleIncludesChildProcesses(t *testing.T) {
 	t.Fatalf("child %d missing from %+v", child.Process.Pid, snapshot.Processes)
 }
 
+// A recording must not inherit CPU spent before it started (PERF-5.1).
+func TestResetBaselineReopensTheMeasurementWindow(t *testing.T) {
+	Sample(nil)
+	sampler.Lock()
+	sampler.cached.At = time.Time{}
+	sampler.Unlock()
+	time.Sleep(20 * time.Millisecond)
+	if cpu := Sample(nil).Processes[0].CPU; cpu == nil {
+		t.Fatal("expected a CPU baseline after two samples")
+	}
+	ResetBaseline()
+	if cpu := Sample(nil).Processes[0].CPU; cpu != nil {
+		t.Fatalf("first sample after a reset must have no CPU, got %v", *cpu)
+	}
+}
+
 func TestMain(m *testing.M) {
 	if os.Getenv("ADOMNIA_RESOURCES_SLEEP") == "1" {
 		time.Sleep(5 * time.Second)

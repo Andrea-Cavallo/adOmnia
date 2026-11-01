@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/fileio"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
@@ -33,10 +34,12 @@ type DocumentManager struct {
 	mu        sync.RWMutex
 	documents map[DocumentID]documentRecord
 	files     fileIndex
+	// onIndexBuilt riceve durata e numero di file di ogni costruzione dell'indice Quick Open.
+	onIndexBuilt func(elapsed time.Duration, entries int)
 }
 
 func NewDocumentManager() *DocumentManager {
-	return &DocumentManager{documents: make(map[DocumentID]documentRecord), files: fileIndex{byRoot: make(map[string][]indexedFile)}}
+	return &DocumentManager{documents: make(map[DocumentID]documentRecord), files: fileIndex{byRoot: make(map[string][]indexedFile), generation: make(map[string]uint64)}}
 }
 
 // ListDirectory legge un solo livello del progetto e mantiene la navigazione confinata alla radice reale.
@@ -58,7 +61,7 @@ func (m *DocumentManager) ListDirectory(proj Project, relativePath string, inclu
 			break
 		}
 		path := filepath.Join(directory, entry.Name())
-		ignored := (isIgnoredDirectory(entry.Name()) && entry.IsDir()) || gitIgnored(ignore, proj.RealPath, path, entry.IsDir())
+		ignored := (entry.IsDir() && skipWalkDirectory(path, entry.Name())) || gitIgnored(ignore, proj.RealPath, path, entry.IsDir())
 		// Le cartelle ignorate restano nascoste come già accade per node_modules e build;
 		// i file ignorati restano visibili ma marcati (es. .env, spesso in .gitignore).
 		if ignored && entry.IsDir() && !includeIgnored {
@@ -458,4 +461,10 @@ func languageForPath(path string) string {
 
 func isIgnoredDirectory(name string) bool {
 	return project.IgnoredDirectory(name)
+}
+
+// skipWalkDirectory è il filtro dei walk sul progetto: cartelle sempre escluse più gli output di build
+// (target accanto a Cargo.toml/pom.xml, obj accanto a un progetto .NET).
+func skipWalkDirectory(path, name string) bool {
+	return project.SkipDirectory(filepath.Dir(path), name)
 }

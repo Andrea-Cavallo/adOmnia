@@ -9,8 +9,20 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // @ts-ignore: Unused imports
 import * as agenttask$0 from "./internal/ide/agenttask/models.js";
 
+export function AddVerification(id: string, draft: agenttask$0.VerificationDraft): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(725904465, id, draft).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
 export function Create(draft: agenttask$0.Draft): $CancellablePromise<agenttask$0.Task> {
     return $Call.ByID(2444214587, draft).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+export function CreateWorkspace(id: string, baseRef: string, includeLocalChanges: boolean): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(106977072, id, baseRef, includeLocalChanges).then(($result: any) => {
         return $$createType0($result);
     });
 }
@@ -31,8 +43,38 @@ export function List(root: string): $CancellablePromise<agenttask$0.Task[]> {
     });
 }
 
+export function ReconcileWorkspaces(): $CancellablePromise<agenttask$0.Task[]> {
+    return $Call.ByID(3456391783).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+export function RemoveVerification(id: string, verificationID: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(3087236544, id, verificationID).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+export function RemoveWorkspace(id: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(3572872684, id).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
 export function Start(id: string, message: string, receipt: agenttask$0.ContextReceipt): $CancellablePromise<agenttask$0.Task> {
     return $Call.ByID(1973115145, id, message, receipt).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+export function StartCorrection(id: string, evidenceIDs: string[], note: string): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(4194843293, id, evidenceIDs, note).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+export function StartVerifications(id: string, verificationIDs: string[]): $CancellablePromise<agenttask$0.Task> {
+    return $Call.ByID(2018745987, id, verificationIDs).then(($result: any) => {
         return $$createType0($result);
     });
 }

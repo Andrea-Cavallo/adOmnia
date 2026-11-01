@@ -119,3 +119,40 @@ func TestWalkDirectoriesStopsOnCancelledContext(t *testing.T) {
 		t.Fatalf("visits = %d, want 0", len(visitor.visits))
 	}
 }
+
+func TestBuildOutputDirectoryNeedsItsManifest(t *testing.T) {
+	root := t.TempDir()
+	rust := filepath.Join(root, "rust")
+	plain := filepath.Join(root, "plain")
+	dotnet := filepath.Join(root, "dotnet")
+	for _, dir := range []string{rust, plain, dotnet} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for path, body := range map[string]string{
+		filepath.Join(rust, "Cargo.toml"):   "[package]\nname = \"x\"\n",
+		filepath.Join(dotnet, "App.csproj"): "<Project/>",
+		filepath.Join(plain, "readme.md"):   "",
+	} {
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cases := []struct {
+		parent, name string
+		want         bool
+	}{
+		{rust, "target", true},
+		{rust, "Target", true},
+		{plain, "target", false},
+		{dotnet, "obj", true},
+		{plain, "obj", false},
+		{rust, "src", false},
+	}
+	for _, c := range cases {
+		if got := BuildOutputDirectory(c.parent, c.name); got != c.want {
+			t.Errorf("BuildOutputDirectory(%s, %s) = %v, want %v", filepath.Base(c.parent), c.name, got, c.want)
+		}
+	}
+}

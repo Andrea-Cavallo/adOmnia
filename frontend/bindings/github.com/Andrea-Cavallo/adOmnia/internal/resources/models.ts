@@ -38,6 +38,55 @@ export class BudgetStatus {
     }
 }
 
+/**
+ * Environment describes the machine and the build a recording comes from. It is
+ * read once per export, not per sample: a report is unreadable for anyone else
+ * without the hardware it refers to and the build that produced it.
+ */
+export class Environment {
+    "appVersion"?: string;
+    "buildDate"?: string;
+    "gitCommit"?: string;
+    "os": string;
+    "osVersion"?: string;
+    "arch": string;
+    "logicalCores": number;
+    "totalRamBytes"?: number;
+    "goVersion": string;
+    "memoryBudgetTarget"?: number;
+    "memoryBudgetSource"?: string;
+    "rootPid": number;
+
+    /** Creates a new Environment instance. */
+    constructor($$source: Partial<Environment> = {}) {
+        if (!("os" in $$source)) {
+            this["os"] = "";
+        }
+        if (!("arch" in $$source)) {
+            this["arch"] = "";
+        }
+        if (!("logicalCores" in $$source)) {
+            this["logicalCores"] = 0;
+        }
+        if (!("goVersion" in $$source)) {
+            this["goVersion"] = "";
+        }
+        if (!("rootPid" in $$source)) {
+            this["rootPid"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Environment instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Environment {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Environment($$parsedSource as Partial<Environment>);
+    }
+}
+
 export class GoRuntime {
     "memoryLimit": number;
     "heapAlloc": number;

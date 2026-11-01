@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Check, FileDiff, FileText, Loader2, Undo2 } from 'lucide-react'
+import { Check, CircleAlert, CircleSlash, FileDiff, FileText, Loader2, Undo2, XCircle } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { confirm } from '@/lib/confirmDialog'
 import type { AgentReviewFile } from '@/lib/code-studio-api'
 import { agentReviewHunks, agentReviewStats, type AgentReviewLine } from '@/lib/code-studio/agentReview'
+import { useAgentTaskStore } from '@/stores/agentTasks'
 import { useAgentReviewStore, pendingAgentFiles } from '@/stores/codeStudioAgentReview'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 
@@ -107,6 +108,40 @@ function FileReview({ root, file, busy }: { root: string; file: AgentReviewFile;
   )
 }
 
+const EVIDENCE_TONE: Record<string, { className: string; icon: typeof Check }> = {
+  passed: { className: 'text-success', icon: Check },
+  failed: { className: 'text-danger', icon: XCircle },
+  error: { className: 'text-warning', icon: CircleAlert },
+  not_run: { className: 'text-text-3', icon: CircleSlash },
+}
+
+/** Verifications adOmnia measured on the same content the diff shows, next to the diff. */
+function TaskEvidencePanel({ root }: { root: string }) {
+  const tasksByRoot = useAgentTaskStore((state) => state.tasksByRoot)
+  const task = useMemo(() => Object.values(tasksByRoot).flat()
+    .find((candidate) => (candidate.workspace?.state === 'ready' ? candidate.workspace.path : candidate.root) === root), [tasksByRoot, root])
+  if (!task) return null
+  const evidences = [...(task.evidences ?? [])].reverse()
+  return (
+    <section className="border-t border-border-1 p-2" aria-label="Verifications for this workspace">
+      <h3 className="gs-section-title mb-1">Verifications · {task.status.replace(/_/g, ' ')}</h3>
+      {evidences.length === 0
+        ? <p className="text-[11px] text-text-3">No verification recorded for this task. A change without evidence is not verified.</p>
+        : <ul className="flex flex-col gap-1">
+          {evidences.map((evidence) => {
+            const tone = EVIDENCE_TONE[evidence.outcome] ?? EVIDENCE_TONE.not_run
+            const Icon = tone.icon
+            return <li key={evidence.id} className="rounded px-1 py-1 text-[11px] hover:bg-surface-2">
+              <div className={`flex items-center gap-1.5 ${tone.className}`}><Icon size={11} /><span className="truncate">{evidence.label}</span></div>
+              <p className="truncate pl-4 font-mono text-[10px] text-text-4" title={evidence.command}>{evidence.command}</p>
+              {evidence.log && <details className="pl-4 text-[10px] text-text-3"><summary className="cursor-pointer">Log</summary><pre className="milk-output mt-1 max-h-40 overflow-auto whitespace-pre-wrap">{evidence.log}</pre></details>}
+            </li>
+          })}
+        </ul>}
+    </section>
+  )
+}
+
 /** Revisione delle modifiche fatte da milk o Claude Code: accetta o rifiuta per blocco, per file o tutto. */
 export function CodeStudioAgentReviewDialog() {
   const root = useAgentReviewStore((state) => state.dialogRoot)
@@ -161,8 +196,11 @@ export function CodeStudioAgentReviewDialog() {
         </div>
       ) : (
         <div className="flex h-full min-h-0">
-          <nav aria-label="Changed files" className="w-72 shrink-0 overflow-auto border-r border-border-1 p-2">
-            {files.map((file) => <FileRow key={file.path} file={file} selected={file.path === selected?.path} onSelect={() => setSelectedPath(file.path)} />)}
+          <nav aria-label="Changed files" className="flex w-72 shrink-0 flex-col overflow-auto border-r border-border-1 p-2">
+            <div className="min-h-0 flex-1">
+              {files.map((file) => <FileRow key={file.path} file={file} selected={file.path === selected?.path} onSelect={() => setSelectedPath(file.path)} />)}
+            </div>
+            <TaskEvidencePanel root={root} />
           </nav>
           {selected && <FileReview root={root} file={selected} busy={busy} />}
         </div>

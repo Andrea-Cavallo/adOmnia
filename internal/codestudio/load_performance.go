@@ -29,6 +29,16 @@ func (p *loadPerformance) record(stage string, elapsed time.Duration) {
 	}
 }
 
+// set stores a counter (e.g. indexed files) next to the stage durations.
+func (p *loadPerformance) set(key string, value float64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.values == nil {
+		p.values = make(map[string]float64)
+	}
+	p.values[key] = value
+}
+
 // noteLoad records one completed load stage from its start time.
 func (s *Service) noteLoad(stage string, started time.Time) {
 	s.noteLoadElapsed(stage, time.Since(started))

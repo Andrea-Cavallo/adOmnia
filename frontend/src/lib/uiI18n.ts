@@ -155,6 +155,8 @@ export const ITALIAN_UI_MESSAGES = {
   'Application and child processes. CPU is measured across all logical cores. Refresh pauses during inactivity.': 'Applicazione e processi figli. CPU misurata su tutti i core logici. Aggiornamento sospeso durante l’inattività.',
   'Export as MD': 'Esporta in MD',
   'Export processes, memory budget and recent samples as a Markdown report': 'Esporta processi, budget di memoria e ultimi campioni in un report Markdown',
+  'Short window: an average needs at least 20 samples over 30 s.': 'Finestra breve: una media richiede almeno 20 campioni su 30 s.',
+  '{count} gaps in the recording: the charts break where the app was not sampled.': '{count} interruzioni nella registrazione: i grafici si spezzano dove l’app non è stata campionata.',
 
   'Open in Code Studio': 'Apri in Code Studio',
   'Request actions': 'Azioni richiesta',

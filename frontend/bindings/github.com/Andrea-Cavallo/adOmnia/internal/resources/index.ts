@@ -3,6 +3,7 @@
 
 export {
     BudgetStatus,
+    Environment,
     GoRuntime,
     Snapshot,
     Usage

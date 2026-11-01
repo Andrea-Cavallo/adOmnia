@@ -5525,6 +5525,11 @@ export class TestRunSnapshot {
     "summary": TestSummary;
     "results": TestResult[];
     "overflow"?: boolean;
+
+    /**
+     * Partial: Results contiene solo i nodi cambiati dall'evento precedente (vedi testing.Snapshot).
+     */
+    "partial"?: boolean;
     "startedAt": string;
 
     /**
@@ -5576,8 +5581,8 @@ export class TestRunSnapshot {
         const $$createField2_0 = $$createType124;
         const $$createField7_0 = $$createType125;
         const $$createField8_0 = $$createType127;
-        const $$createField12_0 = $$createType129;
-        const $$createField13_0 = $$createType4;
+        const $$createField13_0 = $$createType129;
+        const $$createField14_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
             $$parsedSource["request"] = $$createField2_0($$parsedSource["request"]);
@@ -5589,10 +5594,10 @@ export class TestRunSnapshot {
             $$parsedSource["results"] = $$createField8_0($$parsedSource["results"]);
         }
         if ("coverage" in $$parsedSource) {
-            $$parsedSource["coverage"] = $$createField12_0($$parsedSource["coverage"]);
+            $$parsedSource["coverage"] = $$createField13_0($$parsedSource["coverage"]);
         }
         if ("raceReports" in $$parsedSource) {
-            $$parsedSource["raceReports"] = $$createField13_0($$parsedSource["raceReports"]);
+            $$parsedSource["raceReports"] = $$createField14_0($$parsedSource["raceReports"]);
         }
         return new TestRunSnapshot($$parsedSource as Partial<TestRunSnapshot>);
     }

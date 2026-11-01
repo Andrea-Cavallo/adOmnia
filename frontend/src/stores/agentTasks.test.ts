@@ -8,6 +8,13 @@ const mocks = vi.hoisted(() => ({
   start: vi.fn(),
   stop: vi.fn(),
   export: vi.fn(),
+  createWorkspace: vi.fn(),
+  removeWorkspace: vi.fn(),
+  reconcile: vi.fn(),
+  addVerification: vi.fn(),
+  removeVerification: vi.fn(),
+  startVerifications: vi.fn(),
+  startCorrection: vi.fn(),
   changed: undefined as ((task: Task) => void) | undefined,
 }))
 vi.mock('@/lib/agent-task-api', async (importOriginal) => {
@@ -20,6 +27,13 @@ vi.mock('@/lib/agent-task-api', async (importOriginal) => {
     startAgentTask: mocks.start,
     stopAgentTask: mocks.stop,
     exportAgentTask: mocks.export,
+    createAgentTaskWorkspace: mocks.createWorkspace,
+    removeAgentTaskWorkspace: mocks.removeWorkspace,
+    reconcileAgentTaskWorkspaces: mocks.reconcile,
+    addAgentTaskVerification: mocks.addVerification,
+    removeAgentTaskVerification: mocks.removeVerification,
+    startAgentTaskVerifications: mocks.startVerifications,
+    startAgentTaskCorrection: mocks.startCorrection,
     subscribeAgentTaskChanges: (handler: (task: Task) => void) => { mocks.changed = handler; return () => undefined },
   }
 })
@@ -65,5 +79,29 @@ describe('agent task store', () => {
     const select = (root: string) => useAgentTaskStore.getState().tasksByRoot[root] ?? noAgentTasks
     expect(select('/project')).toBe(select('/project'))
     expect(select('/project')).toEqual([])
+  })
+  it('runs workspace and verification actions against the task root and reports failures', async () => {
+    const existing = task('one', '2026-01-01T00:00:00Z')
+    useAgentTaskStore.setState({ tasksByRoot: { '/project': [existing] }, selectedByRoot: { '/project': 'one' }, busyById: {}, errorByRoot: {} })
+    const withWorkspace = new Task({ ...existing, workspace: { repository: '/project', path: '/worktrees/one', branch: 'adomnia/one', baseRef: 'HEAD', state: 'ready', createdAt: '2026-01-01T00:00:00Z' } as never })
+    mocks.createWorkspace.mockResolvedValue(withWorkspace)
+    const created = await useAgentTaskStore.getState().createWorkspace('one', 'HEAD')
+    expect(mocks.createWorkspace).toHaveBeenCalledWith('one', 'HEAD', false)
+    expect(created.workspace?.path).toBe('/worktrees/one')
+    expect(useAgentTaskStore.getState().tasksByRoot['/project'][0].workspace?.path).toBe('/worktrees/one')
+
+    mocks.startCorrection.mockRejectedValue(new Error('the task is already active'))
+    await expect(useAgentTaskStore.getState().askCorrection('one', ['evidence-1'], 'fix it')).rejects.toThrow('the task is already active')
+    expect(useAgentTaskStore.getState().errorByRoot['/project']).toBe('the task is already active')
+    expect(useAgentTaskStore.getState().busyById['one']).toBe(false)
+  })
+  it('applies reconciled workspaces to the matching project only', async () => {
+    const existing = task('one', '2026-01-01T00:00:00Z')
+    useAgentTaskStore.setState({ tasksByRoot: { '/project': [existing] }, selectedByRoot: {}, busyById: {}, errorByRoot: {} })
+    const missing = new Task({ ...existing, updatedAt: '2026-01-02T00:00:00Z', workspace: { repository: '/project', path: '/worktrees/one', branch: 'adomnia/one', baseRef: 'HEAD', state: 'missing', notice: 'gone', createdAt: '2026-01-01T00:00:00Z' } as never })
+    mocks.reconcile.mockResolvedValue([missing, { ...missing, id: 'other', root: '/elsewhere' }])
+    await useAgentTaskStore.getState().reconcile('/project')
+    expect(useAgentTaskStore.getState().tasksByRoot['/project'][0].workspace?.state).toBe('missing')
+    expect(useAgentTaskStore.getState().tasksByRoot['/elsewhere']).toBeUndefined()
   })
 })

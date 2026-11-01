@@ -23,6 +23,7 @@ export function CodeStudioAgentTasks({ session, document }: { session: GoIDESess
 
   useEffect(() => {
     void useAgentTaskStore.getState().load(root)
+    void useAgentTaskStore.getState().reconcile(root)
     void usePiAgentStore.getState().ensure()
     void useMilkStore.getState().ensure()
     void useClaudeCodeStore.getState().ensure()

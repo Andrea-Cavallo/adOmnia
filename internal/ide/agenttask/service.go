@@ -33,6 +33,15 @@ type Service struct {
 	now         func() time.Time
 	emit        func(string, any)
 	lastPublish time.Time
+	// workspaces e verifier sono forniti dall'host: il core definisce i contratti e
+	// conserva i risultati, ma non esegue processi né duplica i servizi esistenti.
+	workspaces WorkspaceProvider
+	verifier   Verifier
+	// verifying evita due esecuzioni concorrenti delle verifiche dello stesso task.
+	verifying map[string]bool
+	// autoVerify contiene le verifiche da rieseguire quando una correzione è completata.
+	// Vive solo in memoria: dopo un riavvio nessuna verifica riparte da sola.
+	autoVerify map[string][]string
 }
 
 // streamPublishInterval limita la frequenza degli aggiornamenti verso la UI
@@ -48,6 +57,7 @@ func NewService(store Store) (*Service, error) {
 	service := &Service{
 		store: store, tasks: map[string]Task{}, runtimes: map[string]Runtime{},
 		running: map[string]context.CancelFunc{}, now: time.Now,
+		verifying: map[string]bool{}, autoVerify: map[string][]string{},
 	}
 	for _, task := range snapshot.Tasks {
 		service.tasks[task.ID] = cloneTask(task)
@@ -147,6 +157,12 @@ func (service *Service) Update(id string, draft Draft) (Task, error) {
 }
 
 func (service *Service) Start(id, message string, receipt ContextReceipt) (Task, error) {
+	return service.start(id, message, receipt, "", nil, nil)
+}
+
+// start avvia un tentativo. correctionOf/evidenceIDs legano una correzione alle evidenze
+// selezionate; autoVerify elenca le verifiche da rieseguire quando il tentativo finisce.
+func (service *Service) start(id, message string, receipt ContextReceipt, correctionOf string, evidenceIDs, autoVerify []string) (Task, error) {
 	service.mu.Lock()
 	task, ok := service.tasks[id]
 	if !ok {
@@ -165,13 +181,13 @@ func (service *Service) Start(id, message string, receipt ContextReceipt) (Task,
 		service.mu.Unlock()
 		return Task{}, errors.New("approved context exceeds the task limit")
 	}
-	// Un solo task attivo per progetto: finché AG-2 non crea un worktree per
-	// tentativo, agenti diversi condividerebbero la stessa cartella di scrittura
-	// e la stessa review. L'esclusione è per root, non per agente.
+	// Cartelle di lavoro distinte possono procedere in parallelo: due task sullo
+	// stesso checkout si sovrascriverebbero a vicenda e restano esclusi.
+	workdir := task.workdir()
 	for _, other := range service.tasks {
-		if other.ID != id && other.Active() && other.Root == task.Root {
+		if other.ID != id && other.Active() && other.workdir() == workdir {
 			service.mu.Unlock()
-			return Task{}, errors.New("another task is already active in this project; tasks write in the same working tree until isolated worktrees exist")
+			return Task{}, errors.New("another task is already active in this working tree; give each task its own isolated workspace")
 		}
 	}
 	runtime := service.runtimes[task.Agent]
@@ -183,20 +199,29 @@ func (service *Service) Start(id, message string, receipt ContextReceipt) (Task,
 	attempt := Attempt{
 		ID: newID("attempt"), Status: StatusRunning, NewSession: true,
 		Context: receipt, Prompt: redactAndLimit(message), StartedAt: now, Events: []Event{},
+		CorrectionOf: correctionOf, EvidenceIDs: append([]string(nil), evidenceIDs...),
 	}
 	previous := cloneTask(task)
 	task.Status, task.ActiveAttemptID = StatusRunning, attempt.ID
 	task.LastContext, task.UpdatedAt = receipt, now
 	task.Attempts = append(task.Attempts, attempt)
 	service.tasks[id] = task
+	if len(autoVerify) > 0 {
+		service.autoVerify[id] = append([]string(nil), autoVerify...)
+	}
 	if err := service.saveLocked(); err != nil {
 		service.tasks[id] = previous
+		delete(service.autoVerify, id)
 		service.mu.Unlock()
 		return Task{}, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(task.Limits.TimeoutMinutes)*time.Minute)
 	service.running[id] = cancel
-	request := RunRequest{Task: cloneTask(task), Attempt: attempt, Message: message}
+	// L'agente lavora nella cartella isolata: il runtime riceve la directory del
+	// workspace, mentre il task conserva la radice del progetto.
+	requestTask := cloneTask(task)
+	requestTask.Root = workdir
+	request := RunRequest{Task: requestTask, Attempt: attempt, Message: message}
 	service.appendEventLocked(id, attempt.ID, Event{Kind: "lifecycle", Message: "Task started in a new agent session"})
 	service.publishLocked(task)
 	service.mu.Unlock()
@@ -245,10 +270,22 @@ func (service *Service) finish(id, attemptID string, ctx context.Context, runErr
 	task.ActiveAttemptID = ""
 	task.UpdatedAt = now
 	service.tasks[id] = task
+	rerun := service.autoVerify[id]
+	// Qualunque esito chiude la richiesta di correzione: una verifica non
+	// rieseguita non deve ripartire da sola su un tentativo successivo.
+	delete(service.autoVerify, id)
+	if task.Status != StatusCompleted {
+		rerun = nil
+	}
 	if err := service.saveLocked(); err != nil {
 		service.reportPersistenceErrorLocked(&task, err)
 	}
 	service.publishLocked(task)
+	if len(rerun) > 0 {
+		// La correzione è finita: adOmnia riesegue le stesse verifiche sul nuovo
+		// contenuto. Nessun esito viene ereditato dal tentativo precedente.
+		go service.runVerifications(id, rerun)
+	}
 }
 
 func (service *Service) Stop(id string) (Task, error) {
@@ -276,6 +313,8 @@ func (service *Service) Stop(id string) (Task, error) {
 func (service *Service) Shutdown() error {
 	service.mu.Lock()
 	changed := service.recoverActiveLocked()
+	service.autoVerify = map[string][]string{}
+	service.verifying = map[string]bool{}
 	var err error
 	if changed {
 		err = service.saveLocked()
@@ -375,12 +414,19 @@ func (service *Service) recoverActiveLocked() bool {
 	changed := false
 	now := service.now().UTC()
 	for id, task := range service.tasks {
+		if len(task.VerifyingIDs) > 0 {
+			// Una verifica non sopravvive al riavvio: lo stato va dichiarato, non inventato.
+			task.VerifyingIDs = nil
+			service.tasks[id] = task
+			changed = true
+		}
 		if !task.Active() {
 			continue
 		}
 		attemptID := task.ActiveAttemptID
 		task.Status = StatusNeedsIntervention
 		task.ActiveAttemptID = ""
+		task.VerifyingIDs = nil
 		task.UpdatedAt = now
 		for index := range task.Attempts {
 			attempt := &task.Attempts[index]

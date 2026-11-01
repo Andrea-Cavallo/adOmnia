@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 import { startGoIDETests, listGoIDETestRuns, type GoIDETestResult, type GoIDETestRun, type GoIDETestRunRequest } from '@/lib/code-studio-tests-api'
-import { requestForNode, rerunFailedRequest } from '@/lib/code-studio/codeStudioTestTree'
+import { mergeTestRun, requestForNode, rerunFailedRequest } from '@/lib/code-studio/codeStudioTestTree'
 import { useCodeStudioStore } from './codeStudio'
 import { useCodeStudioLspStore } from './codeStudioLsp'
 
@@ -42,7 +42,8 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function upsert(runs: GoIDETestRun[], run: GoIDETestRun): GoIDETestRun[] {
+function upsert(runs: GoIDETestRun[], incoming: GoIDETestRun): GoIDETestRun[] {
+  const run = mergeTestRun(runs.find((item) => item.runId === incoming.runId), incoming)
   const others = runs.filter((item) => item.runId !== run.runId)
   return [run, ...others].sort((left, right) => right.startedAt.localeCompare(left.startedAt)).slice(0, MAX_RUNS_PER_SESSION)
 }

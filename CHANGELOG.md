@@ -6,6 +6,36 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Agent Tasks: isolated workspace, verifications and evidence (Code Studio)
+
+- **Isolated workspace per task.** *Create workspace* makes a Git worktree (branch `adomnia/<task>`) from the commit, branch or tag you choose, under the app data folder. The agent, its verifications and the review work there; the project's working tree is never touched. The task shows repository, branch, starting commit, folder and pending changes; associations are reconciled with `git worktree list` at startup, and removal never forces past unsaved work.
+- **Local changes are declared, not copied silently.** Before creating the workspace the panel counts the project's modified and untracked files. Starting from `HEAD` you can explicitly include the modified tracked files (untracked files are never copied); the task records how many were included.
+- **Verifications run by adOmnia, recorded as evidence.** A task carries language tests (through the language registry) and HTTP requests (loopback only unless approved). Each run records outcome, command, environment without secrets, diff fingerprint, log and timings; a check that did not run is never reported as passed. Evidence exports as a local file.
+- **Start the service from the workspace.** An HTTP verification can start one of the project's run configurations first (*Start before the request*): adOmnia runs it in the task workspace through a hidden temporary session, waits for the port, sends the request, stops every process and keeps the last 16 KiB of service output in the evidence. A service that exits or never answers is a failure with its output. Compound configurations and configurations with secrets are not supported yet.
+- **Ask for correction with the selected evidence.** The new attempt receives only the evidence you select and is linked to the attempt it corrects; adOmnia re-runs the same verifications on the new content. Consecutive corrections are capped per task (default 3, 1–10); at the limit the decision goes back to the user.
+- **Review next to the evidence.** The diff review shows the task's verifications beside the changed files. Nothing is committed, pushed or merged automatically.
+- **Trust.** Creating a workspace, starting a task and running verifications require a project already trusted for tooling.
+
+### Code Studio: faster project open
+
+- The project opens before unit detection finishes (at most 100 ms of waiting); units arrive with `session.updated`, and the renderer keeps the newer session.
+- Quick Open index built once per root under concurrent queries, updated in place by watcher batches and warmed in the background after the watcher is ready.
+- `.gitignore` parsed once per root and reused; `target` (Cargo/Maven) and `obj` (.NET) folders are skipped by detection, watcher, Quick Open, search and the tree.
+- New load metrics (`openProject`, `openProjectCpu`, `fileIndexBuild`, `quickOpen`) and `task bench:open` for 5k/50k/200k-file benchmarks ([measurements](docs/performance/project-open-2026-10-31.md)).
+- A running test suite publishes only the changed tests every 250 ms (a 3000-test update drops from 1.47 MB to under 100 KB).
+
+### Code Studio: editor and chrome
+
+- Git blame button in the editor tabs (author, commit and date per line; disabled on unsaved files).
+- Higher-contrast syntax and gutter colors for light and dark themes; header, tabs and project tree spacing aligned.
+- Local LLM chat: a guide to choose where the model runs (Unsloth, Ollama, LM Studio or any OpenAI-compatible server).
+
+### Resource monitor
+
+- Recordings survive switching between Hub and Code Studio: one sampler per window, one sample per second even with no resource panel open, and a final sample at the end.
+- Export schema version 2: CPU averages weighted by the measured interval, a fresh baseline at the start of a recording, visible gaps, window quality with explicit caveats, machine and build environment, process identities listed once. JSON size halves.
+- Optional per-sample UI context (screen, workspace, active file, open/modified documents, running executions), never file content.
+
 ## [1.0.22] — 2026-10-30
 
 Release notes: [docs/releases/v1.0.22.md](docs/releases/v1.0.22.md).

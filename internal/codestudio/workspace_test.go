@@ -14,7 +14,7 @@ func TestOpenProjectDoesNotAuthorizeTooling(t *testing.T) {
 		t.Fatal(err)
 	}
 	manager := NewWorkspaceManager(newLanguageRegistry())
-	session, err := manager.OpenProject(root, DefaultStudioWorkspaceID)
+	session, err := manager.OpenProject(root, DefaultStudioWorkspaceID, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestOpenProjectFromCmdUsesNearestGoModuleRoot(t *testing.T) {
 	}
 
 	manager := NewWorkspaceManager(newLanguageRegistry())
-	session, err := manager.OpenProject(cmd, DefaultStudioWorkspaceID)
+	session, err := manager.OpenProject(cmd, DefaultStudioWorkspaceID, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

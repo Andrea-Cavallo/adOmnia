@@ -22,6 +22,13 @@ export class Attempt {
     "error"?: string;
     "events": Event[];
 
+    /**
+     * CorrectionOf collega un tentativo di correzione all'attempt che ha prodotto le
+     * evidenze selezionate: la cronologia non perde mai il primo fallimento.
+     */
+    "correctionOf"?: string;
+    "evidenceIds"?: string[];
+
     /** Creates a new Attempt instance. */
     constructor($$source: Partial<Attempt> = {}) {
         if (!("id" in $$source)) {
@@ -52,12 +59,16 @@ export class Attempt {
     static createFrom($$source: any = {}): Attempt {
         const $$createField4_0 = $$createType0;
         const $$createField9_0 = $$createType2;
+        const $$createField11_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("context" in $$parsedSource) {
             $$parsedSource["context"] = $$createField4_0($$parsedSource["context"]);
         }
         if ("events" in $$parsedSource) {
             $$parsedSource["events"] = $$createField9_0($$parsedSource["events"]);
+        }
+        if ("evidenceIds" in $$parsedSource) {
+            $$parsedSource["evidenceIds"] = $$createField11_0($$parsedSource["evidenceIds"]);
         }
         return new Attempt($$parsedSource as Partial<Attempt>);
     }
@@ -213,6 +224,107 @@ export class Event {
     }
 }
 
+/**
+ * Evidence è il risultato registrato di una verifica: cosa è stato eseguito, su quale
+ * contenuto, con quale esito, log e osservazioni. È l'unità che la review mostra accanto al diff.
+ */
+export class Evidence {
+    "id": string;
+    "taskId": string;
+    "attemptId"?: string;
+    "verificationId": string;
+    "kind": VerificationKind;
+    "label": string;
+    "outcome": EvidenceOutcome;
+
+    /**
+     * Command è il comando eseguito o "METHOD URL": permette di riprodurre la verifica.
+     */
+    "command": string;
+    "environment"?: string;
+    "workdir"?: string;
+
+    /**
+     * DiffFingerprint identifica il contenuto misurato; ChangedFiles ne è la dimensione.
+     */
+    "diffFingerprint"?: string;
+    "changedFiles": number;
+    "exitCode"?: number | null;
+    "durationMs": number;
+    "startedAt": string;
+    "finishedAt": string;
+    "log"?: string;
+    "truncated"?: boolean;
+    "observations"?: Observation[];
+
+    /** Creates a new Evidence instance. */
+    constructor($$source: Partial<Evidence> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("taskId" in $$source)) {
+            this["taskId"] = "";
+        }
+        if (!("verificationId" in $$source)) {
+            this["verificationId"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = VerificationKind.$zero;
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("outcome" in $$source)) {
+            this["outcome"] = EvidenceOutcome.$zero;
+        }
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+        if (!("changedFiles" in $$source)) {
+            this["changedFiles"] = 0;
+        }
+        if (!("durationMs" in $$source)) {
+            this["durationMs"] = 0;
+        }
+        if (!("startedAt" in $$source)) {
+            this["startedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("finishedAt" in $$source)) {
+            this["finishedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Evidence instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Evidence {
+        const $$createField18_0 = $$createType8;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("observations" in $$parsedSource) {
+            $$parsedSource["observations"] = $$createField18_0($$parsedSource["observations"]);
+        }
+        return new Evidence($$parsedSource as Partial<Evidence>);
+    }
+}
+
+/**
+ * EvidenceOutcome distingue un controllo superato da uno fallito, non eseguito o
+ * interrotto da un errore: un dato non raccolto non diventa mai "superato".
+ */
+export enum EvidenceOutcome {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    EvidencePassed = "passed",
+    EvidenceFailed = "failed",
+    EvidenceError = "error",
+    EvidenceNotRun = "not_run",
+};
+
 export enum Intent {
     /**
      * The Go zero value for the underlying type of the enum.
@@ -227,6 +339,13 @@ export enum Intent {
 export class Limits {
     "timeoutMinutes": number;
     "maxContextBytes": number;
+
+    /**
+     * MaxCorrections limita le correzioni consecutive dello stesso task: oltre il
+     * limite il ciclo si ferma e la decisione torna all'utente. 0 = valore predefinito
+     * (task salvati prima dell'introduzione del campo).
+     */
+    "maxCorrections"?: number;
 
     /** Creates a new Limits instance. */
     constructor($$source: Partial<Limits> = {}) {
@@ -246,6 +365,34 @@ export class Limits {
     static createFrom($$source: any = {}): Limits {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Limits($$parsedSource as Partial<Limits>);
+    }
+}
+
+/**
+ * Observation è un fatto misurato durante la verifica (stato HTTP, durata, ambiente).
+ */
+export class Observation {
+    "name": string;
+    "value": string;
+
+    /** Creates a new Observation instance. */
+    constructor($$source: Partial<Observation> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("value" in $$source)) {
+            this["value"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Observation instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Observation {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Observation($$parsedSource as Partial<Observation>);
     }
 }
 
@@ -272,6 +419,31 @@ export class PlanEntry {
     static createFrom($$source: any = {}): PlanEntry {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new PlanEntry($$parsedSource as Partial<PlanEntry>);
+    }
+}
+
+/**
+ * ServiceLaunch è la configurazione di Run che una verifica avvia prima della richiesta.
+ * Configuration è lo snapshot JSON approvato dall'utente, senza valori segreti: il core non ne
+ * conosce il formato, l'host lo traduce con gli stessi servizi del pannello Run.
+ */
+export class ServiceLaunch {
+    "name"?: string;
+    "configuration"?: string;
+    "readyTimeoutSeconds"?: number;
+
+    /** Creates a new ServiceLaunch instance. */
+    constructor($$source: Partial<ServiceLaunch> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ServiceLaunch instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ServiceLaunch {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ServiceLaunch($$parsedSource as Partial<ServiceLaunch>);
     }
 }
 
@@ -308,6 +480,26 @@ export class Task {
     "createdAt": string;
     "updatedAt": string;
     "attempts": Attempt[];
+
+    /**
+     * Workspace è la cartella isolata del task, quando ne esiste una.
+     */
+    "workspace"?: Workspace | null;
+
+    /**
+     * Verifications sono i controlli che adOmnia esegue su questo task.
+     */
+    "verifications"?: Verification[];
+
+    /**
+     * Evidences è il registro di ciò che le verifiche hanno misurato, in ordine di esecuzione.
+     */
+    "evidences"?: Evidence[];
+
+    /**
+     * VerifyingIDs elenca le verifiche in corso; vuoto quando nessuna sta girando.
+     */
+    "verifyingIds"?: string[];
 
     /** Creates a new Task instance. */
     constructor($$source: Partial<Task> = {}) {
@@ -366,7 +558,11 @@ export class Task {
         const $$createField7_0 = $$createType3;
         const $$createField9_0 = $$createType4;
         const $$createField12_0 = $$createType0;
-        const $$createField15_0 = $$createType8;
+        const $$createField15_0 = $$createType10;
+        const $$createField16_0 = $$createType12;
+        const $$createField17_0 = $$createType14;
+        const $$createField18_0 = $$createType16;
+        const $$createField19_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("criteria" in $$parsedSource) {
             $$parsedSource["criteria"] = $$createField5_0($$parsedSource["criteria"]);
@@ -386,9 +582,279 @@ export class Task {
         if ("attempts" in $$parsedSource) {
             $$parsedSource["attempts"] = $$createField15_0($$parsedSource["attempts"]);
         }
+        if ("workspace" in $$parsedSource) {
+            $$parsedSource["workspace"] = $$createField16_0($$parsedSource["workspace"]);
+        }
+        if ("verifications" in $$parsedSource) {
+            $$parsedSource["verifications"] = $$createField17_0($$parsedSource["verifications"]);
+        }
+        if ("evidences" in $$parsedSource) {
+            $$parsedSource["evidences"] = $$createField18_0($$parsedSource["evidences"]);
+        }
+        if ("verifyingIds" in $$parsedSource) {
+            $$parsedSource["verifyingIds"] = $$createField19_0($$parsedSource["verifyingIds"]);
+        }
         return new Task($$parsedSource as Partial<Task>);
     }
 }
+
+/**
+ * Verification è una verifica riutilizzabile del task. È una definizione, non un
+ * risultato: i risultati sono Evidence.
+ */
+export class Verification {
+    "id": string;
+    "kind": VerificationKind;
+    "label": string;
+
+    /**
+     * Test del linguaggio.
+     */
+    "language"?: string;
+    "workingDirectory"?: string;
+    "packages"?: string[];
+    "run"?: string;
+    "coverage"?: boolean;
+
+    /**
+     * Richiesta HTTP.
+     */
+    "method"?: string;
+    "url"?: string;
+    "headers"?: VerificationHeader[];
+    "body"?: string;
+    "expectedStatus"?: number;
+
+    /**
+     * AllowRemote consente un host non locale. Vuoto significa: solo loopback.
+     */
+    "allowRemote"?: boolean;
+
+    /**
+     * Service avvia nel workspace del task, prima della richiesta, una configurazione
+     * di Run approvata dall'utente, e la ferma a fine verifica.
+     */
+    "service"?: ServiceLaunch;
+    "timeoutSeconds": number;
+    "createdAt": string;
+
+    /** Creates a new Verification instance. */
+    constructor($$source: Partial<Verification> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = VerificationKind.$zero;
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("timeoutSeconds" in $$source)) {
+            this["timeoutSeconds"] = 0;
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Verification instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Verification {
+        const $$createField5_0 = $$createType3;
+        const $$createField10_0 = $$createType18;
+        const $$createField14_0 = $$createType19;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("packages" in $$parsedSource) {
+            $$parsedSource["packages"] = $$createField5_0($$parsedSource["packages"]);
+        }
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField10_0($$parsedSource["headers"]);
+        }
+        if ("service" in $$parsedSource) {
+            $$parsedSource["service"] = $$createField14_0($$parsedSource["service"]);
+        }
+        return new Verification($$parsedSource as Partial<Verification>);
+    }
+}
+
+/**
+ * VerificationDraft è ciò che arriva dal renderer: nessun ID, nessun timestamp.
+ */
+export class VerificationDraft {
+    "kind": VerificationKind;
+    "label": string;
+    "language"?: string;
+    "workingDirectory"?: string;
+    "packages"?: string[];
+    "run"?: string;
+    "coverage"?: boolean;
+    "method"?: string;
+    "url"?: string;
+    "headers"?: VerificationHeader[];
+    "body"?: string;
+    "expectedStatus"?: number;
+    "allowRemote"?: boolean;
+    "service"?: ServiceLaunch;
+    "timeoutSeconds"?: number;
+
+    /** Creates a new VerificationDraft instance. */
+    constructor($$source: Partial<VerificationDraft> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = VerificationKind.$zero;
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VerificationDraft instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VerificationDraft {
+        const $$createField4_0 = $$createType3;
+        const $$createField9_0 = $$createType18;
+        const $$createField13_0 = $$createType19;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("packages" in $$parsedSource) {
+            $$parsedSource["packages"] = $$createField4_0($$parsedSource["packages"]);
+        }
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField9_0($$parsedSource["headers"]);
+        }
+        if ("service" in $$parsedSource) {
+            $$parsedSource["service"] = $$createField13_0($$parsedSource["service"]);
+        }
+        return new VerificationDraft($$parsedSource as Partial<VerificationDraft>);
+    }
+}
+
+/**
+ * VerificationHeader è un'intestazione HTTP della verifica, in ordine stabile.
+ */
+export class VerificationHeader {
+    "name": string;
+    "value": string;
+
+    /** Creates a new VerificationHeader instance. */
+    constructor($$source: Partial<VerificationHeader> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("value" in $$source)) {
+            this["value"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VerificationHeader instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VerificationHeader {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VerificationHeader($$parsedSource as Partial<VerificationHeader>);
+    }
+}
+
+/**
+ * VerificationKind è il tipo di controllo eseguito da adOmnia sul contenuto del task.
+ */
+export enum VerificationKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * VerificationTest esegue i test del linguaggio con l'adapter registrato.
+     */
+    VerificationTest = "test",
+
+    /**
+     * VerificationRequest esegue una richiesta HTTP su un ambiente locale approvato.
+     */
+    VerificationRequest = "request",
+};
+
+/**
+ * Workspace è la cartella isolata (Git worktree) in cui lavora un task.
+ * Root del task resta la radice del progetto: le associazioni si riconciliano al riavvio.
+ */
+export class Workspace {
+    "repository": string;
+    "path": string;
+    "branch": string;
+    "baseRef": string;
+    "baseSha"?: string;
+    "state": WorkspaceState;
+    "notice"?: string;
+    "createdAt": string;
+
+    /**
+     * IncludedLocalChanges conta i file tracciati del progetto le cui modifiche non
+     * committate sono state copiate nel worktree su richiesta esplicita dell'utente.
+     * 0 = nessuna copia: il worktree contiene solo il commit di partenza.
+     */
+    "includedLocalChanges"?: number;
+
+    /** Creates a new Workspace instance. */
+    constructor($$source: Partial<Workspace> = {}) {
+        if (!("repository" in $$source)) {
+            this["repository"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("branch" in $$source)) {
+            this["branch"] = "";
+        }
+        if (!("baseRef" in $$source)) {
+            this["baseRef"] = "";
+        }
+        if (!("state" in $$source)) {
+            this["state"] = WorkspaceState.$zero;
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Workspace instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Workspace {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Workspace($$parsedSource as Partial<Workspace>);
+    }
+}
+
+/**
+ * WorkspaceState dice se la cartella isolata esiste ancora e può essere usata.
+ */
+export enum WorkspaceState {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * WorkspaceReady: il worktree esiste ed è la directory di lavoro del task.
+     */
+    WorkspaceReady = "ready",
+
+    /**
+     * WorkspaceMissing: la cartella è sparita (rimossa a mano, disco esterno rimosso).
+     * Il task resta consultabile: nessuna operazione riparte da sola.
+     */
+    WorkspaceMissing = "missing",
+};
 
 // Private type creation functions
 const $$createType0 = ContextReceipt.createFrom;
@@ -398,5 +864,16 @@ const $$createType3 = $Create.Array($Create.Any);
 const $$createType4 = Limits.createFrom;
 const $$createType5 = PlanEntry.createFrom;
 const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = Attempt.createFrom;
+const $$createType7 = Observation.createFrom;
 const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = Attempt.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = Workspace.createFrom;
+const $$createType12 = $Create.Nullable($$createType11);
+const $$createType13 = Verification.createFrom;
+const $$createType14 = $Create.Array($$createType13);
+const $$createType15 = Evidence.createFrom;
+const $$createType16 = $Create.Array($$createType15);
+const $$createType17 = VerificationHeader.createFrom;
+const $$createType18 = $Create.Array($$createType17);
+const $$createType19 = ServiceLaunch.createFrom;

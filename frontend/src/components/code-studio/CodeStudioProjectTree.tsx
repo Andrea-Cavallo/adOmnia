@@ -26,6 +26,7 @@ import { CodeStudioPathDialog, type CodeStudioPathRequest } from './CodeStudioPa
 import { CodeStudioCompareDialog } from './CodeStudioCompareDialog'
 import { CodeStudioGistDialog } from './CodeStudioGistDialog'
 import { directoryMarkLabel, loadDirectoryMarks, saveDirectoryMark, type CodeStudioDirectoryMark } from './codeStudioDirectoryMarks'
+import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
 
 /** entry null = radice del progetto. */
 type TreeContextHandler = (entry: GoIDEFileEntry | null, x: number, y: number) => void
@@ -55,15 +56,21 @@ function markTitle(mark: CodeStudioTreeMark | undefined): string {
 function useTreeMarks(sessionId: string): TreeMarks {
   const status = useCodeStudioVCSStore((state) => state.status[sessionId] ?? null)
   const diagnostics = useCodeStudioLspStore((state) => state.diagnostics[sessionId])
-  const runs = useCodeStudioTestsStore((state) => state.runs[sessionId])
+  // Le run sono dalla più recente: conta runs[0]. Una stringa come selettore ridisegna l'albero solo quando
+  // cambia l'insieme dei file con test falliti, non a ogni aggiornamento di una run in corso.
+  const failedTestKey = useCodeStudioTestsStore((state) => failedTestFilesKey(state.runs[sessionId]?.[0]))
   return useMemo(() => {
-    const lastRun = runs?.[runs.length - 1]
-    const failedTestFiles = (lastRun?.results ?? []).filter((result) => result.status === 'fail' && result.failure?.relativePath).map((result) => result.failure!.relativePath!)
+    const failedTestFiles = failedTestKey ? failedTestKey.split('\n') : []
     const changes = status?.available ? status.changes : []
     const reports = diagnostics ? Object.values(diagnostics) : []
     if (changes.length === 0 && reports.length === 0 && failedTestFiles.length === 0) return EMPTY_MARKS
     return buildTreeMarks({ changes, diagnostics: reports, failedTestFiles })
-  }, [diagnostics, runs, status])
+  }, [diagnostics, failedTestKey, status])
+}
+
+function failedTestFilesKey(run: GoIDETestRun | undefined): string {
+  if (!run) return ''
+  return [...new Set(run.results.filter((result) => result.status === 'fail' && result.failure?.relativePath).map((result) => result.failure!.relativePath!))].join('\n')
 }
 
 interface CodeStudioProjectTreeProps {

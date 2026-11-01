@@ -84,6 +84,17 @@ var sampler = struct {
 	targets []Target
 }{last: make(map[int32]previous)}
 
+// ResetBaseline drops the previous CPU counters so the next sample opens a new
+// measurement window. Without it, a recording that starts while polling already
+// holds counters attributes to its first sample CPU spent before the recording.
+func ResetBaseline() {
+	sampler.Lock()
+	defer sampler.Unlock()
+	clear(sampler.last)
+	sampler.cached = Snapshot{}
+	sampler.targets = nil
+}
+
 // Sample reads only this application and its descendants; nothing is transmitted or persisted.
 // CPU is normalized to all logical CPUs, from the delta between samples.
 func Sample(targets []Target) Snapshot {

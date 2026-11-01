@@ -20,6 +20,17 @@ Implementation checkpoint: 2026-10-19. No native timing measurements yet.
 - [x] B5, initial frontend instrumentation: first-session request, first directory response and restored tabs use the existing local startup recorder. `getStartupDurations()` exposes `studioFirstTreeMs` and `studioTabsRestoredMs`. Marks describe the first session only; the tree mark measures receipt of data, not a rendered frame.
 - [x] B5, remaining instrumentation: backend restore, detect-units, watcher-ready and language-server readiness (process start to ready, every start including restarts) use `GetWorkspaceLoadPerformance()` with per-stage count, latest and max. Measurements stay out of the session event stream and remain local. Repeated session switches are measured in the startup recorder: `getStudioSwitchDurations()` keeps a bounded sample list and `getStartupDurations()` publishes numeric summaries (`studioSwitchCount`, `studioSwitchLastMs`, `studioSwitchMaxMs`).
 
+## Project open (2026-10-31)
+
+Measured with `task bench:open`; numbers and fixture in [performance/project-open-2026-10-31.md](performance/project-open-2026-10-31.md).
+
+- [x] C1, instrumentation: `GetWorkspaceLoadPerformance()` adds `openProject`, `openProjectCpu` (process CPU time from `startupperf.ProcessCPU`, `GetProcessTimes` on Windows, `getrusage` elsewhere), `fileIndexBuild`, `fileIndexEntries` and `quickOpen`.
+- [x] C2, opened before ready: `OpenProject` waits for unit detection at most 100 ms, then answers without units; the units arrive with `session.updated`, which the backend never emits before `session.opened`. The renderer keeps the newer session when the event beats the IPC response (`replaceSession` compares `updatedAt`). Closing the session or shutting down cancels the detection walk. Reopening an open project returns the existing session without detecting again, and `RefreshProject` detects outside the workspace lock.
+- [x] C3, Quick Open index: one build per root under concurrent queries (single-flight, generation counter so a build that started before a change is not stored); watcher batches update the index in place of dropping it (a new directory, an overflow or the cap still rebuild); background warm-up 2 s after the watcher is ready, cancelled on close and shutdown.
+- [x] C4, fewer walks and reads: `.gitignore` parsed once per root and reused until mtime or size change; `target` next to `Cargo.toml`/`pom.xml` and `obj` next to a .NET project are skipped by detection, watcher, Quick Open, search and the tree.
+- [ ] C5, persistent index and project model cache: not started. The numbers above show the open path inside budget without them; revisit if the cold first Quick Open (97–111 ms at 50k–200k) matters in the app.
+- [ ] Native acceptance: open a 50k-file repository in the built app, check that the tree appears before the language menus and that Run/Test targets appear once the units arrive.
+
 ## Compatibility and acceptance
 
 No exported workspace format or public binding signature changes. Workspace shards gain an optional `tree` projection and session layouts gain optional per-session keys: both migrate compatibly in both directions, legacy collection snapshots remain complete and available for downgrade, and diagnostics remain local.

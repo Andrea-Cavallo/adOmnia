@@ -1199,7 +1199,7 @@ retain their original meaning. Native UI acceptance remains Z1.4.M1.
 
 ### Application resource diagnostics
 
-The status bar and Code Studio resource monitor provide live backend GOMEMLIMIT changes, gopls limit/restart for a selected Go project, timed CPU/RSS recordings, per-process charts, observed OS parent PIDs and registered Code Studio ownership. Export full history as JSON/CSV, a Markdown summary or standalone HTML with charts. Backend heap/GC, logical-core normalization, unavailable CPU and incomplete observations are explicit. No remote telemetry. [Measurement and compatibility details](performance/resources-2026-10-19.md).
+The status bar and Code Studio resource monitor provide live backend GOMEMLIMIT changes, gopls limit/restart for a selected Go project, timed CPU/RSS recordings, per-process charts, observed OS parent PIDs and registered Code Studio ownership. Export full history as JSON/CSV, a Markdown summary or standalone HTML with charts. Averages are weighted by the interval each sample measured, sampling gaps are explicit and break the charts, and every export carries the machine, build and window quality it came from. Backend heap/GC, logical-core normalization, unavailable CPU and incomplete observations are explicit. No remote telemetry. [Measurement and compatibility details](performance/resources-2026-10-19.md).
 
 ### Python IDE adapter (2026-10-21)
 
