@@ -26,11 +26,17 @@ var lookPath = exec.LookPath
 // mancante non è fatale: l'editor continua con le funzioni di Monaco, e la UI offre "Install…".
 func (*Language) LocateServer(root, toolsRoot string) lsp.ServerInfo {
 	info := lsp.ServerInfo{Language: ID, Name: rustAnalyzerName}
+	if binary := managedRustAnalyzer(toolsRoot); binary != "" && hasFile(binary) {
+		if err := verifyManagedRustAnalyzer(toolsRoot); err == nil {
+			info.Available, info.Binary, info.Source = true, binary, "adOmnia tools"
+			return info
+		}
+	}
 	if binary, err := lookPath(sdk.ExecutableName(rustAnalyzerName)); err == nil && hasFile(binary) {
 		info.Available, info.Binary, info.Source = true, binary, "PATH"
 		return info
 	}
-	info.Error = "rust-analyzer is not installed: install it from the editor notice, or run `rustup component add rust-analyzer`"
+	info.Error = "rust-analyzer is not installed: install it from the editor notice (`rustup component add rust-analyzer`, or the pinned standalone build when rustup is absent)"
 	return info
 }
 
@@ -101,21 +107,22 @@ func watchesRustFile(path string) bool {
 	return strings.HasSuffix(filepath.ToSlash(path), ".cargo/config.toml")
 }
 
-// InstallPlan installa rust-analyzer con un solo comando visibile: `rustup component add
-// rust-analyzer`, allineato alla toolchain. Nessun `rustup update`/`default` implicito (RS-4.1).
+// InstallPlan installs rust-analyzer with a single visible command: the rustup component when rustup
+// is available (aligned with the toolchain), otherwise the pinned standalone release. No implicit
+// `rustup update`/`default` (RS-4.1, RS-9.4).
 func (*Language) InstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
-	if _, err := lookPath(sdk.ExecutableName("rustup")); err != nil {
-		return lsp.InstallPlan{}, fmt.Errorf("rustup is required to install rust-analyzer: install Rust (https://rustup.rs) and try again")
+	if _, err := lookPath(sdk.ExecutableName("rustup")); err == nil {
+		command := sdk.ExecutableName("rustup") + " component add rust-analyzer"
+		return lsp.InstallPlan{
+			Task:       rustAnalyzerInstallTask,
+			Title:      "Install the Rust language server?",
+			Label:      "Installing rust-analyzer",
+			Note:       "Installs the rust-analyzer component for the active toolchain via rustup. Needs network access now; afterwards rust-analyzer works offline.",
+			Command:    command,
+			Executable: sdk.ExecutableName("rustup"),
+			Arguments:  []string{"component", "add", "rust-analyzer"},
+			Languages:  []string{ID},
+		}, nil
 	}
-	command := sdk.ExecutableName("rustup") + " component add rust-analyzer"
-	return lsp.InstallPlan{
-		Task:       rustAnalyzerInstallTask,
-		Title:      "Install the Rust language server?",
-		Label:      "Installing rust-analyzer",
-		Note:       "Installs the rust-analyzer component for the active toolchain via rustup. Needs network access now; afterwards rust-analyzer works offline.",
-		Command:    command,
-		Executable: sdk.ExecutableName("rustup"),
-		Arguments:  []string{"component", "add", "rust-analyzer"},
-		Languages:  []string{ID},
-	}, nil
+	return rustAnalyzerStandaloneInstallPlan(toolsRoot)
 }

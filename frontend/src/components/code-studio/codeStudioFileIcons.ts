@@ -55,6 +55,8 @@ function isKubernetesManifest(lower: string, path: string): boolean {
  */
 export function resolveCodeStudioFileIcon(name: string, relativePath = ''): CodeStudioFileIconKind {
   const lower = name.toLowerCase()
+  if (lower === 'mvnw' || lower === 'mvnw.cmd') return { kind: 'maven' }
+  if (lower.startsWith('.')) return { kind: 'ghost' }
   const path = relativePath.replace(/\\/g, '/').toLowerCase()
   for (const language of IDE_LANGUAGES) {
     const contributed = language.fileIcon?.(lower)

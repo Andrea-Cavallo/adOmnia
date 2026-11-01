@@ -7,7 +7,7 @@ describe('Code Studio file icons', () => {
     for (const name of ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'main.rs']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'brand', slug: 'rust' })
     for (const name of ['pyproject.toml', 'uv.lock', 'poetry.lock', 'requirements-dev.txt', 'typing.pyi']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'brand', slug: 'python' })
     expect(resolveCodeStudioFileIcon('gradlew.bat')).toEqual({ kind: 'brand', slug: 'gradle' })
-    expect(resolveCodeStudioFileIcon('.prettierignore')).toEqual({ kind: 'brand', slug: 'prettier' })
+    expect(resolveCodeStudioFileIcon('.prettierignore')).toEqual({ kind: 'ghost' })
     expect(resolveCodeStudioFileIcon('app.scss')).toEqual({ kind: 'brand', slug: 'css' })
   })
   it('uses the gopher for Go sources and marks tests', () => {
@@ -47,10 +47,10 @@ describe('Code Studio file icons', () => {
     const brand = (name: string, path?: string) => resolveCodeStudioFileIcon(name, path)
     expect(brand('Dockerfile')).toEqual({ kind: 'brand', slug: 'docker' })
     expect(brand('docker-compose.prod.yml')).toEqual({ kind: 'brand', slug: 'docker' })
-    expect(brand('.gitignore')).toEqual({ kind: 'brand', slug: 'git' })
+    expect(brand('.gitignore')).toEqual({ kind: 'ghost' })
     expect(brand('ci.yml', '.github/workflows/ci.yml')).toEqual({ kind: 'brand', slug: 'githubactions' })
     expect(brand('ci.yml', 'deploy/ci.yml')).toEqual({ kind: 'brand', slug: 'yaml' })
-    expect(brand('.env.local')).toEqual({ kind: 'brand', slug: 'dotenv' })
+    expect(brand('.env.local')).toEqual({ kind: 'ghost' })
     expect(brand('openapi.yaml')).toEqual({ kind: 'brand', slug: 'openapiinitiative' })
     expect(brand('Makefile')).toEqual({ kind: 'brand', slug: 'make' })
     expect(brand('CLAUDE.md')).toEqual({ kind: 'brand', slug: 'claude' })
@@ -80,4 +80,10 @@ describe('Code Studio file icons', () => {
       expect(icon.path.length, slug).toBeGreaterThan(10) // Kotlin è un solo poligono di 20 caratteri
     }
   })
+})
+
+it('uses supplied Maven wrappers and ghost dotfile icons before extension rules', () => {
+ for (const name of ['mvnw', 'mvnw.cmd', 'MVNW.CMD']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'maven' })
+ for (const name of ['.gitignore', '.env', '.config.json', '.hidden.go', '.mvnw.cmd']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'ghost' })
+ expect(resolveCodeStudioFileIcon('main.go', '.hidden/main.go')).toEqual({ kind: 'gopher', test: false })
 })
