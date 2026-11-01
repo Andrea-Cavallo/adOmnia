@@ -9,6 +9,7 @@ import { isStaleLinterError } from '@/lib/code-studio/staleLinter'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { GO_LANGUAGE_ID } from '@/lib/code-studio/goLanguage'
+import { projectHasGo } from '@/lib/code-studio/goProject'
 import { subscribeGoIDEEvents, type GoIDEEvent, type GoIDEExecution } from '@/lib/code-studio-api'
 import {
   detectGopls,
@@ -333,6 +334,10 @@ export const useCodeStudioLspStore = create<GoIDELspState>((set, get) => ({
       })
     }))
     if (!isTrusted(sessionId)) return
+    // A Python, Java or plain folder never pays for gopls (≈125 MB and a second of CPU at startup).
+    // Units arrive after the session opens: CodeStudioPanel calls this again when they include Go.
+    const session = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)
+    if (session && !projectHasGo(session.project)) return
     if (get().linter[sessionId] === undefined) void get().detectLinter(sessionId)
     if (get().userStopped[sessionId]) return
     try {

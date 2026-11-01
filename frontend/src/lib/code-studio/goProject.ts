@@ -46,6 +46,11 @@ export function goProjectLayout(project: ProjectUnits): GoProjectLayout {
   return layout
 }
 
+/** True when the backend found Go in the project (module, go.work or loose .go files): only then gopls starts by itself. */
+export function projectHasGo(project: ProjectUnits): boolean {
+  return (project.units ?? []).some((unit) => unit.language === GO_LANGUAGE_ID)
+}
+
 /** Moduli Go del progetto (scorciatoia per i dialog che offrono un modulo da scegliere). */
 export function goModules(project: ProjectUnits): GoProjectModule[] {
   return goProjectLayout(project).modules

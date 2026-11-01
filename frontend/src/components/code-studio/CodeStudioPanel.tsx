@@ -1,3 +1,4 @@
+import { projectHasGo } from '@/lib/code-studio/goProject'
 import { configurationTestTarget } from '@/lib/code-studio/runToolbarActions'
 import { useActivityScope } from '@/hooks/useActivity'
 import { CODE_STUDIO_USED_KEY } from './CodeStudioWarmup'
@@ -295,13 +296,14 @@ export function CodeStudioPanel() {
   // Progetti già autorizzati: rileva l'SDK e avvia gopls senza clic extra; quelli non autorizzati restano inerti.
   const activeSessionId = activeSession?.id ?? null
   const activeSessionTrusted = activeSession?.project.authorization === 'tooling-permitted'
+  const activeSessionHasGo = activeSession ? projectHasGo(activeSession.project) : false
   useEffect(() => {
-    if (!activeSessionId || !activeSessionTrusted) return
+    if (!activeSessionId || !activeSessionTrusted || !activeSessionHasGo) return
     void (async () => {
       if (!useCodeStudioStore.getState().toolchains[activeSessionId]) await useCodeStudioStore.getState().detectToolchain()
       await useCodeStudioLspStore.getState().ensureStarted(activeSessionId)
     })()
-  }, [activeSessionId, activeSessionTrusted])
+  }, [activeSessionId, activeSessionTrusted, activeSessionHasGo])
 
   // Le scorciatoie restano attive solo mentre il pannello è montato e hanno la precedenza su quelle globali.
   const runCommandRef = useRef<(id: CodeStudioCommandId) => void>(() => undefined)

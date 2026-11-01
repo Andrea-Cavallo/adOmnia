@@ -29,8 +29,10 @@ const report = {
 }
 console.log(JSON.stringify(report, null, 2))
 if (!process.argv.includes('--report-only')) {
-  if (report.initialJavaScriptBytes > 650_000 || report.deferredModulesStillOnStartup.length) {
-    console.error('Startup budget failed: keep initial JavaScript below 650 kB and optional tools outside the static entry graph.')
+  // 655 kB (was 650): lazy Code Studio tool windows (2026-11-01) removed ~800 kB from the Code Studio
+  // startup but add their preload names to the entry's dependency map (a few hundred bytes).
+  if (report.initialJavaScriptBytes > 655_000 || report.deferredModulesStillOnStartup.length) {
+    console.error('Startup budget failed: keep initial JavaScript below 655 kB and optional tools outside the static entry graph.')
     process.exitCode = 1
   }
 }

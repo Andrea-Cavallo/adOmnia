@@ -114,9 +114,14 @@ export function CodeStudioTerminalPanel({ session, visible }: CodeStudioTerminal
   const splitVisible = !!splitId && splitId !== activeId && terminals.some((item) => item.id === splitId)
   const targetId = focusedId && (focusedId === activeId || (splitVisible && focusedId === splitId)) ? focusedId : activeId
 
+  // Profiles probe docker, WSL and ssh (child processes): only once the terminal is first shown,
+  // never at startup while the panel is mounted but hidden.
+  const profilesRequested = useRef(false)
   useEffect(() => {
+    if (!visible || profilesRequested.current) return
+    profilesRequested.current = true
     listGoIDETerminalProfiles().then(setProfiles).catch((reason) => setError(errorText(reason))).finally(() => setProfilesLoaded(true))
-  }, [])
+  }, [visible])
 
   // Il campo di rinomina compare al doppio clic sul nome del terminale: il focus lo diamo qui.
   useEffect(() => {

@@ -85,7 +85,7 @@ describe('Code Studio language server store', () => {
     const original = useCodeStudioLspStore.getState()
     const sessions = useCodeStudioStore.getState().sessions
     const start = vi.fn(async () => undefined)
-    useCodeStudioStore.setState({ sessions: [{ id: 'low', project: { authorization: 'tooling-permitted' } } as never] })
+    useCodeStudioStore.setState({ sessions: [{ id: 'low', project: { authorization: 'tooling-permitted', units: [{ language: 'go', kind: 'module', root: '/p' }] } } as never] })
     useCodeStudioLspStore.setState({ start, preferences: { ...original.preferences, resourceMode: 'low' }, userStopped: {}, gopls: { low: { available: true } as never }, linter: { low: null } })
     vi.mocked(getLanguageServerStatus).mockResolvedValue({ state: 'stopped' } as never)
     try {
@@ -93,6 +93,11 @@ describe('Code Studio language server store', () => {
       expect(start).toHaveBeenCalledWith('low', false)
       start.mockClear()
       useCodeStudioLspStore.setState({ userStopped: { low: true } })
+      await useCodeStudioLspStore.getState().ensureStarted('low')
+      expect(start).not.toHaveBeenCalled()
+      // A project without Go (Python, Java, a plain folder) never starts gopls by itself.
+      useCodeStudioLspStore.setState({ userStopped: {} })
+      useCodeStudioStore.setState({ sessions: [{ id: 'low', project: { authorization: 'tooling-permitted', units: [{ language: 'python', kind: 'project', root: '/p' }] } } as never] })
       await useCodeStudioLspStore.getState().ensureStarted('low')
       expect(start).not.toHaveBeenCalled()
     } finally {

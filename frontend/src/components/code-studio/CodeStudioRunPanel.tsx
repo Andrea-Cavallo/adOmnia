@@ -5,20 +5,15 @@ import { CodeStudioProgramInput } from './CodeStudioProgramInput'
 import { CodeStudioConsoleRow } from './CodeStudioConsoleRow'
 import { CodeStudioExecutionDetails } from './CodeStudioExecutionDetails'
 import { consoleOutputLines } from './codeStudioConsolePresentation'
-import { useEffect, useMemo, useRef, useState, memo } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, memo } from 'react'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { SquareTerminal, Copy, ExternalLink, FileJson, Minus, RefreshCw, Search, Square } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useCodeStudioStore, type GoIDEConsoleChunk } from '@/stores/codeStudio'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
-import { CodeStudioTestsPanel } from './CodeStudioTestsPanel'
-import { CodeStudioDebugPanel } from './CodeStudioDebugPanel'
-import { CodeStudioTodoPanel } from './CodeStudioTodoPanel'
-import { CodeStudioLivePreview } from './CodeStudioLivePreview'
 import { selectDebugState } from './codeStudioDebugCommands'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/code-studio-api'
-import { CodeStudioTerminalPanel } from './CodeStudioTerminalPanel'
 import { firstLocalServerURL } from '@/lib/code-studio/runServerURL'
 import { openExternal } from '@/lib/openExternal'
 import { handOffOpenApiURL } from '@/lib/moduleHandoff'
@@ -28,19 +23,6 @@ import { parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLi
 import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './codeStudioConsoleWindow'
 import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './codeStudioLogLevels'
 import { CodeStudioProblems, type CodeStudioBuildProblem } from './CodeStudioProblems'
-import { CodeStudioContextPanel } from './CodeStudioContextPanel'
-import { CodeStudioProfilePanel } from './CodeStudioProfilePanel'
-import { CodeStudioTracePanel } from './CodeStudioTracePanel'
-import { CodeStudioFuzzPanel } from './CodeStudioFuzzPanel'
-import { CodeStudioErrorsPanel } from './CodeStudioErrorsPanel'
-import { CodeStudioArchitecturePanel } from './CodeStudioArchitecturePanel'
-import { CodeStudioImpactPanel } from './CodeStudioImpactPanel'
-import { CodeStudioConfigPanel } from './CodeStudioConfigPanel'
-import { CodeStudioDocsPanel } from './CodeStudioDocsPanel'
-import { CodeStudioSonarPanel } from './CodeStudioSonarPanel'
-import { CodeStudioSecurityPanel } from './CodeStudioSecurityPanel'
-import { CodeStudioGitPanel } from './CodeStudioGitPanel'
-import { CodeStudioGoPanel } from './CodeStudioGoPanel'
 import { CodeStudioReferences } from './CodeStudioReferences'
 import { CodeStudioFindInFiles } from './CodeStudioFindInFiles'
 import { diagnosticCounts, mergedReports, useCodeStudioLspStore, type GoIDEToolWindow } from '@/stores/codeStudioLsp'
@@ -48,6 +30,27 @@ import { StudioToolControls } from './StudioToolControls'
 import { toolKey, useStudioTools, useToolView } from './studioToolState'
 import { selectToolRun } from './studioToolBridge'
 import { buildKitProgress } from '@/lib/code-studio/buildKitProgress'
+
+// Tool windows load when first opened: at startup the bottom panel shows the console only,
+// so Debug, Profiler, Sonar, Architecture, the terminal (xterm) and the others cost nothing.
+const CodeStudioTestsPanel = lazy(() => import('./CodeStudioTestsPanel').then((module) => ({ default: module.CodeStudioTestsPanel })))
+const CodeStudioDebugPanel = lazy(() => import('./CodeStudioDebugPanel').then((module) => ({ default: module.CodeStudioDebugPanel })))
+const CodeStudioTodoPanel = lazy(() => import('./CodeStudioTodoPanel').then((module) => ({ default: module.CodeStudioTodoPanel })))
+const CodeStudioContextPanel = lazy(() => import('./CodeStudioContextPanel').then((module) => ({ default: module.CodeStudioContextPanel })))
+const CodeStudioProfilePanel = lazy(() => import('./CodeStudioProfilePanel').then((module) => ({ default: module.CodeStudioProfilePanel })))
+const CodeStudioTracePanel = lazy(() => import('./CodeStudioTracePanel').then((module) => ({ default: module.CodeStudioTracePanel })))
+const CodeStudioFuzzPanel = lazy(() => import('./CodeStudioFuzzPanel').then((module) => ({ default: module.CodeStudioFuzzPanel })))
+const CodeStudioErrorsPanel = lazy(() => import('./CodeStudioErrorsPanel').then((module) => ({ default: module.CodeStudioErrorsPanel })))
+const CodeStudioArchitecturePanel = lazy(() => import('./CodeStudioArchitecturePanel').then((module) => ({ default: module.CodeStudioArchitecturePanel })))
+const CodeStudioImpactPanel = lazy(() => import('./CodeStudioImpactPanel').then((module) => ({ default: module.CodeStudioImpactPanel })))
+const CodeStudioConfigPanel = lazy(() => import('./CodeStudioConfigPanel').then((module) => ({ default: module.CodeStudioConfigPanel })))
+const CodeStudioDocsPanel = lazy(() => import('./CodeStudioDocsPanel').then((module) => ({ default: module.CodeStudioDocsPanel })))
+const CodeStudioSonarPanel = lazy(() => import('./CodeStudioSonarPanel').then((module) => ({ default: module.CodeStudioSonarPanel })))
+const CodeStudioSecurityPanel = lazy(() => import('./CodeStudioSecurityPanel').then((module) => ({ default: module.CodeStudioSecurityPanel })))
+const CodeStudioGitPanel = lazy(() => import('./CodeStudioGitPanel').then((module) => ({ default: module.CodeStudioGitPanel })))
+const CodeStudioGoPanel = lazy(() => import('./CodeStudioGoPanel').then((module) => ({ default: module.CodeStudioGoPanel })))
+const CodeStudioTerminalPanel = lazy(() => import('./CodeStudioTerminalPanel').then((module) => ({ default: module.CodeStudioTerminalPanel })))
+const CodeStudioLivePreview = lazy(() => import('./CodeStudioLivePreview').then((module) => ({ default: module.CodeStudioLivePreview })))
 
 interface CodeStudioRunPanelProps {
   session: GoIDESession
@@ -189,6 +192,9 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const sessionId = session.id
   const selectedView = useCodeStudioLspStore((state) => state.toolWindow)
   const view = fixedView ?? selectedView
+  // The terminal mounts the first time it is shown, then stays mounted: a live shell is never torn down.
+  const [terminalShown, setTerminalShown] = useState(view === 'terminal')
+  if (view === 'terminal' && !terminalShown) setTerminalShown(true)
   const tool = view === 'terminal' ? 'terminal' : logsOnly ? 'logs' : 'run'
   const detached = useStudioTools((state) => state.detached.includes(toolKey(sessionId, tool))) && !standalone
   const terminalDetached = useStudioTools((state) => state.detached.includes(toolKey(sessionId, 'terminal'))) && !standalone
@@ -343,6 +349,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
         )}
         </div>
       </div>}
+      <Suspense fallback={<div className="min-h-0 flex-1" />}>
       {view === 'problems' && <div className="min-h-0 flex-1 overflow-auto"><CodeStudioProblems sessionId={sessionId} buildProblems={buildProblems} onOpenBuildProblem={(problem) => void openLocation(problem.path, problem.line, problem.column)} /></div>}
       {view === 'references' && <div className="min-h-0 flex-1 overflow-auto"><CodeStudioReferences sessionId={sessionId} /></div>}
       {view === 'find' && <div className="min-h-0 flex-1"><CodeStudioFindInFiles sessionId={sessionId} /></div>}
@@ -366,7 +373,8 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
       {view === 'git' && <div className="min-h-0 flex-1"><CodeStudioGitPanel session={session} onCommand={onCommand} /></div>}
       {view === 'go' && <div className="min-h-0 flex-1"><CodeStudioGoPanel session={session} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
-      {!terminalDetached && !logsOnly && <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><CodeStudioTerminalPanel session={session} visible={view === 'terminal' && visible} /></div>}
+      {!terminalDetached && !logsOnly && terminalShown && <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><CodeStudioTerminalPanel session={session} visible={view === 'terminal' && visible} /></div>}
+      </Suspense>
     </section>
   )
 })
