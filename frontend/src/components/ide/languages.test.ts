@@ -21,7 +21,9 @@ describe('IDE language contributions', () => {
   it('derive menu and LSP editor languages from the contributions', () => {
     expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('go')
     expect(CODE_STUDIO_MENUS.map((menu) => menu.id)).toContain('python')
-    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java', 'python', 'rust'])
+    expect(languageServerEditorLanguages()).toEqual(['go', 'typescript', 'javascript', 'html', 'css', 'scss', 'less', 'json', 'java', 'python', 'rust',
+      'c', 'cpp', 'objective-c', 'csharp', 'fsharp', 'php', 'ruby', 'lua', 'kotlin', 'swift', 'dart', 'shell', 'scala', 'elixir',
+      'haskell', 'zig', 'perl', 'r', 'julia', 'clojure', 'xml', 'dockerfile', 'hcl', 'graphql'])
     expect(isLanguageServerEditorLanguage('go')).toBe(true)
     expect(isLanguageServerEditorLanguage('typescript')).toBe(true)
     expect(isLanguageServerEditorLanguage('python')).toBe(true)

@@ -194,6 +194,9 @@ func TestLanguageForPathCoversProjectFiles(t *testing.T) {
 		"theme/app.scss": "scss", "Cargo.toml": "toml", "pyproject.toml": "toml", "Cargo.lock": "toml", "poetry.lock": "toml", "uv.lock": "toml", "config.ini": "ini", "pom.xml": "xml", "config.yml": "yaml", "tsconfig.jsonc": "json",
 		"scripts/deploy.sh": "shell", "build.ps1": "powershell", "run.cmd": "bat", "CHANGELOG.markdown": "markdown",
 		"api/orders.proto": "proto", // Monaco id is "proto" ("protobuf" is only an alias: no colors)
+		// Editor-only languages (internal/languages/declared): no longer plaintext.
+		"src/Program.cs": "csharp", "lib/main.dart": "dart", "App.swift": "swift", "Main.scala": "scala", "lib/app.ex": "elixir",
+		"src/engine.cc": "cpp", "Main.hs": "haskell", "build.zig": "zig", "Gemfile": "ruby", "script.jl": "julia", "core.clj": "clojure",
 	}
 	for path, want := range cases {
 		if got := languageForPath(path); got != want {

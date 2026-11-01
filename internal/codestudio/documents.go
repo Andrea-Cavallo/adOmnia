@@ -16,6 +16,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/workspace"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/declared"
 )
 
 const (
@@ -455,6 +456,9 @@ func languageForPath(path string) string {
 		return "makefile"
 	}
 	if language, ok := languageByExtension[filepath.Ext(base)]; ok {
+		return language
+	}
+	if language, ok := declared.EditorLanguage(base); ok {
 		return language
 	}
 	return "plaintext"

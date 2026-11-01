@@ -93,6 +93,11 @@ export function registerCodeStudioExtraLanguages(): void {
   monaco.languages.register({ id: 'goasm', extensions: ['.s'] })
   monaco.languages.setMonarchTokensProvider('goasm', GO_ASM)
   monaco.languages.setLanguageConfiguration('goasm', { comments: { lineComment: '//', blockComment: ['/*', '*/'] } })
+  // Monaco has no grammar for these: colours come from the language server's semantic tokens.
+  monaco.languages.register({ id: 'haskell', extensions: ['.hs'] })
+  monaco.languages.setLanguageConfiguration('haskell', { comments: { lineComment: '--', blockComment: ['{-', '-}'] } })
+  monaco.languages.register({ id: 'zig', extensions: ['.zig', '.zon'] })
+  monaco.languages.setLanguageConfiguration('zig', { comments: { lineComment: '//' } })
   monaco.languages.register({ id: 'makefile', filenames: ['Makefile', 'makefile', 'GNUmakefile'], extensions: ['.mk'] })
   monaco.languages.setMonarchTokensProvider('makefile', MAKEFILE)
   monaco.languages.setLanguageConfiguration('makefile', { comments: { lineComment: '#' } })

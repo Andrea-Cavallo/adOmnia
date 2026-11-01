@@ -161,6 +161,7 @@ import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest,
 import { javaDebugTargetOf } from '@/lib/code-studio/javaDebug'
 import { pythonDebugTargetOf } from '@/lib/code-studio/pythonDebug'
 import { rustDebugTargetOf } from '@/lib/code-studio/rustDebug'
+import { nativeDebugTargetOf } from '@/lib/code-studio/nativeDebug'
 import { webDebugTargetOf } from '@/lib/code-studio/webDebug'
 import { runRustCommand } from './codeStudioRustCommands'
 import { runWebCommand } from './codeStudioWebCommands'
@@ -889,6 +890,12 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     return target && activeSession ? { sessionId: activeSession.id, ...target } : null
   }
 
+  // Native executable (C/C++, Objective-C, Zig, Swift) with CodeLLDB, like Rust.
+  const configuredNativeDebugRequest = () => {
+    const target = activeSession && activeConfig ? nativeDebugTargetOf(activeConfig) : null
+    return target && activeSession ? { sessionId: activeSession.id, ...target } : null
+  }
+
   // Debug di una configurazione JS/TS: lo script del package manager (npm run dev) con js-debug.
   const configuredWebDebugRequest = (): GoIDEWebDebugRequest | null => {
     const target = activeSession && activeConfig ? webDebugTargetOf(activeConfig) : null
@@ -923,7 +930,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (runPythonCommand(id, activeSession?.id ?? null)) return
     if (runRustCommand(id, activeSession?.id ?? null)) return
     if (runWebCommand(id, activeSession?.id ?? null)) return
-    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest, configuredWebDebugRequest)) return
+    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest, configuredWebDebugRequest, configuredNativeDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
     if (runIntegrationCommand(id, currentActiveDocument(), activeCodeStudioEditor(), () => setServicesOpen(true))) return

@@ -15,7 +15,7 @@ const SLUGS = [
   'eslint', 'nginx', 'openapiinitiative', 'swagger', 'prometheus', 'grafana', 'renovate', 'dependabot',
   // Linguaggi dell'IDE Platform: ogni language contribution sceglie qui la propria icona.
   'openjdk', 'kotlin', 'php', 'ruby', 'dotnet', 'cplusplus', 'c', 'swift', 'dart', 'scala', 'elixir',
-  'haskell', 'lua', 'zig', 'gradle', 'apachemaven',
+  'haskell', 'lua', 'zig', 'gradle', 'apachemaven', 'fsharp', 'perl', 'r', 'julia', 'clojure',
   // Agenti AI di Code Studio.
   'claude',
 ]

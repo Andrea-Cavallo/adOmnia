@@ -3277,6 +3277,50 @@ export const MoveSymbolRequest = golang$0.MoveSymbolRequest;
 export type MoveSymbolRequest = golang$0.MoveSymbolRequest;
 
 /**
+ * NativeDebugRequest debugs an executable the project built (C/C++, Objective-C, Zig, Swift) with
+ * CodeLLDB, the same adapter and install as Rust.
+ */
+export class NativeDebugRequest {
+    "sessionId": SessionID;
+    "language": string;
+    "program": string;
+    "workingDirectory"?: string;
+    "programArguments"?: string[];
+    "environment"?: { [_ in string]?: string };
+
+    /** Creates a new NativeDebugRequest instance. */
+    constructor($$source: Partial<NativeDebugRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("language" in $$source)) {
+            this["language"] = "";
+        }
+        if (!("program" in $$source)) {
+            this["program"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new NativeDebugRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): NativeDebugRequest {
+        const $$createField4_0 = $$createType4;
+        const $$createField5_0 = $$createType70;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("programArguments" in $$parsedSource) {
+            $$parsedSource["programArguments"] = $$createField4_0($$parsedSource["programArguments"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField5_0($$parsedSource["environment"]);
+        }
+        return new NativeDebugRequest($$parsedSource as Partial<NativeDebugRequest>);
+    }
+}
+
+/**
  * NavigationEntry è una posizione della cronologia di navigazione (Back/Forward).
  */
 export class NavigationEntry {

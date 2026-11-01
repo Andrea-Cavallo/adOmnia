@@ -5,6 +5,7 @@ import (
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/dap"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/declared"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
@@ -103,4 +104,56 @@ func (s *Service) InstallRustDebugger(sessionID string, confirmed bool) (Executi
 		return Execution{}, err
 	}
 	return s.runInstallPlan(session, plan)
+}
+
+// NativeDebugRequest debugs an executable the project built (C/C++, Objective-C, Zig, Swift) with
+// CodeLLDB, the same adapter and install as Rust.
+type NativeDebugRequest struct {
+	SessionID        SessionID         `json:"sessionId"`
+	Language         string            `json:"language"`
+	Program          string            `json:"program"`
+	WorkingDirectory string            `json:"workingDirectory,omitempty"`
+	ProgramArguments []string          `json:"programArguments,omitempty"`
+	Environment      map[string]string `json:"environment,omitempty"`
+}
+
+// StartNativeDebug starts the debug of a native executable for a trusted project, on explicit action.
+func (s *Service) StartNativeDebug(request NativeDebugRequest) (DebugSessionInfo, error) {
+	session, err := s.session(string(request.SessionID))
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	if session.Project.Authorization != AuthorizationPermitted {
+		return DebugSessionInfo{}, fmt.Errorf("explicitly authorize the tools for this project")
+	}
+	adapter, ok := s.workspace.languages.Get(request.Language)
+	provider, debugs := adapter.(dap.DebugAdapterProvider)
+	if !ok || !debugs {
+		return DebugSessionInfo{}, fmt.Errorf("%s programs cannot be debugged", request.Language)
+	}
+	workingDirectory, err := s.documents.resolveDirectory(session.Project, request.WorkingDirectory)
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	environment, err := s.executionEnvironment(session.ID, request.Language, request.Environment)
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	codeLLDB, _, warning := rust.LocateCodeLLDB(s.toolsRoot)
+	if codeLLDB == "" && warning != nil {
+		return DebugSessionInfo{}, warning
+	}
+	options, err := jsonutil.Marshal(declared.NativeOptions{Program: request.Program, ProgramArguments: request.ProgramArguments, Adapter: codeLLDB})
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	spec, err := provider.DebugAdapter(dap.LaunchRequest{
+		Root: session.Project.RealPath, WorkingDirectory: workingDirectory,
+		Environment: environment, LanguageOptions: options,
+	})
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	s.seedBreakpoints(session)
+	return s.debug.DebugManager.Start(dap.Launch{SessionID: session.ID, Root: session.Project.RealPath, Spec: spec})
 }

@@ -2631,6 +2631,15 @@ export function StartLanguageServer(sessionID: string, settings: codestudio$0.La
 }
 
 /**
+ * StartNativeDebug avvia il debug di un eseguibile nativo (C/C++, Objective-C, Zig, Swift) con CodeLLDB.
+ */
+export function StartNativeDebug(request: codestudio$0.NativeDebugRequest): $CancellablePromise<codestudio$0.DebugSessionInfo> {
+    return $Call.ByID(1291233448, request).then(($result: any) => {
+        return $$createType112($result);
+    });
+}
+
+/**
  * StartPreview avvia un'anteprima (server statico o dev server) per un progetto autorizzato.
  */
 export function StartPreview(sessionID: string, request: codestudio$0.PreviewRequest): $CancellablePromise<codestudio$0.Preview> {

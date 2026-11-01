@@ -2,6 +2,7 @@ import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
 import type { RunTemplate } from '@/lib/code-studio/runFormTypes'
 import type { BrandIconSlug } from '@/lib/brandIcons.generated'
 import type { IdeFileIcon } from '@/lib/code-studio/fileIconTypes'
+import { DECLARED_LANGUAGES } from './languages/declared'
 import { GO_LANGUAGE } from './languages/go'
 import { JAVA_LANGUAGE } from './languages/java'
 import { PYTHON_LANGUAGE } from './languages/python'
@@ -80,7 +81,7 @@ export interface IdeRegisteredLanguage {
   name: string
 }
 
-export const IDE_LANGUAGES: readonly IdeLanguageContribution[] = [GO_LANGUAGE, ...WEB_LANGUAGES, JAVA_LANGUAGE, PYTHON_LANGUAGE, RUST_LANGUAGE]
+export const IDE_LANGUAGES: readonly IdeLanguageContribution[] = [GO_LANGUAGE, ...WEB_LANGUAGES, JAVA_LANGUAGE, PYTHON_LANGUAGE, RUST_LANGUAGE, ...DECLARED_LANGUAGES]
 
 /** Nome mostrato di ogni linguaggio registrato, per i riepiloghi che ricevono solo l'id dal backend. */
 export const IDE_LANGUAGE_NAMES: Readonly<Record<string, string>> = Object.fromEntries(IDE_LANGUAGES.map((language) => [language.id, language.name]))

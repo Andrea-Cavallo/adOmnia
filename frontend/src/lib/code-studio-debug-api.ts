@@ -2,7 +2,7 @@ import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia
 import type {
   Breakpoint, BreakpointState, DebugFrame, DebugInstruction, DebugMemory, DebugRequest, DebugScope, DebugSessionInfo, DebugThread, DebugVariable,
   DelveInfo, EvaluateResult, Execution, ExceptionBreakpointSettings, ExceptionBreakpointsView, FileBreakpoints, FunctionBreakpoint, FunctionBreakpointSettings, FunctionBreakpointsView,
-  GoroutineOverview, JavaDebugRequest, ProcessInfo, PythonDebugRequest, RustDebugRequest, WebDebugRequest,
+  GoroutineOverview, JavaDebugRequest, NativeDebugRequest, ProcessInfo, PythonDebugRequest, RustDebugRequest, WebDebugRequest,
 } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 
 export type GoIDEDebugRequest = DebugRequest
@@ -10,6 +10,7 @@ export type GoIDEDebugSession = DebugSessionInfo
 export type GoIDEJavaDebugRequest = JavaDebugRequest
 export type GoIDEPythonDebugRequest = PythonDebugRequest
 export type GoIDERustDebugRequest = RustDebugRequest
+export type GoIDENativeDebugRequest = NativeDebugRequest
 export type GoIDEWebDebugRequest = WebDebugRequest
 /** Payload dell'evento debug.output (non esposto dai binding perché viaggia solo come evento). */
 export interface GoIDEDebugOutput {
@@ -71,6 +72,10 @@ export function startPythonDebug(request: PythonDebugRequest): Promise<DebugSess
 /** Debug di un bin o di un example Cargo con CodeLLDB (installato in modo esplicito). */
 export function startRustDebug(request: RustDebugRequest): Promise<DebugSessionInfo> {
   return GoIDEBindings.StartRustDebug(request)
+}
+
+export function startNativeDebug(request: NativeDebugRequest): Promise<DebugSessionInfo> {
+  return GoIDEBindings.StartNativeDebug(request)
 }
 
 /** Debug di un file JS/TS o di uno script del package manager con js-debug (installato in modo esplicito). */

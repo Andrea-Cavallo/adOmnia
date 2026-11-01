@@ -214,6 +214,28 @@ Language-server shutdown bounds protocol writes and the final wait for process e
 
 **Dependency graph.** *Tools → Dependency Graph…* reads `go list -m -json all`, `go mod graph` and `go list -deps` offline: direct → transitive tree, duplicate versions with who requires each and the shortest chain from your module, license (from the module's LICENSE file), estimated weight on disk, package count, and **unused** / **indirect** badges. *Check updates* (`go list -m -u`) and *Scan vulnerabilities* (`govulncheck`) contact the network and run only when clicked. Needs a trusted project.
 
+## Editor-only languages
+
+These languages get the editor and, when their language server is on PATH, completion, diagnostics, hover, navigation, rename, semantic colours and inlay hints:
+
+| Language | Server (first found wins) |
+|---|---|
+| C/C++, Objective-C | `clangd` |
+| C#, F# | `csharp-ls`, `fsautocomplete` |
+| PHP | `intelephense`, `phpactor` |
+| Ruby | `ruby-lsp`, `solargraph` |
+| Kotlin | `kotlin-lsp`, `kotlin-language-server` |
+| Swift, Dart, Scala, Elixir | `sourcekit-lsp`, `dart language-server`, `metals`, `elixir-ls` |
+| Haskell, Zig | `haskell-language-server-wrapper`, `zls` (no built-in grammar: colours come from the server) |
+| Lua, Perl, R, Julia, Clojure | `lua-language-server`, `perlnavigator`, R `languageserver`, `LanguageServer.jl`, `clojure-lsp` |
+| Shell, XML/WSDL/XSD, Dockerfile, Terraform, GraphQL | `bash-language-server`, `lemminx`, `docker-langserver`, `terraform-ls`, `graphql-lsp` |
+
+adOmnia does not install them: when one is missing, the editor notice shows the install command for its ecosystem, and *Dismiss* hides it for the session.
+
+**Run and Debug of native programs.** C/C++, Objective-C, Zig and Swift have an *Executable* run configuration: pick the built program inside the project, and put the build (`make`, `cmake --build build`, `zig build`, `swift build`) in *Before launch*, so adOmnia never guesses a build system. Debug (Shift+F9) starts that executable under CodeLLDB, the same adapter Rust uses: install it with *Rust > Install CodeLLDB (debugger)…* or the CodeLLDB VS Code extension. Breakpoints, stepping, variables and the disassembly work as for Rust; build with debug info (`-g`, `-O0`) to see sources and locals.
+
+The other languages have no Run, Debug or Test yet, and none has project detection. Each one is a row in `internal/languages/declared/table.go`; one that gets those features moves to its own adapter.
+
 ## Java and Spring in the same product
 
 Java follows the same rules as Go: whatever works for a Go project works for a Spring one.
