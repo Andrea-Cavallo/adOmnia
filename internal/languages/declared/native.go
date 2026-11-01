@@ -136,7 +136,7 @@ func (n nativeAdapter) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec,
 func lldbDAP(id, program string, arguments []string, request dap.LaunchRequest) (dap.AdapterSpec, error) {
 	binary, err := lookPath("lldb-dap")
 	if err != nil {
-		return dap.AdapterSpec{}, fmt.Errorf("no debugger found: run 'Install C/C++ Debugger…' from the command palette, install CodeLLDB, or put LLVM's lldb-dap on PATH")
+		return dap.AdapterSpec{}, fmt.Errorf("no debugger found: run 'Install Native Debugger (C/C++, Swift, Zig)…' from the command palette, install CodeLLDB, or put LLVM's lldb-dap on PATH")
 	}
 	return dap.AdapterSpec{
 		AdapterID: id, Executable: binary, WorkingDirectory: request.WorkingDirectory,

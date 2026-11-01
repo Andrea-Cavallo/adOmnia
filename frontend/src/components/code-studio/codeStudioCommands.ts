@@ -475,7 +475,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   if (id === 'python.selectInterpreter') return true
   if (id === 'python.installDebugpy') return context.authorized ? true : 'Trust this project to install Python tools'
   if (id === 'rust.installDebugger') return context.authorized ? true : 'Trust this project to install the Rust debugger'
-  if (id === 'php.installDebugger' || id === 'cpp.installDebugger') return context.authorized ? true : 'Trust this project to install its debugger'
+  if (id === 'php.installDebugger' || id === 'cpp.installDebugger' || id === 'dotnet.installDebugger') return context.authorized ? true : 'Trust this project to install its debugger'
   if (id === 'web.installDebugger') return context.authorized ? true : 'Trust this project to install the JavaScript debugger'
   if (id === 'rust.selectToolchain' || id === 'rust.dependencyTree') return true
   if (id === 'python.attach') return context.authorized ? true : 'Trust this project to attach the debugger'

@@ -5,18 +5,27 @@ import { beginToolInstall, endToolInstall } from '@/stores/codeStudioToolInstall
 import { studioToast } from '@/stores/codeStudioToast'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 
+type DeclaredDebugger = { language: string; confirmLabel: string; done: string }
+
+const DEBUGGERS = new Map<CodeStudioCommandId, DeclaredDebugger>([
+  ['php.installDebugger', { language: 'php', confirmLabel: 'Install PHP debug adapter', done: 'PHP debug adapter installed. Debug is now available.' }],
+  ['cpp.installDebugger', { language: 'cpp', confirmLabel: 'Install native debugger', done: 'Native debugger installed. Debug is now available.' }],
+  ['dotnet.installDebugger', { language: 'csharp', confirmLabel: 'Install .NET debugger', done: '.NET debugger installed. Debug is now available.' }],
+])
+
 /** Installa il debugger di un linguaggio dichiarato: comando esatto nella conferma, output in console. */
-async function installDeclaredDebugger(sessionId: string, language: 'php' | 'cpp'): Promise<void> {
-  const php = language === 'php'
+async function installDeclaredDebugger(sessionId: string, target: DeclaredDebugger): Promise<void> {
   try {
-    const plan = await previewDebuggerInstall(sessionId, language)
+    const plan = await previewDebuggerInstall(sessionId, target.language)
     const approved = await confirm({
       title: plan.title,
-      message: `Command: ${plan.command}\n\n${plan.note}`,
-      confirmLabel: php ? 'Install PHP debug adapter' : 'Install C/C++ debugger',
+      message: `Command: ${plan.command}
+
+${plan.note}`,
+      confirmLabel: target.confirmLabel,
     })
     if (!approved) return
-    const execution = await installDebugger(sessionId, language)
+    const execution = await installDebugger(sessionId, target.language)
     beginToolInstall(sessionId, plan.task, plan.label)
     const stop = subscribeGoIDEEvents((event) => {
       const finished = event.type === 'run.finished' ? (event.payload as { id?: string; exitCode?: number | null; status?: string }) : null
@@ -24,7 +33,7 @@ async function installDeclaredDebugger(sessionId: string, language: 'php' | 'cpp
       stop()
       const succeeded = finished.exitCode === 0 || finished.status === 'exited'
       endToolInstall(sessionId, plan.task, succeeded)
-      if (succeeded) studioToast(php ? 'PHP debug adapter installed. Debug is now available.' : 'C/C++ debugger installed. Debug is now available.', 'success')
+      if (succeeded) studioToast(target.done, 'success')
     })
   } catch (reason) {
     studioToast(reason instanceof Error ? reason.message : String(reason), 'info')
@@ -33,7 +42,8 @@ async function installDeclaredDebugger(sessionId: string, language: 'php' | 'cpp
 
 /** Comandi dei linguaggi dichiarati. Restituisce false se il comando non appartiene a questo modulo. */
 export function runDeclaredDebuggerCommand(id: CodeStudioCommandId, sessionId: string | null): boolean {
-  if (id !== 'php.installDebugger' && id !== 'cpp.installDebugger') return false
-  if (sessionId) void installDeclaredDebugger(sessionId, id === 'php.installDebugger' ? 'php' : 'cpp')
+  const target = DEBUGGERS.get(id)
+  if (!target) return false
+  if (sessionId) void installDeclaredDebugger(sessionId, target)
   return true
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
@@ -89,7 +88,7 @@ func PHPDebugInstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 	if err != nil {
 		return lsp.InstallPlan{}, err
 	}
-	executable, arguments := phpDebugInstallCommand(directory, phpDebugAssetURL(), phpDebugSHA256, string(report))
+	executable, arguments := toolmanifest.Download{Directory: directory, Archive: "php-debug.zip", URL: phpDebugAssetURL(), SHA256: phpDebugSHA256, Report: string(report)}.Command()
 	return lsp.InstallPlan{
 		Task:       phpDebugInstallTask,
 		Title:      "Install the PHP debug adapter?",
@@ -102,26 +101,4 @@ func PHPDebugInstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 		Prepare:    func() error { return os.MkdirAll(directory, 0o755) },
 		Languages:  []string{"php"},
 	}, nil
-}
-
-func phpDebugInstallCommand(directory, url, sha256, report string) (string, []string) {
-	if runtime.GOOS == "windows" {
-		quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", "''") + "'" }
-		script := "$ErrorActionPreference='Stop'; $d=" + quote(directory) + "; $f=Join-Path $d 'php-debug.zip'; " +
-			"Invoke-WebRequest -UseBasicParsing " + quote(url) + " -OutFile $f; " +
-			"if ((Get-FileHash $f -Algorithm SHA256).Hash.ToLower() -ne '" + sha256 + "') { Remove-Item $f; throw 'SHA-256 mismatch: the download was discarded' }; " +
-			"Expand-Archive -Force $f (Join-Path $d 'extract'); Remove-Item $f; " +
-			"Set-Content -LiteralPath (Join-Path $d " + quote(toolmanifest.ReportFile) + ") -Value " + quote(report)
-		return "powershell.exe", []string{"-NoProfile", "-NonInteractive", "-Command", script}
-	}
-	quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'" }
-	check := "sha256sum -c -"
-	if runtime.GOOS == "darwin" {
-		check = "shasum -a 256 -c -"
-	}
-	script := "set -e; d=" + quote(directory) + "; mkdir -p \"$d\"; curl -fsSL " + quote(url) + " -o \"$d/php-debug.zip\"; " +
-		"echo '" + sha256 + "  '\"$d/php-debug.zip\" | " + check + "; " +
-		"unzip -oq \"$d/php-debug.zip\" -d \"$d/extract\"; rm -f \"$d/php-debug.zip\"; " +
-		"printf '%s' " + quote(report) + " >\"$d/" + toolmanifest.ReportFile + "\""
-	return "sh", []string{"-c", script}
 }

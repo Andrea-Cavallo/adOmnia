@@ -122,9 +122,9 @@ func (d dotnetAdapter) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec,
 	if err != nil {
 		return dap.AdapterSpec{}, err
 	}
-	debugger, err := lookPath("netcoredbg")
+	debugger, err := netcoredbgFor(request.ToolsRoot)
 	if err != nil {
-		return dap.AdapterSpec{}, fmt.Errorf("netcoredbg is not on PATH: download it from https://github.com/Samsung/netcoredbg/releases and add its folder to PATH")
+		return dap.AdapterSpec{}, err
 	}
 	dotnet, err := lookPath("dotnet")
 	if err != nil {

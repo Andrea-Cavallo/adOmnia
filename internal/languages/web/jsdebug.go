@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"runtime"
-
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toolmanifest"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
@@ -110,7 +108,7 @@ func JSDebugInstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 	if err != nil {
 		return lsp.InstallPlan{}, err
 	}
-	executable, arguments := jsDebugInstallCommand(directory, jsDebugAssetURL(), jsDebugSHA256, string(report))
+	executable, arguments := toolmanifest.Download{Directory: directory, Archive: "js-debug.tar.gz", URL: jsDebugAssetURL(), SHA256: jsDebugSHA256, Report: string(report)}.Command()
 	return lsp.InstallPlan{
 		Task:       jsDebugInstallTask,
 		Title:      "Install the JavaScript debugger?",
@@ -123,28 +121,4 @@ func JSDebugInstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 		Prepare:    func() error { return os.MkdirAll(directory, 0o755) },
 		Languages:  []string{ScriptID},
 	}, nil
-}
-
-// jsDebugInstallCommand prepara il download, il checksum e l'estrazione con gli strumenti del
-// sistema: PowerShell su Windows (Windows 10 1803+ include tar.exe), sh + curl + sha256sum altrove.
-func jsDebugInstallCommand(directory, url, sha256, report string) (string, []string) {
-	if runtime.GOOS == "windows" {
-		quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", "''") + "'" }
-		script := "$ErrorActionPreference='Stop'; $d=" + quote(directory) + "; $f=Join-Path $d 'js-debug.tar.gz'; " +
-			"Invoke-WebRequest -UseBasicParsing " + quote(url) + " -OutFile $f; " +
-			"if ((Get-FileHash $f -Algorithm SHA256).Hash.ToLower() -ne '" + sha256 + "') { Remove-Item $f; throw 'SHA-256 mismatch: the download was discarded' }; " +
-			"$e=Join-Path $d 'extract'; New-Item -ItemType Directory -Force -Path $e | Out-Null; tar -xzf $f -C $e; Remove-Item $f; " +
-			"Set-Content -LiteralPath (Join-Path $d " + quote(toolmanifest.ReportFile) + ") -Value " + quote(report)
-		return "powershell.exe", []string{"-NoProfile", "-NonInteractive", "-Command", script}
-	}
-	quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'" }
-	check := "sha256sum -c -"
-	if runtime.GOOS == "darwin" {
-		check = "shasum -a 256 -c -"
-	}
-	script := "set -e; d=" + quote(directory) + "; mkdir -p \"$d\"; curl -fsSL " + quote(url) + " -o \"$d/js-debug.tar.gz\"; " +
-		"echo '" + sha256 + "  '\"$d/js-debug.tar.gz\" | " + check + "; " +
-		"mkdir -p \"$d/extract\"; tar -xzf \"$d/js-debug.tar.gz\" -C \"$d/extract\"; rm -f \"$d/js-debug.tar.gz\"; " +
-		"printf '%s' " + quote(report) + " >\"$d/" + toolmanifest.ReportFile + "\""
-	return "sh", []string{"-c", script}
 }
