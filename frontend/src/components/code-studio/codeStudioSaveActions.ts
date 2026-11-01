@@ -38,6 +38,7 @@ function applyToEditor(editor: monaco.editor.IStandaloneCodeEditor, edits: Param
 export async function runSaveActions(documentId: string): Promise<void> {
   const document = useCodeStudioStore.getState().documents.find((item) => item.document.id === documentId)
   if (!document || !document.dirty || document.document.readOnly) return
+  if (document.document.language === 'toml') return applyTomlFormatting(document)
   if (!document.document.name.endsWith('.go')) return applyNonGoWhitespace(document)
   const lsp = useCodeStudioLspStore.getState()
   const { formatOnSave, organizeImportsOnSave } = lsp.preferences
@@ -57,6 +58,34 @@ export async function runSaveActions(documentId: string): Promise<void> {
     await flushCodeStudioDocument(documentId)
     const result = await withTimeout(requestFormatting(sessionId, documentId))
     if (result && currentCodeStudioDocumentVersion(documentId) === result.version) applyToEditor(editor, result.edits)
+  }
+}
+
+async function applyTomlFormatting(document: GoIDEEditorDocument): Promise<void> {
+  // Generic trailing-space removal can change the contents of TOML multiline strings.
+  if (!useCodeStudioLspStore.getState().preferences.formatOnSave) return
+  const { sessionId, relativePath, id } = document.document
+  const config = editorConfigFor(parseEditorConfig(await editorConfigText(sessionId)), relativePath)
+  const current = useCodeStudioStore.getState().documents.find(item => item.document.id === id)
+  if (!current || current.document.readOnly) return
+  const source = current.buffer
+  const editor = activeCodeStudioEditor(), model = editor?.getModel()
+  const active = model?.uri.toString() === editorModelUri(current.document)
+  const options = active ? model?.getOptions() : undefined
+  try {
+    const { formatTomlInWorker } = await import('@/lib/code-studio/tomlFormatterClient')
+    const text = await formatTomlInWorker(source, {
+      tabSize: config.indent_size ?? config.tab_width ?? options?.tabSize ?? 2,
+      insertSpaces: config.indent_style ? config.indent_style !== 'tab' : options?.insertSpaces ?? true,
+      trailingNewline: config.insert_final_newline,
+    }, undefined, SAVE_ACTION_TIMEOUT_MS)
+    const latest = useCodeStudioStore.getState().documents.find(item => item.document.id === id)
+    if (!latest || latest.document.readOnly || latest.buffer !== source || text === source) return
+    if (active && editor && model && !model.isDisposed() && editor.getModel() === model && model.getValue() === source) {
+      editor.pushUndoStop(); editor.executeEdits('code-studio-save', [{ range: model.getFullModelRange(), text }]); editor.pushUndoStop()
+    } else useCodeStudioStore.getState().updateDocument(id, text)
+  } catch (error) {
+    useCodeStudioLspStore.setState({ message: `${error instanceof Error ? error.message : String(error)}. Saving the unchanged TOML buffer.` })
   }
 }
 

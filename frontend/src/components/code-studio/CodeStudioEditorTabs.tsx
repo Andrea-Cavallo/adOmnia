@@ -5,7 +5,6 @@ import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudi
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
 import { CodeStudioOpenFilesSwitcher } from './CodeStudioOpenFilesSwitcher'
-import { CodeStudioBlameButton } from './CodeStudioBlameButton'
 
 interface CodeStudioEditorTabsProps {
   documents: GoIDEEditorDocument[]
@@ -193,7 +192,6 @@ export function CodeStudioEditorTabs({ documents, activeId, onRequestClose, acti
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={items(menu.document)} onSelect={(id) => run(id as TabAction, menu.document)} onClose={() => setMenu(null)} />}
     </div>
     <CodeStudioOpenFilesSwitcher documents={ordered} activeId={previewTab?.active ? '' : activeId} onSelect={(id) => { selectDocument(id); onSelectDocument?.() }} />
-    {!previewTab?.active && documents.filter(item => item.document.id === activeId).map(item => <CodeStudioBlameButton key={item.document.id} document={item} />)}
     {actions}
     </div>
   )

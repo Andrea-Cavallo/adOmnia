@@ -13,13 +13,14 @@ import { applyCodeStudioHunkToIndex } from './codeStudioVcsHunkStage'
 
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   go: 'go', mod: 'go', sum: 'plaintext', md: 'markdown', json: 'json', yaml: 'yaml', yml: 'yaml', ts: 'typescript', tsx: 'typescript',
-  js: 'javascript', jsx: 'javascript', css: 'css', html: 'html', xml: 'xml', sql: 'sql', sh: 'shell', proto: 'proto', toml: 'ini', dockerfile: 'dockerfile',
+  js: 'javascript', jsx: 'javascript', css: 'css', html: 'html', xml: 'xml', sql: 'sql', sh: 'shell', proto: 'proto', toml: 'toml', dockerfile: 'dockerfile',
 }
 
 function languageOf(relativePath: string): string {
   const name = relativePath.split('/').pop()?.toLowerCase() ?? ''
   if (name === 'dockerfile') return 'dockerfile'
   if (name === 'makefile') return 'makefile'
+  if (['cargo.lock', 'poetry.lock', 'uv.lock'].includes(name)) return 'toml'
   return LANGUAGE_BY_EXTENSION[name.split('.').pop() ?? ''] ?? 'plaintext'
 }
 

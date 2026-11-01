@@ -13,6 +13,7 @@ import { runCodeStudioRefactoring, type CodeStudioRefactoring } from './codeStud
 import { goToSuperMethod } from './codeStudioImplementationMarkers'
 import { openChangeSignature } from './CodeStudioChangeSignatureDialog'
 import { openMoveSymbol } from './CodeStudioMoveSymbolDialog'
+import { installCodeStudioBlameAction } from './codeStudioBlameAction'
 
 export const CODE_STUDIO_ACTIONS = {
   findUsages: 'codeStudio.findUsages',
@@ -96,6 +97,7 @@ function requestRename(editor: monaco.editor.ICodeEditor): void {
 
 /** Registra sull'editor le azioni semantiche Code Studio; le keybinding aggiunte hanno precedenza su quelle native. */
 export function installCodeStudioEditorActions(editor: monaco.editor.IStandaloneCodeEditor): void {
+  installCodeStudioBlameAction(editor)
   const semantic = (id: string, label: string, keybindings: number[], run: (target: monaco.editor.ICodeEditor) => void | Promise<void>) => {
     editor.addAction({ id, label, keybindings, contextMenuGroupId: 'navigation', run: (target) => { void run(target) } })
   }

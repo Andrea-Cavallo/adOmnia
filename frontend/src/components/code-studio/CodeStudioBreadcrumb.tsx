@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Lock } from 'lucide-react'
 import type { GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { CodeStudioSymbolIcon } from './CodeStudioSymbolIcon'
-import { symbolKey, symbolPathAt, symbolSiblings, useCodeStudioSymbolsFor } from './codeStudioSymbols'
+import { symbolKey, breadcrumbSymbolPath, symbolSiblings, useCodeStudioSymbolsFor } from './codeStudioSymbols'
 import { runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 
 interface CodeStudioBreadcrumbProps {
@@ -20,9 +20,12 @@ interface CodeStudioBreadcrumbProps {
  */
 export function CodeStudioBreadcrumb({ documentId, relativePath, readOnly, cursor }: CodeStudioBreadcrumbProps) {
   const symbols = useCodeStudioSymbolsFor(documentId)
-  const chain = symbolPathAt(symbols, cursor.line, cursor.column)
+  const chain = breadcrumbSymbolPath(symbols, cursor.line, cursor.column)
+  const nav = useRef<HTMLElement>(null)
+  const chainKey = chain.map(symbolKey).join('|')
+  useEffect(() => { if (nav.current) nav.current.scrollLeft = nav.current.scrollWidth }, [relativePath, chainKey])
   const reveal = (line: number, column: number) => useCodeStudioStore.setState({ revealLocation: { documentId, line, column } })
-  const segments = relativePath.split('/').filter(Boolean)
+  const segments = relativePath.replace(/\\/g, '/').split('/').filter(Boolean)
   const [menu, setMenu] = useState<{ x: number; y: number; current: string; siblings: GoIDESymbolNode[] } | null>(null)
   const openSiblings = (index: number, target: HTMLElement) => {
     const rect = target.getBoundingClientRect()
@@ -36,14 +39,15 @@ export function CodeStudioBreadcrumb({ documentId, relativePath, readOnly, curso
   }
 
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center overflow-hidden whitespace-nowrap px-1.5 text-text-3">
+    <nav ref={nav} aria-label="Breadcrumb" title={[...segments, ...chain.map(node => node.name)].join(' › ')} className="flex min-w-0 items-center overflow-x-auto whitespace-nowrap px-1.5 text-text-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {readOnly && <span className="mr-1.5 flex shrink-0 items-center gap-1 text-text-4" title="SDK and module cache sources open read-only"><Lock size={11} /> Read-only</span>}
-      <button type="button" title={`${relativePath} · Open file symbols`} onClick={() => void openFileSymbols()} className="min-w-0 truncate rounded px-1 text-text-2 hover:bg-surface-3 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">{segments[segments.length - 1] || relativePath}</button>
-      {chain.map((node) => (
-        <span key={`${node.name}:${node.range.startLine}`} className="flex min-w-0 items-center">
+      {segments.slice(0, -1).map((segment, index) => <span key={index} className="flex shrink-0 items-center"><span className="px-1">{segment}</span><span className="px-1 text-text-4" aria-hidden="true">›</span></span>)}
+      <button type="button" title={`${relativePath} · Open file symbols`} onClick={() => void openFileSymbols()} className="shrink-0 rounded px-1 text-text-2 hover:bg-surface-3 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">{segments[segments.length - 1] || relativePath}</button>
+      {chain.map((node, index) => (
+        <span key={`${node.name}:${node.range.startLine}`} className="flex shrink-0 items-center">
           <span className="px-1 text-text-4">›</span>
           <button type="button" aria-haspopup="menu" title={`${node.name} · Jump to another symbol at this level`} onClick={(event) => openSiblings(chain.indexOf(node), event.currentTarget)} className="flex h-5 min-w-0 items-center gap-1 rounded px-1 text-text-2 hover:bg-surface-3 hover:text-text-1 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">
-            <CodeStudioSymbolIcon kind={node.kind} size={11} /><span className="truncate">{node.name}</span>
+            <CodeStudioSymbolIcon kind={node.kind} size={11} /><span>{index > 0 && node.kind === 6 ? node.name.replace(/^\(\*?[^)]+\)\./, '') : node.name}</span>
           </button>
         </span>
       ))}

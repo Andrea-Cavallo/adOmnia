@@ -1,4 +1,6 @@
 import { monaco } from '@/lib/monacoSetup'
+import { TOML_LANGUAGE } from './codeStudioTomlLanguage'
+import { tomlOutline } from '@/lib/code-studio/tomlOutline'
 
 let registered = false
 
@@ -62,6 +64,30 @@ const MAKEFILE: monaco.languages.IMonarchLanguage = {
 export function registerCodeStudioExtraLanguages(): void {
   if (registered) return
   registered = true
+  monaco.languages.register({ id: 'toml', extensions: ['.toml'], filenames: ['Cargo.lock', 'poetry.lock', 'uv.lock'] })
+  monaco.languages.setMonarchTokensProvider('toml', TOML_LANGUAGE)
+  monaco.languages.setLanguageConfiguration('toml', { comments: { lineComment: '#' }, brackets: [['[', ']'], ['{', '}']], autoClosingPairs: [{ open: '[', close: ']' }, { open: '{', close: '}' }, { open: '"', close: '"' }, { open: "'", close: "'" }] })
+  monaco.languages.registerDocumentSymbolProvider('toml', { provideDocumentSymbols: model => tomlOutline(model.getValue()).map(node => toMonacoSymbol(node)) })
+  monaco.languages.registerDocumentFormattingEditProvider('toml', {
+    async provideDocumentFormattingEdits(model, options, token) {
+      const controller = new AbortController()
+      const off = token.onCancellationRequested(() => controller.abort())
+      const version = model.getVersionId(), source = model.getValue()
+      try {
+        if (token.isCancellationRequested) return []
+        const { formatTomlInWorker } = await import('@/lib/code-studio/tomlFormatterClient')
+        const text = await formatTomlInWorker(source, options, controller.signal)
+        if (model.isDisposed() || token.isCancellationRequested || model.getVersionId() !== version || text === source) return []
+        return [{ range: model.getFullModelRange(), text }]
+      } catch (error) {
+        if (!token.isCancellationRequested) {
+          const { useCodeStudioLspStore } = await import('@/stores/codeStudioLsp')
+          useCodeStudioLspStore.setState({ message: error instanceof Error ? error.message : String(error) })
+        }
+        return []
+      } finally { off.dispose() }
+    },
+  })
   monaco.languages.register({ id: 'gosum', filenames: ['go.sum', 'go.work.sum'] })
   monaco.languages.setMonarchTokensProvider('gosum', GO_SUM)
   monaco.languages.register({ id: 'goasm', extensions: ['.s'] })
@@ -70,6 +96,11 @@ export function registerCodeStudioExtraLanguages(): void {
   monaco.languages.register({ id: 'makefile', filenames: ['Makefile', 'makefile', 'GNUmakefile'], extensions: ['.mk'] })
   monaco.languages.setMonarchTokensProvider('makefile', MAKEFILE)
   monaco.languages.setLanguageConfiguration('makefile', { comments: { lineComment: '#' } })
+}
+
+function toMonacoSymbol(node: import('@/lib/code-studio-lsp-api').GoIDESymbolNode): monaco.languages.DocumentSymbol {
+  const convert = (value: typeof node.range) => ({ startLineNumber: value.startLine, startColumn: value.startColumn, endLineNumber: value.endLine, endColumn: value.endColumn })
+  return { name: node.name, detail: '', kind: node.kind - 1, tags: [], range: convert(node.range), selectionRange: convert(node.selectionRange), children: node.children?.map(toMonacoSymbol) }
 }
 
 const GENERATED_HEADER = /^\/\/ Code generated .* DO NOT EDIT\.$/m

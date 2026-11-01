@@ -1,6 +1,4 @@
 import { useCodeStudioStore } from '@/stores/codeStudio'
-import { symbolOrigin } from '@/lib/code-studio/symbolOrigin'
-import { revealSymbolOrigin } from './codeStudioOriginTree'
 import { codeVisionEditorLanguages } from '@/components/ide/languages'
 import { monaco } from '@/lib/monacoSetup'
 import { requestDocumentSymbols, requestLocations, requestPrepareHierarchy, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
@@ -17,7 +15,6 @@ const VISION_KINDS = new Set([5, 6, 10, 11, 12, 13, 14, 23])
 /** Punti di ingresso chiamati dal runtime: il conteggio degli usi sarebbe sempre zero e fuorviante. */
 const ENTRY_POINT = /^(main|init|(Test|Benchmark|Fuzz|Example)\w*)$/
 
-interface OriginLens extends monaco.languages.CodeLens { origin: string }
 
 interface VisionLens extends monaco.languages.CodeLens {
   visionSymbol: { name: string, line: number, column: number, countUsages: boolean }
@@ -39,12 +36,6 @@ function usagesLabel(count: number): string {
   return count === 1 ? '1 usage' : `${count} usages`
 }
 
-/** One package origin per file, anchored to its first top-level type or declaration. */
-export function originDeclarationLine(symbols: GoIDESymbolNode[]): number | undefined {
-  const ordered = [...symbols].sort((a, b) => a.selectionRange.startLine - b.selectionRange.startLine)
-  return (ordered.find(symbol => [5, 10, 11, 23].includes(symbol.kind)) ?? ordered.find(symbol => VISION_KINDS.has(symbol.kind)))?.selectionRange.startLine
-}
-
 function visionLens(symbol: GoIDESymbolNode): VisionLens {
   const { startLine, startColumn } = symbol.selectionRange
   return {
@@ -61,16 +52,12 @@ async function provideVisionLenses(model: monaco.editor.ITextModel, token: monac
   try {
     const result = await requestDocumentSymbols(prepared.sessionId, prepared.documentId)
     if (token.isCancellationRequested) return empty
-    const project = useCodeStudioStore.getState().sessions.find(session => session.id === prepared.sessionId)?.project
-    const origin = project ? symbolOrigin(project, prepared.document.document.path, prepared.document.document.language, model.getValue()) : null
-    const originLine = originDeclarationLine(result.symbols)
     const lenses: monaco.languages.CodeLens[] = []
     const visit = (symbols: GoIDESymbolNode[]) => {
       for (const symbol of symbols) {
         if (VISION_KINDS.has(symbol.kind)) {
           const lens = visionLens(symbol)
           if (lens.visionSymbol.countUsages) lenses.push(lens)
-          if (origin && symbol.selectionRange.startLine === originLine) lenses.push({ range: lens.range, origin, command: { id: 'codeStudio.symbolOrigin', title: origin, tooltip: 'Reveal in Project Explorer · right-click to copy origin', arguments: [prepared.sessionId, prepared.document.document.relativePath] } } as OriginLens)
           if ([6,12].includes(symbol.kind)) lenses.push({ range: lens.range, command: { id: 'codeStudio.functionExplorer', title: 'callers · callees', arguments: [prepared.sessionId, prepared.documentId, symbol.selectionRange.startLine, symbol.selectionRange.startColumn] } })
         }
         if (symbol.children) visit(symbol.children)
@@ -133,7 +120,6 @@ export function registerCodeStudioCodeVision(): void {
   monaco.editor.registerCommand(SHOW_USAGES_COMMAND, (_accessor, sessionId: string, documentId: string, line: number, column: number, name: string) => {
     void showUsages(sessionId, documentId, line, column, name)
   })
-  monaco.editor.registerCommand('codeStudio.symbolOrigin', (_accessor, sessionId: string, path: string) => revealSymbolOrigin(sessionId, path))
   monaco.editor.registerCommand('codeStudio.functionExplorer', async (_accessor, sessionId: string, documentId: string, line: number, column: number) => {
     try {
       const roots = await requestPrepareHierarchy(sessionId, documentId, 'call', line, column)

@@ -417,8 +417,7 @@ func stableDocumentID(sessionID SessionID, path string) DocumentID {
 
 func fileURI(path string) string { return lsp.FileURI(path) }
 
-// languageByExtension mappa le estensioni sugli id dei linguaggi Monaco già
-// inclusi nel bundle: solo colorazione, nessun language server oltre a gopls.
+// languageByExtension maps file extensions to bundled Monaco language IDs.
 var languageByExtension = map[string]string{
 	".go": "go", ".s": "goasm",
 	".json": "json", ".jsonc": "json", ".yaml": "yaml", ".yml": "yaml",
@@ -431,7 +430,7 @@ var languageByExtension = map[string]string{
 	".sql": "sql", ".proto": "proto", ".graphql": "graphql", ".gql": "graphql",
 	".sh": "shell", ".bash": "shell", ".zsh": "shell",
 	".ps1": "powershell", ".psm1": "powershell", ".bat": "bat", ".cmd": "bat",
-	".ini": "ini", ".toml": "ini", ".cfg": "ini", ".conf": "ini", ".properties": "ini",
+	".ini": "ini", ".toml": "toml", ".cfg": "ini", ".conf": "ini", ".properties": "ini",
 	".gradle": "kotlin", ".kts": "kotlin",
 	".py": "python", ".rs": "rust", ".java": "java", ".kt": "kotlin",
 	".c": "cpp", ".h": "cpp", ".cpp": "cpp", ".hpp": "cpp",
@@ -446,6 +445,8 @@ func languageForPath(path string) string {
 		return "go"
 	case base == "go.sum" || base == "go.work.sum":
 		return "gosum"
+	case base == "cargo.lock" || base == "poetry.lock" || base == "uv.lock":
+		return "toml"
 	case base == ".env" || strings.HasPrefix(base, ".env."):
 		return "ini"
 	case base == "dockerfile" || strings.HasPrefix(base, "dockerfile.") || strings.HasSuffix(base, ".dockerfile") || base == "containerfile":

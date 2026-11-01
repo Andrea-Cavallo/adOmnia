@@ -41,7 +41,17 @@ type GoplsSettings struct {
 	// Vulncheck attiva la diagnostica delle vulnerabilità note sulle dipendenze (govulncheck
 	// dentro gopls). Scarica il database da vuln.go.dev: per questo è opt-in.
 	Vulncheck bool `json:"vulncheck"`
+	// HoverKind sceglie quanto documento mostra l'hover: HoverSynopsis (default), HoverFull o
+	// HoverNone. Vuoto vale HoverSynopsis.
+	HoverKind string `json:"hoverKind,omitempty"`
 }
+
+// Valori di GoplsSettings.HoverKind.
+const (
+	HoverSynopsis = "synopsis"
+	HoverFull     = "full"
+	HoverNone     = "none"
+)
 
 // BinDirectories restituisce le cartelle bin di ogni voce di GOPATH, dove `go install` mette gli strumenti.
 func BinDirectories(gopath string) []sdk.ToolDir {
@@ -149,7 +159,7 @@ func goplsConfiguration(settings GoplsSettings) map[string]any {
 		"vulncheck":          map[bool]string{true: "Imports", false: "Off"}[settings.Vulncheck && !netpolicy.Current().Offline],
 		"usePlaceholders":    settings.Placeholders,
 		"completeUnimported": true,
-		"hoverKind":          "FullDocumentation",
+		"hoverKind":          goplsHoverKind(settings.HoverKind),
 		"linksInHover":       settings.SemanticLinks,
 		"semanticTokens":     true,
 		// Stringhe e numeri li colora già Monaco: gopls invia solo i token che aggiungono informazione.
@@ -176,6 +186,21 @@ func goplsConfiguration(settings GoplsSettings) map[string]any {
 		config["diagnosticsTrigger"] = "Save"
 	}
 	return config
+}
+
+// goplsHoverKind traduce la preferenza nei valori di gopls. Il default è synopsis:
+// con FullDocumentation ogni hover carica il doc comment completo del simbolo *e delle sue
+// dipendenze*, che è la voce più costosa quando si esplora un metodo (gopls stesso parte da
+// FullDocumentation). Il primo paragrafo copre quasi sempre quello che serve.
+func goplsHoverKind(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case HoverFull:
+		return "FullDocumentation"
+	case HoverNone:
+		return "NoDocumentation"
+	default:
+		return "SynopsisDocumentation"
+	}
 }
 
 // goplsWatchesFile: i file cambiati su disco che gopls deve rileggere anche se non aperti.

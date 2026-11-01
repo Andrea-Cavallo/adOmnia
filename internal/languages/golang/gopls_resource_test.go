@@ -23,7 +23,17 @@ func TestGoplsResourceSettingsPreserveDefaultScope(t *testing.T) {
 	}
 	narrow := false
 	config := goplsConfiguration(GoplsSettings{DirectoryFilters: []string{"-**/node_modules"}, ExpandWorkspaceToModule: &narrow, DiagnosticsOnSave: true})
-	if config["expandWorkspaceToModule"] != false || config["diagnosticsTrigger"] != "Save" || config["completeUnimported"] != true || config["hoverKind"] != "FullDocumentation" {
+	if config["expandWorkspaceToModule"] != false || config["diagnosticsTrigger"] != "Save" || config["completeUnimported"] != true {
 		t.Fatalf("configuration: %+v", config)
+	}
+	// L'hover è una scelta dell'utente: il dovuto è synopsis, FullDocumentation solo su richiesta.
+	if defaultConfig["hoverKind"] != "SynopsisDocumentation" {
+		t.Fatalf("default hoverKind = %v", defaultConfig["hoverKind"])
+	}
+	if config["hoverKind"] != "SynopsisDocumentation" {
+		t.Fatalf("hoverKind must not change when the user did not ask: %v", config["hoverKind"])
+	}
+	if full := goplsConfiguration(GoplsSettings{HoverKind: HoverFull}); full["hoverKind"] != "FullDocumentation" {
+		t.Fatalf("explicit full hover = %v", full["hoverKind"])
 	}
 }

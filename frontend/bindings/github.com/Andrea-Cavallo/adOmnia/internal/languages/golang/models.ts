@@ -1878,6 +1878,12 @@ export class GoplsSettings {
      */
     "vulncheck": boolean;
 
+    /**
+     * HoverKind sceglie quanto documento mostra l'hover: HoverSynopsis (default), HoverFull o
+     * HoverNone. Vuoto vale HoverSynopsis.
+     */
+    "hoverKind"?: string;
+
     /** Creates a new GoplsSettings instance. */
     constructor($$source: Partial<GoplsSettings> = {}) {
         if (!("gofumpt" in $$source)) {

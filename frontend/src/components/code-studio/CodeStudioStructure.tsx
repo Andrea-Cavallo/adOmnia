@@ -111,16 +111,19 @@ export function CodeStudioStructure({ sessionId, document }: CodeStudioStructure
   // Solo la chiave cambia quando il cursore passa a un altro simbolo: niente ridisegni a ogni tasto.
   const caretKey = useCodeStudioCursorStore((state) => symbolPathAt(symbols, state.line, state.column).map(symbolKey).join('|'))
   const caretPath = caretKey ? caretKey.split('|') : NO_PATH
-  const sections = useMemo(() => groupStructure(symbols), [symbols])
+  const sections = useMemo<StructureSection[]>(() => document?.document.language === 'toml'
+    ? (symbols.length ? [{ id: 'other', label: 'Tables and keys', nodes: symbols }] : [])
+    : groupStructure(symbols), [symbols, document?.document.language])
 
   if (!document) return <Hint text="Open a source file to see its structure." />
-  if (!server.supported) return <Hint text="Structure is available for languages with a language server." />
+  if (!server.supported && !local) return <Hint text="Structure is available for languages with a language server." />
   if (!local && server.state !== 'ready') return <Hint text={server.error || (server.state === 'starting' ? `${server.name} language server is loading the workspace…` : `Start the ${server.name} language server to see types, functions and methods.`)} />
   return (
     <div className="min-h-0 flex-1 overflow-auto px-1.5 py-1.5">
       {document.document.language === 'java' && <div role="status" className="mb-1 border-b border-border-1 px-2 py-1 text-[10px] text-text-4">{local ? (snapshot.pending ? 'Local Java · updating…' : server.state === 'starting' ? 'Local Java · language server loading the workspace…' : 'Local Java · current file') : 'Java language server'}</div>}
+      {document.document.language === 'toml' && <div role="status" className="mb-1 border-b border-border-1 px-2 py-1 text-[10px] text-text-4">Local TOML · tables and keys{snapshot.pending ? ' · updating…' : ''}</div>}
       {local && server.error && <Hint text={server.error} />}
-      {snapshot.limited && <Hint text="Local Java analysis is limited to 256,000 characters and 50,000 tokens. Use the language server for this file." />}
+      {snapshot.limited && <Hint text={document.document.language === 'toml' ? 'Local TOML outline is limited to the first 256,000 characters.' : 'Local Java analysis is limited to 256,000 characters and 50,000 tokens. Use the language server for this file.'} />}
       {sections.map((section) => <StructureGroup key={section.id} section={section} documentId={document.document.id} caretPath={caretPath} />)}
       {symbols.length === 0 && <Hint text={loaded || local ? 'No top-level symbols.' : 'Reading the file structure…'} />}
     </div>
