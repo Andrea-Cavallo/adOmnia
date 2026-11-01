@@ -10,7 +10,9 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 
+	"crypto/sha256"
 	"embed"
+	"fmt"
 	"github.com/Andrea-Cavallo/adOmnia/internal/adomniacli"
 	"github.com/Andrea-Cavallo/adOmnia/internal/browser"
 	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
@@ -20,6 +22,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/themes"
 	"github.com/Andrea-Cavallo/adOmnia/internal/windowchrome"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -129,7 +132,7 @@ func main() {
 	appOptions := application.Options{
 		Name: "adOmnia paratus.",
 		Assets: application.AssetOptions{
-			Handler: application.BundledAssetFileServer(assets),
+			Handler: desktopAssetHandler(application.BundledAssetFileServer(assets)),
 		},
 		Services: []application.Service{
 			application.NewService(app),
@@ -203,7 +206,7 @@ func main() {
 		Height:    winH,
 		MinWidth:  winMinW,
 		MinHeight: winMinH,
-		URL:       "/",
+		URL:       desktopEntryURL(),
 		Frameless: windowchrome.IsApp(startupWindowChrome),
 		// Carries over the v2 DragAndDrop.EnableFileDrop behaviour. Without it
 		// the drop handlers never fire and App.ReadDroppedFiles is unreachable.
@@ -264,3 +267,19 @@ func NewPluginManager() *PluginManager {
 type WasmRuntime struct{ *plugins.WasmRuntime }
 
 func NewWasmRuntime() *WasmRuntime { return &WasmRuntime{WasmRuntime: plugins.NewWasmRuntime()} }
+
+// The WebView profile survives executable updates; the entry page must track the embedded bundle.
+func desktopEntryURL() string {
+	index, err := assets.ReadFile("frontend/dist/index.html")
+	if err != nil {
+		return "/"
+	}
+	return fmt.Sprintf("/?bundle=%x", sha256.Sum256(index))
+}
+
+func desktopAssetHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		next.ServeHTTP(w, r)
+	})
+}

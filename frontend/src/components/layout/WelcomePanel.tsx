@@ -13,9 +13,7 @@ import { loadHubPhrase } from './hubPhrases'
 import '@fontsource/doto/latin-800.css'
 import '@fontsource/geist-mono/latin-400.css'
 import './WelcomePanel.css'
-import { useActivityStore } from '@/stores/activity'
 
-const Silk = lazy(() => import('./react-bits/Silk'))
 
 // Code Studio stays lazy: the file icon set loads only when the Hub shows a recent file.
 const FileIcon = lazy(() => import('@/components/code-studio/CodeStudioFileIcon').then((module) => ({ default: module.CodeStudioFileIcon })))
@@ -120,7 +118,6 @@ export function WelcomePanel() {
   const t = (text: string) => tr(text as UiMessage) || text
   const open = useAppStore((state) => state.setActiveRail)
   const now = useNow()
-  const animationPaused = useActivityStore((state) => state.phase !== 'Active')
   const [recent] = useState(loadRecentFiles)
   const history = useTabsStore((state) => state.responseHistory)
   const requests = useMemo(() => recentRequests(history, RECENT_ROWS), [history])
@@ -144,7 +141,6 @@ export function WelcomePanel() {
 
   return (
     <div data-hub-page>
-      <div className="hub-silk-background" aria-hidden="true"><Suspense fallback={null}><Silk speed={5} scale={1} color="#7B7481" noiseIntensity={1.5} rotation={0} paused={animationPaused} /></Suspense></div>
       <HubSidebar />
       <main className="hub-main">
         <header className="hub-hero">

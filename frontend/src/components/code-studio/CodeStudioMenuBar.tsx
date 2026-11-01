@@ -2,8 +2,7 @@ import { useRef, useState } from 'react'
 
 import { showModule } from '@/lib/moduleRouting'
 import { History, Menu } from 'lucide-react'
-import type { ContextMenuItem } from '@/components/ui/ContextMenu'
-import { CodeStudioBranchedMenu } from './CodeStudioBranchedMenu'
+import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { AppLogo } from '@/components/ui/AppLogo'
 import type { GoIDERecentProject } from '@/lib/code-studio-api'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS, commandShortcut, type CodeStudioCommandId, type CodeStudioMenuId } from './codeStudioCommands'
@@ -94,14 +93,12 @@ export function mainMenuItems(state: CodeStudioCommandState, recentProjects: GoI
 
 export function CodeStudioMenuBar({ state, recentProjects, openProjectPaths, onCommand, onOpenRecent }: CodeStudioMenuBarProps) {
   const [open, setOpen] = useState<{ x: number; y: number } | null>(null)
-  const [activeId, setActiveId] = useState('')
   const trigger = useRef<HTMLButtonElement>(null)
   const close = (restoreFocus = true) => { setOpen(null); if (restoreFocus) trigger.current?.focus() }
 
   const select = (id: string) => {
     close()
     if (id.startsWith(MENU_PREFIX)) return
-    setActiveId(id)
     if (id.startsWith(RECENT_PREFIX)) onOpenRecent(id.slice(RECENT_PREFIX.length))
     else onCommand(id as CodeStudioCommandId)
   }
@@ -117,7 +114,7 @@ export function CodeStudioMenuBar({ state, recentProjects, openProjectPaths, onC
         ref={trigger}
         aria-label="Main menu"
         title="Main menu: File, Edit, View, Navigate, Code, Go, Java, Run, Tools, Git, Help"
-        aria-haspopup="tree"
+        aria-haspopup="menu"
         aria-expanded={!!open}
         onClick={(event) => {
           if (open) return setOpen(null)
@@ -128,7 +125,7 @@ export function CodeStudioMenuBar({ state, recentProjects, openProjectPaths, onC
       >
         <Menu size={17} strokeWidth={1.8} />
       </button>
-      {open && <CodeStudioBranchedMenu x={open.x} y={open.y} trigger={trigger} activeId={activeId} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={close} />}
+      {open && <ContextMenu appearance="studio" compact x={open.x} y={open.y} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={close} />}
     </>
   )
 }

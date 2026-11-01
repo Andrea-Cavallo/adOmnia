@@ -168,7 +168,7 @@ func writeBuildRunMakefile(root, source, compiler string, sources []string) (out
 		parts = append(parts, makePath(item))
 	}
 	compilerCommand := strings.Join(append(parts, "-o", makePath(output)), " ")
-	lines := []string{".PHONY: run", "run:", "\t" + compilerCommand, "\t" + makePath(output), ""}
+	lines := []string{".PHONY: run", "run:", "\t@" + compilerCommand, "\t@" + makePath(output), ""}
 	makefile = filepath.Join(directory, "Makefile")
 	if err = os.WriteFile(makefile, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
 		return "", "", fmt.Errorf("could not write the build file: %w", err)

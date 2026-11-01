@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import type { ContextMenuItem } from '@/components/ui/ContextMenu'
 import { compactFileMenu, mainMenuItems } from './CodeStudioMenuBar'
 import { CODE_STUDIO_COMMANDS, CODE_STUDIO_MENUS } from './codeStudioCommands'
-import { branchAncestors } from './CodeStudioBranchedMenu'
 
 describe('compact File menu',()=>{
   it('keeps the command registry and availability intact in the branched tree', () => {
@@ -13,8 +12,6 @@ describe('compact File menu',()=>{
     for (const command of expected) expect(all.filter(item => item.id === command.id)).toHaveLength(1)
     expect(all.find(item => item.id === 'file.save')).toMatchObject({ disabled: true, disabledReason: 'No active document' })
     expect(all.find(item => item.id === 'file.autoSave')?.checked).toBe(true)
-    expect(branchAncestors(menus, 'file.autoSave')).toEqual(['menu:file', 'file.saveOptions'])
-    expect(branchAncestors(menus, 'missing')).toEqual([])
   })
   it('keeps every original command, shortcut and disabled reason in its submenu',()=>{
     const items: ContextMenuItem[] = [

@@ -95,6 +95,14 @@ async function openContract(ref: EntityRef): Promise<void> {
 /** Registers the v1 openers once; returns a disposer (used by HMR and tests). */
 export function registerDefaultOpeners(): () => void {
   const offs = [
+    registerOpener('artifact', {
+      intent: 'inspect-run-logs', title: 'Open in Log Inspector',
+      available: ref => ref.attrs.type === 'run-log',
+      run: ref => {
+        const { text, ...attrs } = ref.attrs
+        handoffToPanel('loginspector', { ...ref, attrs }, 'import-run-logs', { text, name: ref.label })
+      },
+    }),
     registerOpener('artifact', { intent: 'inspect', title: 'Inspect certificate or keystore', isDefault: true, run: async ref => {
       if (!ref.sessionId) throw new Error('The source project is no longer open')
       const { openProjectArtifact } = await import('@/lib/code-studio/projectArtifacts')

@@ -1062,6 +1062,28 @@ This static call graph does not establish runtime execution, dynamic dispatch co
 Code Studio recognizes `.toml`, `Cargo.lock`, `poetry.lock` and `uv.lock` as TOML in the editor and Git diff. Syntax highlighting handles tables, array tables, comments, strings (including multiline), booleans, dates and numbers. Structure, breadcrumbs and Monaco symbol navigation share a syntactic outline of tables and keys from the current buffer; no server or tool download is required. The outline reads at most 256,000 characters and Structure reports truncation. This is navigation rather than semantic validation. TOML formatting uses bundled Taplo 0.5.0 (MIT), loaded only on demand in a disposable worker. Reformat Code is undoable; Format on Save respects the existing preference and root EditorConfig indentation/final-newline settings. Comments, key order, multiline-string contents and CRLF are preserved. Invalid syntax and duplicate keys are rejected; cancellation, a changed buffer, timeouts and inputs above 2,000,000 characters produce no replacement. Save actions keep the original text on failure and never apply generic trailing-space trimming to TOML strings. The worker is terminated after each request; it has no filesystem/config discovery or remote-schema access. Project `.taplo.toml` settings are not consumed. Semantic diagnostics and completion remain unavailable. Native desktop acceptance remains open (ML-7.M5).
 
 
-### Branched main menu
+### Compact main menu
 
-The IDE hamburger opens a React adaptation of the supplied Vue Bits BranchedMenu: expandable categories and nested command groups stay in one scrollable panel with curved branch connectors. It consumes the existing command registry, including shortcuts, checked preferences, disabled reasons and Open Recent routing. Arrow keys navigate and expand/collapse the tree; Home/End move to its ends, Enter/Space activate, Escape closes and returns focus. Click/focus outside dismisses the panel. Reduced-motion preferences disable branch/fold animation. Editor context menus remain unchanged. Browser interaction and layout checks passed; native desktop acceptance remains open.
+The IDE hamburger uses the existing compact ContextMenu. Submenus open beside their parent, to the right when space permits and on the opposite side at the window edge. Command routing, shortcuts, checked preferences, disabled reasons and recent projects are preserved. The inline expanding tree was removed.
+
+
+### Static Hub
+
+The main Hub has a static background: Silk/Threads are not rendered, and no decorative canvas, WebGL renderer or animation loop is mounted. Hub CSS animations, transitions and smooth scrolling are disabled. Navigation, recent files and the minute-aligned clock remain available.
+
+
+### Run console output and execution details
+
+All language runners share the same Run console presentation. Command and working directory appear once in the collapsed Execution details section; the synthetic sequence-zero header remains in the raw buffer for Copy console. Search opens matching execution metadata. Actual stdout/stderr, repeated program messages, ANSI colors and source links are preserved. Empty system spacer rows are omitted. Wrap controls line wrapping without changing copied output.
+
+C/C++ build-and-run uses quiet recipes in adOmnia's generated Makefile: compiler/program invocations are not echoed a second time. Compiler diagnostics, program stdout/stderr and nonzero exit codes are unaffected. User-owned Makefiles and other tool output are not filtered by text heuristics. Existing console histories are preserved; the backend change applies to newly started runs in the updated application.
+
+### Run log export and Inspector handoff
+
+The Run console download button exports the entire retained run buffer as JSON or readable TXT, regardless of search, Logs only, or the visible tail. JSON includes execution metadata, original chunks (sequence, stream, ANSI), and clean events. TXT includes the complete clean console, including execution system messages. This is a snapshot of retained logs, not an unlimited recording of output already discarded by the console buffer.
+
+Open in Log Inspector sends a clean JSONL snapshot through the entity handoff router and adds a file source to the existing investigation after hydration. Events retain run ID, stream, and sequence; per-line timestamps are not fabricated. Native save-dialog acceptance and detached-window handoff still require desktop smoke testing.
+
+### Run toolbar pickers
+
+Run selection and panel placement share a compact 28 px picker, visible focus, a selected checkmark, and the existing keyboard-accessible context menu. Run menu entries show command/status beneath the run label; placement uses bottom/left/right panel icons. Browser fixture verified selection, keyboard opening, Escape and focus return; native desktop rendering remains a separate acceptance check.

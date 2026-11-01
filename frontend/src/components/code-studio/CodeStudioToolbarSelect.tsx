@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ComponentType } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 
 interface Props {
   label: string
   value: string
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; description?: string; icon?: ComponentType<{ size?: number; className?: string }> }[]
   onChange: (value: string) => void
   className?: string
 }
@@ -15,6 +15,7 @@ export function CodeStudioToolbarSelect({ label, value, options, onChange, class
   const trigger = useRef<HTMLButtonElement>(null)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const selected = options.find((option) => option.value === value)
+  const Icon = selected?.icon
   const close = () => { setMenu(null); trigger.current?.focus() }
   const open = () => {
     const rect = trigger.current?.getBoundingClientRect()
@@ -25,12 +26,13 @@ export function CodeStudioToolbarSelect({ label, value, options, onChange, class
       title={`${label}: ${selected?.label ?? value}`}
       onClick={() => menu ? close() : open()}
       onKeyDown={(event) => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); open() } }}
-      className={`inline-flex h-7 min-w-0 shrink-0 items-center gap-2 rounded-[3px] border border-border-1 bg-surface-1 px-2 font-mono text-[11px] text-text-2 hover:border-border-2 hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent ${className}`}>
+      className={`inline-flex h-7 min-w-0 shrink-0 items-center gap-2 rounded-md border border-border-1 bg-surface-1 px-2.5 font-sans text-[12px] font-medium text-text-2 hover:border-border-2 hover:bg-surface-2 aria-expanded:border-accent aria-expanded:text-text-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${className}`}>
+      {Icon && <Icon size={14} className="shrink-0 text-text-3" />}
       <span className="min-w-0 flex-1 truncate text-left">{selected?.label ?? value}</span>
       <ChevronDown size={12} aria-hidden="true" className="shrink-0 text-text-3" />
     </button>
-    {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y}
-      items={options.map((option) => ({ id: option.value, label: option.label, checked: option.value === value }))}
+    {menu && <ContextMenu appearance="studio" compact x={menu.x} y={menu.y}
+      items={options.map((option) => ({ id: option.value, label: option.label, description: option.description, icon: option.icon, checked: option.value === value }))}
       onSelect={(next) => { close(); onChange(next) }} onClose={close} />}
   </>
 }

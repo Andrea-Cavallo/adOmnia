@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 export interface ContextMenuItem {
   id: string
   label: string
+  description?: string
   shortcut?: string
   danger?: boolean
   disabled?: boolean
@@ -217,8 +218,9 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, compact, parentL
   const openRect = () => {
     const el = ref.current?.querySelectorAll('[data-mi]')[openIndex] as HTMLElement | undefined
     const r = el?.getBoundingClientRect()
+    const menu = ref.current?.getBoundingClientRect()
     return r
-      ? { x: r.right - SUBMENU_OVERLAP, y: r.top }
+      ? { x: (menu?.right ?? r.right) - SUBMENU_OVERLAP, y: r.top }
       : { x: (pos?.left ?? x) + MENU_WIDTH - SUBMENU_OVERLAP, y: pos?.top ?? y }
   }
 
@@ -262,6 +264,7 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, compact, parentL
               {hasIcons && <MenuIcon item={it} studio={studio} />}
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{it.label}</span>
+                {it.description && <span className="mt-0.5 block truncate text-[11px] font-normal leading-4 text-text-3">{it.description}</span>}
                 {studio && it.disabled && <span className="block whitespace-normal text-[11px] leading-4 text-text-3">{it.disabledReason || 'Already selected or unavailable in the current state'}</span>}
               </span>
               {it.checked && <Check size={studio ? 14 : 12} className="shrink-0 text-accent" aria-hidden="true" />}
@@ -294,7 +297,7 @@ function MenuLevel({ items, x, y, depth, autoFocus, appearance, compact, parentL
 function studioItemClass(item: ContextMenuItem, highlighted: boolean): string {
   if (item.disabled) return 'flex min-h-8 w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 py-1 text-left text-[12.5px] text-text-3'
   return cn(
-    'flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] transition-colors',
+    item.description ? 'flex min-h-12 w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[12.5px]' : 'flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] transition-colors',
     item.danger ? 'text-error' : 'text-text-2',
     highlighted && (item.danger
       ? 'bg-error/10'

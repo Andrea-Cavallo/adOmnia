@@ -67,6 +67,9 @@ func TestBuildRunCompilesLegacyCAndRunsIt(t *testing.T) {
 	if strings.Count(string(content), "\n\t") != 2 {
 		t.Fatalf("make must compile and then run:\n%s", content)
 	}
+	if strings.Count(string(content), "\n\t@") != 2 {
+		t.Fatalf("generated recipes must not echo commands already shown in execution details:\n%s", content)
+	}
 }
 
 func TestBuildRunGathersTheFolderSourcesOfACppProgram(t *testing.T) {

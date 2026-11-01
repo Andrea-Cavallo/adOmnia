@@ -1,3 +1,4 @@
+import { useEntityHandoff } from '@/lib/entities/dispatch'
 import { NothingStudioHeader } from '@/components/ui/NothingStudioHeader'
 import './logInspector.css'
 import { attachLiveSessionSource } from '@/lib/devsession/logInspectorSource'
@@ -102,6 +103,14 @@ export function LogInspectorPanel() {
     setError, ingest, openFiles, renameSource, toggleSource, removeSource, replaceSource, configureSource, restoreSources,
     pasteAndAnalyze, appendLiveLines, clearImport, requestAbort,
   } = useLogImport({ maxEvents: prefs.maxEvents, streamPreview, onReset: clearSelection })
+
+  useEntityHandoff('loginspector', (ref, intent, payload) => {
+    if (intent !== 'import-run-logs' || ref.attrs.type !== 'run-log') return false
+    if (!sessionReady || progress) return false
+    if (typeof payload.text !== 'string' || typeof payload.name !== 'string') return false
+    setFilters(EMPTY_FILTERS)
+    void openFiles([new File([payload.text], payload.name, { type: 'application/x-ndjson' })])
+  })
 
   const live = useLiveSources(useCallback(
     (sourceId, label, lines) => appendLiveLines(sourceId, label, lines),
