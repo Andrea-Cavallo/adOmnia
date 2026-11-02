@@ -8,8 +8,10 @@ export interface UpdateState {
  phase: string; version: string; channel: string; releaseUrl: string; notes: string
  received: number; total: number; error: string; trusted: boolean; scheduled: boolean
  failedVersion: string; restoredVersion: string; failureReason: string; applyLogAvailable: boolean
+ /** How this copy was installed; selfUpdate is false when it is updated outside adOmnia. */
+ install: { kind: string; selfUpdate: boolean; reason: string }
 }
-const idle: UpdateState = { phase: 'idle', version: '', channel: 'stable', releaseUrl: '', notes: '', received: 0, total: 0, error: '', trusted: false, scheduled: false, failedVersion: '', restoredVersion: '', failureReason: '', applyLogAvailable: false }
+const idle: UpdateState = { phase: 'idle', version: '', channel: 'stable', releaseUrl: '', notes: '', received: 0, total: 0, error: '', trusted: false, scheduled: false, failedVersion: '', restoredVersion: '', failureReason: '', applyLogAvailable: false, install: { kind: '', selfUpdate: true, reason: '' } }
 interface UpdaterStore { status: UpdateState; error: string; check: (force?: boolean) => Promise<void>; download: () => Promise<void>; cancel: () => Promise<void>; schedule: (enable: boolean) => Promise<void>; openApplyLog: () => Promise<void> }
 let checking = false
 function channel(): string {
@@ -24,7 +26,7 @@ export const useUpdaterStore = create<UpdaterStore>((set,get) => ({
   checking = true; set({ error: '', status: { ...get().status, phase: 'checking' } })
   try {
    const status = await CheckUpdateChannel(channel(), force); set({ status })
-   if (status.phase === 'available' && status.trusted && !status.error && useSettingsStore.getState().settings.general.autoDownloadUpdates === true) await get().download()
+   if (status.phase === 'available' && status.trusted && status.install.selfUpdate && !status.error && useSettingsStore.getState().settings.general.autoDownloadUpdates !== false) await get().download()
   } catch(error) { set({ status: { ...get().status, phase: 'error' } }); failure(error) } finally { checking = false }
  },
  download: async () => { try { set({ status: await DownloadUpdate(), error: '' }) } catch(error) { failure(error) } },

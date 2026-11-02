@@ -39,6 +39,8 @@ jobs:
         run: |
           $tag = $env:GITHUB_REF_NAME
           if (-not $tag -or -not $tag.StartsWith('v')) { $tag = $env:INPUT_TAG }
+          # Fail fast: the tag becomes the app version, the installer version and the update manifest version.
+          if ($tag -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') { throw "Release tag '$tag' is not v<major>.<minor>.<patch>[-prerelease]" }
           $ver = $tag.TrimStart('v')
           echo "tag=$tag"     >> $env:GITHUB_OUTPUT
           echo "version=$ver" >> $env:GITHUB_OUTPUT
@@ -63,6 +65,14 @@ jobs:
           $env:GIT_COMMIT = "${{ github.sha }}"
           wails3 task windows:build
 
+      # Signing is optional: without the secrets the binaries stay unsigned instead of failing.
+      - name: Sign executable
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: ./scripts/sign-windows.ps1 -Path bin\adomnia.exe
+
       - name: Stage artifact
         shell: pwsh
         run: |
@@ -74,6 +84,24 @@ jobs:
         shell: pwsh
         run: |
           Compress-Archive -LiteralPath bin/adomnia.exe -DestinationPath "dist/adomnia-${{ steps.ver.outputs.version }}-windows-amd64-update.zip"
+
+      - name: Ensure NSIS
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
+            choco install nsis --no-progress -y
+          }
+
+      - name: Build installer
+        shell: pwsh
+        run: ./scripts/build-windows-installer.ps1 -Version "${{ steps.ver.outputs.version }}"
+
+      - name: Sign installer
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: ./scripts/sign-windows.ps1 -Path "dist\adomnia-${{ steps.ver.outputs.version }}-windows-amd64-setup.exe"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -247,11 +275,25 @@ jobs:
         run: |
           cd dist
           cp adomnia-*-windows-amd64.exe adomnia-windows-amd64.exe
+          cp adomnia-*-windows-amd64-setup.exe adomnia-windows-amd64-setup.exe
           cp adomnia-*-macos-universal.dmg adomnia-macos-universal.dmg
           cp adomnia-*-linux-amd64-gtk3-webkitgtk-4.1.tar.gz adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz
 
       - name: Include installation scripts
         run: cp scripts/install.sh scripts/install.ps1 dist/
+
+      # A release is published only when every download and the signed manifest are present.
+      - name: Check release contents
+        run: |
+          cd dist
+          for pattern in 'adomnia-*-windows-amd64.exe' 'adomnia-*-windows-amd64-setup.exe' \
+                         'adomnia-*-macos-universal.dmg' 'adomnia-*-linux-amd64-gtk3-webkitgtk-4.1.tar.gz' \
+                         'update-manifest.json'; do
+            if ! compgen -G "$pattern" > /dev/null; then
+              echo "::error::release is missing $pattern"
+              exit 1
+            fi
+          done
 
       - name: Generate checksums
         run: |
@@ -268,6 +310,9 @@ jobs:
           files: dist/*
           generate_release_notes: true
           fail_on_unmatched_files: true
+          # Uploaded as a draft, then published in one step below: the in-app updater and the
+          # install scripts never see a release whose files are still uploading.
+          draft: true
           prerelease: >-
             ${{
               contains(steps.ver.outputs.tag, '-rc')   ||
@@ -276,3 +321,9 @@ jobs:
             }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false

@@ -5,6 +5,42 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+/**
+ * Install is reported to the UI with every update state.
+ */
+export class Install {
+    "kind": string;
+    "selfUpdate": boolean;
+
+    /**
+     * Reason says why SelfUpdate is false, in words the user can act on.
+     */
+    "reason": string;
+
+    /** Creates a new Install instance. */
+    constructor($$source: Partial<Install> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("selfUpdate" in $$source)) {
+            this["selfUpdate"] = false;
+        }
+        if (!("reason" in $$source)) {
+            this["reason"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Install instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Install {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Install($$parsedSource as Partial<Install>);
+    }
+}
+
 export class State {
     "phase": string;
     "version": string;
@@ -20,6 +56,7 @@ export class State {
     "restoredVersion": string;
     "failureReason": string;
     "applyLogAvailable": boolean;
+    "install": Install;
 
     /** Creates a new State instance. */
     constructor($$source: Partial<State> = {}) {
@@ -65,6 +102,9 @@ export class State {
         if (!("applyLogAvailable" in $$source)) {
             this["applyLogAvailable"] = false;
         }
+        if (!("install" in $$source)) {
+            this["install"] = (new Install());
+        }
 
         Object.assign(this, $$source);
     }
@@ -73,7 +113,11 @@ export class State {
      * Creates a new State instance from a string or object.
      */
     static createFrom($$source: any = {}): State {
+        const $$createField14_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("install" in $$parsedSource) {
+            $$parsedSource["install"] = $$createField14_0($$parsedSource["install"]);
+        }
         return new State($$parsedSource as Partial<State>);
     }
 }
@@ -129,3 +173,6 @@ export class UpdateInfo {
         return new UpdateInfo($$parsedSource as Partial<UpdateInfo>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = Install.createFrom;

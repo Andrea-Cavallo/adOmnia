@@ -146,6 +146,16 @@ jobs:
           Copy-Item bin\adomnia.exe "dist\adomnia-$version-windows-amd64.exe"
           Compress-Archive -LiteralPath bin/adomnia.exe -DestinationPath "dist/adomnia-$version-windows-amd64-update.zip"
 
+      - name: Build Windows installer
+        # Same script as the release, so a broken installer fails the PR, not the release.
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
+            choco install nsis --no-progress -y
+          }
+          $version = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "0.0.0-" + "${{ github.sha }}".Substring(0, 7) }
+          ./scripts/build-windows-installer.ps1 -Version $version
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: adomnia-windows-amd64

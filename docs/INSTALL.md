@@ -12,7 +12,8 @@ Release files:
 
 | Platform | Artifact |
 |---|---|
-| Windows | [`adomnia-<version>-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
+| Windows (installer, recommended) | [`adomnia-<version>-windows-amd64-setup.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
+| Windows (portable) | [`adomnia-<version>-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
 | Linux | [`adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
 | macOS | [`adomnia-<version>-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
 
@@ -57,18 +58,27 @@ unlike the in-app updater, these scripts do not verify the Ed25519 manifest.
 
 ## Updates inside adOmnia
 
-Use **Settings → Check now**, then **Download update**. New installations default
-to asking before downloading; existing explicit automatic-download preferences
-remain compatible. Automatic downloads can be enabled separately in Settings,
-but never authorize installation.
+adOmnia checks GitHub Releases at startup and every six hours while open
+(**Settings → Automatic updates**). A newer signed release downloads in the
+background by default; turn **Download verified updates in the background** off to
+download only when you click **Download update**. Downloading never installs.
 
-After signature and checksum verification, choose **Save & restart** or **Install
-on exit**. **Later** leaves the application unchanged unless you have explicitly
-scheduled installation. The updater preserves local data, retains the previous
-application during startup, and restores it if the new build does not confirm
-successful startup. Development builds and system-managed Linux copies cannot
-self-update. The installed build must trust the signing key used by the release;
-releases without `update-manifest.json` are not offered for in-app installation.
+After the Ed25519 signature and the SHA-256 checksum are verified, choose **Save &
+restart** or **Install on exit**. **Later** leaves the application unchanged. The
+updater keeps your local data, keeps the previous application while the new one
+starts, and restores it if the new build does not confirm a successful startup.
+
+How adOmnia updates depends on how it was installed; Settings shows which case applies:
+
+| Installed with | In-app update |
+|---|---|
+| Windows installer (`setup.exe`) | Replaces `adomnia.exe` in place and updates the version shown in **Installed apps** |
+| Portable `.exe`, `install.ps1`, `install.sh`, Linux tarball `install.sh` | Replaces the executable in place |
+| macOS `.app` in a folder you can write to | Replaces `adomnia.app` |
+| Read-only folder, `/usr`, `/opt`, Snap, Flatpak, Scoop/Homebrew | Not possible: adOmnia shows the release and a download link instead |
+
+Development builds never update. The installed build must trust the signing key
+used by the release; releases without `update-manifest.json` are not offered.
 
 ## CI Artifacts from Every Push
 
@@ -91,9 +101,21 @@ Available artifact groups:
 
 ## Windows
 
-Download the `.exe` file and run it.
+**Installer (recommended).** Run `adomnia-<version>-windows-amd64-setup.exe`.
 
-Binaries are not OS-code-signed yet. If SmartScreen shows "Windows protected your PC", choose **More info → Run anyway**, but only for a file you downloaded from this repository's releases; compare it with `SHA256SUMS.txt` if you want to be sure. The in-app updater verifies its own publisher signature and checksum.
+- Installs for your Windows account only, in `%LOCALAPPDATA%\Programs\adOmnia`: no administrator rights, no UAC prompt.
+- Adds a Start menu shortcut and, if you keep the option, a desktop shortcut.
+- Registers adOmnia in **Settings → Apps → Installed apps**, with its version and an uninstaller.
+- Running a newer setup over an installed copy upgrades it. Workspaces, collections and settings are kept.
+- If the Microsoft Edge WebView2 Runtime is missing, the installer says so and offers Microsoft's download page.
+- The uninstaller removes the application and shortcuts. It deletes your data (`%APPDATA%\adomnia`) only if you tick **Also delete my data**.
+
+Unattended install or upgrade: `adomnia-<version>-windows-amd64-setup.exe /S`.
+Unattended uninstall: `"%LOCALAPPDATA%\Programs\adOmnia\uninstall.exe" /S` (always keeps your data).
+
+**Portable.** Download `adomnia-<version>-windows-amd64.exe` and run it from any folder you can write to.
+
+Releases are Authenticode-signed only when the repository has a code-signing certificate configured. Without a signature, SmartScreen may show "Windows protected your PC": choose **More info → Run anyway**, but only for a file you downloaded from this repository's releases, and compare it with `SHA256SUMS.txt` if you want to be sure. The in-app updater always verifies its own publisher signature and checksum.
 
 ## macOS
 
