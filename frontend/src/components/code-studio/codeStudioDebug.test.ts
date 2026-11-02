@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/monacoSetup', () => ({
+vi.mock('@/lib/monacoRef', () => ({
   monaco: { editor: { TrackedRangeStickiness: { NeverGrowsWhenTypingAtEdges: 1 }, OverviewRulerLane: { Left: 1, Full: 7 } }, languages: {} },
 }))
 vi.mock('./codeStudioLanguageFeatures', () => ({ documentForModel: vi.fn() }))

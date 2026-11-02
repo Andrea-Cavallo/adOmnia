@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MutableRefObject } from 'react'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { headKey, useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
 import type { GoIDEVCSBlameLine } from '@/lib/code-studio-vcs-api'
@@ -11,10 +11,10 @@ const BLAME_AUTHOR_CHARS = 12
 const BLAME_LINE_NUMBER_CHARS = 36
 
 /** Blocchi calcolati per ciascun editor, per il clic sul gutter. */
-const hunksByEditor = new WeakMap<monaco.editor.ICodeEditor, CodeStudioLineHunk[]>()
+const hunksByEditor = new WeakMap<Monaco.editor.ICodeEditor, CodeStudioLineHunk[]>()
 
 export interface CodeStudioRevertEdit {
-  range: monaco.IRange
+  range: Monaco.IRange
   text: string
 }
 
@@ -54,7 +54,7 @@ const OVERVIEW_RULER_COLORS: Record<CodeStudioLineHunk['kind'], string> = {
   deleted: 'rgba(148, 163, 184, 0.45)',
 }
 
-function vcsDecorations(hunks: CodeStudioLineHunk[]): monaco.editor.IModelDeltaDecoration[] {
+function vcsDecorations(hunks: CodeStudioLineHunk[]): Monaco.editor.IModelDeltaDecoration[] {
   return hunks.map((hunk) => {
     const deleted = hunk.newEnd < hunk.newStart
     const start = hunkAnchorLine(hunk)
@@ -71,7 +71,7 @@ function vcsDecorations(hunks: CodeStudioLineHunk[]): monaco.editor.IModelDeltaD
 }
 
 /** Clic sulla barra VCS: apre il popup del blocco con il testo di HEAD e il pulsante Revert. */
-export function openVcsHunk(editor: monaco.editor.ICodeEditor, line: number, anchor: { x: number; y: number }): boolean {
+export function openVcsHunk(editor: Monaco.editor.ICodeEditor, line: number, anchor: { x: number; y: number }): boolean {
   const model = editor.getModel()
   const document = model ? documentForModel(model) : null
   const hunk = hunksByEditor.get(editor)?.find((item) => {
@@ -85,7 +85,7 @@ export function openVcsHunk(editor: monaco.editor.ICodeEditor, line: number, anc
 }
 
 /** Revert di un blocco nell'editor attivo: un'unica modifica annullabile con Ctrl+Z. */
-export function revertHunk(editor: monaco.editor.ICodeEditor, hunk: CodeStudioLineHunk, headText: string): void {
+export function revertHunk(editor: Monaco.editor.ICodeEditor, hunk: CodeStudioLineHunk, headText: string): void {
   const model = editor.getModel()
   if (!model) return
   const edit = revertEdit(hunk, hunkOldLines(headText, hunk), model.getLineCount(), (line) => model.getLineMaxColumn(line))
@@ -102,13 +102,13 @@ function blameLabel(line: GoIDEVCSBlameLine | undefined): string {
 }
 
 /** Gutter diff rispetto a HEAD (anche per le modifiche non salvate) e annotazione blame sui numeri di riga. */
-export function useCodeStudioVcsGutter(editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
+export function useCodeStudioVcsGutter(editorRef: MutableRefObject<Monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
   const { sessionId, relativePath, id, external } = document.document
   const available = useCodeStudioVCSStore((state) => !!state.status[sessionId]?.available)
   const head = useCodeStudioVCSStore((state) => state.head[headKey(sessionId, relativePath)])
   const blame = useCodeStudioVCSStore((state) => state.blame[id])
-  const collectionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
-  const beforeBlame = useRef<Pick<monaco.editor.IEditorOptions, 'lineNumbers' | 'lineNumbersMinChars'> | null>(null)
+  const collectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
+  const beforeBlame = useRef<Pick<Monaco.editor.IEditorOptions, 'lineNumbers' | 'lineNumbersMinChars'> | null>(null)
 
   useEffect(() => {
     const editor = editorRef.current

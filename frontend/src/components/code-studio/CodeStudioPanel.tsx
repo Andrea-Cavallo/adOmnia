@@ -10,7 +10,7 @@ import { selectDocumentSummary } from './codeStudioDocumentSummary'
 import { devServerPreviewRequest, hasWebAppToPreview } from '@/lib/code-studio/runPreview'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { useLivePreviewStore } from '@/stores/livePreview'
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { CodeStudioEmptyState } from './CodeStudioEmptyState'
 import { CreateProjectDialog, UnsavedChangesDialog } from './CodeStudioDialogs'
@@ -116,7 +116,6 @@ import { CodeStudioBookmarksDialog } from './CodeStudioBookmarksDialog'
 import { CodeStudioQualityDialog } from './CodeStudioQualityDialog'
 import { CodeStudioBranchWidget } from './CodeStudioBranchWidget'
 import { CodeStudioCommitDialog } from './CodeStudioCommitDialog'
-import { CodeStudioGitHistoryDialog } from './CodeStudioGitHistoryDialog'
 import { CodeStudioProjectServicesDialog } from './CodeStudioProjectServicesDialog'
 import { runIntegrationCommand } from './codeStudioIntegrationCommands'
 import { CodeStudioHunkPopup } from './CodeStudioHunkPopup'
@@ -125,7 +124,6 @@ import { CodeStudioBreakpointPopover } from './CodeStudioBreakpointPopover'
 import { CodeStudioBreakpointsDialog } from './CodeStudioBreakpointsDialog'
 import { runVcsCommand, type CodeStudioVcsDialog } from './codeStudioVcsCommands'
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
-import { CodeStudioLocalHistoryDialog } from './CodeStudioLocalHistoryDialog'
 import { CodeStudioAttachDialog, type CodeStudioAttachMode } from './CodeStudioAttachDialog'
 import { CodeStudioExtensionsDialog } from './CodeStudioExtensionsDialog'
 import { useCodeStudioRemoteHandoff } from './useCodeStudioRemoteHandoff'
@@ -177,6 +175,10 @@ import { usePanelVisible, usePanelActiveRef } from '@/components/layout/PanelAct
 import type { GoDebugStartDetail } from '@/lib/devsession/debugRequest'
 import { CodeStudioRunTargetPicker } from './CodeStudioRunTargetPicker'
 import { configurationForRunTarget, preferredRunTarget } from './codeStudioDiscoveredRunTargets'
+
+// History dialogs use Monaco's diff editor: load them (and Monaco) on first open.
+const CodeStudioGitHistoryDialog = lazy(() => import('./CodeStudioGitHistoryDialog').then((m) => ({ default: m.CodeStudioGitHistoryDialog })))
+const CodeStudioLocalHistoryDialog = lazy(() => import('./CodeStudioLocalHistoryDialog').then((m) => ({ default: m.CodeStudioLocalHistoryDialog })))
 
 
 const PANEL_STATE_KEYS = [
@@ -1144,11 +1146,11 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
         />
       )}
       <CodeStudioProjectServicesDialog sessionId={activeSession.id} projectName={activeSession.project.name} open={servicesOpen} onClose={() => setServicesOpen(false)} />
-      <CodeStudioGitHistoryDialog document={vcsDialog === 'history' || vcsDialog === 'lineHistory' ? currentActiveDocument() : null} open={vcsDialog === 'history' || vcsDialog === 'lineHistory'} lines={vcsDialog === 'lineHistory'} onClose={() => setVcsDialog(null)} />
+      {(vcsDialog === 'history' || vcsDialog === 'lineHistory') && <Suspense fallback={null}><CodeStudioGitHistoryDialog document={currentActiveDocument()} open lines={vcsDialog === 'lineHistory'} onClose={() => setVcsDialog(null)} /></Suspense>}
       <CodeStudioHunkPopup />
       <CodeStudioBreakpointPopover />
       <CodeStudioBreakpointsDialog sessionId={activeSession.id} />
-      <CodeStudioLocalHistoryDialog document={localHistoryOpen ? currentActiveDocument() : null} open={localHistoryOpen} onClose={() => setLocalHistoryOpen(false)} />
+      {localHistoryOpen && <Suspense fallback={null}><CodeStudioLocalHistoryDialog document={currentActiveDocument()} open onClose={() => setLocalHistoryOpen(false)} /></Suspense>}
       <CodeStudioCopilotDialog projectRoot={activeSession.project.realPath} projectName={activeSession.project.name} />
       <CodeStudioMilkDialog />
       <CodeStudioClaudeDialog />

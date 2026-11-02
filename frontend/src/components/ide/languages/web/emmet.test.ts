@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/monacoSetup', () => ({ monaco: { languages: {} } }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: { languages: {} } }))
 
 import expand from 'emmet'
 import { fieldRenderer, isMarkupPosition, toSnippet } from './emmet'

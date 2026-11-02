@@ -53,6 +53,8 @@ Tool positions are saved locally per session in the additive `adomnia.studio.too
 
 *View → Maximize Editor* (Ctrl+Shift+F12, or a double-click on an editor tab) closes Project, Structure and the bottom tool window so the code takes all the space; press it again to bring them back exactly as they were. Every pane also closes on its own with its — button or its shortcut (Project Alt+1, Structure Alt+7, bottom tool window Alt+4).
 
+**Monaco loads with the first open file.** Opening a project with no file open does not load the editor bundle (~2.7 MB). Editor-feature modules read Monaco from `lib/monacoRef.ts`, never from `lib/monacoSetup.ts`, `monaco-editor` or `@monaco-editor/react`; components that render an editor or diff editor are `lazy` and mounted only when shown. Model keys use Monaco's own URI module (`monaco-editor/base/common/uri.js`), so they keep the `file:///c%3A/...#session%3D…` encoding. `lib/monacoRef.test.ts` fails if one of these modules imports or touches Monaco at load time.
+
 The code editor enables Monaco's inertial and smooth scrolling for touchpads and
 compatible continuous-scroll mouse input. Device classification stays with Monaco;
 ordinary stepped wheels are not forced into touchpad inertia. The system's

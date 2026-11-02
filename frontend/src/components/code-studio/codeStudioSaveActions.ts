@@ -1,5 +1,5 @@
 import type { CancellablePromise } from '@wailsio/runtime'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { requestFormatting, requestOrganizeImports } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -24,7 +24,7 @@ async function withTimeout<T>(request: CancellablePromise<T>): Promise<T | null>
   }
 }
 
-function applyToEditor(editor: monaco.editor.IStandaloneCodeEditor, edits: Parameters<typeof toMonacoEdits>[0]): void {
+function applyToEditor(editor: Monaco.editor.IStandaloneCodeEditor, edits: Parameters<typeof toMonacoEdits>[0]): void {
   if (edits.length === 0) return
   editor.pushUndoStop()
   editor.executeEdits('code-studio-save', toMonacoEdits(edits))
@@ -114,7 +114,7 @@ async function applyNonGoWhitespace(document: GoIDEEditorDocument): Promise<void
   const model = editor?.getModel()
   if (editor && model && model.uri.toString() === editorModelUri(document.document)) {
     // Modifiche minime (solo gli spazi in coda e la newline finale): il cursore resta dov'è.
-    const edits: monaco.editor.IIdentifiedSingleEditOperation[] = []
+    const edits: Monaco.editor.IIdentifiedSingleEditOperation[] = []
     const lineCount = trim ? model.getLineCount() : 0
     for (let line = 1; line <= lineCount; line++) {
       const content = model.getLineContent(line)

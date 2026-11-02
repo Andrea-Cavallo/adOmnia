@@ -12,7 +12,7 @@ const codeStudio = vi.hoisted(() => ({
 const lsp = vi.hoisted(() => ({ setState: vi.fn() }))
 const api = vi.hoisted(() => ({ createGoIDEFiles: vi.fn() }))
 
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: {} }))
 vi.mock('@/lib/code-studio-lsp-api', () => ({}))
 vi.mock('@/lib/code-studio-api', () => ({ createGoIDEFiles: api.createGoIDEFiles }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => codeStudio.state, setState: codeStudio.setState } }))

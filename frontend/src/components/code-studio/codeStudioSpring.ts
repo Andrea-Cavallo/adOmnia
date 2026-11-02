@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useSpringStore, springStateOf } from '@/stores/codeStudioSpring'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
@@ -34,7 +34,7 @@ const INDEX_TTL_MILLIS = 30_000
 let registered = false
 const languages = ['properties', 'ini', 'yaml', 'yml']
 
-function documentFor(model: monaco.editor.ITextModel): GoIDEEditorDocument | null {
+function documentFor(model: Monaco.editor.ITextModel): GoIDEEditorDocument | null {
   return documentForModel(model)
 }
 
@@ -48,7 +48,7 @@ async function indexFor(document: GoIDEEditorDocument): Promise<ReturnType<typeo
 }
 
 /** Converte una posizione dell'indice in una posizione Monaco del documento indicato. */
-export async function toMonacoLocation(target: SpringLocation | null, from: GoIDEEditorDocument): Promise<monaco.languages.Location | null> {
+export async function toMonacoLocation(target: SpringLocation | null, from: GoIDEEditorDocument): Promise<Monaco.languages.Location | null> {
   if (!target) return null
   const absolute = absolutePathOf(from, target.file)
   const range = {
@@ -89,13 +89,13 @@ function sameFile(left: string, right: string): boolean {
 }
 
 /** La chiave di configurazione su cui si trova il cursore, con l'intervallo da sostituire. */
-function keyAt(model: monaco.editor.ITextModel, position: monaco.Position): { key: string; startColumn: number; endColumn: number } {
+function keyAt(model: Monaco.editor.ITextModel, position: Monaco.Position): { key: string; startColumn: number; endColumn: number } {
   const lines = model.getValue().split('\n')
   const isYaml = /\.(ya?ml)$/i.test(model.uri.path)
   return isYaml ? typedYamlKey(lines, position.lineNumber, position.column) : typedPropertyKey(model.getLineContent(position.lineNumber), position.column)
 }
 
-function completionFor(property: SpringProperty, values: Map<string, SpringValue>, parentPrefix: string, range: monaco.IRange): monaco.languages.CompletionItem {
+function completionFor(property: SpringProperty, values: Map<string, SpringValue>, parentPrefix: string, range: Monaco.IRange): Monaco.languages.CompletionItem {
   const insertText = property.name.startsWith(parentPrefix) ? property.name.slice(parentPrefix.length) : property.name
   return {
     label: property.name,
@@ -109,7 +109,7 @@ function completionFor(property: SpringProperty, values: Map<string, SpringValue
   }
 }
 
-function markersFor(index: NonNullable<ReturnType<typeof springStateOf>['index']>, relativePath: string): monaco.editor.IMarkerData[] {
+function markersFor(index: NonNullable<ReturnType<typeof springStateOf>['index']>, relativePath: string): Monaco.editor.IMarkerData[] {
   return (index.diagnostics ?? [])
     .filter((diagnostic) => sameFile(diagnostic.file ?? '', relativePath))
     .map((diagnostic) => ({
@@ -158,7 +158,7 @@ export function registerCodeStudioSpring(): void {
         if (!index) return { suggestions: [] }
         const typed = keyAt(model, position)
         const parentPrefix = typed.key.includes('.') ? typed.key.slice(0, typed.key.lastIndexOf('.') + 1) : ''
-        const range: monaco.IRange = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: typed.startColumn, endColumn: Math.max(typed.endColumn, typed.startColumn) }
+        const range: Monaco.IRange = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: typed.startColumn, endColumn: Math.max(typed.endColumn, typed.startColumn) }
         return {
           suggestions: springCompletions(index, typed.key).map((property) => completionFor(property, effectiveValues(index), parentPrefix, range)),
         }

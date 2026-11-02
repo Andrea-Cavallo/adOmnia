@@ -4,7 +4,7 @@ const fixture = vi.hoisted(() => ({
   document: { document: { id: 'd', sessionId: 's', relativePath: 'Cargo.toml', language: 'toml', name: 'Cargo.toml', readOnly: false }, dirty: true, buffer: 'text = """\nkeep spaces  \n"""\n' },
   formatOnSave: true, update: vi.fn(), message: vi.fn(), format: vi.fn(),
 }))
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: {} }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => ({ documents: [fixture.document], updateDocument: fixture.update }) } }))
 vi.mock('@/stores/codeStudioLsp', () => ({ useCodeStudioLspStore: { getState: () => ({ preferences: { formatOnSave: fixture.formatOnSave, trimTrailingWhitespace: true } }), setState: fixture.message } }))
 vi.mock('./codeStudioEditorRegistry', () => ({ activeCodeStudioEditor: () => null }))

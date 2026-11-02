@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { isMonacoLoaded, monaco, type Monaco } from '@/lib/monacoRef'
 import { InvokeIDEExtension } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { subscribeGoIDEEvents } from '@/lib/code-studio-api'
 import { extensionResult } from '@/lib/code-studio/extensionResult'
@@ -36,7 +36,7 @@ export async function runIDEContribution(item: IDEContribution, documentId?: str
   if (document) useIDEExtensionsStore.setState(ext => ({reports:{...ext.reports,[sessionId]:{...ext.reports[sessionId],[`${item.pluginId}:${item.kind}:${item.id}:${document.document.id}`]:{uri:editorModelUri(document.document),path:document.document.path,relativePath:document.document.relativePath,documentId:document.document.id,diagnostics:parsed.diagnostics.map(d => ({range:{startLine:d.line,startColumn:d.column,endLine:d.endLine,endColumn:d.endColumn},severity:d.severity,message:d.message,source:`${item.pluginName}: ${item.title}`}))}}}}))
   if (document && model && model.uri.toString() === editorModelUri(document.document)) {
    monaco.editor.setModelMarkers(model,`plugin:${item.pluginId}:${item.id}`,parsed.diagnostics.map(d => ({startLineNumber:d.line,startColumn:d.column,endLineNumber:d.endLine,endColumn:d.endColumn,message:d.message,severity:[0,monaco.MarkerSeverity.Error,monaco.MarkerSeverity.Warning,monaco.MarkerSeverity.Info,monaco.MarkerSeverity.Hint][d.severity],source:item.title})))
-  } else if (document) {
+  } else if (document && isMonacoLoaded()) {
    const target = monaco.editor.getModel(monaco.Uri.parse(editorModelUri(document.document)))
    if (target) monaco.editor.setModelMarkers(target,`plugin:${item.pluginId}:${item.id}`,parsed.diagnostics.map(d => ({startLineNumber:d.line,startColumn:d.column,endLineNumber:d.endLine,endColumn:d.endColumn,message:d.message,severity:[0,monaco.MarkerSeverity.Error,monaco.MarkerSeverity.Warning,monaco.MarkerSeverity.Info,monaco.MarkerSeverity.Hint][d.severity],source:item.title})))
   }
@@ -119,8 +119,8 @@ export function startCodeStudioExtensions(): void {
  monaco.editor.registerCommand('codeStudio.extension',(_accessor,item: IDEContribution,documentId: string) => { void runIDEContribution(item,documentId) })
 }
 
-export function installIDEExtensionActions(editor: monaco.editor.IStandaloneCodeEditor): void {
- let actions: monaco.IDisposable[] = []
+export function installIDEExtensionActions(editor: Monaco.editor.IStandaloneCodeEditor): void {
+ let actions: Monaco.IDisposable[] = []
  const install = () => {
   actions.forEach(action => action.dispose())
   actions = useIDEExtensionsStore.getState().items.filter(c => c.kind === 'command' || c.kind === 'codeAction').map(c => editor.addAction({id:`plugin.${c.pluginId}.${c.kind}.${c.id}`,label:`${c.pluginName}: ${c.title}`,contextMenuGroupId:'8_extensions',run:() => runIDEContribution(c,editor.getModel() ? documentForModel(editor.getModel()!)?.document.id : undefined)}))

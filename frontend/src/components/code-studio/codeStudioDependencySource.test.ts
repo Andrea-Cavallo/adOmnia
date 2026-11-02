@@ -3,7 +3,7 @@ import type { GoIDEDependencySource } from '@/lib/code-studio-api'
 
 const fixture = vi.hoisted(() => ({ state: { sessions: [] as unknown[], activeSessionId: 's1' } }))
 
-vi.mock('@/lib/monacoSetup', () => ({ monaco: { Uri: { file: (path: string) => ({ toString: () => `file:///${path.replace(/\\/g, '/')}` }) } } }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: { Uri: { file: (path: string) => ({ toString: () => `file:///${path.replace(/\\/g, '/')}` }) } } }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => fixture.state, setState: vi.fn() } }))
 vi.mock('@/lib/code-studio-api', () => ({ resolveGoIDEDependencySource: vi.fn(), startGoIDEDependencyAction: vi.fn() }))
 vi.mock('@/lib/confirmDialog', () => ({ confirm: vi.fn() }))

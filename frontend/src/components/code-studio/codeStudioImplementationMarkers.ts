@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MutableRefObject } from 'react'
-import { monaco } from '@/lib/monacoSetup'
+import type { Monaco } from '@/lib/monacoRef'
 import { requestImplementationMarkers, type GoIDEImplementationMarker } from '@/lib/code-studio-lsp-api'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -13,7 +13,7 @@ const REFRESH_DEBOUNCE_MS = 900
 const MARKER_LANGUAGES = new Set(implementationMarkerEditorLanguages())
 
 /** Marcatori e decorazioni di ciascun editor: le decorazioni seguono il testo, quindi dicono la riga attuale. */
-const markersByEditor = new WeakMap<monaco.editor.ICodeEditor, { markers: GoIDEImplementationMarker[]; collection: monaco.editor.IEditorDecorationsCollection }>()
+const markersByEditor = new WeakMap<Monaco.editor.ICodeEditor, { markers: GoIDEImplementationMarker[]; collection: Monaco.editor.IEditorDecorationsCollection }>()
 
 /** Testo del tooltip: vale per tipi e metodi, così «implemented by 2» è vero in entrambi i casi. */
 export function describeImplementationMarker(marker: GoIDEImplementationMarker): string {
@@ -23,7 +23,7 @@ export function describeImplementationMarker(marker: GoIDEImplementationMarker):
     : `${marker.name} implements ${count} ${count === 1 ? 'interface' : 'interfaces'} · click to navigate`
 }
 
-export function implementationDecorations(markers: GoIDEImplementationMarker[]): monaco.editor.IModelDeltaDecoration[] {
+export function implementationDecorations(markers: GoIDEImplementationMarker[]): Monaco.editor.IModelDeltaDecoration[] {
   return markers.map((marker) => ({
     range: { startLineNumber: marker.line, startColumn: 1, endLineNumber: marker.line, endColumn: 1 },
     options: {
@@ -37,7 +37,7 @@ export function implementationDecorations(markers: GoIDEImplementationMarker[]):
  * Clic su un marcatore I↓/I↑: una destinazione si apre subito, più destinazioni aprono il popup
  * delle implementazioni accanto al glifo. Restituisce true se il clic è stato gestito.
  */
-export function openImplementationMarker(editor: monaco.editor.ICodeEditor, line: number, anchor: { x: number; y: number }, sessionId: string): boolean {
+export function openImplementationMarker(editor: Monaco.editor.ICodeEditor, line: number, anchor: { x: number; y: number }, sessionId: string): boolean {
   const entry = markersByEditor.get(editor)
   const index = entry ? entry.collection.getRanges().findIndex((range) => range.startLineNumber === line) : -1
   const marker = index >= 0 ? entry?.markers[index] : undefined
@@ -53,10 +53,10 @@ export function openImplementationMarker(editor: monaco.editor.ICodeEditor, line
 }
 
 /** Aggiorna i marcatori del file quando il language server è pronto e dopo una pausa nella scrittura. */
-export function useCodeStudioImplementationMarkers(editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
+export function useCodeStudioImplementationMarkers(editorRef: MutableRefObject<Monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
   const { sessionId, id, external } = document.document
   const lspReady = useCodeStudioLspStore((state) => state.status[sessionId]?.state === 'ready')
-  const collectionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const collectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
   // Il linguaggio viene dal file aperto, non dal nome: Java e Go usano la stessa meccanica.
   const enabled = lspReady && !external && MARKER_LANGUAGES.has(document.document.language)
 
@@ -91,7 +91,7 @@ export function useCodeStudioImplementationMarkers(editorRef: MutableRefObject<m
 }
 
 /** Ctrl+U: dal tipo o metodo sotto il cursore alle interfacce che implementa (Go to Super Method). */
-export function goToSuperMethod(editor: monaco.editor.ICodeEditor): void {
+export function goToSuperMethod(editor: Monaco.editor.ICodeEditor): void {
   const model = editor.getModel()
   const position = editor.getPosition()
   const document = model ? documentForModel(model) : null

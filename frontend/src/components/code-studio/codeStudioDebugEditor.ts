@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { evaluateGoIDEDebug, type GoIDEBreakpointState, type GoIDEDebugScope, type GoIDEDebugVariable } from '@/lib/code-studio-debug-api'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { activeDebugView, executionPoint, hasBreakpointOptions, hasLiveDebugger, useCodeStudioDebugStore, type GoIDEExecutionPoint } from '@/stores/codeStudioDebug'
@@ -35,7 +35,7 @@ export function breakpointClass(state: GoIDEBreakpointState, debugging: boolean)
 }
 
 /** Pallino rosso sul numero di riga; vuoto finché Delve non verifica il breakpoint durante un debug. */
-export function breakpointDecorations(states: GoIDEBreakpointState[], debugging: boolean): monaco.editor.IModelDeltaDecoration[] {
+export function breakpointDecorations(states: GoIDEBreakpointState[], debugging: boolean): Monaco.editor.IModelDeltaDecoration[] {
   return states.map((state) => {
     const pending = debugging && !state.verified && !state.disabled
     const kind = state.logMessage ? 'Logpoint' : 'Breakpoint'
@@ -56,7 +56,7 @@ export function breakpointDecorations(states: GoIDEBreakpointState[], debugging:
 }
 
 /** Riga di esecuzione corrente: sfondo e freccia; i frame più in basso nello stack sono più tenui. */
-export function executionDecorations(point: GoIDEExecutionPoint | null): monaco.editor.IModelDeltaDecoration[] {
+export function executionDecorations(point: GoIDEExecutionPoint | null): Monaco.editor.IModelDeltaDecoration[] {
   if (!point) return []
   return [{
     range: { startLineNumber: point.line, startColumn: 1, endLineNumber: point.line, endColumn: 1 },
@@ -88,7 +88,7 @@ function toggleAt(document: GoIDEEditorDocument, line: number): void {
 }
 
 /** Ctrl+F8: breakpoint sulla riga del cursore dell'editor indicato. */
-export function toggleBreakpointAtCursor(editor: monaco.editor.ICodeEditor | null): boolean {
+export function toggleBreakpointAtCursor(editor: Monaco.editor.ICodeEditor | null): boolean {
   const model = editor?.getModel()
   const position = editor?.getPosition()
   const document = model ? documentForModel(model) : null
@@ -98,7 +98,7 @@ export function toggleBreakpointAtCursor(editor: monaco.editor.ICodeEditor | nul
 }
 
 /** Alt+F9: riprende il programma in pausa fino alla riga del cursore. */
-export function runToCursorAt(editor: monaco.editor.ICodeEditor | null): boolean {
+export function runToCursorAt(editor: Monaco.editor.ICodeEditor | null): boolean {
   const model = editor?.getModel()
   const position = editor?.getPosition()
   const document = model ? documentForModel(model) : null
@@ -115,8 +115,8 @@ export function runToCursorAt(editor: monaco.editor.ICodeEditor | null): boolean
  * hit count e logpoint (Monaco non apre il suo menu sul gutter). Monaco selezionerebbe la riga:
  * la selezione precedente si ripristina al rilascio del mouse.
  */
-export function installBreakpointGutter(editor: monaco.editor.IStandaloneCodeEditor): void {
-  let pending: { line: number; selection: monaco.Selection | null } | null = null
+export function installBreakpointGutter(editor: Monaco.editor.IStandaloneCodeEditor): void {
+  let pending: { line: number; selection: Monaco.Selection | null } | null = null
   editor.onMouseDown((event) => {
     pending = null
     if (event.target.type !== monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS || !event.event.leftButton) return
@@ -148,7 +148,7 @@ export function installBreakpointGutter(editor: monaco.editor.IStandaloneCodeEdi
  * Disegna breakpoint e riga di esecuzione, e mantiene i breakpoint sulle righe giuste mentre si scrive:
  * le decorazioni seguono il testo e, dopo una pausa, le nuove righe tornano al backend.
  */
-export function useCodeStudioDebugDecorations(editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
+export function useCodeStudioDebugDecorations(editorRef: MutableRefObject<Monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
   const { sessionId, relativePath, id } = document.document
   const breakpoints = useCodeStudioDebugStore((state) => state.breakpoints[sessionId]?.[relativePath] ?? EMPTY_BREAKPOINTS)
   const debugging = useCodeStudioDebugStore((state) => hasLiveDebugger(state, sessionId))
@@ -165,8 +165,8 @@ export function useCodeStudioDebugDecorations(editorRef: MutableRefObject<monaco
     return { scopes: view.scopes, children: view.children }
   }))
   const holdsBreakpoints = canHoldBreakpoints(document)
-  const executionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
-  const inlineValuesRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const executionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
+  const inlineValuesRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
   const decorations = useMemo(() => breakpointDecorations(breakpoints, debugging), [breakpoints, debugging])
 
   useTrackedLineMarkers(editorRef, {

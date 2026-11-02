@@ -6,7 +6,7 @@ import { isServiceSuspended } from '@/lib/code-studio/pausedServices'
 import { extensionLanguageForPath } from '@/stores/ideExtensions'
 import { ExtensionLanguageStatus } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import type { CancellablePromise } from '@wailsio/runtime'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import {
   requestCodeActions,
   requestCompletion,
@@ -57,20 +57,20 @@ let registered = false
 let commandsRegistered = false
 const registeredLanguages = new Set<string>()
 
-export function toMonacoRange(range: GoIDEEditorRange): monaco.IRange {
+export function toMonacoRange(range: GoIDEEditorRange): Monaco.IRange {
   return { startLineNumber: range.startLine, startColumn: range.startColumn, endLineNumber: range.endLine, endColumn: range.endColumn }
 }
 
-export function toEditorRange(range: monaco.IRange): GoIDEEditorRange {
+export function toEditorRange(range: Monaco.IRange): GoIDEEditorRange {
   return { startLine: range.startLineNumber, startColumn: range.startColumn, endLine: range.endLineNumber, endColumn: range.endColumn }
 }
 
-export function toMonacoEdits(edits: GoIDEEditorTextEdit[]): monaco.editor.IIdentifiedSingleEditOperation[] {
+export function toMonacoEdits(edits: GoIDEEditorTextEdit[]): Monaco.editor.IIdentifiedSingleEditOperation[] {
   return edits.map((edit) => ({ range: toMonacoRange(edit.range), text: edit.text, forceMoveMarkers: true }))
 }
 
 /** Trova il documento Code Studio associato a un modello Monaco. */
-export function documentForModel(model: monaco.editor.ITextModel): GoIDEEditorDocument | null {
+export function documentForModel(model: Monaco.editor.ITextModel): GoIDEEditorDocument | null {
   const target = model.uri.toString()
   return useCodeStudioStore.getState().documents.find((item) => editorModelUri(item.document) === target) ?? previewDocuments.get(target) ?? null
 }
@@ -85,7 +85,7 @@ function languageServerReady(sessionId: string): boolean {
 }
 
 /** Sincronizza il buffer e verifica che gopls sia pronto prima di una richiesta semantica. */
-export async function prepareDocument(model: monaco.editor.ITextModel): Promise<PreparedDocument | null> {
+export async function prepareDocument(model: Monaco.editor.ITextModel): Promise<PreparedDocument | null> {
   const document = documentForModel(model)
   if (!document) return null
   const extension = extensionLanguageForPath(document.document.relativePath)
@@ -99,7 +99,7 @@ export async function prepareDocument(model: monaco.editor.ITextModel): Promise<
 }
 
 /** Lega una CancellablePromise al token Monaco e scarta risposte fallite o annullate. */
-async function cancellable<T>(request: CancellablePromise<T>, token: monaco.CancellationToken): Promise<T | null> {
+async function cancellable<T>(request: CancellablePromise<T>, token: Monaco.CancellationToken): Promise<T | null> {
   const subscription = token.onCancellationRequested(() => request.cancel())
   try {
     const result = await request
@@ -160,7 +160,7 @@ export async function ensurePreviewModel(sessionId: string, location: GoIDEEdito
   }
 }
 
-export function rememberLocations(locations: readonly StudioLocation[], sessionId?: string): monaco.languages.Location[] {
+export function rememberLocations(locations: readonly StudioLocation[], sessionId?: string): Monaco.languages.Location[] {
   return locations.map((location) => {
     const uri = monaco.Uri.parse(sessionId ? editorModelUri({ uri: location.uri, sessionId }) : location.uri)
     locationCache.set(uri.toString(), location)
@@ -168,7 +168,7 @@ export function rememberLocations(locations: readonly StudioLocation[], sessionI
   })
 }
 
-function completionItem(entry: Awaited<ReturnType<typeof requestCompletion>>['items'][number], fallback: monaco.IRange): monaco.languages.CompletionItem {
+function completionItem(entry: Awaited<ReturnType<typeof requestCompletion>>['items'][number], fallback: Monaco.IRange): Monaco.languages.CompletionItem {
   const kindName = COMPLETION_KINDS[entry.kind] ?? 'Text'
   return {
     label: entry.label,
@@ -186,11 +186,11 @@ function completionItem(entry: Awaited<ReturnType<typeof requestCompletion>>['it
   }
 }
 
-function symbolTree(nodes: GoIDESymbolNode[]): monaco.languages.DocumentSymbol[] {
+function symbolTree(nodes: GoIDESymbolNode[]): Monaco.languages.DocumentSymbol[] {
   return nodes.map((node) => ({
     name: node.name,
     detail: node.detail ?? '',
-    kind: Math.max(0, node.kind - 1) as monaco.languages.SymbolKind,
+    kind: Math.max(0, node.kind - 1) as Monaco.languages.SymbolKind,
     tags: [],
     range: toMonacoRange(node.range),
     selectionRange: toMonacoRange(node.selectionRange),
@@ -199,7 +199,7 @@ function symbolTree(nodes: GoIDESymbolNode[]): monaco.languages.DocumentSymbol[]
 }
 
 function registerProviders(): void {
-  const completionProvider: monaco.languages.CompletionItemProvider = {
+  const completionProvider: Monaco.languages.CompletionItemProvider = {
     triggerCharacters: ['.'],
     async provideCompletionItems(model, position, _context, token) {
       if (isServiceSuspended('completion')) return { suggestions: [] }
@@ -268,7 +268,7 @@ function registerProviders(): void {
   })
 
   const locationProvider = (kind: 'definition' | 'typeDefinition') => ({
-    async provide(model: monaco.editor.ITextModel, position: monaco.Position, token: monaco.CancellationToken) {
+    async provide(model: Monaco.editor.ITextModel, position: Monaco.Position, token: Monaco.CancellationToken) {
       if (isServiceSuspended('navigation')) return null
       const owner = documentForModel(model)
       // go.mod: la definizione di una dipendenza e il suo sorgente (replace locale, progetto o
@@ -346,7 +346,7 @@ function registerProviders(): void {
           title: action.title,
           kind: 'quickfix',
           isPreferred: action.preferred,
-          diagnostics: [{ ...toMonacoRange(action.diagnostic.range), severity: SEVERITY[action.diagnostic.severity] ?? monaco.MarkerSeverity.Warning, message: action.diagnostic.message }],
+          diagnostics: [{ ...toMonacoRange(action.diagnostic.range), severity: severity(action.diagnostic.severity) ?? monaco.MarkerSeverity.Warning, message: action.diagnostic.message }],
           edit: { edits: action.edits.map((edit) => ({ resource: model.uri, textEdit: { range: toMonacoRange(edit.range), text: edit.text }, versionId: model.getVersionId() })) },
         })),
         dispose: () => undefined,
@@ -376,8 +376,8 @@ function registerProviders(): void {
 
   if (commandsRegistered) return
   commandsRegistered = true
-  monaco.editor.registerCommand(AI_FIX_COMMAND, (_accessor, relativePath: string, marker: monaco.editor.IMarkerData, others: monaco.editor.IMarkerData[] = []) => {
-    const problem = (item: monaco.editor.IMarkerData) => ({ message: item.message, line: item.startLineNumber, source: typeof item.source === 'string' ? item.source : undefined })
+  monaco.editor.registerCommand(AI_FIX_COMMAND, (_accessor, relativePath: string, marker: Monaco.editor.IMarkerData, others: Monaco.editor.IMarkerData[] = []) => {
+    const problem = (item: Monaco.editor.IMarkerData) => ({ message: item.message, line: item.startLineNumber, source: typeof item.source === 'string' ? item.source : undefined })
     void fixCodeStudioProblemWithAI(relativePath, problem(marker), others.map(problem))
   })
 
@@ -403,17 +403,15 @@ function registerProviders(): void {
   })
 }
 
-const SEVERITY: Record<number, monaco.MarkerSeverity> = {
-  1: monaco.MarkerSeverity.Error,
-  2: monaco.MarkerSeverity.Warning,
-  3: monaco.MarkerSeverity.Info,
-  4: monaco.MarkerSeverity.Hint,
+/** LSP severity → Monaco severity. A function: Monaco is not loaded when this module is. */
+function severity(lsp: number): Monaco.MarkerSeverity | undefined {
+  return ({ 1: monaco.MarkerSeverity.Error, 2: monaco.MarkerSeverity.Warning, 3: monaco.MarkerSeverity.Info, 4: monaco.MarkerSeverity.Hint } as Record<number, Monaco.MarkerSeverity>)[lsp]
 }
 
-function markersFor(report: GoIDEDiagnosticsReport): monaco.editor.IMarkerData[] {
+function markersFor(report: GoIDEDiagnosticsReport): Monaco.editor.IMarkerData[] {
   return report.diagnostics.map((diagnostic) => ({
     ...toMonacoRange(diagnostic.range),
-    severity: SEVERITY[diagnostic.severity] ?? monaco.MarkerSeverity.Info,
+    severity: severity(diagnostic.severity) ?? monaco.MarkerSeverity.Info,
     message: diagnostic.message,
     source: diagnostic.source || MARKER_OWNER,
     code: diagnostic.code || undefined,

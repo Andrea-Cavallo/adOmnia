@@ -1,11 +1,11 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { TOML_LANGUAGE } from './codeStudioTomlLanguage'
 import { tomlOutline } from '@/lib/code-studio/tomlOutline'
 
 let registered = false
 
 /** go.sum: percorso del modulo, versione (eventualmente /go.mod) e hash h1:. Solo colorazione. */
-const GO_SUM: monaco.languages.IMonarchLanguage = {
+const GO_SUM: Monaco.languages.IMonarchLanguage = {
   tokenizer: {
     root: [
       [/^\S+/, 'type'],
@@ -20,7 +20,7 @@ const GO_SUM: monaco.languages.IMonarchLanguage = {
  * Assembly Plan9 di Go (file .s): direttive, registri, simboli ·nome(SB), costanti $ e commenti.
  * Nessuna funzione semantica: gopls non analizza l'assembly.
  */
-const GO_ASM: monaco.languages.IMonarchLanguage = {
+const GO_ASM: Monaco.languages.IMonarchLanguage = {
   directives: ['TEXT', 'DATA', 'GLOBL', 'FUNCDATA', 'PCDATA', 'NOSPLIT', 'RODATA', 'NOPTR', 'WRAPPER', 'NEEDCTXT', 'TOPFRAME', 'DUPOK'],
   tokenizer: {
     root: [
@@ -44,7 +44,7 @@ const GO_ASM: monaco.languages.IMonarchLanguage = {
 }
 
 /** Makefile: Monaco non lo include. Target, variabili, direttive, ricette e commenti; solo colorazione. */
-const MAKEFILE: monaco.languages.IMonarchLanguage = {
+const MAKEFILE: Monaco.languages.IMonarchLanguage = {
   tokenizer: {
     root: [
       [/#[^\n]*/, 'comment'],
@@ -61,7 +61,7 @@ const MAKEFILE: monaco.languages.IMonarchLanguage = {
 }
 
 /** .http / .rest request files: method and URL, headers, {{variables}}, ### separators and comments. */
-const HTTP_FILE: monaco.languages.IMonarchLanguage = {
+const HTTP_FILE: Monaco.languages.IMonarchLanguage = {
   tokenizer: {
     root: [
       [/^\s*###.*$/, 'comment.doc'],
@@ -138,7 +138,7 @@ export function registerCodeStudioExtraLanguages(): void {
   monaco.languages.setLanguageConfiguration('svelte', { comments: { blockComment: ['<!--', '-->'] } })
 }
 
-function toMonacoSymbol(node: import('@/lib/code-studio-lsp-api').GoIDESymbolNode): monaco.languages.DocumentSymbol {
+function toMonacoSymbol(node: import('@/lib/code-studio-lsp-api').GoIDESymbolNode): Monaco.languages.DocumentSymbol {
   const convert = (value: typeof node.range) => ({ startLineNumber: value.startLine, startColumn: value.startColumn, endLineNumber: value.endLine, endColumn: value.endColumn })
   return { name: node.name, detail: '', kind: node.kind - 1, tags: [], range: convert(node.range), selectionRange: convert(node.selectionRange), children: node.children?.map(toMonacoSymbol) }
 }

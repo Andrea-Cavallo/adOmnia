@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ExternalLink, X } from 'lucide-react'
-import { CodeStudioSourcePreview } from './CodeStudioSourcePreview'
 import type { GoIDEEditorLocation, GoIDEQuickDefinition } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioLspStore, type GoIDECaretPopup } from '@/stores/codeStudioLsp'
 import { navigateToLocation } from './codeStudioLanguageFeatures'
 import { activeCodeStudioEditor } from './codeStudioEditorRegistry'
 import './codeStudioModal.css'
 import { groupUsagesByKind } from './codeStudioUsages'
+
+// Loads Monaco: only when shown.
+const CodeStudioSourcePreview = lazy(() => import('./CodeStudioSourcePreview').then((m) => ({ default: m.CodeStudioSourcePreview })))
 
 const POPUP_WIDTH = 560
 const POPUP_MAX_HEIGHT = 320
@@ -25,7 +27,7 @@ function closePopup(): void {
 }
 
 function DefinitionBody({ result }: { result: GoIDEQuickDefinition }) {
-  return <CodeStudioSourcePreview code={result.code} path={result.location.path} startLine={result.startLine} />
+  return <Suspense fallback={null}><CodeStudioSourcePreview code={result.code} path={result.location.path} startLine={result.startLine} /></Suspense>
 }
 
 function UsagesBody({ locations, onPick, groupLabel }: { locations: GoIDEEditorLocation[]; onPick: (location: GoIDEEditorLocation) => void; groupLabel?: string }) {

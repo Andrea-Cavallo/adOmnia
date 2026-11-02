@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {
+vi.mock('@/lib/monacoRef', () => ({ monaco: {
   Range: class { constructor(public startLineNumber: number, public startColumn: number, public endLineNumber: number, public endColumn: number) {} },
   MarkerSeverity: { Error: 8, Warning: 4, Info: 2 },
   editor: { InjectedTextCursorStops: { None: 3 }, TrackedRangeStickiness: { NeverGrowsWhenTypingAtEdges: 1 } },

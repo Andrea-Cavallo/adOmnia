@@ -1,5 +1,5 @@
 import { currentActivityPhase, pollingDelay, useActivityStore } from '@/stores/activity'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { getServerPort } from '@/lib/useServerPort'
 import { getOtlpLens, type OtlpLensStat } from '@/lib/otlp-api'
@@ -23,7 +23,9 @@ let activityBound = false
 let generation = 0
 let inFlight: Promise<OtlpLensStat[]> | null = null
 let byFile = new Map<string, OtlpLensStat[]>() // sessionId \u0000 relativePath → stats
-const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
+// Created on first use: Monaco is not loaded when this module is.
+let changedEmitter: Monaco.Emitter<Monaco.languages.CodeLensProvider> | undefined
+const changed = () => (changedEmitter ??= new monaco.Emitter<Monaco.languages.CodeLensProvider>())
 
 export function runtimeLensEnabled(): boolean {
   try { return localStorage.getItem(STORAGE_KEY) !== 'off' } catch { return true }
@@ -34,7 +36,7 @@ async function poll(): Promise<OtlpLensStat[]> {
   return port ? getOtlpLens(port).catch(() => [] as OtlpLensStat[]) : []
 }
 
-function applyStats(stats: OtlpLensStat[], provider: monaco.languages.CodeLensProvider): void {
+function applyStats(stats: OtlpLensStat[], provider: Monaco.languages.CodeLensProvider): void {
   const key = JSON.stringify(stats)
   if (key !== snapshot) {
     snapshot = key
@@ -47,16 +49,16 @@ function applyStats(stats: OtlpLensStat[], provider: monaco.languages.CodeLensPr
       next.set(fileKey, [...(next.get(fileKey) ?? []), stat])
     }
     byFile = next
-    changed.fire(provider)
+    changed().fire(provider)
   }
 }
 
-function schedule(provider: monaco.languages.CodeLensProvider): void {
+function schedule(provider: Monaco.languages.CodeLensProvider): void {
   const epoch = ++generation
   if (timer !== null) window.clearTimeout(timer)
   timer = null
   if (!runtimeLensEnabled()) {
-    byFile = new Map(); snapshot = ''; emptyPolls = 0; changed.fire(provider)
+    byFile = new Map(); snapshot = ''; emptyPolls = 0; changed().fire(provider)
     return
   }
   if (!activityBound) {
@@ -79,7 +81,7 @@ function schedule(provider: monaco.languages.CodeLensProvider): void {
   void run()
 }
 
-let providerRef: monaco.languages.CodeLensProvider | null = null
+let providerRef: Monaco.languages.CodeLensProvider | null = null
 
 /** Turns the Runtime Lens on or off (remembered locally). */
 export function setRuntimeLensEnabled(enabled: boolean): void {
@@ -91,8 +93,8 @@ export function registerCodeStudioRuntimeLens(): void {
   if (registered) return
   registered = true
   monaco.editor.registerCommand(COMMAND, () => undefined) // the numbers are the information; details are in the tooltip
-  const provider: monaco.languages.CodeLensProvider = {
-    onDidChange: changed.event,
+  const provider: Monaco.languages.CodeLensProvider = {
+    onDidChange: changed().event,
     provideCodeLenses: (model) => {
       const document = documentForModel(model)
       const stats = document ? byFile.get(`${document.document.sessionId}\u0000${document.document.relativePath}`) : undefined
@@ -110,7 +112,7 @@ export function registerCodeStudioRuntimeLens(): void {
     },
   }
   providerRef = provider
-  useCodeStudioRuntimeProfile.subscribe(()=>changed.fire(provider))
+  useCodeStudioRuntimeProfile.subscribe(()=>changed().fire(provider))
   monaco.languages.registerCodeLensProvider(LANGUAGE, provider)
   schedule(provider)
 }

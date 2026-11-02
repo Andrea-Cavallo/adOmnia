@@ -1,6 +1,6 @@
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { codeVisionEditorLanguages } from '@/components/ide/languages'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { requestDocumentSymbols, requestLocations, requestPrepareHierarchy, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { prepareDocument } from './codeStudioLanguageFeatures'
@@ -16,7 +16,7 @@ const VISION_KINDS = new Set([5, 6, 10, 11, 12, 13, 14, 23])
 const ENTRY_POINT = /^(main|init|(Test|Benchmark|Fuzz|Example)\w*)$/
 
 
-interface VisionLens extends monaco.languages.CodeLens {
+interface VisionLens extends Monaco.languages.CodeLens {
   visionSymbol: { name: string, line: number, column: number, countUsages: boolean }
 }
 
@@ -44,7 +44,7 @@ function visionLens(symbol: GoIDESymbolNode): VisionLens {
   }
 }
 
-async function provideVisionLenses(model: monaco.editor.ITextModel, token: monaco.CancellationToken): Promise<monaco.languages.CodeLensList> {
+async function provideVisionLenses(model: Monaco.editor.ITextModel, token: Monaco.CancellationToken): Promise<Monaco.languages.CodeLensList> {
   const empty = { lenses: [], dispose: () => undefined }
   if (!heavyFeatureEnabled(useCodeStudioLspStore.getState(), 'codeVision')) return empty
   const prepared = await prepareDocument(model)
@@ -52,7 +52,7 @@ async function provideVisionLenses(model: monaco.editor.ITextModel, token: monac
   try {
     const result = await requestDocumentSymbols(prepared.sessionId, prepared.documentId)
     if (token.isCancellationRequested) return empty
-    const lenses: monaco.languages.CodeLens[] = []
+    const lenses: Monaco.languages.CodeLens[] = []
     const visit = (symbols: GoIDESymbolNode[]) => {
       for (const symbol of symbols) {
         if (VISION_KINDS.has(symbol.kind)) {
@@ -70,7 +70,7 @@ async function provideVisionLenses(model: monaco.editor.ITextModel, token: monac
   }
 }
 
-async function resolveVisionLens(model: monaco.editor.ITextModel, lens: VisionLens, token: monaco.CancellationToken): Promise<monaco.languages.CodeLens> {
+async function resolveVisionLens(model: Monaco.editor.ITextModel, lens: VisionLens, token: Monaco.CancellationToken): Promise<Monaco.languages.CodeLens> {
   const { name, line, column, countUsages } = lens.visionSymbol
   const parts: string[] = []
   if (countUsages) {
@@ -105,8 +105,8 @@ async function showUsages(sessionId: string, documentId: string, line: number, c
 export function registerCodeStudioCodeVision(): void {
   if (registered) return
   registered = true
-  const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
-  const provider: monaco.languages.CodeLensProvider = {
+  const changed = new monaco.Emitter<Monaco.languages.CodeLensProvider>()
+  const provider: Monaco.languages.CodeLensProvider = {
     onDidChange: changed.event,
     provideCodeLenses: provideVisionLenses,
     resolveCodeLens: (model, lens, token) => 'visionSymbol' in lens ? resolveVisionLens(model, lens as VisionLens, token) : lens,

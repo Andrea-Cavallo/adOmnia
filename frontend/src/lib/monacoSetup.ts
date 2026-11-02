@@ -3,6 +3,7 @@ import { codeStudioSyntaxRules, codeStudioGutterColors } from './codeStudioEdito
 import { useSettingsStore } from '@/stores/settings'
 import { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
+import { setLoadedMonaco } from './monacoRef'
 /* oxlint-disable import/default -- Vite `?worker` modules default-export the worker constructor */
 import editorWorker from 'monaco-editor/editor/editor.worker?worker'
 import cssWorker from 'monaco-editor/language/css/css.worker?worker'
@@ -226,4 +227,5 @@ useSettingsStore.subscribe((state, previous) => {
 // Redefining an active theme repaints every open editor immediately.
 window.addEventListener('adomnia:theme-tokens', () => applyCodeStudioMonacoThemes(monaco))
 
+setLoadedMonaco(monaco)
 export { monaco }

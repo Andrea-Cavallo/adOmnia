@@ -1,26 +1,26 @@
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useMemo, type MutableRefObject } from 'react'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { bookmarksFor, useCodeStudioNavigationStore, type GoIDEBookmark } from '@/stores/codeStudioNavigation'
 import { documentForModel } from './codeStudioLanguageFeatures'
 import { useTrackedLineMarkers } from './codeStudioLineMarkers'
 
 /** Solo i file del progetto entrano in cronologia e segnalibri: i sorgenti SDK non si riaprono per percorso. */
-function projectDocument(model: monaco.editor.ITextModel | null): GoIDEEditorDocument | null {
+function projectDocument(model: Monaco.editor.ITextModel | null): GoIDEEditorDocument | null {
   const document = model ? documentForModel(model) : null
   return document && !document.document.external ? document : null
 }
 
 /** Registra la posizione del cursore nella cronologia Back/Forward della sessione. */
-export function recordCaretPosition(model: monaco.editor.ITextModel | null, position: monaco.IPosition): void {
+export function recordCaretPosition(model: Monaco.editor.ITextModel | null, position: Monaco.IPosition): void {
   const document = projectDocument(model)
   if (!document) return
   useCodeStudioNavigationStore.getState().record(document.document.sessionId, { relativePath: document.document.relativePath, line: position.lineNumber, column: position.column })
 }
 
 /** F11: segnalibro sulla riga del cursore. */
-export function toggleBookmarkAtCursor(editor: monaco.editor.ICodeEditor | null): boolean {
+export function toggleBookmarkAtCursor(editor: Monaco.editor.ICodeEditor | null): boolean {
   const document = projectDocument(editor?.getModel() ?? null)
   const position = editor?.getPosition()
   if (!document || !position) return false
@@ -28,7 +28,7 @@ export function toggleBookmarkAtCursor(editor: monaco.editor.ICodeEditor | null)
   return true
 }
 
-export function bookmarkDecorations(bookmarks: GoIDEBookmark[], relativePath: string): monaco.editor.IModelDeltaDecoration[] {
+export function bookmarkDecorations(bookmarks: GoIDEBookmark[], relativePath: string): Monaco.editor.IModelDeltaDecoration[] {
   return bookmarks.filter((bookmark) => bookmark.relativePath === relativePath).map((bookmark) => ({
     range: { startLineNumber: bookmark.line, startColumn: 1, endLineNumber: bookmark.line, endColumn: 1 },
     options: {
@@ -41,7 +41,7 @@ export function bookmarkDecorations(bookmarks: GoIDEBookmark[], relativePath: st
 }
 
 /** Segnalibri del file nell'editor: seguono il testo mentre si scrive. */
-export function useCodeStudioBookmarks(editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
+export function useCodeStudioBookmarks(editorRef: MutableRefObject<Monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
   const { sessionId, relativePath, id, external } = document.document
   const bookmarks = useCodeStudioNavigationStore((state) => bookmarksFor(state, sessionId))
   const decorations = useMemo(() => bookmarkDecorations(bookmarks, relativePath), [bookmarks, relativePath])
@@ -52,7 +52,7 @@ export function useCodeStudioBookmarks(editorRef: MutableRefObject<monaco.editor
 }
 
 /** Esegue i comandi di cronologia e segnalibri; false se il comando non appartiene a quest'area. */
-export function runNavigationCommand(id: string, sessionId: string | null, editor: monaco.editor.ICodeEditor | null, openList: (mode: 'bookmarks' | 'recent') => void): boolean {
+export function runNavigationCommand(id: string, sessionId: string | null, editor: Monaco.editor.ICodeEditor | null, openList: (mode: 'bookmarks' | 'recent') => void): boolean {
   if (!sessionId) return false
   switch (id) {
     case 'nav.back': void useCodeStudioNavigationStore.getState().go(sessionId, -1); return true

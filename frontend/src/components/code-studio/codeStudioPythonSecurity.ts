@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { isPythonManifest, parsePythonManifest, pythonRequirementStatuses, pythonVersionEdit, type PythonRequirementStatus } from '@/lib/code-studio/pythonManifestSecurity'
 import { EMPTY_PYTHON_SECURITY_STATE, usePythonSecurityStore, type PythonSecurityState } from '@/stores/codeStudioPythonSecurity'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
@@ -18,7 +18,7 @@ function stateOf(documentId: string): PythonSecurityState {
   return usePythonSecurityStore.getState().byDocument[documentId] ?? EMPTY_PYTHON_SECURITY_STATE
 }
 
-function modelOf(document: GoIDEEditorDocument): monaco.editor.ITextModel | null {
+function modelOf(document: GoIDEEditorDocument): Monaco.editor.ITextModel | null {
   return monaco.editor.getModel(monaco.Uri.parse(editorModelUri(document.document)))
 }
 
@@ -32,18 +32,18 @@ function vulnerableOf(documentId: string, text: string, relativePath: string): P
   return pythonRequirementStatuses(parsePythonManifest(relativePath, text), stateOf(documentId).findings).filter((status) => status.worst)
 }
 
-function lensRange(line: number): monaco.IRange {
+function lensRange(line: number): Monaco.IRange {
   return { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }
 }
 
-function fixEdit(model: monaco.editor.ITextModel, status: PythonRequirementStatus) {
+function fixEdit(model: Monaco.editor.ITextModel, status: PythonRequirementStatus) {
   if (!status.fixVersion) return null
   const { line } = status.requirement
   const edit = line <= model.getLineCount() ? pythonVersionEdit(model.getLineContent(line), status.requirement, status.fixVersion) : null
   return edit && { range: { startLineNumber: line, startColumn: edit.startColumn, endLineNumber: line, endColumn: edit.endColumn }, text: edit.text }
 }
 
-function markersFor(model: monaco.editor.ITextModel, document: GoIDEEditorDocument): monaco.editor.IMarkerData[] {
+function markersFor(model: Monaco.editor.ITextModel, document: GoIDEEditorDocument): Monaco.editor.IMarkerData[] {
   return vulnerableOf(document.document.id, model.getValue(), document.document.relativePath).map((status) => {
     const { line, name, version } = status.requirement
     const ids = status.vulnerabilities.slice(0, 3).map((item) => `${item.id} (${item.band})`).join(', ')
@@ -64,10 +64,10 @@ function refreshMarkers(): void {
   }
 }
 
-function lensesFor(model: monaco.editor.ITextModel, document: GoIDEEditorDocument): monaco.languages.CodeLens[] {
+function lensesFor(model: Monaco.editor.ITextModel, document: GoIDEEditorDocument): Monaco.languages.CodeLens[] {
   const state = stateOf(document.document.id)
   const vulnerable = vulnerableOf(document.document.id, model.getValue(), document.document.relativePath)
-  const lenses: monaco.languages.CodeLens[] = [{
+  const lenses: Monaco.languages.CodeLens[] = [{
     range: lensRange(1),
     command: { id: SCAN_COMMAND, title: state.scanning ? '… Scanning' : '⛨ Scan vulnerabilities', tooltip: 'Match the requirements against OSV (only package names and versions leave your machine)', arguments: [document.document.id] },
   }]
@@ -100,8 +100,8 @@ export function registerCodeStudioPythonSecurity(): void {
     if (document) void usePythonSecurityStore.getState().scan(documentId, document.document.path, document.document.relativePath)
   })
   monaco.editor.registerCommand(FIX_COMMAND, (_accessor, documentId: string, line: number) => applyFix(documentId, line))
-  const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
-  const provider: monaco.languages.CodeLensProvider = {
+  const changed = new monaco.Emitter<Monaco.languages.CodeLensProvider>()
+  const provider: Monaco.languages.CodeLensProvider = {
     onDidChange: changed.event,
     provideCodeLenses: (model) => {
       const document = documentForModel(model)
@@ -114,7 +114,7 @@ export function registerCodeStudioPythonSecurity(): void {
     provideCodeActions: (model, range) => {
       const document = documentForModel(model)
       if (!document || !isPythonManifest(document.document.relativePath)) return { actions: [], dispose: () => undefined }
-      const actions: monaco.languages.CodeAction[] = []
+      const actions: Monaco.languages.CodeAction[] = []
       for (const status of vulnerableOf(document.document.id, model.getValue(), document.document.relativePath)) {
         if (status.requirement.line < range.startLineNumber || status.requirement.line > range.endLineNumber) continue
         const edit = fixEdit(model, status)

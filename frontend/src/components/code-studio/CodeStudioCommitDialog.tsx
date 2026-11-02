@@ -1,6 +1,6 @@
 import './codeStudioNothingDialogs.css'
 import { logBackgroundError } from '@/lib/code-studio/backgroundError'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, FlaskConical, GitCommitHorizontal, Sparkles } from 'lucide-react'
 import { isAICompanionAvailable } from '@/lib/aiAvailability'
 import { draftCodeStudioCommitMessage, type CommitMessageSymbol } from './codeStudioCommitMessageAI'
@@ -14,9 +14,11 @@ import { precommitProblems, type CodeStudioPrecommitSummary } from './codeStudio
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
-import { CodeStudioCommitDiff } from './CodeStudioCommitDiff'
 import * as GoIDEBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { activeLocalReplaces, isGoModPath, type GoModReplace } from '@/lib/goModLocalReplaces'
+
+// Loads Monaco: only when shown.
+const CodeStudioCommitDiff = lazy(() => import('./CodeStudioCommitDiff').then((m) => ({ default: m.CodeStudioCommitDiff })))
 
 interface CodeStudioCommitDialogProps {
   sessionId: string
@@ -339,7 +341,7 @@ export function CodeStudioCommitDialog({ sessionId, open, onClose, onResolveConf
       </div>
       </div>
       <div className="gs-commit-review min-w-0 flex-1">
-        <CodeStudioCommitDiff sessionId={sessionId} relativePath={focused} />
+        <Suspense fallback={null}><CodeStudioCommitDiff sessionId={sessionId} relativePath={focused} /></Suspense>
       </div>
       </div>
     </CodeStudioModal>

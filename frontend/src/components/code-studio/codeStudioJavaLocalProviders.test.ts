@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { monaco } from '@/lib/monacoSetup'
 const mock=vi.hoisted(()=>({ ready:false, providers:new Map<string,unknown>(), request:vi.fn(), flush:vi.fn(), documents:[] as unknown[] }))
-vi.mock('@/lib/monacoSetup',()=>({monaco:{
+vi.mock('@/lib/monacoRef',()=>({monaco:{
  MarkerSeverity:{Error:8,Warning:4,Info:2,Hint:1},
  Uri:{parse:(uri:string)=>({toString:()=>uri,with:({fragment}:{fragment:string})=>({toString:()=>uri.split('#')[0]+(fragment?'#'+fragment:'')})})},
  languages:{
@@ -24,7 +24,7 @@ vi.mock('./codeStudioAIFixRunner',()=>({}))
 import { registerCodeStudioLanguageFeatures } from './codeStudioLanguageFeatures'
 const source='class Demo { static final int LIMIT=42; void work(int input) { int local=1; loc } }'
 const offset=source.indexOf(' loc }')+4
-const model={uri:{toString:()=> 'file:///Demo.java#session=s'},getLanguageId:()=> 'java',getValue:()=> source,getOffsetAt:()=>offset,getWordUntilPosition:()=>({word:'loc',startColumn:offset-2,endColumn:offset+1})} as unknown as monaco.editor.ITextModel
+const model={uri:{toString:()=> 'file:///Demo.java#session%3Ds'},getLanguageId:()=> 'java',getValue:()=> source,getOffsetAt:()=>offset,getWordUntilPosition:()=>({word:'loc',startColumn:offset-2,endColumn:offset+1})} as unknown as monaco.editor.ITextModel
 const token={isCancellationRequested:false,onCancellationRequested:()=>({dispose:vi.fn()})} as unknown as monaco.CancellationToken
 registerCodeStudioLanguageFeatures(['java'])
 beforeEach(()=>{

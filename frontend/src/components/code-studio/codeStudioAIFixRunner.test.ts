@@ -18,7 +18,7 @@ vi.mock('@/lib/aiAvailability', () => ({ isAICompanionAvailable: () => ai.availa
 vi.mock('@/stores/settings', () => ({ useSettingsStore: { getState: () => ({ settings: { ai: { provider: 'anthropic' } } }) } }))
 vi.mock('@/lib/code-studio-api', () => ({ listGoIDEDirectory: api.list, openGoIDEDocument: api.open, closeGoIDEDocument: api.close, listGoIDEAIExcludedPaths: api.excluded, getGoIDEAIPolicy: async () => 'allowed', isLocalAIProvider: () => false }))
 vi.mock('@/lib/code-studio-lsp-api', () => ({}))
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: {} }))
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => codeStudio.state } }))
 vi.mock('@/stores/codeStudioLsp', () => ({ useCodeStudioLspStore: { setState: lsp.setState } }))
 

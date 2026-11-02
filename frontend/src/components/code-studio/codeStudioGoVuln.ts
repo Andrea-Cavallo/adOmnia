@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { confirm } from '@/lib/confirmDialog'
 import { installGoIDEGoModule } from '@/lib/code-studio-api'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -24,7 +24,7 @@ function stateOf(documentId: string): GoVulnState {
   return useGoVulnStore.getState().byDocument[documentId] ?? EMPTY_GO_VULN_STATE
 }
 
-function modelOf(document: GoIDEEditorDocument): monaco.editor.ITextModel | null {
+function modelOf(document: GoIDEEditorDocument): Monaco.editor.ITextModel | null {
   return monaco.editor.getModel(monaco.Uri.parse(editorModelUri(document.document)))
 }
 
@@ -38,18 +38,18 @@ function vulnerableOf(documentId: string, text: string): GoModRequirementStatus[
   return goModStatuses(parseGoMod(text).requirements, stateOf(documentId).findings).filter((status) => status.worst)
 }
 
-function lensRange(line: number): monaco.IRange {
+function lensRange(line: number): Monaco.IRange {
   return { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }
 }
 
-function fixEdit(model: monaco.editor.ITextModel, status: GoModRequirementStatus) {
+function fixEdit(model: Monaco.editor.ITextModel, status: GoModRequirementStatus) {
   if (!status.fixVersion) return null
   const { line } = status.requirement
   const edit = line <= model.getLineCount() ? goModVersionEdit(model.getLineContent(line), status.requirement, status.fixVersion) : null
   return edit && { range: { startLineNumber: line, startColumn: edit.startColumn, endLineNumber: line, endColumn: edit.endColumn }, text: edit.text }
 }
 
-function markersFor(model: monaco.editor.ITextModel, documentId: string): monaco.editor.IMarkerData[] {
+function markersFor(model: Monaco.editor.ITextModel, documentId: string): Monaco.editor.IMarkerData[] {
   return vulnerableOf(documentId, model.getValue()).map((status) => {
     const { line, path, version } = status.requirement
     const ids = status.vulnerabilities.slice(0, 3).map((item) => `${item.id} (${item.band})`).join(', ')
@@ -71,10 +71,10 @@ function refreshMarkers(): void {
   }
 }
 
-function lensesFor(model: monaco.editor.ITextModel, documentId: string): monaco.languages.CodeLens[] {
+function lensesFor(model: Monaco.editor.ITextModel, documentId: string): Monaco.languages.CodeLens[] {
   const state = stateOf(documentId)
   const vulnerable = vulnerableOf(documentId, model.getValue())
-  const lenses: monaco.languages.CodeLens[] = [{
+  const lenses: Monaco.languages.CodeLens[] = [{
     range: lensRange(1),
     command: { id: SCAN_COMMAND, title: state.scanning ? '… Scanning' : '⛨ Scan vulnerabilities', tooltip: 'Match the requirements against OSV (only module paths and versions leave your machine)', arguments: [documentId] },
   }]
@@ -120,8 +120,8 @@ export function registerCodeStudioGoVuln(): void {
     if (document) void installGovulncheck(document.document.sessionId)
   })
   monaco.editor.registerCommand(FIX_COMMAND, (_accessor, documentId: string, line: number) => applyFix(documentId, line))
-  const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
-  const provider: monaco.languages.CodeLensProvider = {
+  const changed = new monaco.Emitter<Monaco.languages.CodeLensProvider>()
+  const provider: Monaco.languages.CodeLensProvider = {
     onDidChange: changed.event,
     provideCodeLenses: (model) => {
       const document = documentForModel(model)
@@ -134,7 +134,7 @@ export function registerCodeStudioGoVuln(): void {
     provideCodeActions: (model, range) => {
       const document = documentForModel(model)
       if (!document || !isGoMod(document.document.relativePath)) return { actions: [], dispose: () => undefined }
-      const actions: monaco.languages.CodeAction[] = []
+      const actions: Monaco.languages.CodeAction[] = []
       for (const status of vulnerableOf(document.document.id, model.getValue())) {
         if (status.requirement.line < range.startLineNumber || status.requirement.line > range.endLineNumber) continue
         const edit = fixEdit(model, status)

@@ -3,7 +3,7 @@ import { goModules } from '@/lib/code-studio/goProject'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { unitBadges } from '@/lib/code-studio/projectUnits'
 import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { ChevronRight, Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
 import { CodeStudioExplorerToolbar } from './CodeStudioExplorerToolbar'
 import { CodeStudioProjectNavigation } from './CodeStudioProjectNavigation'
@@ -23,10 +23,12 @@ import { openHtmlWithLivePreview } from './codeStudioPreviewCommands'
 import { copyReference, findInFiles, findInFolder, moveTreePath, openInSplit, openTerminalIn, pasteInto, previewHtml, repairIde, replaceInFiles, runPackageCommand, runTreeGitAction, useCodeStudioTreeClipboard } from './codeStudioTreeActions'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { CodeStudioPathDialog, type CodeStudioPathRequest } from './CodeStudioPathDialog'
-import { CodeStudioCompareDialog } from './CodeStudioCompareDialog'
 import { CodeStudioGistDialog } from './CodeStudioGistDialog'
 import { directoryMarkLabel, loadDirectoryMarks, saveDirectoryMark, type CodeStudioDirectoryMark } from './codeStudioDirectoryMarks'
 import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
+
+// Loads Monaco: only when shown.
+const CodeStudioCompareDialog = lazy(() => import('./CodeStudioCompareDialog').then((m) => ({ default: m.CodeStudioCompareDialog })))
 
 /** entry null = radice del progetto. */
 type TreeContextHandler = (entry: GoIDEFileEntry | null, x: number, y: number) => void
@@ -426,7 +428,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
       <div className="shrink-0 truncate border-t border-border-1 px-3 py-1.5 text-[10px] text-text-4" title={projectSummary}>{projectSummary}</div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={buildTreeMenu(menu.entry, menuContext)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
       <CodeStudioPathDialog sessionId={session.id} request={pathRequest} onClose={() => setPathRequest(null)} />
-      <CodeStudioCompareDialog sessionId={session.id} sourcePath={compareRequest?.path ?? null} sourceDirectory={compareRequest?.directory ?? false} onClose={() => setCompareRequest(null)} />
+      {compareRequest && <Suspense fallback={null}><CodeStudioCompareDialog sessionId={session.id} sourcePath={compareRequest.path} sourceDirectory={compareRequest.directory} onClose={() => setCompareRequest(null)} /></Suspense>}
       <CodeStudioGistDialog sessionId={session.id} relativePath={gistRequest} onClose={() => setGistRequest(null)} />
     </aside>
   )

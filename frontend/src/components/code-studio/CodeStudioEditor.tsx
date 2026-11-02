@@ -21,6 +21,7 @@ import { CodeStudioHtmlView, isHtmlDocument, type CodeStudioHtmlMode } from './C
 import { CodeStudioLivePreview } from './CodeStudioLivePreview'
 import { CodeStudioServerNotice } from './CodeStudioServerNotice'
 import { CodeStudioPreviewSplit } from './CodeStudioPreviewSplit'
+import { CodeStudioEditorEmpty } from './CodeStudioEditorEmpty'
 import { selectSessionPreview, useLivePreviewStore } from '@/stores/livePreview'
 
 interface CodeStudioEditorProps {
@@ -77,29 +78,7 @@ export function CodeStudioEditor({ documents, active, onCursor, onRequestClose, 
   }, [htmlPreviewRequest, active])
 
 
-  if (!active) {
-    const empty = (
-      <section aria-label="Editor" className="flex min-h-0 flex-1 items-center justify-center">
-        <div className="text-center text-[11px] text-text-4">
-          <p className="font-medium text-text-3">Open a file from Project</p>
-          <p className="mt-1">Go to File: Ctrl/Cmd+P · Symbol: Ctrl/Cmd+T · Find in Files: Ctrl/Cmd+Shift+F</p>
-        </div>
-      </section>
-    )
-    if (previewInTab && previewSession) {
-      return (
-        <section aria-label="Editor" className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <CodeStudioEditorTabs
-            documents={documents} activeId="" onRequestClose={onRequestClose}
-            previewTab={{ active: livePreview.tabActive, label: 'Live Preview', onSelect: () => useLivePreviewStore.getState().setTabActive(previewSession.id, true), onClose: () => useLivePreviewStore.getState().hide(previewSession.id) }}
-            onSelectDocument={() => useLivePreviewStore.getState().setTabActive(previewSession.id, false)}
-          />
-          <div className="relative flex min-h-0 min-w-0 flex-1">{livePreview.tabActive ? <CodeStudioLivePreview session={previewSession} embedded /> : empty}</div>
-        </section>
-      )
-    }
-    return <CodeStudioPreviewSplit session={previewSession} open={previewInSplit} editor={empty} />
-  }
+  if (!active) return <CodeStudioEditorEmpty documents={documents} onRequestClose={onRequestClose} />
 
   const main = (
     <section aria-label="Editor" className="flex min-h-0 min-w-0 flex-1 flex-col">

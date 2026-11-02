@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: {} }))
 vi.mock('@/lib/code-studio-lsp-api', () => ({ requestImplementationMarkers: vi.fn() }))
 vi.mock('@/stores/codeStudio', () => ({}))
 vi.mock('@/stores/codeStudioLsp', () => ({ useCodeStudioLspStore: Object.assign(vi.fn(), { setState: vi.fn(), getState: vi.fn(), subscribe: vi.fn() }) }))

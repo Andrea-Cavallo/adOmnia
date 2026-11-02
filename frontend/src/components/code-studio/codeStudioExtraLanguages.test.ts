@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: {} }))
 
 import { isGeneratedGoFile } from './codeStudioExtraLanguages'
 

@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { useCodeStudioStore, type GoIDEEditorDocument, type GoIDEQuickRunKind } from '@/stores/codeStudio'
 import { packageLenses } from './codeStudioRunTargets'
 import { documentForModel } from './codeStudioLanguageFeatures'
@@ -40,11 +40,11 @@ function fileName(relativePath: string): string {
   return relativePath.split('/').pop() ?? relativePath
 }
 
-function lensRange(line: number): monaco.IRange {
+function lensRange(line: number): Monaco.IRange {
   return { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }
 }
 
-function lensesFor(document: GoIDEEditorDocument, text: string): monaco.languages.CodeLens[] {
+function lensesFor(document: GoIDEEditorDocument, text: string): Monaco.languages.CodeLens[] {
   const { relativePath, id } = document.document
   if (fileName(relativePath) === 'go.mod') {
     return goModLenses(parseGoMod(text)).map((lens) => ({
@@ -65,14 +65,14 @@ function lensesFor(document: GoIDEEditorDocument, text: string): monaco.language
 }
 
 /** Entità del Developer Context trovate in questo file (scansione su disco: le righe seguono l'ultimo salvataggio). */
-function entityLenses(document: GoIDEEditorDocument): monaco.languages.CodeLens[] {
+function entityLenses(document: GoIDEEditorDocument): Monaco.languages.CodeLens[] {
   const { sessionId, relativePath } = document.document
   const snapshot = useDevContextStore.getState().snapshots[sessionId]
   if (!snapshot) {
     void useDevContextStore.getState().ensure(sessionId)
     return []
   }
-  const lenses: monaco.languages.CodeLens[] = []
+  const lenses: Monaco.languages.CodeLens[] = []
   for (const entity of snapshot.entities ?? []) {
     if (!LENS_KINDS.has(entity.kind)) continue
     const ref = entityRefFrom(entity, sessionId)
@@ -91,14 +91,14 @@ function entityLenses(document: GoIDEEditorDocument): monaco.languages.CodeLens[
 }
 
 /** Code → API: sulla dichiarazione di un handler, le azioni sulla request che lo esercita. `debug` è solo Go (Delve). */
-function handlerLenses(document: GoIDEEditorDocument, withInline = false): monaco.languages.CodeLens[] {
+function handlerLenses(document: GoIDEEditorDocument, withInline = false): Monaco.languages.CodeLens[] {
   const { sessionId, relativePath } = document.document
   const snapshot = useDevContextStore.getState().snapshots[sessionId]
   if (!snapshot) {
     if (withInline) void useDevContextStore.getState().ensure(sessionId)
     return []
   }
-  const lenses: monaco.languages.CodeLens[] = []
+  const lenses: Monaco.languages.CodeLens[] = []
   for (const route of snapshot.entities ?? []) {
     if (route.kind !== 'route' || route.attrs.declFile !== relativePath) continue
     const line = Number(route.attrs.declLine)
@@ -166,9 +166,9 @@ export function registerCodeStudioCodeLens(): void {
     if (route) void runHandlerAction(sessionId, route, action)
   })
   // I lens si aggiornano quando arriva o cambia lo snapshot del Developer Context.
-  const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
+  const changed = new monaco.Emitter<Monaco.languages.CodeLensProvider>()
   useDevContextStore.subscribe((state, previous) => { if (state.snapshots !== previous.snapshots) changed.fire(provider) })
-  const provider: monaco.languages.CodeLensProvider = {
+  const provider: Monaco.languages.CodeLensProvider = {
     onDidChange: changed.event,
     provideCodeLenses: (model) => {
       const document = documentForModel(model)

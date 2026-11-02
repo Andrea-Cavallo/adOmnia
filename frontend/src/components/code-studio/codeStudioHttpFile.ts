@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco } from '@/lib/monacoRef'
 import { httpFileRequests } from '@/lib/code-studio/httpFile'
 import { showEntityNotice } from '@/lib/entities/notice'
 import { routeToModule } from '@/lib/moduleRouting'

@@ -1,6 +1,6 @@
 import { useActivityPhase } from '@/hooks/useActivity'
 import { useEffect, useRef, type MutableRefObject } from 'react'
-import { monaco } from '@/lib/monacoSetup'
+import type { Monaco } from '@/lib/monacoRef'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { analyzeContextPropagation, loadContextTimeoutThreshold, type ContextFinding, type ContextSeverity } from './codeStudioContextAnalysis'
 
@@ -15,14 +15,14 @@ const SEVERITY_GLYPH: Record<ContextSeverity, string> = {
 const SEVERITY_RANK: Record<ContextSeverity, number> = { error: 0, warning: 1, info: 2 }
 
 /** Una decorazione per riga, con il problema più grave e l'elenco completo nel tooltip. */
-export function contextMarkerDecorations(findings: readonly ContextFinding[]): monaco.editor.IModelDeltaDecoration[] {
+export function contextMarkerDecorations(findings: readonly ContextFinding[]): Monaco.editor.IModelDeltaDecoration[] {
   const byLine = new Map<number, ContextFinding[]>()
   for (const finding of findings) {
     const list = byLine.get(finding.line) ?? []
     list.push(finding)
     byLine.set(finding.line, list)
   }
-  const decorations: monaco.editor.IModelDeltaDecoration[] = []
+  const decorations: Monaco.editor.IModelDeltaDecoration[] = []
   for (const [line, list] of byLine) {
     const worst = [...list].sort((left, right) => SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity])[0]
     const messages = list.map((finding) => `• ${finding.message}`).join('\n')
@@ -38,9 +38,9 @@ export function contextMarkerDecorations(findings: readonly ContextFinding[]): m
 }
 
 /** Marcatori nel gutter del file attivo: ricalcolati con debounce sul buffer, senza gopls. */
-export function useCodeStudioContextMarkers(editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
+export function useCodeStudioContextMarkers(editorRef: MutableRefObject<Monaco.editor.IStandaloneCodeEditor | null>, document: GoIDEEditorDocument, mountCount: number): void {
   const activityPhase = useActivityPhase(`code-studio:${document.document.sessionId}`)
-  const collectionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const collectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
   const { external, readOnly, relativePath } = document.document
   const enabled = relativePath.endsWith('.go') && !external && !readOnly
 
