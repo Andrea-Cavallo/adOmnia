@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 const mock = vi.hoisted(() => ({ documents: [] as Array<{ document: { id: string; uri: string; sessionId: string } }>, models: new Map<string, unknown>(), close: vi.fn(), read: vi.fn() }))
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {
+vi.mock('@/lib/monacoRef', () => ({ monaco: {
   MarkerSeverity: { Error: 8, Warning: 4, Info: 2, Hint: 1 },
   Uri: { parse: (uri: string) => ({ toString: () => uri, with: ({ fragment }: { fragment: string }) => ({ toString: () => uri.split('#')[0] + (fragment ? '#' + fragment : '') }) }) },
   editor: { getModel: (uri: { toString(): string }) => mock.models.get(uri.toString()), createModel: (text: string, language: string, uri: { toString(): string }) => {

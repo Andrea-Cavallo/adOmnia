@@ -10,11 +10,13 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/fileio"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/workspace"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/declared"
 )
 
 const (
@@ -33,10 +35,12 @@ type DocumentManager struct {
 	mu        sync.RWMutex
 	documents map[DocumentID]documentRecord
 	files     fileIndex
+	// onIndexBuilt riceve durata e numero di file di ogni costruzione dell'indice Quick Open.
+	onIndexBuilt func(elapsed time.Duration, entries int)
 }
 
 func NewDocumentManager() *DocumentManager {
-	return &DocumentManager{documents: make(map[DocumentID]documentRecord), files: fileIndex{byRoot: make(map[string][]indexedFile)}}
+	return &DocumentManager{documents: make(map[DocumentID]documentRecord), files: fileIndex{byRoot: make(map[string][]indexedFile), generation: make(map[string]uint64)}}
 }
 
 // ListDirectory legge un solo livello del progetto e mantiene la navigazione confinata alla radice reale.
@@ -58,7 +62,7 @@ func (m *DocumentManager) ListDirectory(proj Project, relativePath string, inclu
 			break
 		}
 		path := filepath.Join(directory, entry.Name())
-		ignored := (isIgnoredDirectory(entry.Name()) && entry.IsDir()) || gitIgnored(ignore, proj.RealPath, path, entry.IsDir())
+		ignored := (entry.IsDir() && skipWalkDirectory(path, entry.Name())) || gitIgnored(ignore, proj.RealPath, path, entry.IsDir())
 		// Le cartelle ignorate restano nascoste come già accade per node_modules e build;
 		// i file ignorati restano visibili ma marcati (es. .env, spesso in .gitignore).
 		if ignored && entry.IsDir() && !includeIgnored {
@@ -414,8 +418,7 @@ func stableDocumentID(sessionID SessionID, path string) DocumentID {
 
 func fileURI(path string) string { return lsp.FileURI(path) }
 
-// languageByExtension mappa le estensioni sugli id dei linguaggi Monaco già
-// inclusi nel bundle: solo colorazione, nessun language server oltre a gopls.
+// languageByExtension maps file extensions to bundled Monaco language IDs.
 var languageByExtension = map[string]string{
 	".go": "go", ".s": "goasm",
 	".json": "json", ".jsonc": "json", ".yaml": "yaml", ".yml": "yaml",
@@ -428,12 +431,13 @@ var languageByExtension = map[string]string{
 	".sql": "sql", ".proto": "proto", ".graphql": "graphql", ".gql": "graphql",
 	".sh": "shell", ".bash": "shell", ".zsh": "shell",
 	".ps1": "powershell", ".psm1": "powershell", ".bat": "bat", ".cmd": "bat",
-	".ini": "ini", ".toml": "ini", ".cfg": "ini", ".conf": "ini", ".properties": "ini",
-	".gradle": "kotlin", ".kts": "kotlin",
+	".ini": "ini", ".toml": "toml", ".cfg": "ini", ".conf": "ini", ".properties": "ini",
+	".gradle": "groovy", ".kts": "kotlin",
 	".py": "python", ".rs": "rust", ".java": "java", ".kt": "kotlin",
 	".c": "cpp", ".h": "cpp", ".cpp": "cpp", ".hpp": "cpp",
 	".tf": "hcl", ".hcl": "hcl", ".lua": "lua", ".rb": "ruby", ".php": "php",
 	".dockerfile": "dockerfile", ".mk": "makefile",
+	".http": "http", ".rest": "http",
 }
 
 func languageForPath(path string) string {
@@ -443,6 +447,8 @@ func languageForPath(path string) string {
 		return "go"
 	case base == "go.sum" || base == "go.work.sum":
 		return "gosum"
+	case base == "cargo.lock" || base == "poetry.lock" || base == "uv.lock":
+		return "toml"
 	case base == ".env" || strings.HasPrefix(base, ".env."):
 		return "ini"
 	case base == "dockerfile" || strings.HasPrefix(base, "dockerfile.") || strings.HasSuffix(base, ".dockerfile") || base == "containerfile":
@@ -453,9 +459,18 @@ func languageForPath(path string) string {
 	if language, ok := languageByExtension[filepath.Ext(base)]; ok {
 		return language
 	}
+	if language, ok := declared.EditorLanguage(base); ok {
+		return language
+	}
 	return "plaintext"
 }
 
 func isIgnoredDirectory(name string) bool {
 	return project.IgnoredDirectory(name)
+}
+
+// skipWalkDirectory è il filtro dei walk sul progetto: cartelle sempre escluse più gli output di build
+// (target accanto a Cargo.toml/pom.xml, obj accanto a un progetto .NET).
+func skipWalkDirectory(path, name string) bool {
+	return project.SkipDirectory(filepath.Dir(path), name)
 }

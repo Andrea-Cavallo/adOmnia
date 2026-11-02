@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { showModule } from '@/lib/moduleRouting'
 import { History, Menu } from 'lucide-react'
@@ -81,7 +81,7 @@ export function compactFileMenu(items: ContextMenuItem[]): ContextMenuItem[] {
 const MENU_PREFIX = 'menu:'
 
 /** Menu principale compresso nel pulsante ☰: ogni menu è un sottomenu. */
-function mainMenuItems(state: CodeStudioCommandState, recentProjects: GoIDERecentProject[], openProjectPaths: string[]): ContextMenuItem[] {
+export function mainMenuItems(state: CodeStudioCommandState, recentProjects: GoIDERecentProject[], openProjectPaths: string[]): ContextMenuItem[] {
   return CODE_STUDIO_MENUS.map((menu) => {
     const base = menu.id === 'file' ? compactFileMenu(menuItems(menu.id, state)) : menuItems(menu.id, state)
     const header = { id: `${MENU_PREFIX}${menu.id}`, label: menu.label, icon: CODE_STUDIO_MENU_ICONS[menu.id].icon, iconClassName: CODE_STUDIO_MENU_ICONS[menu.id].tone }
@@ -93,9 +93,11 @@ function mainMenuItems(state: CodeStudioCommandState, recentProjects: GoIDERecen
 
 export function CodeStudioMenuBar({ state, recentProjects, openProjectPaths, onCommand, onOpenRecent }: CodeStudioMenuBarProps) {
   const [open, setOpen] = useState<{ x: number; y: number } | null>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const close = (restoreFocus = true) => { setOpen(null); if (restoreFocus) trigger.current?.focus() }
 
   const select = (id: string) => {
-    setOpen(null)
+    close()
     if (id.startsWith(MENU_PREFIX)) return
     if (id.startsWith(RECENT_PREFIX)) onOpenRecent(id.slice(RECENT_PREFIX.length))
     else onCommand(id as CodeStudioCommandId)
@@ -109,6 +111,7 @@ export function CodeStudioMenuBar({ state, recentProjects, openProjectPaths, onC
       </button>
       <button
         type="button"
+        ref={trigger}
         aria-label="Main menu"
         title="Main menu: File, Edit, View, Navigate, Code, Go, Java, Run, Tools, Git, Help"
         aria-haspopup="menu"
@@ -122,7 +125,7 @@ export function CodeStudioMenuBar({ state, recentProjects, openProjectPaths, onC
       >
         <Menu size={17} strokeWidth={1.8} />
       </button>
-      {open && <ContextMenu appearance="studio" compact x={open.x} y={open.y} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={() => setOpen(null)} />}
+      {open && <ContextMenu appearance="studio" compact x={open.x} y={open.y} items={mainMenuItems(state, recentProjects, openProjectPaths)} onSelect={select} onClose={close} />}
     </>
   )
 }

@@ -1,10 +1,10 @@
 import { CodeStudioModal } from './CodeStudioModal'
 import { CodeStudioFindInFiles } from './CodeStudioFindInFiles'
-import { useMemo } from 'react'
+import { Suspense, lazy, useMemo } from 'react'
 import { Minus } from 'lucide-react'
 import { studioToolLayout } from './studioToolLayout'
 import { ResizeHandle, type ResizeHandleInteraction } from '@/components/ui/ResizeHandle'
-import { CodeStudioEditor } from './CodeStudioEditor'
+import { CodeStudioEditorEmpty } from './CodeStudioEditorEmpty'
 import { CodeStudioSidePane } from './CodeStudioSidePane'
 import { CodeStudioProjectTree } from './CodeStudioProjectTree'
 import { CodeStudioRunPanel } from './CodeStudioRunPanel'
@@ -21,6 +21,9 @@ import { isChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssi
 import { toolKey, useStudioTools, type ToolPlacement } from './studioToolState'
 import { CodeStudioFunctionExplorer } from './CodeStudioFunctionExplorer'
 import { useFunctionExplorerDock } from './useFunctionExplorerDock'
+
+// Monaco (~1 MB) loads with the first open file, not when Code Studio opens.
+const CodeStudioEditor = lazy(() => import('./CodeStudioEditor').then((m) => ({ default: m.CodeStudioEditor })))
 
 interface CodeStudioWorkspaceProps {
   session: GoIDESession
@@ -74,7 +77,9 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
   const debugPanes = debugging ? panes.map(pane => ({ ...pane, open: false })) : panes
   const { focused, left, centerColumns, gridStyle, styleFor } = studioToolLayout(debugPanes, zen || debugging ? null : maximized, bottomHeight)
   const functionExplorerVisible = styleFor('functions').display !== 'none'
-  const editor = <CodeStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} />
+  const editor = active
+    ? <Suspense fallback={<section aria-label="Editor" className="flex min-h-0 flex-1" />}><CodeStudioEditor documents={documents} active={active} onCursor={onCursor} onRequestClose={onRequestCloseDocument} onRunTarget={onRunTarget} /></Suspense>
+    : <CodeStudioEditorEmpty documents={documents} onRequestClose={onRequestCloseDocument} />
 
   return (
     <div className="code-studio-workspace relative flex min-h-0 flex-1">

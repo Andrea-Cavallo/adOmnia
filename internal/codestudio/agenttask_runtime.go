@@ -90,6 +90,13 @@ func (runtime *AgentTaskRuntime) Run(ctx context.Context, request agenttask.RunR
 				message += "\n" + event.Description
 			}
 			publish(agenttask.Event{Kind: "permission", Message: message, SessionID: event.SessionID, RequestID: event.RequestID})
+		case strings.HasSuffix(name, ".permissionAuto"):
+			// Decisa da una regola dell'agente: nessuno è stato interpellato, ma la timeline lo registra.
+			event, ok := payload.(milk.AutoPermissionEvent)
+			if !ok || event.SessionKey != attemptID {
+				return
+			}
+			publish(agenttask.Event{Kind: "permission_resolved", Message: event.Outcome, ToolName: event.Title, ToolStatus: "rule: " + event.Category, SessionID: event.SessionID})
 		case strings.HasSuffix(name, ".permissionResolved"):
 			event, ok := payload.(map[string]string)
 			if !ok {
@@ -100,7 +107,7 @@ func (runtime *AgentTaskRuntime) Run(ctx context.Context, request agenttask.RunR
 			delete(pending, event["requestId"])
 			pendingMu.Unlock()
 			if owned {
-				publish(agenttask.Event{Kind: "permission_resolved", RequestID: event["requestId"]})
+				publish(agenttask.Event{Kind: "permission_resolved", RequestID: event["requestId"], Message: event["outcome"]})
 			}
 		}
 	})

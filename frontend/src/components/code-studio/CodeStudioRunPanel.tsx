@@ -1,19 +1,19 @@
+import { CodeStudioRunLogActions } from './CodeStudioRunLogActions'
 import { CodeStudioToolWindowMenu } from './CodeStudioToolStripes'
 import { CodeStudioToolbarSelect } from './CodeStudioToolbarSelect'
-import { useEffect, useMemo, useRef, useState, memo } from 'react'
+import { CodeStudioProgramInput } from './CodeStudioProgramInput'
+import { CodeStudioConsoleRow } from './CodeStudioConsoleRow'
+import { CodeStudioExecutionDetails } from './CodeStudioExecutionDetails'
+import { consoleOutputLines } from './codeStudioConsolePresentation'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, memo } from 'react'
 import type { CodeStudioCommandId } from './codeStudioCommands'
-import { Copy, ExternalLink, FileJson, Minus, RefreshCw, Search, Square } from 'lucide-react'
+import { SquareTerminal, Copy, ExternalLink, FileJson, Minus, RefreshCw, Search, Square } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
 import { useCodeStudioStore, type GoIDEConsoleChunk } from '@/stores/codeStudio'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
-import { CodeStudioTestsPanel } from './CodeStudioTestsPanel'
-import { CodeStudioDebugPanel } from './CodeStudioDebugPanel'
-import { CodeStudioTodoPanel } from './CodeStudioTodoPanel'
-import { CodeStudioLivePreview } from './CodeStudioLivePreview'
 import { selectDebugState } from './codeStudioDebugCommands'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/code-studio-api'
-import { CodeStudioTerminalPanel } from './CodeStudioTerminalPanel'
 import { firstLocalServerURL } from '@/lib/code-studio/runServerURL'
 import { openExternal } from '@/lib/openExternal'
 import { handOffOpenApiURL } from '@/lib/moduleHandoff'
@@ -23,19 +23,6 @@ import { parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLi
 import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './codeStudioConsoleWindow'
 import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './codeStudioLogLevels'
 import { CodeStudioProblems, type CodeStudioBuildProblem } from './CodeStudioProblems'
-import { CodeStudioContextPanel } from './CodeStudioContextPanel'
-import { CodeStudioProfilePanel } from './CodeStudioProfilePanel'
-import { CodeStudioTracePanel } from './CodeStudioTracePanel'
-import { CodeStudioFuzzPanel } from './CodeStudioFuzzPanel'
-import { CodeStudioErrorsPanel } from './CodeStudioErrorsPanel'
-import { CodeStudioArchitecturePanel } from './CodeStudioArchitecturePanel'
-import { CodeStudioImpactPanel } from './CodeStudioImpactPanel'
-import { CodeStudioConfigPanel } from './CodeStudioConfigPanel'
-import { CodeStudioDocsPanel } from './CodeStudioDocsPanel'
-import { CodeStudioSonarPanel } from './CodeStudioSonarPanel'
-import { CodeStudioSecurityPanel } from './CodeStudioSecurityPanel'
-import { CodeStudioGitPanel } from './CodeStudioGitPanel'
-import { CodeStudioGoPanel } from './CodeStudioGoPanel'
 import { CodeStudioReferences } from './CodeStudioReferences'
 import { CodeStudioFindInFiles } from './CodeStudioFindInFiles'
 import { diagnosticCounts, mergedReports, useCodeStudioLspStore, type GoIDEToolWindow } from '@/stores/codeStudioLsp'
@@ -43,6 +30,27 @@ import { StudioToolControls } from './StudioToolControls'
 import { toolKey, useStudioTools, useToolView } from './studioToolState'
 import { selectToolRun } from './studioToolBridge'
 import { buildKitProgress } from '@/lib/code-studio/buildKitProgress'
+
+// Tool windows load when first opened: at startup the bottom panel shows the console only,
+// so Debug, Profiler, Sonar, Architecture, the terminal (xterm) and the others cost nothing.
+const CodeStudioTestsPanel = lazy(() => import('./CodeStudioTestsPanel').then((module) => ({ default: module.CodeStudioTestsPanel })))
+const CodeStudioDebugPanel = lazy(() => import('./CodeStudioDebugPanel').then((module) => ({ default: module.CodeStudioDebugPanel })))
+const CodeStudioTodoPanel = lazy(() => import('./CodeStudioTodoPanel').then((module) => ({ default: module.CodeStudioTodoPanel })))
+const CodeStudioContextPanel = lazy(() => import('./CodeStudioContextPanel').then((module) => ({ default: module.CodeStudioContextPanel })))
+const CodeStudioProfilePanel = lazy(() => import('./CodeStudioProfilePanel').then((module) => ({ default: module.CodeStudioProfilePanel })))
+const CodeStudioTracePanel = lazy(() => import('./CodeStudioTracePanel').then((module) => ({ default: module.CodeStudioTracePanel })))
+const CodeStudioFuzzPanel = lazy(() => import('./CodeStudioFuzzPanel').then((module) => ({ default: module.CodeStudioFuzzPanel })))
+const CodeStudioErrorsPanel = lazy(() => import('./CodeStudioErrorsPanel').then((module) => ({ default: module.CodeStudioErrorsPanel })))
+const CodeStudioArchitecturePanel = lazy(() => import('./CodeStudioArchitecturePanel').then((module) => ({ default: module.CodeStudioArchitecturePanel })))
+const CodeStudioImpactPanel = lazy(() => import('./CodeStudioImpactPanel').then((module) => ({ default: module.CodeStudioImpactPanel })))
+const CodeStudioConfigPanel = lazy(() => import('./CodeStudioConfigPanel').then((module) => ({ default: module.CodeStudioConfigPanel })))
+const CodeStudioDocsPanel = lazy(() => import('./CodeStudioDocsPanel').then((module) => ({ default: module.CodeStudioDocsPanel })))
+const CodeStudioSonarPanel = lazy(() => import('./CodeStudioSonarPanel').then((module) => ({ default: module.CodeStudioSonarPanel })))
+const CodeStudioSecurityPanel = lazy(() => import('./CodeStudioSecurityPanel').then((module) => ({ default: module.CodeStudioSecurityPanel })))
+const CodeStudioGitPanel = lazy(() => import('./CodeStudioGitPanel').then((module) => ({ default: module.CodeStudioGitPanel })))
+const CodeStudioGoPanel = lazy(() => import('./CodeStudioGoPanel').then((module) => ({ default: module.CodeStudioGoPanel })))
+const CodeStudioTerminalPanel = lazy(() => import('./CodeStudioTerminalPanel').then((module) => ({ default: module.CodeStudioTerminalPanel })))
+const CodeStudioLivePreview = lazy(() => import('./CodeStudioLivePreview').then((module) => ({ default: module.CodeStudioLivePreview })))
 
 interface CodeStudioRunPanelProps {
   session: GoIDESession
@@ -104,8 +112,8 @@ const LEVEL_TOKEN: Record<ConsoleLogLevel, string> = {
  */
 function consoleLineClass(line: ParsedLine, level: ConsoleLogLevel | null): string {
   if (level) return LEVEL_TEXT[level]
-  if (line.stream === 'system') return 'text-text-4'
-  return line.stream === 'stderr' && line.path ? 'text-danger' : 'text-text-2'
+  if (line.stream === 'system') return 'text-text-3'
+  return line.stream === 'stderr' && line.path ? 'text-danger' : 'text-text-1'
 }
 
 function renderConsoleLine(line: ParsedLine, level: ConsoleLogLevel | null) {
@@ -184,6 +192,9 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const sessionId = session.id
   const selectedView = useCodeStudioLspStore((state) => state.toolWindow)
   const view = fixedView ?? selectedView
+  // The terminal mounts the first time it is shown, then stays mounted: a live shell is never torn down.
+  const [terminalShown, setTerminalShown] = useState(view === 'terminal')
+  if (view === 'terminal' && !terminalShown) setTerminalShown(true)
   const tool = view === 'terminal' ? 'terminal' : logsOnly ? 'logs' : 'run'
   const detached = useStudioTools((state) => state.detached.includes(toolKey(sessionId, tool))) && !standalone
   const terminalDetached = useStudioTools((state) => state.detached.includes(toolKey(sessionId, 'terminal'))) && !standalone
@@ -192,6 +203,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const lintReports = useCodeStudioLspStore((state) => state.lint[sessionId]?.reports)
   const [search, setSearch] = useToolView(sessionId, tool, 'filter', '')
   const [input, setInput] = useToolView(sessionId, tool, 'stdin', '')
+  const [wrapOutput, setWrapOutput] = useToolView(sessionId, tool, 'wrapOutput', true)
   const inputRef = useRef<HTMLInputElement>(null)
   const sendingInput = useRef(false)
   const allExecutions = useCodeStudioStore((state) => state.executions)
@@ -227,7 +239,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   // "Service logs" vive dentro Run: la barra in alto sceglie il servizio e può nascondere le righe di sistema.
   const [serviceLogs, setServiceLogs] = useToolView(sessionId, tool, 'serviceLogs', false)
   const onlyLogs = logsOnly || serviceLogs
-  const matchingLines = useMemo(() => lines.filter((line) => (!onlyLogs || line.stream !== 'system') && (!search || line.text.toLowerCase().includes(search.toLowerCase()))), [lines, onlyLogs, search])
+  const matchingLines = useMemo(() => consoleOutputLines(lines).filter((line) => (!onlyLogs || line.stream !== 'system') && (!search || line.text.toLowerCase().includes(search.toLowerCase()))), [lines, onlyLogs, search])
   // Output intenso: si disegna solo la coda, con "mostra precedenti" a richiesta; Copy e la
   // ricerca lavorano comunque su tutto il buffer (4 MB). Con la ricerca attiva la finestra
   // si apre al cap per non nascondere i match vecchi.
@@ -260,8 +272,8 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
         {view === 'tests' && failedTests > 0 && <span className="rounded-full bg-danger/15 px-1.5 text-[10.5px] font-semibold text-danger">{failedTests} failed</span>}
         {view === 'debug' && debugState !== 'none' && <span className={`flex items-center gap-1.5 text-[11px] ${debugState === 'stopped' ? 'text-warning' : 'text-success'}`}><span className={`h-1.5 w-1.5 rounded-full ${debugState === 'stopped' ? 'bg-warning' : 'bg-success'}`} />{debugState === 'stopped' ? 'Paused' : 'Debugging'}</span>}
         {view === 'run' && active && <>
-          <CodeStudioToolbarSelect label="Active run" value={active.id} className="max-w-60"
-            options={executions.map((execution) => ({ value: execution.id, label: `${execution.kind} · ${execution.id.slice(-6)} · ${execution.status}` }))}
+          <CodeStudioToolbarSelect label="Active run" value={active.id} className="w-48 max-w-60"
+            options={executions.map((execution) => ({ value: execution.id, label: `${execution.kind} · ${execution.id.slice(-6)}`, description: `${execution.status} · ${execution.command}`, icon: SquareTerminal }))}
             onChange={(id) => void selectToolRun(sessionId, tool, id)} />
           <span className={`ml-2 flex min-w-0 items-center gap-1.5 truncate font-mono text-[11px] ${statusClass(active.status)}`} title={`${active.command}\n${active.workingDirectory}`}>
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[active.status] ?? 'bg-text-4'}`} aria-hidden="true" />
@@ -269,6 +281,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
           </span>
         </>}
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          {view === 'run' && <button type="button" aria-pressed={wrapOutput} onClick={() => setWrapOutput(!wrapOutput)} title="Wrap long output lines" className={`h-7 rounded px-2 text-[12px] ${wrapOutput ? 'bg-surface-3 text-text-1' : 'text-text-3'}`}>Wrap</button>}
           {view === 'run' && (
             <label className="mr-1 flex h-7 w-52 items-center gap-2 rounded-lg bg-[var(--gs-ground)] px-2.5 text-text-4 focus-within:ring-1 focus-within:ring-accent">
               <Search size={12} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find in output" aria-label="Filter console output" className="min-w-0 flex-1 bg-transparent text-[11.5px] text-text-2 outline-none" />
@@ -283,6 +296,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
           <button type="button" onClick={() => active && void restartRun(active.id)} disabled={!active || active.kind === 'dependency' || active.kind === 'install'} aria-label="Rerun" title="Rerun" className="code-studio-icon-button h-7 w-7 text-success"><RefreshCw size={14} /></button>
           <button type="button" onClick={() => active && void stopRun(active.id)} disabled={active?.status !== 'running'} aria-label="Stop" title="Stop process tree" className="code-studio-icon-button h-7 w-7 text-danger"><Square size={11} fill="currentColor" /></button>
           <span className="my-1 h-px w-4 bg-border-1" aria-hidden="true" />
+          <CodeStudioRunLogActions execution={active} chunks={chunks} />
           <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="code-studio-icon-button h-7 w-7"><Copy size={13} /></button>
           {serverURL && <button type="button" onClick={() => openExternal(serverURL)} aria-label="Open in browser" title={`Open ${serverURL} in the browser`} className="code-studio-icon-button h-7 w-7"><ExternalLink size={13} /></button>}
           {serverURL && <button type="button" onClick={() => { handOffOpenApiURL(serverURL); useAppStore.getState().setActiveRail('apidocs') }} aria-label="API docs" title={`Import the OpenAPI document of ${serverURL} into API Docs`} className="code-studio-icon-button h-7 w-7"><FileJson size={13} /></button>}
@@ -310,9 +324,10 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
         <div data-a11y-click-exempt role="presentation" onClick={(event) => {
           if ((event.target as HTMLElement).closest('button, a') || window.getSelection()?.toString()) return
           inputRef.current?.focus({ preventScroll: true })
-        }} className="min-h-0 flex-1 overflow-auto px-3.5 pb-2 pt-1 text-[12.5px] leading-[21px]" style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontVariantLigatures: 'none' }}>
+        }} className="min-h-0 flex-1 overflow-auto px-4 pb-4 pt-3 text-[14px] leading-6" style={{ fontFamily: 'var(--skin-font-mono, var(--font-mono))', fontVariantLigatures: 'none' }}>
+          {active && !onlyLogs && <CodeStudioExecutionDetails key={active.id} execution={active} search={search} />}
           {!active && <p className="font-sans text-text-4">Build or run the project, or press ▶ next to func main or a test, to open a real console.</p>}
-          {active && visibleLines.length === 0 && <p className="text-text-4">Waiting for output…</p>}
+          {active && visibleLines.length === 0 && <p className="text-text-3">{search ? 'No output matches your search.' : active.status === 'running' ? 'Waiting for output…' : 'Process produced no output.'}</p>}
           {hiddenLines > 0 && (
             <button
               type="button"
@@ -325,22 +340,16 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
           {visibleLines.map((line, index) => {
             const level = line.stream === 'system' ? null : consoleLogLevel(line.text)
             return (
-            <div key={`${line.sequence}-${index}`} className={`code-studio-console-line min-h-5 whitespace-pre-wrap break-all ${consoleLineClass(line, level)}`}>
-              {line.path && line.line ? (
-                <button type="button" onClick={() => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column)} className="text-left underline decoration-accent/40 underline-offset-2 hover:text-accent">{renderConsoleLine(line, level)}</button>
-              ) : renderConsoleLine(line, level)}
-            </div>
+            <CodeStudioConsoleRow key={`${line.sequence}-${index}`} line={line} wrap={wrapOutput} className={consoleLineClass(line, level)} onNavigate={line.path && line.line ? () => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column) : undefined}>{renderConsoleLine(line, level)}</CodeStudioConsoleRow>
             )
           })}
         </div>
         {active?.status === 'running' && (
-          <form onSubmit={(event) => { event.preventDefault(); void submitInput() }} className="flex h-9 shrink-0 items-center border-t border-border-1 px-3">
-            <span className="mr-2 font-mono text-[11px] text-accent">stdin ›</span>
-            <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} aria-label="Program input" className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-text-1 outline-none focus-visible:ring-1 focus-visible:ring-accent" placeholder="Type input and press Enter" />
-          </form>
+            <CodeStudioProgramInput inputRef={inputRef} value={input} onChange={setInput} onSubmit={() => void submitInput()} />
         )}
         </div>
       </div>}
+      <Suspense fallback={<div className="min-h-0 flex-1" />}>
       {view === 'problems' && <div className="min-h-0 flex-1 overflow-auto"><CodeStudioProblems sessionId={sessionId} buildProblems={buildProblems} onOpenBuildProblem={(problem) => void openLocation(problem.path, problem.line, problem.column)} /></div>}
       {view === 'references' && <div className="min-h-0 flex-1 overflow-auto"><CodeStudioReferences sessionId={sessionId} /></div>}
       {view === 'find' && <div className="min-h-0 flex-1"><CodeStudioFindInFiles sessionId={sessionId} /></div>}
@@ -364,7 +373,8 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
       {view === 'git' && <div className="min-h-0 flex-1"><CodeStudioGitPanel session={session} onCommand={onCommand} /></div>}
       {view === 'go' && <div className="min-h-0 flex-1"><CodeStudioGoPanel session={session} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
-      {!terminalDetached && !logsOnly && <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><CodeStudioTerminalPanel session={session} visible={view === 'terminal' && visible} /></div>}
+      {!terminalDetached && !logsOnly && terminalShown && <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><CodeStudioTerminalPanel session={session} visible={view === 'terminal' && visible} /></div>}
+      </Suspense>
     </section>
   )
 })

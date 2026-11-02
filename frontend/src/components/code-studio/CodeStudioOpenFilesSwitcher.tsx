@@ -36,7 +36,7 @@ export function CodeStudioOpenFilesSwitcher({ documents, activeId, onSelect }: {
     <>
       <button type="button" aria-label={`Open files (${documents.length})`} aria-haspopup="dialog" aria-expanded={open} title="Switch between open files" disabled={documents.length === 0}
         className={`code-studio-icon-button code-studio-open-files h-7 min-w-7 shrink-0 justify-center self-center px-1.5 text-[12px] ${open ? 'is-active' : ''}`} onClick={() => setOpen(true)}>
-        <span className="tabular-nums">{documents.length}</span>
+        <span className="font-mono tabular-nums" aria-hidden="true">{documents.length}</span>
       </button>
       <CodeStudioPalette open={open} onClose={close} ariaLabel="Open files" icon={Files} meta={`${results.length} open`}
         input={<input autoFocus value={query} onChange={(event) => { setQuery(event.target.value); setActive(0) }} onKeyDown={onKeyDown} placeholder="Find an open file" role="combobox" aria-expanded="true" aria-controls="code-studio-open-files-results"

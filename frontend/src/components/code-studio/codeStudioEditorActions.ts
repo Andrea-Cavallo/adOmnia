@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { DATABASE_PENDING_QUERY_KEY, handOff } from '@/lib/moduleHandoff'
 import { showModule } from '@/lib/moduleRouting'
 import { sqlStatementAt } from '@/lib/code-studio/sqlStatement'
@@ -13,6 +13,7 @@ import { runCodeStudioRefactoring, type CodeStudioRefactoring } from './codeStud
 import { goToSuperMethod } from './codeStudioImplementationMarkers'
 import { openChangeSignature } from './CodeStudioChangeSignatureDialog'
 import { openMoveSymbol } from './CodeStudioMoveSymbolDialog'
+import { installCodeStudioBlameAction } from './codeStudioBlameAction'
 
 export const CODE_STUDIO_ACTIONS = {
   findUsages: 'codeStudio.findUsages',
@@ -43,20 +44,18 @@ export const CODE_STUDIO_ACTIONS = {
   moveSymbol: 'codeStudio.moveSymbol',
 } as const
 
-const { KeyMod, KeyCode } = monaco
-
 function report(message: string): void {
   useCodeStudioLspStore.setState({ message })
 }
 
-function wordAt(editor: monaco.editor.ICodeEditor): string {
+function wordAt(editor: Monaco.editor.ICodeEditor): string {
   const model = editor.getModel()
   const position = editor.getPosition()
   if (!model || !position) return 'symbol'
   return model.getWordAtPosition(position)?.word ?? 'symbol'
 }
 
-async function showLocations(editor: monaco.editor.ICodeEditor, kind: GoIDELocationKind, title: string): Promise<void> {
+async function showLocations(editor: Monaco.editor.ICodeEditor, kind: GoIDELocationKind, title: string): Promise<void> {
   const model = editor.getModel()
   const position = editor.getPosition()
   if (!model || !position) return
@@ -72,7 +71,7 @@ async function showLocations(editor: monaco.editor.ICodeEditor, kind: GoIDELocat
   }
 }
 
-async function organizeImports(editor: monaco.editor.ICodeEditor): Promise<void> {
+async function organizeImports(editor: Monaco.editor.ICodeEditor): Promise<void> {
   const model = editor.getModel()
   if (!model) return
   const prepared = await prepareDocument(model)
@@ -84,7 +83,7 @@ async function organizeImports(editor: monaco.editor.ICodeEditor): Promise<void>
   }
 }
 
-function requestRename(editor: monaco.editor.ICodeEditor): void {
+function requestRename(editor: Monaco.editor.ICodeEditor): void {
   const model = editor.getModel()
   const position = editor.getPosition()
   if (!model || !position) return
@@ -95,8 +94,10 @@ function requestRename(editor: monaco.editor.ICodeEditor): void {
 }
 
 /** Registra sull'editor le azioni semantiche Code Studio; le keybinding aggiunte hanno precedenza su quelle native. */
-export function installCodeStudioEditorActions(editor: monaco.editor.IStandaloneCodeEditor): void {
-  const semantic = (id: string, label: string, keybindings: number[], run: (target: monaco.editor.ICodeEditor) => void | Promise<void>) => {
+export function installCodeStudioEditorActions(editor: Monaco.editor.IStandaloneCodeEditor): void {
+  const { KeyMod, KeyCode } = monaco
+  installCodeStudioBlameAction(editor)
+  const semantic = (id: string, label: string, keybindings: number[], run: (target: Monaco.editor.ICodeEditor) => void | Promise<void>) => {
     editor.addAction({ id, label, keybindings, contextMenuGroupId: 'navigation', run: (target) => { void run(target) } })
   }
   semantic(CODE_STUDIO_ACTIONS.gotoDeclaration, 'Go to Declaration', [KeyMod.CtrlCmd | KeyCode.KeyB], (target) => target.trigger('code-studio', 'editor.action.revealDefinition', null))

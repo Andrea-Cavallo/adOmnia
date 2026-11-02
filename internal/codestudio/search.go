@@ -77,7 +77,7 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 		}
 		relative := filepath.ToSlash(strings.TrimPrefix(strings.TrimPrefix(path, root), string(filepath.Separator)))
 		if entry.IsDir() {
-			if path != root && (isIgnoredDirectory(entry.Name()) || ignore.Ignored(relative, true) || matchesAny(query.Exclude, relative, entry.Name())) {
+			if path != root && (skipWalkDirectory(path, entry.Name()) || ignore.Ignored(relative, true) || matchesAny(query.Exclude, relative, entry.Name())) {
 				return filepath.SkipDir
 			}
 			return nil

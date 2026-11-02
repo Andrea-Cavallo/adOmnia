@@ -87,3 +87,34 @@ export function agentReviewStats(baseline: string, current: string): { added: nu
     removed: total.removed + Math.max(0, hunk.oldEnd - hunk.oldStart + 1),
   }), { added: 0, removed: 0 })
 }
+
+/** A row of the side-by-side diff: the version before the agent on the left, the agent version on the right. */
+export interface AgentReviewSplitRow {
+  left?: AgentReviewLine
+  right?: AgentReviewLine
+}
+
+/** Pairs each block of removed lines with the added lines that follow it; context lines sit on both sides. */
+export function agentReviewSplitRows(lines: AgentReviewLine[]): AgentReviewSplitRow[] {
+  const rows: AgentReviewSplitRow[] = []
+  let removed: AgentReviewLine[] = []
+  let added: AgentReviewLine[] = []
+  const flush = () => {
+    for (let index = 0; index < Math.max(removed.length, added.length); index++) rows.push({ left: removed[index], right: added[index] })
+    removed = []
+    added = []
+  }
+  for (const line of lines) {
+    if (line.kind === 'removed') {
+      if (added.length) flush()
+      removed.push(line)
+    } else if (line.kind === 'added') {
+      added.push(line)
+    } else {
+      flush()
+      rows.push({ left: line, right: line })
+    }
+  }
+  flush()
+  return rows
+}

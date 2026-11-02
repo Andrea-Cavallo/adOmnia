@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {
+vi.mock('@/lib/monacoRef', () => ({ monaco: {
   Emitter: class { event = vi.fn(); fire = vi.fn() },
   editor: { registerCommand: vi.fn() }, languages: { registerCodeLensProvider: vi.fn() },
 } }))

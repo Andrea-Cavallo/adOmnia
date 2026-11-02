@@ -9,6 +9,7 @@ import { isStaleLinterError } from '@/lib/code-studio/staleLinter'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { GO_LANGUAGE_ID } from '@/lib/code-studio/goLanguage'
+import { projectHasGo } from '@/lib/code-studio/goProject'
 import { subscribeGoIDEEvents, type GoIDEEvent, type GoIDEExecution } from '@/lib/code-studio-api'
 import {
   detectGopls,
@@ -86,6 +87,15 @@ export interface GoIDEEditorPreferences {
 }
 
 export const EDITOR_FONT_SIZE = { min: 9, max: 28, default: 14 } as const
+
+/** Quanto documento mostra l'hover di gopls: synopsis è il default perché full carica il
+ *  doc comment del simbolo e delle dipendenze a ogni hover (il caso "entrare nei metodi"). */
+export const HOVER_KINDS = ['synopsis', 'full', 'none'] as const
+export type GoIDEHoverKind = (typeof HOVER_KINDS)[number]
+
+export function isHoverKind(value: unknown): value is GoIDEHoverKind {
+  return typeof value === 'string' && (HOVER_KINDS as readonly string[]).includes(value)
+}
 
 /** Tipo su cui generare i metodi di un'interfaccia scelta dall'utente. */
 export interface GoIDEImplementRequest {
@@ -202,7 +212,7 @@ interface PersistedSettings {
  *  v4: aggiunto autoSaveDelayMs (auto save a tempo); i valori assenti restano al default. */
 const PREFERENCES_VERSION = 4
 
-const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false, vulncheck: false }
+const DEFAULT_SETTINGS: GoIDELanguageServerSettings = { gofumpt: false, staticcheck: false, placeholders: true, semanticLinks: false, vulncheck: false, hoverKind: 'synopsis' }
 const DEFAULT_PREFERENCES: GoIDEEditorPreferences = {
   formatOnSave: true, organizeImportsOnSave: true, lintOnSave: false, semanticHighlighting: true, inlayHints: true,
   inlineDiagnostics: true, inlineDiagnosticWarnings: true, inlineDiagnosticInfo: true,
@@ -219,7 +229,8 @@ function loadPersisted(): PersistedSettings {
     const parsed = JSON.parse(raw) as Partial<PersistedSettings>
     const { minimap: _removed, ...preferences } = (parsed.preferences ?? {}) as Partial<GoIDEEditorPreferences> & { minimap?: unknown }
     return {
-      settings: { ...DEFAULT_SETTINGS, ...parsed.settings, semanticLinks: false },
+      // Un hoverKind salvato da una versione futura o corrotto non deve restare: si riparte dal default.
+      settings: { ...DEFAULT_SETTINGS, ...parsed.settings, semanticLinks: false, hoverKind: isHoverKind(parsed.settings?.hoverKind) ? parsed.settings.hoverKind : DEFAULT_SETTINGS.hoverKind },
       // autoSaveDelayMs viene da un file locale: valori corrotti o fuori scala disattivano l'auto save invece di salvarlo.
       preferences: { ...DEFAULT_PREFERENCES, ...preferences, autoSaveDelayMs: autoSaveDelayValue(preferences.autoSaveDelayMs) },
     }
@@ -323,6 +334,10 @@ export const useCodeStudioLspStore = create<GoIDELspState>((set, get) => ({
       })
     }))
     if (!isTrusted(sessionId)) return
+    // A Python, Java or plain folder never pays for gopls (≈125 MB and a second of CPU at startup).
+    // Units arrive after the session opens: CodeStudioPanel calls this again when they include Go.
+    const session = useCodeStudioStore.getState().sessions.find((item) => item.id === sessionId)
+    if (session && !projectHasGo(session.project)) return
     if (get().linter[sessionId] === undefined) void get().detectLinter(sessionId)
     if (get().userStopped[sessionId]) return
     try {
@@ -587,13 +602,13 @@ export function exportCodeStudioSettings(): CodeStudioSettingsExport {
   return { settings: { ...settings }, preferences: { ...preferences } }
 }
 
-/** Tiene solo le chiavi note del tipo atteso (booleano o numero): un file importato non può introdurre valori arbitrari. */
+/** Tiene solo le chiavi note del tipo atteso (booleano, numero o stringa): un file importato non può introdurre valori arbitrari. */
 function knownValues<T extends object>(defaults: T, value: unknown): Partial<T> {
   if (!value || typeof value !== 'object') return {}
   const source = value as Record<string, unknown>
   return Object.fromEntries(Object.keys(defaults).filter((key) => {
     const expected = typeof (defaults as Record<string, unknown>)[key]
-    return (expected === 'boolean' || expected === 'number') && typeof source[key] === expected
+    return (expected === 'boolean' || expected === 'number' || expected === 'string') && typeof source[key] === expected
   }).map((key) => [key, source[key]])) as Partial<T>
 }
 
@@ -604,6 +619,8 @@ export function importCodeStudioSettings(value: unknown, activeSessionId: string
   const preferences = knownValues(DEFAULT_PREFERENCES, section.preferences)
   const settings = knownValues(DEFAULT_SETTINGS, section.settings)
   delete settings.semanticLinks
+  // Anche una stringa del tipo giusto può essere un valore che gopls non conosce: vale l'elenco chiuso.
+  if (!isHoverKind(settings.hoverKind)) delete settings.hoverKind
   if (Object.keys(preferences).length === 0 && Object.keys(settings).length === 0) return false
   const store = useCodeStudioLspStore.getState()
   store.updatePreferences(preferences)

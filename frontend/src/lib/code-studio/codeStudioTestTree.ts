@@ -448,3 +448,30 @@ export function cpuCorrelationVerdict(rates: CodeStudioCPUFailureRate[]): string
   if (last < first) return 'Fails more often with less parallelism: suspect timing assumptions rather than races.'
   return 'Failure rate does not change with GOMAXPROCS: concurrency is unlikely to be the cause.'
 }
+
+/** Nodi di `incoming` fusi per ID in `base`: i noti si aggiornano al loro posto, i nuovi seguono, i package restano in ordine di nome come nel backend. */
+function mergeResults(base: GoIDETestResult[], incoming: GoIDETestResult[]): GoIDETestResult[] {
+  if (incoming.length === 0) return base
+  const updates = new Map(incoming.map((result) => [result.id, result]))
+  const merged = base.map((result) => {
+    const update = updates.get(result.id)
+    if (!update) return result
+    updates.delete(result.id)
+    return update
+  })
+  if (updates.size === 0) return merged
+  // Stabile: a parità di package conta l'ordine di apparizione, come il sort del backend.
+  return [...merged, ...updates.values()].sort((left, right) => (left.package === right.package ? 0 : left.package < right.package ? -1 : 1))
+}
+
+/**
+ * Applica a una run nota lo snapshot ricevuto. Un aggiornamento parziale porta solo i nodi cambiati;
+ * gli eventi e la risposta di StartTests possono arrivare in qualsiasi ordine, quindi uno snapshot
+ * "running" non sostituisce mai una run già conclusa, e uno completo in corsa si fonde con i nodi già noti.
+ */
+export function mergeTestRun(current: GoIDETestRun | undefined, incoming: GoIDETestRun): GoIDETestRun {
+  if (!current) return incoming
+  if (incoming.status === 'running' && current.status !== 'running') return current
+  if (!incoming.partial && incoming.status !== 'running') return incoming
+  return { ...incoming, partial: false, results: mergeResults(current.results, incoming.results) }
+}

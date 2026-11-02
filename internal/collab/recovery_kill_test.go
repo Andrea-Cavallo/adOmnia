@@ -66,6 +66,9 @@ func TestKillDuringCollabSnapshotsKeepsConsistentState(t *testing.T) {
 					return
 				}
 			}
+			if err := scanner.Err(); err != nil {
+				t.Errorf("lettura stdout del figlio: %v", err)
+			}
 			ready <- false
 		}()
 		select {

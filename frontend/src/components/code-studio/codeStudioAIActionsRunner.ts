@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { getGoIDEAIPolicy, listGoIDEAIExcludedPaths } from '@/lib/code-studio-api'
 import { requestLocations } from '@/lib/code-studio-lsp-api'
 import { getGoIDEFileAtRevision } from '@/lib/code-studio-vcs-api'
@@ -40,7 +40,7 @@ function targetAssistant(): CodeStudioChatPane {
   return useCopilotStore.getState().settings?.enabled && !useMilkStore.getState().settings?.enabled ? 'copilot' : 'milk'
 }
 
-function focusOf(editor: monaco.editor.ICodeEditor, model: monaco.editor.ITextModel): CodeStudioAIContext['focus'] {
+function focusOf(editor: Monaco.editor.ICodeEditor, model: Monaco.editor.ITextModel): CodeStudioAIContext['focus'] {
   const selection = editor.getSelection()
   if (selection && !selection.isEmpty()) {
     return { startLine: selection.startLineNumber, endLine: selection.endLineNumber, code: model.getValueInRange(selection), kind: 'selection' }
@@ -51,7 +51,7 @@ function focusOf(editor: monaco.editor.ICodeEditor, model: monaco.editor.ITextMo
   return { startLine: 1, endLine: lines.length, code: model.getValue(), kind: 'file' }
 }
 
-async function referencesAt(editor: monaco.editor.ICodeEditor, sessionId: string, documentId: string): Promise<{ symbol?: string; references: string[] }> {
+async function referencesAt(editor: Monaco.editor.ICodeEditor, sessionId: string, documentId: string): Promise<{ symbol?: string; references: string[] }> {
   const model = editor.getModel()
   const position = editor.getPosition()
   const symbol = model && position ? model.getWordAtPosition(position)?.word : undefined
@@ -129,7 +129,7 @@ async function blockedByPolicy(sessionId: string, relativePath: string): Promise
 }
 
 /** Raccoglie il contesto e apre la chat con il prompt pronto: niente parte senza l'invio dell'utente. */
-export async function runCodeStudioAIAction(editor: monaco.editor.ICodeEditor, action: CodeStudioAIAction): Promise<void> {
+export async function runCodeStudioAIAction(editor: Monaco.editor.ICodeEditor, action: CodeStudioAIAction): Promise<void> {
   const model = editor.getModel()
   const document = model ? documentForModel(model) : null
   if (!model || !document) return
@@ -169,7 +169,7 @@ export async function runCodeStudioAIAction(editor: monaco.editor.ICodeEditor, a
 }
 
 /** Registra le azioni AI sull'editor: le principali nel menu contestuale, tutte nella palette (F1). */
-export function installCodeStudioAIActions(editor: monaco.editor.IStandaloneCodeEditor): void {
+export function installCodeStudioAIActions(editor: Monaco.editor.IStandaloneCodeEditor): void {
   CODE_STUDIO_AI_ACTIONS.forEach((action, index) => {
     editor.addAction({
       id: `codeStudio.ai.${action.id}`,

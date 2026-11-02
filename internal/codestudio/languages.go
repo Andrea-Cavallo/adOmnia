@@ -2,6 +2,7 @@ package codestudio
 
 import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/declared"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/python"
@@ -15,6 +16,7 @@ func newLanguageRegistry() *language.Registry {
 	registry := language.NewRegistry()
 	adapters := append([]language.Language{golang.New()}, web.Languages()...)
 	adapters = append(adapters, java.New(), python.New(), rust.New())
+	adapters = append(adapters, declared.Languages()...)
 	for _, adapter := range adapters {
 		if err := registry.Register(adapter); err != nil {
 			panic(err) // ID duplicato o non valido: errore di programmazione, va visto all'avvio.

@@ -30,10 +30,6 @@ const DetachedSwaggerEditorWindow = React.lazy(() =>
 )
 
 // ── UI font bundles (via @fontsource — loaded locally, no network) ──────────
-import '@fontsource/architects-daughter/400.css'
-// Monaspace Radon is a handwriting-style MONOSPACE: Monaco measures character
-// cells, so the code face has to stay monospaced or the caret drifts.
-import '@fontsource/monaspace-radon/400.css'
 import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
 // cascadia-code is a Windows system font — no bundle needed
@@ -42,9 +38,6 @@ import '@fontsource/ibm-plex-mono/500.css'
 import './styles/globals.css'
 import './styles/apiTypography.css'
 // Skin treatments layer on top of the tokens; each is scoped to [data-skin].
-import './styles/skin-sketch.css'
-import './styles/skin-terminal-green.css'
-import './styles/skin-static-citrine.css'
 import { useDevLogsStore } from './stores/devLogs'
 import type { LogLevel } from './stores/devLogs'
 import { recordFrontendDevLog } from './lib/devlogs-api'

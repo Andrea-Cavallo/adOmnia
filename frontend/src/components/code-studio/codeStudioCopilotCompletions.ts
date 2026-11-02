@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import {
   didAcceptCopilotCompletion,
   didPartiallyAcceptCopilotCompletion,
@@ -14,13 +14,13 @@ import { flushCodeStudioDocument } from './codeStudioLspSync'
 const TYPING_DEBOUNCE_MS = 75
 const ACCEPT_COMMAND = 'codeStudio.copilotAcceptCompletion'
 
-interface CopilotInlineCompletion extends monaco.languages.InlineCompletion {
+interface CopilotInlineCompletion extends Monaco.languages.InlineCompletion {
   copilotRaw: unknown
 }
 
 let registered = false
 
-function delay(ms: number, token: monaco.CancellationToken): Promise<boolean> {
+function delay(ms: number, token: Monaco.CancellationToken): Promise<boolean> {
   return new Promise((resolve) => {
     const timer = window.setTimeout(() => { subscription.dispose(); resolve(!token.isCancellationRequested) }, ms)
     const subscription = token.onCancellationRequested(() => { window.clearTimeout(timer); subscription.dispose(); resolve(false) })
@@ -37,7 +37,7 @@ function toMonaco(item: CopilotInlineItem): CopilotInlineCompletion {
   }
 }
 
-async function provide(model: monaco.editor.ITextModel, position: monaco.Position, context: monaco.languages.InlineCompletionContext, token: monaco.CancellationToken) {
+async function provide(model: Monaco.editor.ITextModel, position: Monaco.Position, context: Monaco.languages.InlineCompletionContext, token: Monaco.CancellationToken) {
   const empty = { items: [] as CopilotInlineCompletion[] }
   if (!copilotCompletionsActive(useCopilotStore.getState())) return empty
   const document = documentForModel(model)

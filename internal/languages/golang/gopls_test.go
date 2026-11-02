@@ -17,6 +17,25 @@ func TestGoplsConfigurationKeepsVulncheckOptIn(t *testing.T) {
 	}
 }
 
+func TestGoplsHoverKindDefaultsToSynopsisNotFullDocumentation(t *testing.T) {
+	// gopls parte da FullDocumentation, che a ogni hover carica il doc comment del simbolo e
+	// delle dipendenze: il default di adOmnia deve restare synopsis finché l'utente non sceglie.
+	if got := goplsConfiguration(GoplsSettings{})["hoverKind"]; got != "SynopsisDocumentation" {
+		t.Fatalf("hoverKind by default = %v, want SynopsisDocumentation", got)
+	}
+	for _, testCase := range []struct{ setting, want string }{
+		{HoverFull, "FullDocumentation"},
+		{HoverSynopsis, "SynopsisDocumentation"},
+		{HoverNone, "NoDocumentation"},
+		{"  FULL ", "FullDocumentation"},
+		{"nonsense", "SynopsisDocumentation"},
+	} {
+		if got := goplsConfiguration(GoplsSettings{HoverKind: testCase.setting})["hoverKind"]; got != testCase.want {
+			t.Fatalf("hoverKind(%q) = %v, want %v", testCase.setting, got, testCase.want)
+		}
+	}
+}
+
 func TestGoplsServerSpecDescribesTheGoServer(t *testing.T) {
 	spec := GoplsServerSpec(GoplsInfo{Binary: "/bin/gopls", Version: "v0.23.0"}, []string{"GOMEMLIMIT=2GiB"}, GoplsSettings{Gofumpt: true})
 	if spec.Language != ID || spec.Name != "gopls" || spec.Configuration == nil {

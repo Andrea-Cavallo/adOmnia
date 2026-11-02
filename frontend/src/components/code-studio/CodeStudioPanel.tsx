@@ -1,3 +1,4 @@
+import { projectHasGo } from '@/lib/code-studio/goProject'
 import { configurationTestTarget } from '@/lib/code-studio/runToolbarActions'
 import { useActivityScope } from '@/hooks/useActivity'
 import { CODE_STUDIO_USED_KEY } from './CodeStudioWarmup'
@@ -9,7 +10,7 @@ import { selectDocumentSummary } from './codeStudioDocumentSummary'
 import { devServerPreviewRequest, hasWebAppToPreview } from '@/lib/code-studio/runPreview'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { useLivePreviewStore } from '@/stores/livePreview'
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { CodeStudioEmptyState } from './CodeStudioEmptyState'
 import { CreateProjectDialog, UnsavedChangesDialog } from './CodeStudioDialogs'
@@ -81,6 +82,7 @@ import { isJavaTarget, javaTestRequest } from './codeStudioJavaTargets'
 import { startJavaMain } from '@/lib/code-studio-debug-api'
 import { isPythonTarget } from './codeStudioPythonTargets'
 import { isRustTarget, isRustTestTarget } from './codeStudioRustTargets'
+import { isNativeTarget } from './codeStudioNativeTargets'
 import { listGoIDERunTargets, type GoIDERunConfiguration, type GoIDERunTarget } from '@/lib/code-studio-api'
 import { useCodeStudioCloseFlow } from './useCodeStudioCloseFlow'
 import { CodeStudioCaretPopup } from './CodeStudioCaretPopup'
@@ -114,7 +116,6 @@ import { CodeStudioBookmarksDialog } from './CodeStudioBookmarksDialog'
 import { CodeStudioQualityDialog } from './CodeStudioQualityDialog'
 import { CodeStudioBranchWidget } from './CodeStudioBranchWidget'
 import { CodeStudioCommitDialog } from './CodeStudioCommitDialog'
-import { CodeStudioGitHistoryDialog } from './CodeStudioGitHistoryDialog'
 import { CodeStudioProjectServicesDialog } from './CodeStudioProjectServicesDialog'
 import { runIntegrationCommand } from './codeStudioIntegrationCommands'
 import { CodeStudioHunkPopup } from './CodeStudioHunkPopup'
@@ -123,7 +124,6 @@ import { CodeStudioBreakpointPopover } from './CodeStudioBreakpointPopover'
 import { CodeStudioBreakpointsDialog } from './CodeStudioBreakpointsDialog'
 import { runVcsCommand, type CodeStudioVcsDialog } from './codeStudioVcsCommands'
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
-import { CodeStudioLocalHistoryDialog } from './CodeStudioLocalHistoryDialog'
 import { CodeStudioAttachDialog, type CodeStudioAttachMode } from './CodeStudioAttachDialog'
 import { CodeStudioExtensionsDialog } from './CodeStudioExtensionsDialog'
 import { useCodeStudioRemoteHandoff } from './useCodeStudioRemoteHandoff'
@@ -161,8 +161,10 @@ import type { GoIDEDebugRequest, GoIDEJavaDebugRequest, GoIDEPythonDebugRequest,
 import { javaDebugTargetOf } from '@/lib/code-studio/javaDebug'
 import { pythonDebugTargetOf } from '@/lib/code-studio/pythonDebug'
 import { rustDebugTargetOf } from '@/lib/code-studio/rustDebug'
+import { nativeDebugTargetOf } from '@/lib/code-studio/nativeDebug'
 import { webDebugTargetOf } from '@/lib/code-studio/webDebug'
 import { runRustCommand } from './codeStudioRustCommands'
+import { runDeclaredDebuggerCommand } from './codeStudioDeclaredDebuggerCommands'
 import { runWebCommand } from './codeStudioWebCommands'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -173,6 +175,10 @@ import { usePanelVisible, usePanelActiveRef } from '@/components/layout/PanelAct
 import type { GoDebugStartDetail } from '@/lib/devsession/debugRequest'
 import { CodeStudioRunTargetPicker } from './CodeStudioRunTargetPicker'
 import { configurationForRunTarget, preferredRunTarget } from './codeStudioDiscoveredRunTargets'
+
+// History dialogs use Monaco's diff editor: load them (and Monaco) on first open.
+const CodeStudioGitHistoryDialog = lazy(() => import('./CodeStudioGitHistoryDialog').then((m) => ({ default: m.CodeStudioGitHistoryDialog })))
+const CodeStudioLocalHistoryDialog = lazy(() => import('./CodeStudioLocalHistoryDialog').then((m) => ({ default: m.CodeStudioLocalHistoryDialog })))
 
 
 const PANEL_STATE_KEYS = [
@@ -292,13 +298,14 @@ export function CodeStudioPanel() {
   // Progetti già autorizzati: rileva l'SDK e avvia gopls senza clic extra; quelli non autorizzati restano inerti.
   const activeSessionId = activeSession?.id ?? null
   const activeSessionTrusted = activeSession?.project.authorization === 'tooling-permitted'
+  const activeSessionHasGo = activeSession ? projectHasGo(activeSession.project) : false
   useEffect(() => {
-    if (!activeSessionId || !activeSessionTrusted) return
+    if (!activeSessionId || !activeSessionTrusted || !activeSessionHasGo) return
     void (async () => {
       if (!useCodeStudioStore.getState().toolchains[activeSessionId]) await useCodeStudioStore.getState().detectToolchain()
       await useCodeStudioLspStore.getState().ensureStarted(activeSessionId)
     })()
-  }, [activeSessionId, activeSessionTrusted])
+  }, [activeSessionId, activeSessionTrusted, activeSessionHasGo])
 
   // Le scorciatoie restano attive solo mentre il pannello è montato e hanno la precedenza su quelle globali.
   const runCommandRef = useRef<(id: CodeStudioCommandId) => void>(() => undefined)
@@ -838,6 +845,11 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       if (action === 'debug') return void useCodeStudioDebugStore.getState().startRust({ sessionId: activeSession.id, ...cargoTarget, workingDirectory: target.crateDirectory })
       return void store.startRun(target.example ? 'example' : 'bin', { language: 'rust', target: '.', workingDirectory: target.crateDirectory, languageOptions: cargoTarget })
     }
+    if (isNativeTarget(target)) {
+      if (!activeSession) return
+      if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to compile and run its code' })
+      return void store.startRun('build-run', { language: 'cpp', target: '.', workingDirectory: target.directory, languageOptions: { source: target.file } })
+    }
     if (isJavaTarget(target)) {
       if (!activeSession) return
       if (!commandContext.authorized) return useCodeStudioStore.setState({ error: 'Trust this project to run its code' })
@@ -889,6 +901,12 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     return target && activeSession ? { sessionId: activeSession.id, ...target } : null
   }
 
+  // Native executable (C/C++, Objective-C, Zig, Swift) with CodeLLDB, like Rust.
+  const configuredNativeDebugRequest = () => {
+    const target = activeSession && activeConfig ? nativeDebugTargetOf(activeConfig) : null
+    return target && activeSession ? { sessionId: activeSession.id, ...target } : null
+  }
+
   // Debug di una configurazione JS/TS: lo script del package manager (npm run dev) con js-debug.
   const configuredWebDebugRequest = (): GoIDEWebDebugRequest | null => {
     const target = activeSession && activeConfig ? webDebugTargetOf(activeConfig) : null
@@ -922,8 +940,9 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (runJavaCommand(id, activeSession?.id ?? null, currentActiveDocument() ?? null, useCodeStudioCursorStore.getState().line, runTarget)) return
     if (runPythonCommand(id, activeSession?.id ?? null)) return
     if (runRustCommand(id, activeSession?.id ?? null)) return
+    if (runDeclaredDebuggerCommand(id, activeSession?.id ?? null)) return
     if (runWebCommand(id, activeSession?.id ?? null)) return
-    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest, configuredWebDebugRequest)) return
+    if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest, configuredWebDebugRequest, configuredNativeDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)
     if (runVcsCommand(id, activeSession?.id ?? null, currentActiveDocument(), setVcsDialog)) return
     if (runIntegrationCommand(id, currentActiveDocument(), activeCodeStudioEditor(), () => setServicesOpen(true))) return
@@ -1127,11 +1146,11 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
         />
       )}
       <CodeStudioProjectServicesDialog sessionId={activeSession.id} projectName={activeSession.project.name} open={servicesOpen} onClose={() => setServicesOpen(false)} />
-      <CodeStudioGitHistoryDialog document={vcsDialog === 'history' || vcsDialog === 'lineHistory' ? currentActiveDocument() : null} open={vcsDialog === 'history' || vcsDialog === 'lineHistory'} lines={vcsDialog === 'lineHistory'} onClose={() => setVcsDialog(null)} />
+      {(vcsDialog === 'history' || vcsDialog === 'lineHistory') && <Suspense fallback={null}><CodeStudioGitHistoryDialog document={currentActiveDocument()} open lines={vcsDialog === 'lineHistory'} onClose={() => setVcsDialog(null)} /></Suspense>}
       <CodeStudioHunkPopup />
       <CodeStudioBreakpointPopover />
       <CodeStudioBreakpointsDialog sessionId={activeSession.id} />
-      <CodeStudioLocalHistoryDialog document={localHistoryOpen ? currentActiveDocument() : null} open={localHistoryOpen} onClose={() => setLocalHistoryOpen(false)} />
+      {localHistoryOpen && <Suspense fallback={null}><CodeStudioLocalHistoryDialog document={currentActiveDocument()} open onClose={() => setLocalHistoryOpen(false)} /></Suspense>}
       <CodeStudioCopilotDialog projectRoot={activeSession.project.realPath} projectName={activeSession.project.name} />
       <CodeStudioMilkDialog />
       <CodeStudioClaudeDialog />

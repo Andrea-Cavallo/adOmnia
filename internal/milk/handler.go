@@ -295,20 +295,41 @@ func (h *handler) HandleRequest(ctx context.Context, method string, params jsonv
 		Subject *struct {
 			ToolCall struct {
 				ToolCallID string `json:"toolCallId"`
+				Kind       string `json:"kind"`
 			} `json:"toolCall"`
 		} `json:"subject"`
 		// v1 porta il tool call in un campo dedicato, non in subject.
 		ToolCall *struct {
 			ToolCallID string `json:"toolCallId"`
 			Title      string `json:"title"`
+			Kind       string `json:"kind"`
 		} `json:"toolCall"`
 	}
 	if json.Unmarshal(params, &request) != nil {
 		return nil, ErrMethodNotFound
 	}
 	allowID, denyID := permissionOptionIDs(request.Options)
-	if h.manager.skipPermissions() {
-		return permissionResponse(allowID), nil
+	toolKind := ""
+	if request.Subject != nil {
+		toolKind = request.Subject.ToolCall.Kind
+	} else if request.ToolCall != nil {
+		toolKind = request.ToolCall.Kind
+		if request.Title == "" {
+			request.Title = request.ToolCall.Title
+		}
+	}
+	category := permissionCategory(toolKind)
+	if decision := h.manager.permissionDecision(category, request.SessionID); decision != RuleAsk {
+		// Decisa da una regola: nessuno viene interpellato, ma la decisione resta visibile.
+		outcome, optionID := "allowed", allowID
+		if decision == RuleDeny {
+			outcome, optionID = "denied", denyID
+		}
+		h.manager.publish("permissionAuto", AutoPermissionEvent{
+			SessionID: request.SessionID, SessionKey: h.manager.scopeForSession(request.SessionID),
+			Title: request.Title, Category: category, Outcome: outcome,
+		})
+		return permissionResponse(optionID), nil
 	}
 
 	requestID := newRequestID()
@@ -329,16 +350,18 @@ func (h *handler) HandleRequest(ctx context.Context, method string, params jsonv
 	h.manager.mu.Lock()
 	h.manager.pending[requestID] = perm
 	h.manager.mu.Unlock()
+	// outcome dice chi osserva la risoluzione (Agent Tasks) se il permesso è stato concesso.
+	outcome := "denied"
 	defer func() {
 		// Risposta, timeout o annullamento: la richiesta non è più attiva.
 		h.manager.mu.Lock()
 		delete(h.manager.pending, requestID)
 		h.manager.mu.Unlock()
-		h.manager.publish("permissionResolved", map[string]string{"requestId": requestID})
+		h.manager.publish("permissionResolved", map[string]string{"requestId": requestID, "outcome": outcome})
 	}()
 	h.manager.publish("permission", PermissionEvent{
 		RequestID: requestID, SessionID: request.SessionID, SessionKey: h.manager.scopeForSession(request.SessionID), ToolCallID: toolCallID,
-		Title: request.Title, Description: request.Description, Options: options,
+		Title: request.Title, Description: request.Description, Options: options, Category: category,
 	})
 
 	timeout := time.NewTimer(permissionTimeout)
@@ -346,12 +369,15 @@ func (h *handler) HandleRequest(ctx context.Context, method string, params jsonv
 	select {
 	case allow := <-perm.ch:
 		if allow {
+			outcome = "allowed"
 			return permissionResponse(allowID), nil
 		}
 		return permissionResponse(denyID), nil
 	case <-ctx.Done():
+		outcome = "cancelled"
 		return permissionResponse(denyID), nil
 	case <-timeout.C:
+		outcome = "timeout"
 		return permissionResponse(denyID), nil
 	}
 }

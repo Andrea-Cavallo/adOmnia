@@ -62,8 +62,10 @@ type LaunchRequest struct {
 	Executable       string
 	WorkingDirectory string
 	Program          string
-	Environment      []string
-	LanguageOptions  jsonv1.RawMessage
+	// ToolsRoot is adOmnia's tools folder: adapters use it to find a managed debugger.
+	ToolsRoot       string
+	Environment     []string
+	LanguageOptions jsonv1.RawMessage
 }
 
 type DebugAdapterProvider interface {

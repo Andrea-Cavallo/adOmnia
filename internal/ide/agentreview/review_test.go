@@ -241,3 +241,36 @@ func TestBinaryFilesCanOnlyBeAcceptedAsAWhole(t *testing.T) {
 		t.Errorf("files = %+v after accept", files)
 	}
 }
+
+func TestMovedFileIsShownAsARename(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "handlers.go", "package main\n\nfunc handle() {}\n")
+	tracker := NewTracker()
+	agentTurn(t, tracker, root, func() {
+		writeFile(t, root, "api/handlers.go", "package main\n\nfunc handle() {}\n")
+		if err := os.Remove(filepath.Join(root, "handlers.go")); err != nil {
+			t.Fatal(err)
+		}
+	})
+	review := tracker.Get(root)
+	if len(review.Files) != 1 {
+		t.Fatalf("files = %+v, want one rename", review.Files)
+	}
+	file := review.Files[0]
+	if file.Status != StatusRenamed || file.Path != "api/handlers.go" || file.From != "handlers.go" {
+		t.Fatalf("rename = %+v", file)
+	}
+	// Rifiutare una rinomina = rifiutare entrambi i percorsi: il file torna dov'era.
+	if err := tracker.RejectFile(root, file.Path); err != nil {
+		t.Fatal(err)
+	}
+	if err := tracker.RejectFile(root, file.From); err != nil {
+		t.Fatal(err)
+	}
+	if readFile(t, root, "handlers.go") == "" {
+		t.Fatal("the original file was not restored")
+	}
+	if _, err := os.Stat(filepath.Join(root, "api", "handlers.go")); !os.IsNotExist(err) {
+		t.Fatal("the moved file was not removed")
+	}
+}

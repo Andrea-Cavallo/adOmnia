@@ -45,7 +45,26 @@ vi.mock('@/lib/code-studio-api', () => ({
 
 vi.mock('@/lib/confirmDialog', () => ({ confirm: mocks.confirm }))
 
-import { useCodeStudioStore, type GoIDEEditorDocument } from './codeStudio'
+import type { GoIDESession } from '@/lib/code-studio-api'
+import { replaceSession, useCodeStudioStore, type GoIDEEditorDocument } from './codeStudio'
+
+describe('session replacement', () => {
+  const session = (updatedAt: string, units: number) => ({ id: 's1', updatedAt, project: { units: Array.from({ length: units }, () => ({ language: 'go' })) } }) as unknown as GoIDESession
+
+  it('keeps units that session.updated delivered before the OpenProject response', () => {
+    const fromEvent = session('2026-10-31T10:00:00.500Z', 3)
+    const staleResponse = session('2026-10-31T10:00:00.100Z', 0)
+    expect(replaceSession([fromEvent], staleResponse)).toEqual([fromEvent])
+  })
+
+  it('takes the newer or equally recent version', () => {
+    const older = session('2026-10-31T10:00:00.100Z', 0)
+    const newer = session('2026-10-31T10:00:00.500Z', 2)
+    expect(replaceSession([older], newer)).toEqual([newer])
+    expect(replaceSession([older], session(older.updatedAt, 1))[0].project.units).toHaveLength(1)
+    expect(replaceSession([], older)).toEqual([older])
+  })
+})
 
 describe('program stdin delivery', () => {
   it('reports successful delivery, including an empty line', async () => {

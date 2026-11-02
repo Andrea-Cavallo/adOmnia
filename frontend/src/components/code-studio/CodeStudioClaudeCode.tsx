@@ -10,6 +10,7 @@ import { diagnoseClaudeCode, getClaudeCodeLog, installClaudeCodeAdapter, inspect
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { CodeStudioAgentChat, type ChatAgent } from './CodeStudioAgentChat'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
+import { AgentPermissionRules } from './AgentPermissionRules'
 
 const ADAPTER_URL = 'https://github.com/agentclientprotocol/claude-agent-acp'
 const BUTTON = 'gs-btn gs-btn-secondary gs-btn-sm'
@@ -241,6 +242,7 @@ function ClaudeDialogForm({ settings }: { settings: MilkSettings }) {
           Approve every tool call without asking
         </label>
         {draft.skipPermissions && <CodeStudioAlert icon={AlertCircle}>Claude Code will run shell commands and edit files in the project without confirmation.</CodeStudioAlert>}
+        <AgentPermissionRules rules={draft.permissionRules} onChange={(permissionRules) => setDraft({ ...draft, permissionRules })} />
         <label className="gs-check">
           <input type="checkbox" checked={!draft.disableBuiltinMcp} onChange={(event) => setDraft({ ...draft, disableBuiltinMcp: !event.target.checked })} />
           Give the agent adOmnia's collections and mock server (MCP)

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: {} }))
 vi.mock('@/lib/code-studio-lsp-api', () => ({}))
 vi.mock('./codeStudioLanguageFeatures', () => ({ prepareDocument: vi.fn() }))
 vi.mock('./codeStudioWorkspaceEdits', () => ({ applyCodeStudioWorkspaceChange: vi.fn() }))

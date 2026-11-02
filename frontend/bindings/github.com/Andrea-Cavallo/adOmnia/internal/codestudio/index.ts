@@ -118,6 +118,7 @@ export {
     MemoryModelReport,
     ModuleRegistryCheck,
     MoveSymbolRequest,
+    NativeDebugRequest,
     NavigationEntry,
     NewFile,
     OpenDocument,

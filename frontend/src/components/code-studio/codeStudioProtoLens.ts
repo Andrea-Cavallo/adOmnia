@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { architectureFor, cachedArchitecture } from '@/lib/code-studio/architectureCache'
@@ -25,19 +25,21 @@ const PLUGINS = {
 }
 
 let registered = false
-const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
+// Created on first use: Monaco is not loaded when this module is.
+let changedEmitter: Monaco.Emitter<Monaco.languages.CodeLensProvider> | undefined
+const changed = () => (changedEmitter ??= new monaco.Emitter<Monaco.languages.CodeLensProvider>())
 
-function lens(line: number, id: string, title: string, tooltip: string, args: unknown[]): monaco.languages.CodeLens {
+function lens(line: number, id: string, title: string, tooltip: string, args: unknown[]): Monaco.languages.CodeLens {
   return { range: { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }, command: { id, title, tooltip, arguments: args } }
 }
 
-function lensesFor(sessionId: string, documentId: string, text: string): monaco.languages.CodeLens[] {
+function lensesFor(sessionId: string, documentId: string, text: string): Monaco.languages.CodeLens[] {
   const syntaxLine = text.split('\n').findIndex((line) => /^\s*(syntax|edition)\s*=/.test(line)) + 1
   const generate = lens(syntaxLine || 1, GENERATE_COMMAND, 'Generate Go code', 'buf generate when the module has buf.gen.yaml, otherwise protoc with protoc-gen-go (and protoc-gen-go-grpc for services)', [documentId])
   const rpcs = protoRpcs(text)
   if (!rpcs.length) return [generate]
   const report = cachedArchitecture(sessionId)?.report
-  const out: monaco.languages.CodeLens[] = [generate]
+  const out: Monaco.languages.CodeLens[] = [generate]
   if (!report) out.push(lens(rpcs[0].line, LINK_COMMAND, 'Link rpcs to Go handlers', 'Analyze the project (nothing runs) to find the Go method serving each rpc', [sessionId]))
   for (const rpc of rpcs) {
     const handler = report ? goHandlerFor(report, rpc.service, rpc.method) : null
@@ -77,15 +79,15 @@ async function livePort(liveId: string): Promise<number | undefined> {
   return undefined
 }
 
-const SYMBOL_KIND = { message: monaco.languages.SymbolKind.Struct, enum: monaco.languages.SymbolKind.Enum, service: monaco.languages.SymbolKind.Interface, rpc: monaco.languages.SymbolKind.Method }
+const symbolKind = () => ({ message: monaco.languages.SymbolKind.Struct, enum: monaco.languages.SymbolKind.Enum, service: monaco.languages.SymbolKind.Interface, rpc: monaco.languages.SymbolKind.Method })
 
 /** Outline: message, enum, service and rpc, nested under their parent. */
-function protoSymbols(model: monaco.editor.ITextModel): monaco.languages.DocumentSymbol[] {
-  const byName = new Map<string, monaco.languages.DocumentSymbol>()
-  const roots: monaco.languages.DocumentSymbol[] = []
+function protoSymbols(model: Monaco.editor.ITextModel): Monaco.languages.DocumentSymbol[] {
+  const byName = new Map<string, Monaco.languages.DocumentSymbol>()
+  const roots: Monaco.languages.DocumentSymbol[] = []
   for (const item of protoDeclarations(model.getValue())) {
     const range = { startLineNumber: item.line, startColumn: item.column, endLineNumber: item.line, endColumn: item.column + item.name.length }
-    const symbol: monaco.languages.DocumentSymbol = { name: item.name, detail: item.kind, kind: SYMBOL_KIND[item.kind], tags: [], range, selectionRange: range, children: [] }
+    const symbol: Monaco.languages.DocumentSymbol = { name: item.name, detail: item.kind, kind: symbolKind()[item.kind], tags: [], range, selectionRange: range, children: [] }
     const parent = item.parent ? byName.get(item.parent) : undefined
     if (parent) parent.children = [...(parent.children ?? []), symbol]
     else roots.push(symbol)
@@ -95,7 +97,7 @@ function protoSymbols(model: monaco.editor.ITextModel): monaco.languages.Documen
 }
 
 /** Go to definition of a message/enum/service: this file first, then the files it imports. */
-async function protoDefinition(model: monaco.editor.ITextModel, position: monaco.Position): Promise<monaco.languages.Location[]> {
+async function protoDefinition(model: Monaco.editor.ITextModel, position: Monaco.Position): Promise<Monaco.languages.Location[]> {
   const word = model.getWordAtPosition(position)
   if (!word) return []
   // Qualified names (google.protobuf.Empty, shop.v1.Order): resolve the whole dotted token by its last part.
@@ -182,7 +184,7 @@ export function registerCodeStudioProtoLens(): void {
   registered = true
   monaco.editor.registerCommand(GENERATE_COMMAND, (_accessor, documentId: string) => { void generateGo(documentId) })
   monaco.editor.registerCommand(LINK_COMMAND, (_accessor, sessionId: string) => {
-    void architectureFor(sessionId).then(() => changed.fire(provider), () => undefined)
+    void architectureFor(sessionId).then(() => changed().fire(provider), () => undefined)
   })
   monaco.editor.registerCommand(HANDLER_COMMAND, (_accessor, sessionId: string, service: string, method: string) => {
     const handler = handlerOf(sessionId, service, method)
@@ -199,8 +201,8 @@ export function registerCodeStudioProtoLens(): void {
       callInClient(documentId, { service, method }, port ? `127.0.0.1:${port}` : undefined)
     })()
   })
-  const provider: monaco.languages.CodeLensProvider = {
-    onDidChange: changed.event,
+  const provider: Monaco.languages.CodeLensProvider = {
+    onDidChange: changed().event,
     provideCodeLenses: (model) => {
       const document = documentForModel(model)
       if (!document || document.document.external) return { lenses: [], dispose: () => undefined }

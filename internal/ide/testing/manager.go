@@ -23,8 +23,11 @@ type Snapshot struct {
 	Summary     TestSummary     `json:"summary"`
 	Results     []TestResult    `json:"results"`
 	Overflow    bool            `json:"overflow,omitzero"`
-	StartedAt   time.Time       `json:"startedAt"`
-	FinishedAt  *time.Time      `json:"finishedAt,omitempty"`
+	// Partial marca un aggiornamento in corsa: Results contiene solo i nodi cambiati dal precedente,
+	// da fondere per ID con quelli già noti. Il primo e l'ultimo snapshot sono sempre completi.
+	Partial    bool       `json:"partial,omitzero"`
+	StartedAt  time.Time  `json:"startedAt"`
+	FinishedAt *time.Time `json:"finishedAt,omitempty"`
 	// Coverage è il report dello strumento di copertura, se la run ne ha prodotto uno.
 	Coverage *CoverageReport `json:"coverage,omitempty"`
 }
@@ -157,21 +160,33 @@ func (m *Manager) Start(processes *run.ProcessManager, spec run.CommandSpec, par
 			case <-stop:
 				return
 			case <-ticker.C:
-				r.publication.Lock()
-				r.mu.Lock()
-				dirty := r.dirty && !r.finished
-				r.dirty = false
-				s := r.snapshotLocked(false)
-				r.mu.Unlock()
-				if dirty && hooks.Publish != nil {
-					hooks.Publish(s)
-				}
-				r.publication.Unlock()
+				r.publishChanges()
 			}
 		}
 	}()
 	return initial, nil
 }
+
+// publishChanges pubblica i nodi cambiati dall'ultimo tick; senza novità non costruisce nulla.
+func (r *testRun) publishChanges() {
+	r.publication.Lock()
+	defer r.publication.Unlock()
+	r.mu.Lock()
+	if !r.dirty || r.finished {
+		r.mu.Unlock()
+		return
+	}
+	r.dirty = false
+	s := r.headerLocked()
+	s.Results, s.Summary = r.tree.Changes()
+	r.resolveResults(s.Results)
+	s.Partial = true
+	r.mu.Unlock()
+	if r.hooks.Publish != nil {
+		r.hooks.Publish(s)
+	}
+}
+
 func (r *testRun) line(line []byte) {
 	if batch, ok := r.parser.(BatchParser); ok {
 		for _, event := range batch.ParseAll(line) {
@@ -187,6 +202,20 @@ func (r *testRun) line(line []byte) {
 	}
 }
 func (r *testRun) snapshotLocked(output bool) Snapshot {
+	s := r.headerLocked()
+	s.Results, s.Summary = r.tree.Snapshot()
+	if output {
+		if r.hooks.Results != nil {
+			r.hooks.Results(s.Results)
+		}
+	} else {
+		r.resolveResults(s.Results)
+	}
+	return s
+}
+
+// headerLocked copia lo stato della run senza i nodi dell'albero.
+func (r *testRun) headerLocked() Snapshot {
 	s := r.snapshot
 	s.ExitCode = cloneInt(s.ExitCode)
 	if len(r.diagnostics) > 0 {
@@ -200,18 +229,19 @@ func (r *testRun) snapshotLocked(output bool) Snapshot {
 		copy := *s.FinishedAt
 		s.FinishedAt = &copy
 	}
-	s.Results, s.Summary = r.tree.Snapshot()
-	if r.hooks.Results != nil {
-		r.hooks.Results(s.Results)
-	}
-	if !output {
-		for i := range s.Results {
-			s.Results[i].Output = ""
-		}
-	}
 	s.Overflow = r.tree.Overflowed()
 	s.Coverage = cloneCoverage(r.coverage)
 	return s
+}
+
+// resolveResults applica l'arricchimento dell'adapter e toglie l'output dei nodi, che si legge con Output.
+func (r *testRun) resolveResults(results []TestResult) {
+	if r.hooks.Results != nil {
+		r.hooks.Results(results)
+	}
+	for i := range results {
+		results[i].Output = ""
+	}
 }
 
 func cloneInt(value *int) *int {

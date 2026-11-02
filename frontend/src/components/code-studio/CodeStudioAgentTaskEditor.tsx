@@ -79,9 +79,10 @@ export function CodeStudioAgentTaskEditor({ session, task, open, onClose }: Prop
             {draft.paths.length > 0 ? <ul className="agent-composer-file-list">{draft.paths.map((path) => <li key={path}><FileCode2 size={14} /><span title={path}>{path}</span><button type="button" aria-label={`Remove ${path}`} onClick={() => setDraft({ ...draft, paths: draft.paths.filter((item) => item !== path) })}><X size={13} /></button></li>)}</ul> : <p className="agent-composer-no-files">No files selected</p>}
             <CodeStudioButton small icon={Plus} onClick={() => setPickerOpen(true)}>Add project file</CodeStudioButton>
           </section>
-          <details className="agent-composer-limits"><summary>Execution limits<span>{draft.limits.timeoutMinutes} min · {Math.round(draft.limits.maxContextBytes / 1024)} KiB</span></summary>
+          <details className="agent-composer-limits"><summary>Execution limits<span>{draft.limits.timeoutMinutes} min · {Math.round(draft.limits.maxContextBytes / 1024)} KiB · {draft.limits.maxCorrections || 3} corrections</span></summary>
             <CodeStudioField label="Timeout (minutes)"><input aria-label="Timeout (minutes)" className="gs-input" type="number" min={1} max={240} value={draft.limits.timeoutMinutes} onChange={(event) => setDraft({ ...draft, limits: { ...draft.limits, timeoutMinutes: event.target.valueAsNumber } })} /></CodeStudioField>
             <CodeStudioField label="Context limit (KiB)"><input aria-label="Context limit (KiB)" className="gs-input" type="number" min={1} max={256} value={Math.round(draft.limits.maxContextBytes / 1024)} onChange={(event) => setDraft({ ...draft, limits: { ...draft.limits, maxContextBytes: event.target.valueAsNumber * 1024 } })} /></CodeStudioField>
+            <CodeStudioField label="Consecutive corrections"><input aria-label="Consecutive corrections" className="gs-input" type="number" min={1} max={10} value={draft.limits.maxCorrections || 3} onChange={(event) => setDraft({ ...draft, limits: { ...draft.limits, maxCorrections: event.target.valueAsNumber } })} /></CodeStudioField>
           </details>
         </aside>
       </div>

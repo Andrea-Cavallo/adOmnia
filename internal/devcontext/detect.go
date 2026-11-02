@@ -9,6 +9,8 @@ var skippedDirs = map[string]bool{
 	".git": true, "node_modules": true, "vendor": true, "target": true, "build": true, "dist": true,
 	".gradle": true, ".idea": true, ".venv": true, "__pycache__": true, ".next": true, "bin": true,
 	"obj": true, "testdata": true,
+	// Elixir: compiled output and fetched dependencies are not the project's routes.
+	"_build": true, "deps": true,
 	// ambienti Python: il codice delle librerie installate non è del progetto e produrrebbe route finte.
 	"venv": true, "site-packages": true, "dist-packages": true, "__pypackages__": true,
 }
@@ -37,7 +39,7 @@ func interesting(rel string) bool {
 		return false
 	}
 	switch path.Ext(base) {
-	case ".go", ".java", ".py", ".rs", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
+	case ".go", ".java", ".py", ".rs", ".cs", ".php", ".rb", ".ex", ".swift", ".proto", ".wsdl", ".yaml", ".yml", ".json", ".sql":
 		return true
 	}
 	return false
@@ -75,6 +77,9 @@ func detectFile(rel string, data []byte, env map[string]string, hints AdapterHin
 		out = append(out, detectPythonFile(rel, data)...)
 	case strings.HasSuffix(base, ".rs"):
 		out = append(out, detectRustFile(rel, data)...)
+	case strings.HasSuffix(base, ".cs"), strings.HasSuffix(base, ".php"), strings.HasSuffix(base, ".rb"),
+		strings.HasSuffix(base, ".ex"), strings.HasSuffix(base, ".swift"):
+		out = append(out, detectDeclaredFile(rel, data)...)
 	case base == "config.toml":
 		add(detectCargoConfig(rel, data), nil)
 	case isDotenv(base):

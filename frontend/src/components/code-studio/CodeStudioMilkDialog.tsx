@@ -5,6 +5,7 @@ import milkAvatar from '../../../../assets/images/milk-avatar.png'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import { assignMilkProvider, getMcpServers, getMilkAgents, saveMcpServers, getMilkLog, type MilkAgentRole, type MilkAgentsInfo, type MilkSettings } from '@/lib/milk-api'
 import { useMilkStore } from '@/stores/milk'
+import { AgentPermissionRules } from './AgentPermissionRules'
 
 /** Upstream project: adOmnia drives the milk binary installed on this machine, so updating milk updates the chat. */
 export const MILK_REPO_URL = 'https://github.com/scoutme/milk'
@@ -229,6 +230,7 @@ function MilkDialogForm({ settings }: { settings: MilkSettings }) {
           Approve every tool call without asking
         </label>
         {draft.skipPermissions && <CodeStudioAlert icon={AlertCircle}>milk will run shell commands and edit files in the project without confirmation.</CodeStudioAlert>}
+        <AgentPermissionRules rules={draft.permissionRules} onChange={(permissionRules) => setDraft({ ...draft, permissionRules })} />
         <label className="gs-check">
           <input type="checkbox" checked={!draft.disableBuiltinMcp} onChange={(event) => setDraft({ ...draft, disableBuiltinMcp: !event.target.checked })} />
           Give the agent adOmnia's collections and mock server (MCP)

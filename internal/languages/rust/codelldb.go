@@ -180,7 +180,8 @@ func CodeLLDBInstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 	if err != nil {
 		return lsp.InstallPlan{}, err
 	}
-	executable, arguments := codeLLDBInstallCommand(directory, url, asset.sha256, string(report))
+	executable, arguments := toolmanifest.Download{Directory: directory, Archive: "codelldb.zip", URL: url, SHA256: asset.sha256, Report: string(report),
+		Executables: []string{"extension/adapter/codelldb"}}.Command()
 	return lsp.InstallPlan{
 		Task:       codeLLDBInstallTask,
 		Title:      "Install the Rust debugger?",
@@ -193,28 +194,4 @@ func CodeLLDBInstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
 		Prepare:    func() error { return os.MkdirAll(directory, 0o755) },
 		Languages:  []string{ID},
 	}, nil
-}
-
-func codeLLDBInstallCommand(directory, url, sha256, report string) (string, []string) {
-	// Dopo il checksum riuscito il comando scrive il report di installazione (RS-9.4): è la
-	// provenienza che la verifica confronta con il manifest generico.
-	if runtime.GOOS == "windows" {
-		quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", "''") + "'" }
-		script := "$ErrorActionPreference='Stop'; $d=" + quote(directory) + "; $f=Join-Path $d 'codelldb.zip'; " +
-			"Invoke-WebRequest -UseBasicParsing " + quote(url) + " -OutFile $f; " +
-			"if ((Get-FileHash $f -Algorithm SHA256).Hash.ToLower() -ne '" + sha256 + "') { Remove-Item $f; throw 'SHA-256 mismatch: the download was discarded' }; " +
-			"Expand-Archive -Force $f (Join-Path $d 'extract'); Remove-Item $f; " +
-			"Set-Content -LiteralPath (Join-Path $d " + quote(toolmanifest.ReportFile) + ") -Value " + quote(report)
-		return "powershell.exe", []string{"-NoProfile", "-NonInteractive", "-Command", script}
-	}
-	quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'" }
-	check := "sha256sum -c -"
-	if runtime.GOOS == "darwin" {
-		check = "shasum -a 256 -c -"
-	}
-	script := "set -e; d=" + quote(directory) + "; mkdir -p \"$d\"; curl -fsSL " + quote(url) + " -o \"$d/codelldb.zip\"; " +
-		"echo '" + sha256 + "  '\"$d/codelldb.zip\" | " + check + "; " +
-		"unzip -oq \"$d/codelldb.zip\" -d \"$d/extract\"; rm -f \"$d/codelldb.zip\"; chmod +x \"$d/extract/extension/adapter/codelldb\"; " +
-		"printf '%s' " + quote(report) + " >\"$d/" + toolmanifest.ReportFile + "\""
-	return "sh", []string{"-c", script}
 }

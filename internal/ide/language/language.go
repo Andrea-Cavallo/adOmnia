@@ -31,6 +31,19 @@ type DebugAdapterProvider = dap.DebugAdapterProvider
 type TestRunner = idetesting.TestRunner
 type ServerProvider = lsp.ServerProvider
 
+// NativeLLDBDebugger is implemented by adapters whose DebugAdapter launches a native executable
+// under an LLDB DAP binary (CodeLLDB or lldb-dap) located by the host. Script debuggers (PHP, Dart…)
+// do not implement it, so a broken managed CodeLLDB never blocks their debug.
+type NativeLLDBDebugger interface {
+	UsesLLDB() bool
+}
+
+// DebuggerInstaller describes how to install the debugger an adapter uses. The host exposes it as
+// an explicit, visible install action (codeStudioToolInstall), never silently.
+type DebuggerInstaller interface {
+	DebuggerInstallPlan(toolsRoot string) (lsp.InstallPlan, error)
+}
+
 // UnitServers è la capability di un linguaggio il cui language server va avviato una volta per
 // unità invece di una volta per progetto. Serve quando l'unità porta con sé il proprio ambiente
 // (un interprete o un venv per servizio, una toolchain per modulo): un solo server multi-root
@@ -168,7 +181,20 @@ func CapabilitiesOf(l Language) Capabilities {
 	_, tests := l.(TestRunner)
 	_, debugs := l.(DebugAdapterProvider)
 	_, serves := l.(ServerProvider)
-	return Capabilities{Debug: debugs, Tests: tests, Run: runs, ProjectDetection: detects, Documents: selects, Usages: classifies, Declarations: extracts, LanguageServer: serves}
+	capabilities := Capabilities{Debug: debugs, Tests: tests, Run: runs, ProjectDetection: detects, Documents: selects, Usages: classifies, Declarations: extracts, LanguageServer: serves}
+	if limiter, ok := l.(CapabilityLimiter); ok {
+		limited := limiter.LimitCapabilities(capabilities)
+		capabilities = Capabilities{Debug: debugs && limited.Debug, Tests: tests && limited.Tests, Run: runs && limited.Run,
+			ProjectDetection: detects && limited.ProjectDetection, Documents: selects && limited.Documents, Usages: classifies && limited.Usages,
+			Declarations: extracts && limited.Declarations, LanguageServer: serves && limited.LanguageServer}
+	}
+	return capabilities
+}
+
+// CapabilityLimiter è per gli adapter guidati da una tabella (internal/languages/declared): un solo tipo
+// implementa i metodi di tutte le righe e qui spegne quelli che la riga non sa usare. Può solo togliere.
+type CapabilityLimiter interface {
+	LimitCapabilities(Capabilities) Capabilities
 }
 
 // Info descrive un linguaggio registrato per la UI: identità e capability derivate.

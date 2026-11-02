@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDETestResult, GoIDETestRun } from '@/lib/code-studio-tests-api'
-import { buildTestTree, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, isPythonTestRun, namePatternFor, pythonNodeId, pythonRerunFailedRequest, rollupOf, rustDebugRequestForNode } from './codeStudioTestTree'
+import { buildTestTree, mergeTestRun, filterTestTree, cpuCorrelationRequestForNode, cpuCorrelationVerdict, failureRateByCPU, flakyCauses, isFlaky, raceRepeatRequestForNode, reproduceCommandFor, isSlow, onlyFailed, onlyFlaky, packagePattern, repeatRequestForNode, repetitionStats, reproduceRequest, requestForNode, rerunFailedRequest, runPatternFor, isGoTestRun, isPythonTestRun, namePatternFor, pythonNodeId, pythonRerunFailedRequest, rollupOf, rustDebugRequestForNode } from './codeStudioTestTree'
 
 const node = (pkg: string, name: string, status: string, extra: Partial<GoIDETestResult> = {}): GoIDETestResult => ({
   id: name ? `${pkg}\u0000${name}` : pkg,
@@ -248,5 +248,39 @@ describe('Rust test runs', () => {
     // I doctest non hanno binario compilato: niente richiesta di debug (limite dichiarato).
     const doctest = node('api', 'src/lib.rs - add (line 3)', 'fail')
     expect(rustDebugRequestForNode(rustRun([doctest]), doctest)).toBeNull()
+  })
+})
+
+describe('mergeTestRun', () => {
+  const running = (results: GoIDETestResult[], partial = false): GoIDETestRun => ({ ...run(results), status: 'running', partial })
+
+  it('applies a partial update by id, keeping untouched nodes and their identity', () => {
+    const untouched = node('a', 'TestOne', 'pass')
+    const current = running([node('a', '', 'running'), untouched, node('a', 'TestTwo', 'running')])
+    const merged = mergeTestRun(current, running([node('a', 'TestTwo', 'fail')], true))
+    expect(merged.results.map((result) => `${result.id}:${result.status}`)).toEqual(['a:running', 'a\u0000TestOne:pass', 'a\u0000TestTwo:fail'])
+    expect(merged.results[1]).toBe(untouched)
+    expect(merged.partial).toBe(false)
+  })
+
+  it('appends new nodes and keeps packages sorted like the backend', () => {
+    const current = running([node('b', '', 'running'), node('b', 'TestB', 'running')])
+    const merged = mergeTestRun(current, running([node('a', '', 'running'), node('a', 'TestA', 'running'), node('b', 'TestC', 'running')], true))
+    expect(merged.results.map((result) => result.id)).toEqual(['a', 'a\u0000TestA', 'b', 'b\u0000TestB', 'b\u0000TestC'])
+  })
+
+  it('never lets a late running snapshot replace a finished run', () => {
+    const finished = run([node('a', 'TestOne', 'pass')])
+    expect(mergeTestRun(finished, running([]))).toBe(finished)
+  })
+
+  it('keeps nodes from early partial events when the StartTests answer arrives last', () => {
+    const early = running([node('a', 'TestOne', 'pass')], true)
+    expect(mergeTestRun(early, running([])).results.map((result) => result.id)).toEqual(['a\u0000TestOne'])
+  })
+
+  it('takes the final full snapshot as is', () => {
+    const final = run([node('a', 'TestOne', 'fail')])
+    expect(mergeTestRun(running([node('a', 'TestOne', 'running'), node('a', 'TestGone', 'running')]), final)).toBe(final)
   })
 })

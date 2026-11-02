@@ -150,7 +150,7 @@ func (w *sessionWatch) addTree(root string) {
 		if err != nil || !entry.IsDir() {
 			return nil
 		}
-		if path != w.root && (isIgnoredDirectory(entry.Name()) || gitIgnored(w.ignore, w.root, path, true)) {
+		if path != w.root && (skipWalkDirectory(path, entry.Name()) || gitIgnored(w.ignore, w.root, path, true)) {
 			return filepath.SkipDir
 		}
 		if w.watched.Load() >= maxWatchedDirectories {

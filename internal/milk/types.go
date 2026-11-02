@@ -181,6 +181,8 @@ type PermissionEvent struct {
 	Title       string             `json:"title"`
 	Description string             `json:"description"`
 	Options     []PermissionOption `json:"options"`
+	// Category is read, write, shell, network or other: what the user is asked to allow.
+	Category string `json:"category,omitempty"`
 }
 
 // Session è una sessione ACP milk per una cartella di progetto.

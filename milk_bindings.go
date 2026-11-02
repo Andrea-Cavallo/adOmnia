@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sync"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 
@@ -14,11 +15,25 @@ type Milk struct {
 	mcpServers *milk.MCPServerStore
 }
 
+// projectPermissions sono le regole di permesso per progetto, condivise da milk, Claude Code e Pi.
+var projectPermissions = sync.OnceValue(func() *milk.ProjectPermissionStore { return milk.NewProjectPermissionStore(dataDir()) })
+
+// ProjectPermissionRules restituisce le regole di permesso del progetto (valgono per ogni agente).
+func (m *Milk) ProjectPermissionRules(root string) map[string]string {
+	return projectPermissions().Rules(root)
+}
+
+// SaveProjectPermissionRules salva le regole del progetto; valgono dalla prossima richiesta di permesso.
+func (m *Milk) SaveProjectPermissionRules(root string, rules map[string]string) (map[string]string, error) {
+	return projectPermissions().Save(root, rules)
+}
+
 // NewMilk crea il servizio; il processo `milk serve --acp` parte solo con ServiceStartup.
 func NewMilk() *Milk {
 	store := milk.NewMCPServerStore(dataDir())
 	manager := milk.NewManager(milk.NewSettingsStore(dataDir()))
 	manager.SetMCPServers(store.Load)
+	manager.SetProjectPermissions(projectPermissions().Rules)
 	return &Milk{manager: manager, mcpServers: store}
 }
 

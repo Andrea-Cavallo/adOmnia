@@ -34,6 +34,11 @@ tasks:
     cmds:
       - task: '{{OS}}:run'
 
+  bench:open:
+    summary: Benchmark Code Studio project open and Quick Open on 5k/50k files (ADOMNIA_BENCH_LARGE=1 adds 200k).
+    cmds:
+      - go test -run '^$' -bench BenchmarkProjectOpen -benchtime 3x -timeout 30m ./internal/codestudio/
+
   dev:
     summary: Run the Wails 3 development workflow.
     cmds:

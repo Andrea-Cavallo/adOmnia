@@ -7,6 +7,7 @@ package project
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -37,6 +38,39 @@ var ignoredDirectories = map[string]struct{}{
 func IgnoredDirectory(name string) bool {
 	_, ignored := ignoredDirectories[strings.ToLower(name)]
 	return ignored
+}
+
+// buildOutputMarkers sono le cartelle di output che si saltano solo accanto al manifest che le genera:
+// una cartella sorgente chiamata "target" in un progetto senza Cargo/Maven resta visibile.
+var buildOutputMarkers = map[string][]string{
+	"target": {"Cargo.toml", "pom.xml"},
+	"obj":    {"*.csproj", "*.fsproj", "*.vbproj"},
+}
+
+// BuildOutputDirectory dice se name, figlia di parent, è l'output di build del manifest accanto.
+// Costa uno stat solo per le cartelle con quei nomi.
+func BuildOutputDirectory(parent, name string) bool {
+	markers, ok := buildOutputMarkers[strings.ToLower(name)]
+	if !ok {
+		return false
+	}
+	for _, marker := range markers {
+		if strings.ContainsRune(marker, '*') {
+			if matches, _ := filepath.Glob(filepath.Join(parent, marker)); len(matches) > 0 {
+				return true
+			}
+			continue
+		}
+		if info, err := os.Stat(filepath.Join(parent, marker)); err == nil && !info.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+// SkipDirectory unisce le cartelle sempre escluse e gli output di build riconosciuti dal manifest accanto.
+func SkipDirectory(parent, name string) bool {
+	return IgnoredDirectory(name) || BuildOutputDirectory(parent, name)
 }
 
 // EnsureWithin verifica che candidate sia root o un suo discendente (dopo Clean, senza seguire link).

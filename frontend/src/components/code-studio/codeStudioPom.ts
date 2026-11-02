@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { dependencyStatuses, isBuildFile, updateEdit, type PomDependencyStatus } from '@/lib/code-studio/pomInsights'
 import { usePomStore, type PomState } from '@/stores/codeStudioPom'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
@@ -28,11 +28,11 @@ function statusesOf(documentId: string): PomDependencyStatus[] {
   return dependencyStatuses(state.dependencies, state.versions, state.findings)
 }
 
-function lensRange(line: number): monaco.IRange {
+function lensRange(line: number): Monaco.IRange {
   return { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }
 }
 
-function modelOf(document: GoIDEEditorDocument): monaco.editor.ITextModel | null {
+function modelOf(document: GoIDEEditorDocument): Monaco.editor.ITextModel | null {
   return monaco.editor.getModel(monaco.Uri.parse(editorModelUri(document.document)))
 }
 
@@ -67,8 +67,8 @@ function summaryLens(documentId: string, state: PomState): string {
   return parts.join(' · ')
 }
 
-function toolbarLenses(documentId: string, state: PomState, scannable: boolean): monaco.languages.CodeLens[] {
-  const lenses: monaco.languages.CodeLens[] = [
+function toolbarLenses(documentId: string, state: PomState, scannable: boolean): Monaco.languages.CodeLens[] {
+  const lenses: Monaco.languages.CodeLens[] = [
     { range: lensRange(1), command: { id: CHECK_COMMAND, title: state.checkingUpdates ? '… Checking Maven Central' : '↻ Check for updates', tooltip: 'Look up the latest stable versions on Maven Central (only group:artifact leaves your machine)', arguments: [documentId] } },
   ]
   if (scannable) lenses.push({ range: lensRange(1), command: { id: SCAN_COMMAND, title: state.scanning ? '… Scanning' : '⛨ Scan vulnerabilities', tooltip: 'Match the dependencies against OSV (only coordinates leave your machine)', arguments: [documentId] } })
@@ -77,8 +77,8 @@ function toolbarLenses(documentId: string, state: PomState, scannable: boolean):
   return lenses
 }
 
-function dependencyLenses(documentId: string, status: PomDependencyStatus): monaco.languages.CodeLens[] {
-  const lenses: monaco.languages.CodeLens[] = []
+function dependencyLenses(documentId: string, status: PomDependencyStatus): Monaco.languages.CodeLens[] {
+  const lenses: Monaco.languages.CodeLens[] = []
   const line = status.dependency.line
   if (status.worst) {
     const first = status.vulnerabilities[0]
@@ -109,12 +109,12 @@ export function applyPomUpdate(documentId: string, line: number, version: string
 /** Nota sul marker quando la versione non è scritta nel pom ma ereditata. */
 const managedNote = (dependency: object) => ('managedBy' in dependency && dependency.managedBy ? ' (version from a parent or BOM: update it where it is defined)' : '')
 
-function markerSeverity(status: PomDependencyStatus): monaco.MarkerSeverity {
+function markerSeverity(status: PomDependencyStatus): Monaco.MarkerSeverity {
   return status.worst === 'critical' || status.worst === 'high' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning
 }
 
-function markersFor(documentId: string): monaco.editor.IMarkerData[] {
-  const markers: monaco.editor.IMarkerData[] = []
+function markersFor(documentId: string): Monaco.editor.IMarkerData[] {
+  const markers: Monaco.editor.IMarkerData[] = []
   for (const status of statusesOf(documentId)) {
     const dependency = status.dependency
     const range = { startLineNumber: dependency.line, startColumn: dependency.startColumn, endLineNumber: dependency.line, endColumn: dependency.endColumn }
@@ -140,10 +140,10 @@ function refreshMarkers(): void {
   }
 }
 
-function quickFixes(model: monaco.editor.ITextModel, range: monaco.Range): monaco.languages.CodeAction[] {
+function quickFixes(model: Monaco.editor.ITextModel, range: Monaco.Range): Monaco.languages.CodeAction[] {
   const document = documentForModel(model)
   if (!document || !isBuildFile(document.document.relativePath)) return []
-  const actions: monaco.languages.CodeAction[] = []
+  const actions: Monaco.languages.CodeAction[] = []
   for (const status of statusesOf(document.document.id)) {
     if (status.dependency.line < range.startLineNumber || status.dependency.line > range.endLineNumber) continue
     for (const target of updateTargets(status)) {
@@ -174,8 +174,8 @@ export function registerCodeStudioPom(): void {
   })
   monaco.editor.registerCommand(UPDATE_COMMAND, (_accessor, documentId: string, line: number, version: string) => applyPomUpdate(documentId, line, version))
 
-  const changed = new monaco.Emitter<monaco.languages.CodeLensProvider>()
-  const provider: monaco.languages.CodeLensProvider = {
+  const changed = new monaco.Emitter<Monaco.languages.CodeLensProvider>()
+  const provider: Monaco.languages.CodeLensProvider = {
     onDidChange: changed.event,
     provideCodeLenses: (model) => {
       const document = documentForModel(model)

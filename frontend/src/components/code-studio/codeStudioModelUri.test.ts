@@ -7,7 +7,7 @@ const mock = vi.hoisted(() => ({
   models: new Map<string, { dispose: () => void; isAttachedToEditor?: () => boolean; canUndo?: () => boolean; canRedo?: () => boolean; getValue?: () => string }>(),
   subscribe: vi.fn(),
 }))
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {
+vi.mock('@/lib/monacoRef', () => ({ isMonacoLoaded: () => true, monaco: {
   Uri: { parse: (uri: string) => ({
     toString: () => uri,
     with: ({ fragment }: { fragment: string }) => ({ toString: () => uri.split('#')[0] + (fragment ? '#' + fragment : '') }),

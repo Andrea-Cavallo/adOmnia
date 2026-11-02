@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco } from '@/lib/monacoRef'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { resolveGoIDEDependencySource, startGoIDEDependencyAction, type GoIDEDependencySource } from '@/lib/code-studio-api'
 import { confirm } from '@/lib/confirmDialog'

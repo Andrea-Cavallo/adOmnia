@@ -87,7 +87,8 @@ type Manager struct {
 	emit           Emitter
 	listeners      map[int]Emitter
 	listenerSeq    int
-	mcpServers     func() []MCPServer // context server condivisi, letti a ogni session/new
+	mcpServers     func() []MCPServer                  // context server condivisi, letti a ogni session/new
+	projectRules   func(root string) map[string]string // regole di permesso del progetto, lette a ogni richiesta
 	turnObserver   TurnObserver
 	lastUsed       time.Time // ultimo Prompt, per lo spegnimento da inattività
 	idleStopped    bool      // spento da reapWhenIdle: riparte al prossimo Prompt
@@ -192,10 +193,23 @@ func (m *Manager) Log() []string {
 	return append([]string(nil), m.log...)
 }
 
-func (m *Manager) skipPermissions() bool {
+// SetProjectPermissions collega le regole di permesso per progetto, condivise da tutti gli agenti.
+func (m *Manager) SetProjectPermissions(source func(root string) map[string]string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.settings.SkipPermissions
+	m.projectRules = source
+}
+
+// permissionDecision combina la regola dell'agente con quella del progetto della sessione.
+func (m *Manager) permissionDecision(category, sessionID string) string {
+	m.mu.Lock()
+	agent := m.settings.permissionDecision(category)
+	source, root := m.projectRules, m.rootBySession[sessionID]
+	m.mu.Unlock()
+	if source == nil {
+		return agent
+	}
+	return combinePermission(agent, source(root)[category])
 }
 
 // SaveSettings salva e applica: l'attivazione o il cambio di binario riavviano il processo.

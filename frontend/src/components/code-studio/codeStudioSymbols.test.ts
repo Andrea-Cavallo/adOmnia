@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/code-studio-lsp-api', () => ({ requestDocumentSymbols: vi.fn(), updateDocumentBuffer: vi.fn(), openExternalDocument: vi.fn() }))
 vi.mock('@/lib/code-studio-api', () => ({ subscribeGoIDEEvents: vi.fn(() => () => undefined) }))
 
-import { groupStructure, splitSignature, symbolPathAt } from './codeStudioSymbols'
+import { breadcrumbSymbolPath, groupStructure, splitSignature, symbolPathAt, symbolSiblings } from './codeStudioSymbols'
 
 const range = (startLine: number, endLine: number) => ({ startLine, startColumn: 1, endLine, endColumn: 2 })
 const symbols = [
@@ -12,6 +12,14 @@ const symbols = [
 ]
 
 describe('symbolPathAt', () => {
+  it('adds an existing Go receiver type to the method breadcrumb and keeps sibling navigation', () => {
+    const chain = breadcrumbSymbolPath(symbols, 15, 1)
+    expect(chain.map(node => node.name)).toEqual(['Server', '(*Server).Serve'])
+    expect(symbolSiblings(symbols, chain, 1).map(node => node.name)).toEqual(['(*Server).Serve'])
+  })
+  it('does not invent a type when its declaration is outside the file', () => {
+    expect(breadcrumbSymbolPath([symbols[1]], 15, 1).map(node => node.name)).toEqual(['(*Server).Serve'])
+  })
   it('returns the chain of symbols containing the cursor', () => {
     expect(symbolPathAt(symbols, 4, 1).map((node) => node.name)).toEqual(['Server', 'addr'])
     expect(symbolPathAt(symbols, 15, 3).map((node) => node.name)).toEqual(['(*Server).Serve'])

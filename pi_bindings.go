@@ -10,7 +10,9 @@ import (
 type PiAgent struct{ manager *milk.Manager }
 
 func NewPiAgent() *PiAgent {
-	return &PiAgent{manager: milk.NewAgentManager(milk.NewSettingsStoreFile(dataDir(), "pi.json"), pi.Agent(dataDir()))}
+	manager := milk.NewAgentManager(milk.NewSettingsStoreFile(dataDir(), "pi.json"), pi.Agent(dataDir()))
+	manager.SetProjectPermissions(projectPermissions().Rules)
+	return &PiAgent{manager: manager}
 }
 func (p *PiAgent) attachDesktop(desktop *application.App) {
 	p.manager.SetEmitter(func(event string, payload any) { desktop.Event.Emit(event, payload) })

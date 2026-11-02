@@ -1,6 +1,8 @@
 package web
 
 import (
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/toolmanifest"
+
 	"path/filepath"
 	"strings"
 	"testing"
@@ -91,7 +93,8 @@ func TestJSDebugInstallPlanNeedsAToolsFolder(t *testing.T) {
 }
 
 func TestJSDebugInstallCommandChecksTheChecksumBeforeExtracting(t *testing.T) {
-	executable, arguments := jsDebugInstallCommand(`C:\tools\js-debug`, "https://example.invalid/a.tar.gz", jsDebugSHA256, "{}")
+	executable, arguments := toolmanifest.Download{Directory: `C:\tools\js-debug`, Archive: "js-debug.tar.gz",
+		URL: "https://example.invalid/a.tar.gz", SHA256: jsDebugSHA256, Report: "{}"}.Command()
 	if len(arguments) == 0 {
 		t.Fatal("the installer must pass a script")
 	}

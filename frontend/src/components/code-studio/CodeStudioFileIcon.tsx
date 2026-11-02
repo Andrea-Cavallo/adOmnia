@@ -4,6 +4,8 @@ import { BrandIcon } from '@/components/ui/BrandIcon'
 import { GoGopherIcon } from './GoGopherIcon'
 import { resolveCodeStudioFileIcon } from './codeStudioFileIcons'
 import jenkinsEmblem from './assets/jenkins.png'
+import mavenIcon from './assets/maven.svg'
+import ghostIcon from './assets/ghost.png'
 import javaCup from './assets/java.svg'
 
 export { BrandIcon }
@@ -29,6 +31,8 @@ export const CodeStudioFileIcon = memo(function CodeStudioFileIcon({ name, relat
     case 'goModule': return <BrandIcon slug="go" size={size} dimmed={resolved.generated} />
     case 'brand': return <BrandIcon slug={resolved.slug} size={size} />
     case 'jenkins': return <img src={jenkinsEmblem} width={size + 1} height={size + 1} alt="Jenkins" draggable={false} className="shrink-0 object-contain" />
+    case 'maven': return <img src={mavenIcon} width={size} height={size} alt="Maven" draggable={false} className="shrink-0 object-contain" />
+    case 'ghost': return <img src={ghostIcon} width={size} height={size} alt="Dotfile" draggable={false} className="shrink-0 object-contain" />
     case 'java': return <img src={javaCup} width={size} height={size} alt="Java" draggable={false} className="shrink-0 object-contain" />
     case 'generic': {
       const Icon = GENERIC_ICONS[resolved.icon]

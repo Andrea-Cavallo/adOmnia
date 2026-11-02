@@ -3,6 +3,7 @@ import { ideLanguageForEditor, languageServerEditorLanguages } from '@/component
 import { requestDocumentSymbols, type GoIDESymbolNode } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { javaOutline } from '@/components/ide/languages/java/javaLocalOutline'
+import { tomlOutline, TOML_OUTLINE_LIMIT } from '@/lib/code-studio/tomlOutline'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { serverEntry, useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { currentCodeStudioDocumentVersion, flushCodeStudioDocument } from './codeStudioLspSync'
@@ -68,13 +69,16 @@ export function useCodeStudioSymbolSnapshot(documentId: string | null, fallbackD
   const symbols = useCodeStudioLspStore(state => documentId ? state.symbols[documentId] : undefined)
   const buffer = document?.buffer ?? ''
   const java = document?.document.language === 'java'
+  const toml = document?.document.language === 'toml'
   const input = useMemo(() => ({ id: documentId, buffer }), [documentId, buffer])
   const deferred = useDeferredValue(input)
   const text = deferred.id === documentId ? deferred.buffer : buffer
   const pending = text !== buffer
-  return useMemo(() => java
+  return useMemo(() => toml
+    ? { symbols: tomlOutline(text), source: 'local' as const, limited: text.length > TOML_OUTLINE_LIMIT, pending }
+    : java
     ? { ...javaOutline(text, pending ? 'starting' : server.state, symbols, symbols ? symbolBuffers.get(symbols) : undefined), pending }
-    : { symbols: symbols ?? EMPTY, source: 'server' as const, limited: false, pending: false }, [text, pending, java, server.state, symbols])
+    : { symbols: symbols ?? EMPTY, source: 'server' as const, limited: false, pending: false }, [text, pending, java, toml, server.state, symbols])
 }
 
 export function useCodeStudioSymbolsFor(documentId: string | null): GoIDESymbolNode[] {
@@ -106,7 +110,20 @@ export function symbolKey(node: GoIDESymbolNode): string {
 
 /** Fratelli del simbolo nel file (stesso livello), per saltare da un metodo all'altro dal breadcrumb. */
 export function symbolSiblings(symbols: GoIDESymbolNode[], chain: GoIDESymbolNode[], index: number): GoIDESymbolNode[] {
+  const parent = chain[index - 1]
+  if (parent && chain[index]?.kind === SYMBOL_KIND.method && !parent.children?.includes(chain[index])) {
+    return symbols.filter(node => node.kind === SYMBOL_KIND.method && METHOD_NAME.exec(node.name)?.[1] === parent.name)
+  }
   return index === 0 ? symbols : chain[index - 1]?.children ?? []
+}
+
+/** Go methods can be top-level LSP symbols even when their receiver type is in this file. */
+export function breadcrumbSymbolPath(symbols: GoIDESymbolNode[], line: number, column: number): GoIDESymbolNode[] {
+  const chain = symbolPathAt(symbols, line, column)
+  if (chain[0]?.kind !== SYMBOL_KIND.method) return chain
+  const receiver = METHOD_NAME.exec(chain[0].name)?.[1]
+  const type = receiver ? symbols.find(node => TYPE_KINDS.has(node.kind) && node.name === receiver) : undefined
+  return type ? [type, ...chain] : chain
 }
 
 /** SymbolKind LSP usati da gopls. */

@@ -6,4 +6,6 @@ export type IdeFileIcon =
   | { kind: 'brand'; slug: BrandIconSlug }
   | { kind: 'jenkins' }
   | { kind: 'java' }
+  | { kind: 'maven' }
+  | { kind: 'ghost' }
   | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'key' | 'sql' | 'terminal' | 'schema' | 'file' }

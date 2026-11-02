@@ -1,14 +1,33 @@
 import { create } from 'zustand'
 import {
+  addAgentTaskVerification,
   createAgentTask,
+  createAgentTaskWorkspace,
   exportAgentTask,
   listAgentTasks,
+  reconcileAgentTaskWorkspaces,
+  removeAgentTaskVerification,
+  removeAgentTaskWorkspace,
   startAgentTask,
+  startAgentTaskCorrection,
+  addAgentTaskComment,
+  setAgentTaskPlan,
+  approveAgentTaskPlan,
+  startAgentTaskStep,
+  confirmAgentTaskStep,
+  commitAgentTaskStep,
+  addScenarioToAgentTask,
+  type AgentPlanStepDraft,
+  setAgentTaskCommentStatus,
+  removeAgentTaskComment,
+  type AgentReviewCommentDraft,
+  startAgentTaskVerifications,
   stopAgentTask,
   subscribeAgentTaskChanges,
   updateAgentTask,
   type AgentTask,
   type AgentTaskDraft,
+  type AgentVerificationDraft,
   type ContextReceipt,
 } from '@/lib/agent-task-api'
 
@@ -19,12 +38,28 @@ interface AgentTaskState {
   errorByRoot: Record<string, string>
   busyById: Record<string, boolean>
   load: (root: string) => Promise<void>
+  reconcile: (root: string) => Promise<void>
   select: (root: string, id: string) => void
   create: (draft: AgentTaskDraft) => Promise<AgentTask>
   update: (id: string, draft: AgentTaskDraft) => Promise<AgentTask>
   start: (id: string, message: string, receipt: ContextReceipt) => Promise<AgentTask>
   stop: (id: string) => Promise<AgentTask>
   export: (id: string) => Promise<string>
+  createWorkspace: (id: string, baseRef: string, includeLocalChanges?: boolean) => Promise<AgentTask>
+  removeWorkspace: (id: string) => Promise<AgentTask>
+  addVerification: (id: string, draft: AgentVerificationDraft) => Promise<AgentTask>
+  removeVerification: (id: string, verificationId: string) => Promise<AgentTask>
+  startVerifications: (id: string, verificationIds: string[]) => Promise<AgentTask>
+  askCorrection: (id: string, evidenceIds: string[], note: string, commentIds?: string[]) => Promise<AgentTask>
+  addComment: (id: string, draft: AgentReviewCommentDraft) => Promise<AgentTask>
+  setPlan: (id: string, steps: AgentPlanStepDraft[]) => Promise<AgentTask>
+  approvePlan: (id: string) => Promise<AgentTask>
+  startStep: (id: string, stepId: string) => Promise<AgentTask>
+  confirmStep: (id: string, stepId: string) => Promise<AgentTask>
+  commitStep: (id: string, stepId: string) => Promise<AgentTask>
+  addScenario: (id: string, scenarioId: string) => Promise<AgentTask>
+  setCommentStatus: (id: string, commentId: string, resolved: boolean) => Promise<AgentTask>
+  removeComment: (id: string, commentId: string) => Promise<AgentTask>
 }
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
@@ -65,6 +100,9 @@ export const useAgentTaskStore = create<AgentTaskState>((set, get) => {
     }
   }
 
+  const rootOf = (id: string) => Object.values(get().tasksByRoot).flat().find((item) => item.id === id)?.root ?? ''
+  const runAction = (id: string, action: () => Promise<AgentTask>) => run(id, rootOf(id), action)
+
   return {
     tasksByRoot: {},
     selectedByRoot: {},
@@ -85,6 +123,16 @@ export const useAgentTaskStore = create<AgentTaskState>((set, get) => {
         set((state) => ({ errorByRoot: { ...state.errorByRoot, [root]: errorMessage(error) } }))
       } finally {
         set((state) => ({ loadingByRoot: { ...state.loadingByRoot, [root]: false } }))
+      }
+    },
+    // Riconcilia le associazioni dei worktree con il disco: una cartella rimossa
+    // esternamente diventa "missing" invece di sparire insieme al task.
+    reconcile: async (root) => {
+      try {
+        const changed = await reconcileAgentTaskWorkspaces()
+        changed.filter((task) => task.root === root).forEach(upsert)
+      } catch (error) {
+        set((state) => ({ errorByRoot: { ...state.errorByRoot, [root]: errorMessage(error) } }))
       }
     },
     select: (root, id) => set((state) => ({ selectedByRoot: { ...state.selectedByRoot, [root]: id } })),
@@ -115,5 +163,20 @@ export const useAgentTaskStore = create<AgentTaskState>((set, get) => {
         set((state) => ({ busyById: { ...state.busyById, [id]: false } }))
       }
     },
+    createWorkspace: (id, baseRef, includeLocalChanges = false) => runAction(id, () => createAgentTaskWorkspace(id, baseRef, includeLocalChanges)),
+    removeWorkspace: (id) => runAction(id, () => removeAgentTaskWorkspace(id)),
+    addVerification: (id, draft) => runAction(id, () => addAgentTaskVerification(id, draft)),
+    removeVerification: (id, verificationId) => runAction(id, () => removeAgentTaskVerification(id, verificationId)),
+    startVerifications: (id, verificationIds) => runAction(id, () => startAgentTaskVerifications(id, verificationIds)),
+    askCorrection: (id, evidenceIds, note, commentIds = []) => runAction(id, () => startAgentTaskCorrection(id, evidenceIds, note, commentIds)),
+    addComment: (id, draft) => runAction(id, () => addAgentTaskComment(id, draft)),
+    setPlan: (id, steps) => runAction(id, () => setAgentTaskPlan(id, steps)),
+    approvePlan: (id) => runAction(id, () => approveAgentTaskPlan(id)),
+    startStep: (id, stepId) => runAction(id, () => startAgentTaskStep(id, stepId)),
+    confirmStep: (id, stepId) => runAction(id, () => confirmAgentTaskStep(id, stepId)),
+    commitStep: (id, stepId) => runAction(id, () => commitAgentTaskStep(id, stepId)),
+    addScenario: (id, scenarioId) => runAction(id, () => addScenarioToAgentTask(id, scenarioId)),
+    setCommentStatus: (id, commentId, resolved) => runAction(id, () => setAgentTaskCommentStatus(id, commentId, resolved)),
+    removeComment: (id, commentId) => runAction(id, () => removeAgentTaskComment(id, commentId)),
   }
 })

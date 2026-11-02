@@ -21,6 +21,7 @@ import { installCodeStudioAIActions } from './codeStudioAIActionsRunner'
 import { documentForModel, registerCodeStudioLanguageFeatures } from './codeStudioLanguageFeatures'
 import { registerCodeStudioCodeLens } from './codeStudioCodeLens'
 import { registerCodeStudioPom } from './codeStudioPom'
+import { registerCodeStudioHttpFile } from './codeStudioHttpFile'
 import { registerCodeStudioGoVuln } from './codeStudioGoVuln'
 import { registerCodeStudioPythonSecurity } from './codeStudioPythonSecurity'
 import { registerCodeStudioSpring } from './codeStudioSpring'
@@ -43,6 +44,7 @@ import { isToolTarget, toolTargetLabel } from './codeStudioToolTargets'
 import { isPythonTarget } from './codeStudioPythonTargets'
 import { isRustTarget, isRustTestTarget } from './codeStudioRustTargets'
 import { isJavaTarget } from './codeStudioJavaTargets'
+import { isNativeTarget } from './codeStudioNativeTargets'
 import { indentationFor, useEditorConfig } from './codeStudioEditorConfig'
 import { recordCaretPosition, useCodeStudioBookmarks } from './codeStudioNavigationEditor'
 import { openImplementationMarker, useCodeStudioImplementationMarkers } from './codeStudioImplementationMarkers'
@@ -60,6 +62,7 @@ configureMonacoLoader()
 registerCodeStudioLanguageFeatures()
 registerCodeStudioCodeLens()
 registerCodeStudioPom()
+registerCodeStudioHttpFile()
 registerCodeStudioGoVuln()
 registerCodeStudioPythonSecurity()
 registerCodeStudioSpring()
@@ -317,9 +320,11 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
       decorationsRef.current?.set(targets.map((target) => ({
         range: { startLineNumber: target.line, startColumn: 1, endLineNumber: target.line, endColumn: 1 },
         options: {
-          glyphMarginClassName: `code-studio-run-glyph${target.kind === 'main' || target.kind === 'java-main' || target.kind === 'python-main' || target.kind === 'rust-main' || isToolTarget(target) ? '' : ' code-studio-test-glyph'}`,
+          glyphMarginClassName: `code-studio-run-glyph${target.kind === 'main' || target.kind === 'java-main' || target.kind === 'python-main' || target.kind === 'rust-main' || target.kind === 'native-main' || isToolTarget(target) ? '' : ' code-studio-test-glyph'}`,
           glyphMarginHoverMessage: { value: isRustTestTarget(target)
             ? `▶ Run ${target.name} · cargo test`
+            : isNativeTarget(target)
+            ? `▶ Build & Run ${target.name} · compile and run`
             : isPythonTarget(target) || isRustTarget(target)
             ? `▶ Run ${target.name} · Run or Debug`
             : isToolTarget(target)
@@ -369,7 +374,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
         // can rasterize it differently from normal browser text on that layer.
         disableLayerHinting: true,
         fontSize,
-        lineHeight: Math.round(fontSize * 1.65),
+        lineHeight: Math.round(fontSize * 1.5),
         fontLigatures,
         stickyScroll: { enabled: stickyScroll, maxLineCount: 4 },
         fontFamily: 'var(--skin-font-mono, var(--font-mono))',
@@ -378,6 +383,9 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
         lineNumbers: projectEditor.lineNumbers ?? 'on',
         wordWrap: projectEditor.wordWrap ?? 'off',
         folding: true,
+        showFoldingControls: 'always',
+        lineNumbersMinChars: 3,
+        wrappingIndent: 'indent',
         // Parentesi monocromatiche: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.
         bracketPairColorization: { enabled: false },
         guides: { bracketPairs: false, indentation: true, highlightActiveIndentation: true },

@@ -10,17 +10,20 @@ const CONTROL = 'h-5 max-w-28 rounded border-0 bg-surface-1 px-1 text-[11px] tex
 export function CodeStudioDocumentStatus() {
   const cursor = useCodeStudioCursorStore(useShallow(state=>({line:state.line,column:state.column})))
   const [languages, setLanguages] = useState<{ id: string; aliases?: string[] }[]>([])
+  const document = useCodeStudioStore(useShallow((state) => {
+    const active = activeGoIDEDocument(state)
+    return active ? { id: active.document.id, uri: active.document.uri, sessionId: active.document.sessionId, image: isImageDocument(active), language: active.document.language, readOnly: active.document.readOnly, lineEnding: active.buffer.includes('\r\n') ? 'CRLF' : 'LF' } : null
+  }))
+  const hasDocument = document !== null
   useEffect(() => {
+    // Monaco loads with the first open file: never from the status bar of an empty Code Studio.
+    if (!hasDocument || languages.length) return
     let cancelled = false
     void import('@/lib/monacoSetup').then(({ monaco }) => {
       if (!cancelled) setLanguages(monaco.languages.getLanguages())
     })
     return () => { cancelled = true }
-  }, [])
-  const document = useCodeStudioStore(useShallow((state) => {
-    const active = activeGoIDEDocument(state)
-    return active ? { id: active.document.id, uri: active.document.uri, sessionId: active.document.sessionId, image: isImageDocument(active), language: active.document.language, readOnly: active.document.readOnly, lineEnding: active.buffer.includes('\r\n') ? 'CRLF' : 'LF' } : null
-  }))
+  }, [hasDocument, languages.length])
   if (!document) return null
   if (document.image) return <span className="px-1 text-text-3">Image · read-only</span>
   return (

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import * as AIEngine from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/aiengine'
 import { getGoIDEAIPolicy, isLocalAIProvider, listGoIDEAIExcludedPaths } from '@/lib/code-studio-api'
 import { createAIRedactor } from '@/lib/aiRedaction'
@@ -44,15 +44,15 @@ export const useCodeStudioInlineAssistantStore = create<CodeStudioInlineAssistan
 }))
 
 interface InlineSession {
-  editor: monaco.editor.ICodeEditor
+  editor: Monaco.editor.ICodeEditor
   sessionId: string
   target: InlineAssistantTarget
   hunks: InlineEditHunk[]
   accepted: number
   applying: boolean
-  decorations: monaco.editor.IEditorDecorationsCollection
+  decorations: Monaco.editor.IEditorDecorationsCollection
   zoneIds: string[]
-  disposables: monaco.IDisposable[]
+  disposables: Monaco.IDisposable[]
 }
 
 let session: InlineSession | null = null
@@ -85,7 +85,7 @@ async function blockedByPolicy(sessionId: string, relativePath: string, local: b
 }
 
 /** Selezione attiva, oppure la dichiarazione che contiene il cursore, come le AI actions. */
-function rangeFor(editor: monaco.editor.ICodeEditor, model: monaco.editor.ITextModel): monaco.IRange | null {
+function rangeFor(editor: Monaco.editor.ICodeEditor, model: Monaco.editor.ITextModel): Monaco.IRange | null {
   const selection = editor.getSelection()
   if (selection && !selection.isEmpty()) return selection
   const block = enclosingTopLevelBlock(model.getLinesContent(), editor.getPosition()?.lineNumber ?? 1)
@@ -94,7 +94,7 @@ function rangeFor(editor: monaco.editor.ICodeEditor, model: monaco.editor.ITextM
     : null
 }
 
-function targetFor(model: monaco.editor.ITextModel, range: monaco.IRange, relativePath: string, language: string): InlineAssistantTarget {
+function targetFor(model: Monaco.editor.ITextModel, range: Monaco.IRange, relativePath: string, language: string): InlineAssistantTarget {
   const lines = model.getLinesContent()
   const head = model.getLineContent(range.startLineNumber).slice(0, range.startColumn - 1)
   const rest = model.getLineContent(range.endLineNumber).slice(range.endColumn - 1)
@@ -117,7 +117,7 @@ function targetFor(model: monaco.editor.ITextModel, range: monaco.IRange, relati
  * un'istruzione e mostra la proposta dell'AI come diff inline da accettare o scartare.
  * Con una revisione già aperta Ctrl+Enter accetta invece tutto ciò che resta.
  */
-export function openInlineAssistant(editor: monaco.editor.ICodeEditor): void {
+export function openInlineAssistant(editor: Monaco.editor.ICodeEditor): void {
   if (session) {
     if (useCodeStudioInlineAssistantStore.getState().phase === 'review') acceptAllInlineAssistant()
     return
@@ -259,7 +259,7 @@ function finishOrRender(current: InlineSession): void {
   report(accepted > 0 ? `Inline Assistant: ${accepted} change${accepted === 1 ? '' : 's'} applied.` : null)
 }
 
-function toMonacoEdit(edit: InlineEditHunk['edit']): monaco.editor.IIdentifiedSingleEditOperation {
+function toMonacoEdit(edit: InlineEditHunk['edit']): Monaco.editor.IIdentifiedSingleEditOperation {
   return {
     range: { startLineNumber: edit.range.startLine, startColumn: edit.range.startColumn, endLineNumber: edit.range.endLine, endColumn: edit.range.endColumn },
     text: edit.text,
@@ -298,7 +298,7 @@ function renderReview(): void {
   const fontSize = useCodeStudioLspStore.getState().preferences.fontSize
   const lineHeight = Math.round(fontSize * 1.65)
   const contentLeft = editor.getLayoutInfo().contentLeft
-  const decorations: monaco.editor.IModelDeltaDecoration[] = []
+  const decorations: Monaco.editor.IModelDeltaDecoration[] = []
   current.hunks.forEach((hunk, index) => {
     const { startLine, startColumn, endLine, endColumn } = hunk.edit.range
     if (hunk.removedLines.length > 0) {

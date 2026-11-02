@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptHunk, agentReviewHunks, agentReviewStats, rejectHunk } from './agentReview'
+import { acceptHunk, agentReviewHunks, agentReviewStats, rejectHunk, agentReviewSplitRows } from './agentReview'
 
 const before = 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("hi")\n}\n'
 const after = 'package main\n\nimport (\n\t"fmt"\n\t"os"\n)\n\nfunc main() {\n\tfmt.Println("hi")\n\tos.Exit(0)\n}\n'
@@ -38,5 +38,21 @@ describe('agent review hunks', () => {
 
   it('counts added and removed lines', () => {
     expect(agentReviewStats(before, after)).toEqual({ added: 5, removed: 1 })
+  })
+})
+
+describe('agentReviewSplitRows', () => {
+  it('pairs removed and added blocks and keeps context on both sides', () => {
+    const rows = agentReviewSplitRows([
+      { kind: 'context', text: 'a', oldNumber: 1, newNumber: 1 },
+      { kind: 'removed', text: 'b', oldNumber: 2 },
+      { kind: 'removed', text: 'c', oldNumber: 3 },
+      { kind: 'added', text: 'B', newNumber: 2 },
+      { kind: 'context', text: 'd', oldNumber: 4, newNumber: 3 },
+      { kind: 'added', text: 'e', newNumber: 4 },
+    ])
+    expect(rows.map((row) => [row.left?.text ?? null, row.right?.text ?? null])).toEqual([
+      ['a', 'a'], ['b', 'B'], ['c', null], ['d', 'd'], [null, 'e'],
+    ])
   })
 })

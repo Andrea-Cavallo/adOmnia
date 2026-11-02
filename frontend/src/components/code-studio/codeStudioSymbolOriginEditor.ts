@@ -1,11 +1,11 @@
-import { monaco } from '@/lib/monacoSetup'
+import type { Monaco } from '@/lib/monacoRef'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { symbolOrigin } from '@/lib/code-studio/symbolOrigin'
 import { documentForModel } from './codeStudioLanguageFeatures'
 
 export function installSymbolOriginCopy(
-  editor: monaco.editor.IStandaloneCodeEditor,
+  editor: Monaco.editor.IStandaloneCodeEditor,
 ): void {
   const origin = () => {
     const model = editor.getModel()

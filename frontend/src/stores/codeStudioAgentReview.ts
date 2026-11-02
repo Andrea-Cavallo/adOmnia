@@ -75,8 +75,15 @@ export const useAgentReviewStore = create<AgentReviewState>((set, get) => {
       void get().load(root)
     },
     close: () => set({ dialogRoot: null, error: null }),
-    acceptFile: (root, file) => run(root, () => acceptAgentFile(root, file.path)),
-    rejectFile: (root, file) => run(root, () => rejectAgentFile(root, file.path)),
+    // Una rinomina sono due percorsi in review: la decisione vale per entrambi.
+    acceptFile: (root, file) => run(root, async () => {
+      await acceptAgentFile(root, file.path)
+      if (file.from) await acceptAgentFile(root, file.from)
+    }),
+    rejectFile: (root, file) => run(root, async () => {
+      await rejectAgentFile(root, file.path)
+      if (file.from) await rejectAgentFile(root, file.from)
+    }),
     acceptAll: (root) => run(root, () => acceptAllAgentChanges(root)),
     rejectAll: (root) => run(root, () => rejectAllAgentChanges(root)),
     acceptHunk: (root, file, hunk) => run(root, () => acceptAgentHunks(root, file.path, acceptHunk(file.baseline, file.current, hunk))),

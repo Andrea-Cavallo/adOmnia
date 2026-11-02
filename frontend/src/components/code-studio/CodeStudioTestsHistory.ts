@@ -31,14 +31,17 @@ export function useTestHistories(session: GoIDESession, runs: GoIDETestRun[]): T
     setBenchmarkSettings(loadBenchmarkCompareSettings(root))
     setFlakyHistory(loadFlakyHistory(root))
   }, [root])
+  // Entrambi gli storici leggono solo le run concluse: una run in corso cambia `runs` a ogni aggiornamento
+  // (4 volte al secondo) e rileggere/riscrivere localStorage a ogni tick bloccava la UI durante i test.
+  const finishedKey = runs.filter((run) => run.status !== 'running').map((run) => run.runId).join('\n')
   useEffect(() => {
-    if (!runs.length) return
+    if (!finishedKey) return
     const git = vcs?.available ? { branch: vcs.branch, commit: vcs.head, dirty: vcs.changes.length > 0 } : null
     setBenchmarkHistory(saveBenchmarkHistory(root, runs, git))
     setFlakyHistory(saveFlakyHistory(root, runs))
-    // ponytail: vcs volutamente fuori dalle dipendenze, il contesto Git si legge solo quando arrivano run nuove.
+    // ponytail: vcs e runs volutamente fuori dalle dipendenze: si salva solo quando cambia l'insieme delle run concluse.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs, root])
+  }, [finishedKey, root])
   const benchmarkContext = useMemo<BenchmarkContext>(() => ({
     history: benchmarkHistory,
     branch: vcs?.available ? vcs.branch : undefined,

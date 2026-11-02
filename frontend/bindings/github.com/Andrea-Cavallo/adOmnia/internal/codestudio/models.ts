@@ -3277,6 +3277,50 @@ export const MoveSymbolRequest = golang$0.MoveSymbolRequest;
 export type MoveSymbolRequest = golang$0.MoveSymbolRequest;
 
 /**
+ * NativeDebugRequest debugs an executable the project built (C/C++, Objective-C, Zig, Swift) with
+ * CodeLLDB, the same adapter and install as Rust.
+ */
+export class NativeDebugRequest {
+    "sessionId": SessionID;
+    "language": string;
+    "program": string;
+    "workingDirectory"?: string;
+    "programArguments"?: string[];
+    "environment"?: { [_ in string]?: string };
+
+    /** Creates a new NativeDebugRequest instance. */
+    constructor($$source: Partial<NativeDebugRequest> = {}) {
+        if (!("sessionId" in $$source)) {
+            this["sessionId"] = "";
+        }
+        if (!("language" in $$source)) {
+            this["language"] = "";
+        }
+        if (!("program" in $$source)) {
+            this["program"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new NativeDebugRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): NativeDebugRequest {
+        const $$createField4_0 = $$createType4;
+        const $$createField5_0 = $$createType70;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("programArguments" in $$parsedSource) {
+            $$parsedSource["programArguments"] = $$createField4_0($$parsedSource["programArguments"]);
+        }
+        if ("environment" in $$parsedSource) {
+            $$parsedSource["environment"] = $$createField5_0($$parsedSource["environment"]);
+        }
+        return new NativeDebugRequest($$parsedSource as Partial<NativeDebugRequest>);
+    }
+}
+
+/**
  * NavigationEntry è una posizione della cronologia di navigazione (Back/Forward).
  */
 export class NavigationEntry {
@@ -5525,6 +5569,11 @@ export class TestRunSnapshot {
     "summary": TestSummary;
     "results": TestResult[];
     "overflow"?: boolean;
+
+    /**
+     * Partial: Results contiene solo i nodi cambiati dall'evento precedente (vedi testing.Snapshot).
+     */
+    "partial"?: boolean;
     "startedAt": string;
 
     /**
@@ -5576,8 +5625,8 @@ export class TestRunSnapshot {
         const $$createField2_0 = $$createType124;
         const $$createField7_0 = $$createType125;
         const $$createField8_0 = $$createType127;
-        const $$createField12_0 = $$createType129;
-        const $$createField13_0 = $$createType4;
+        const $$createField13_0 = $$createType129;
+        const $$createField14_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
             $$parsedSource["request"] = $$createField2_0($$parsedSource["request"]);
@@ -5589,10 +5638,10 @@ export class TestRunSnapshot {
             $$parsedSource["results"] = $$createField8_0($$parsedSource["results"]);
         }
         if ("coverage" in $$parsedSource) {
-            $$parsedSource["coverage"] = $$createField12_0($$parsedSource["coverage"]);
+            $$parsedSource["coverage"] = $$createField13_0($$parsedSource["coverage"]);
         }
         if ("raceReports" in $$parsedSource) {
-            $$parsedSource["raceReports"] = $$createField13_0($$parsedSource["raceReports"]);
+            $$parsedSource["raceReports"] = $$createField14_0($$parsedSource["raceReports"]);
         }
         return new TestRunSnapshot($$parsedSource as Partial<TestRunSnapshot>);
     }

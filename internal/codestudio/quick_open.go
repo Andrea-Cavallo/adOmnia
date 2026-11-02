@@ -7,15 +7,20 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	ideproject "github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
+	"golang.org/x/sync/singleflight"
 )
 
 // fileIndex tiene in memoria l'elenco dei file di ogni progetto per Quick Open: si costruisce alla
-// prima ricerca e si invalida quando il watcher segnala file creati o eliminati.
+// prima ricerca (una sola costruzione per root anche con ricerche concorrenti) e il watcher lo aggiorna a delta.
 type fileIndex struct {
 	mu     sync.Mutex
 	byRoot map[string][]indexedFile
+	// generation cresce a ogni modifica o invalidazione: una costruzione partita prima non salva un elenco vecchio.
+	generation map[string]uint64
+	builds     singleflight.Group
 }
 
 type indexedFile struct {
@@ -25,58 +30,183 @@ type indexedFile struct {
 	name          string
 }
 
+func newIndexedFile(relative string) indexedFile {
+	name := relative[strings.LastIndex(relative, "/")+1:]
+	return indexedFile{relative: relative, lowerRelative: strings.ToLower(relative), name: name, lowerName: strings.ToLower(name)}
+}
+
 // InvalidateFileIndex scarta l'elenco dei file del progetto; la ricerca successiva lo ricostruisce.
 func (m *DocumentManager) InvalidateFileIndex(root string) {
 	m.files.mu.Lock()
-	delete(m.files.byRoot, root)
+	m.invalidateLocked(root)
 	m.files.mu.Unlock()
 }
 
-func (m *DocumentManager) projectFiles(project Project) ([]indexedFile, error) {
+func (m *DocumentManager) invalidateLocked(root string) {
+	delete(m.files.byRoot, root)
+	m.files.generation[root]++
+}
+
+// ApplyFileChanges aggiorna l'indice con i file creati ed eliminati dal batch del watcher, senza rileggere
+// il progetto. Cartelle nuove, overflow o indice al limite fanno ricadere sulla ricostruzione.
+func (m *DocumentManager) ApplyFileChanges(root string, batch FilesChanged) {
+	if batch.Overflow {
+		m.InvalidateFileIndex(root)
+		return
+	}
+	removed := map[string]bool{}
+	var created []string
+	for _, change := range batch.Changes {
+		switch change.Kind {
+		case FileDeleted:
+			removed[change.RelativePath] = true
+		case FileCreated:
+			// Stat fuori dal lock: una cartella nuova porta con sé un sottoalbero da leggere.
+			info, err := os.Stat(change.Path)
+			if err != nil {
+				continue
+			}
+			if info.IsDir() {
+				m.InvalidateFileIndex(root)
+				return
+			}
+			created = append(created, change.RelativePath)
+		}
+	}
 	m.files.mu.Lock()
-	cached, ok := m.files.byRoot[project.RealPath]
+	defer m.files.mu.Unlock()
+	current, ok := m.files.byRoot[root]
+	if !ok {
+		// Nessun indice: basta impedire che una costruzione in corso salvi l'elenco di prima.
+		m.files.generation[root]++
+		return
+	}
+	if len(removed) == 0 && len(created) == 0 {
+		return
+	}
+	next := applyFileDelta(current, removed, created)
+	if len(next) >= MaxQuickOpenFiles {
+		m.invalidateLocked(root)
+		return
+	}
+	// Elenco nuovo, mai modificato in place: le ricerche in corso tengono il loro.
+	m.files.byRoot[root] = next
+	m.files.generation[root]++
+}
+
+func applyFileDelta(current []indexedFile, removed map[string]bool, created []string) []indexedFile {
+	next := make([]indexedFile, 0, len(current)+len(created))
+	present := make(map[string]bool, len(created))
+	for _, relative := range created {
+		present[relative] = false
+	}
+	for _, file := range current {
+		if removedOrInside(file.relative, removed) {
+			continue
+		}
+		if _, isCreated := present[file.relative]; isCreated {
+			present[file.relative] = true
+		}
+		next = append(next, file)
+	}
+	for _, relative := range created {
+		if !present[relative] && !removed[relative] {
+			present[relative] = true
+			next = append(next, newIndexedFile(relative))
+		}
+	}
+	return next
+}
+
+// removedOrInside è vero se il file è stato eliminato o sta sotto una cartella eliminata o rinominata.
+func removedOrInside(relative string, removed map[string]bool) bool {
+	if removed[relative] {
+		return true
+	}
+	for index := strings.IndexByte(relative, '/'); index >= 0; index = nextSlash(relative, index) {
+		if removed[relative[:index]] {
+			return true
+		}
+	}
+	return false
+}
+
+func nextSlash(value string, after int) int {
+	next := strings.IndexByte(value[after+1:], '/')
+	if next < 0 {
+		return -1
+	}
+	return after + 1 + next
+}
+
+func (m *DocumentManager) projectFiles(project Project) ([]indexedFile, error) {
+	root := project.RealPath
+	m.files.mu.Lock()
+	cached, ok := m.files.byRoot[root]
 	m.files.mu.Unlock()
 	if ok {
 		return cached, nil
 	}
+	built, err, _ := m.files.builds.Do(root, func() (any, error) {
+		m.files.mu.Lock()
+		generation := m.files.generation[root]
+		m.files.mu.Unlock()
+		started := time.Now()
+		files, err := walkProjectFiles(root)
+		if err != nil {
+			return nil, err
+		}
+		m.files.mu.Lock()
+		if m.files.generation[root] == generation {
+			m.files.byRoot[root] = files
+		}
+		m.files.mu.Unlock()
+		if m.onIndexBuilt != nil {
+			m.onIndexBuilt(time.Since(started), len(files))
+		}
+		return files, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return built.([]indexedFile), nil
+}
+
+func walkProjectFiles(root string) ([]indexedFile, error) {
 	files := make([]indexedFile, 0, 256)
-	ignore := ideproject.LoadGitIgnore(project.RealPath)
-	err := filepath.WalkDir(project.RealPath, func(path string, entry os.DirEntry, walkErr error) error {
+	ignore := ideproject.LoadGitIgnore(root)
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			if entry != nil && entry.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if path == project.RealPath {
+		if path == root {
 			return nil
 		}
 		if entry.IsDir() {
-			if isIgnoredDirectory(entry.Name()) || gitIgnored(ignore, project.RealPath, path, true) {
+			if skipWalkDirectory(path, entry.Name()) || gitIgnored(ignore, root, path, true) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if gitIgnored(ignore, project.RealPath, path, false) {
+		if gitIgnored(ignore, root, path, false) {
 			return nil
 		}
 		if len(files) >= MaxQuickOpenFiles {
 			return filepath.SkipAll
 		}
-		rel, relErr := filepath.Rel(project.RealPath, path)
+		rel, relErr := filepath.Rel(root, path)
 		if relErr != nil {
 			return nil
 		}
-		relative := filepath.ToSlash(rel)
-		files = append(files, indexedFile{relative: relative, lowerRelative: strings.ToLower(relative), name: entry.Name(), lowerName: strings.ToLower(entry.Name())})
+		files = append(files, newIndexedFile(filepath.ToSlash(rel)))
 		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ricerca file fallita: %w", err)
 	}
-	m.files.mu.Lock()
-	m.files.byRoot[project.RealPath] = files
-	m.files.mu.Unlock()
 	return files, nil
 }
 

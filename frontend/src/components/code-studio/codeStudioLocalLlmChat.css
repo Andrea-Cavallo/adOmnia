@@ -17,9 +17,22 @@
 .local-llm-chat summary { cursor: pointer; min-width: 0; font-size: 12px; }
 .local-llm-connection summary > span { margin-left: 8px; color: var(--color-text-3); overflow-wrap: anywhere; }
 .local-llm-connection[open] > summary { margin-bottom: 12px; }
-.local-llm-presets { display: flex; gap: 6px; }
-.local-llm-model-row { display: flex; align-items: flex-end; gap: 8px; }
-.local-llm-model-row > label { min-width: 0; flex: 1; }
+.local-llm-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.local-llm-presets button[aria-pressed=true] { border-color: var(--color-accent); color: var(--color-accent); }
+.local-model-guide h3 { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; font-size: 13px; font-weight: 600; }
+.local-model-guide h3 > span { font-family: var(--font-mono); color: var(--color-accent); font-size: 11px; }
+.local-model-guide p { color: var(--color-text-2); font-size: 12px; line-height: 1.5; margin: 8px 0; }
+.local-model-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 4px 0 16px; }
+.local-model-steps button { flex-direction: column; align-items: flex-start; gap: 3px; border: 0; border-bottom: 2px solid var(--color-border-1); border-radius: 0; padding: 8px 4px; color: var(--color-text-2); }
+.local-model-steps button span { font-family: var(--font-mono); font-size: 10px; }
+.local-model-steps button[aria-current=step] { color: var(--color-text-1); border-bottom-color: var(--color-accent); }
+.local-model-title { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+.local-llm-chat select { width: 100%; min-width: 0; padding: 8px; background: var(--color-surface-1); color: var(--color-text-1); border: 1px solid var(--color-border-2); border-radius: 3px; }
+.local-llm-chat .local-model-primary { align-self: flex-start; margin-top: 8px; border-color: var(--color-accent); }
+.local-model-selected { font-family: var(--font-mono); overflow-wrap: anywhere; }
+.local-llm-connection { max-height: 60%; }
+.local-llm-model-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.local-llm-model-row > label { min-width: 0; flex: 1 1 160px; }
 .local-llm-model-row button { flex-shrink: 0; min-height: 34px; }
 .local-llm-transcript { flex: 1; min-height: 100px; overflow: auto; padding: 14px; }
 .local-llm-empty { padding: 24px 0; color: var(--color-text-3); line-height: 1.6; }

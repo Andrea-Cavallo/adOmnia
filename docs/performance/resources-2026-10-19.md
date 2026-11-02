@@ -67,3 +67,44 @@ Verifiche desktop della nuova build: vedere esclusivamente `RES-1.M1`–`RES-1.M
 | `go build -o NUL .` | PASS; eseguibile utente preservato |
 
 La prima suite Go ha raggiunto il timeout su un `git commit` di fixture che invocava l'hook Git globale non risolvibile di questa macchina. Il test isolato con `LEFTHOOK=0` passa in 3,04 s; la suite completa ripetuta con lo stesso ambiente passa. Nessuna configurazione Git globale è stata modificata. Prove browser: tema chiaro/scuro, selezione del grafico gopls, limite invalido e stato d'errore che mantiene i controlli disponibili; non equivalgono al collaudo della finestra Wails.
+
+## Export schemaVersion 2 e correzioni di misura - 2026-10-31
+
+Un export reale (`adomnia-resources.json`, 3 campioni, 16 processi) ha mostrato cinque difetti: la media CPU era aritmetica su intervalli diversi (3,8 / 2,0 / 1,0 s), il primo campione conteneva CPU spesa prima della registrazione, i periodi non campionati sparivano dietro una linea continua, il file non diceva su quale macchina e build era stato misurato, e i campioni ripetevano identificativi statici per 16 KB l'uno. Il formato ora è `schemaVersion: 2`:
+
+| Aspetto | Prima | Ora |
+|---|---|---|
+| Media CPU | media aritmetica dei campioni | pesata sulla finestra misurata da ogni campione |
+| Primo campione di una registrazione | ereditava i contatori del polling precedente | `resources.ResetBaseline()` riapre la finestra: nessuna CPU finché non esiste un delta |
+| Interruzioni | invisibili | `intervalSeconds` per campione, `gapSeconds` oltre 2,5x l'intervallo più corto, linea spezzata nei grafici |
+| Qualità finestra | assente | `quality` con campioni, durata, intervallo mediano, gap e `caveat` espliciti; sotto 20 campioni o 30 s `sufficient: false` |
+| Contesto | solo `logicalCores` | `environment`: versione, commit, OS, arch, core, RAM fisica, Go, budget e sua origine |
+| Identità | ripetuta in ogni campione | elencata una volta in `processes` (con `owner`, `workspace`, `sessionId`), i campioni la referenziano con `id` |
+| Snapshot duplicato | copia dell'ultimo campione | rimosso |
+| Timestamp | offset locale, 7 decimali | ISO 8601 UTC con millisecondi |
+
+Sugli stessi 3 campioni il JSON passa da 50.228 a 25.484 byte (-49%). Un campione di 300 campioni passa da circa 5 MB a circa 1 MB.
+
+**Osservazione 2026-10-31** (28 core logici, 3 campioni in 3,002 s, nessuna registrazione lunga: dati insufficienti per una media, come ora dichiara `quality.sufficient: false`).
+
+| Gruppo | RSS | Quota | CPU media pesata |
+|---|---:|---:|---:|
+| gopls | 683 MiB | 31% | 26,4% (7,4 core) |
+| node.exe ×4 (`typescript-language-server`) | 604 MiB | 27% | ~0% |
+| WebView2 ×6 | 717 MiB | 32% | 1,9% |
+| Backend adOmnia | 180 MiB | 8% | 0,04% |
+| `conhost.exe` ×3 | 31 MiB | 1,4% | 0% |
+
+Totale 2.215 MiB su un budget di 3.072 MiB (72%), nessuna pressione. gopls con 683 MiB è coerente con i 678,1 MiB misurati il 2026-10-19 con `GOMEMLIMIT=768MiB`: nessuna regressione. La CPU della finestra è quasi interamente sua (28,4% di capacità = 7,9 core, di cui 7,4 gopls), mentre i 1276 s cumulativi su 46 minuti di vita valgono il 46% di un core medio: è lavoro continuo, non un picco isolato. Il server TypeScript della sessione `adOmnia-demo` teneva 604 MiB con 0,015 s di CPU cumulativa in 46 minuti: memoria ferma, non lavoro. I tre `conhost.exe` nascono perché i language server partono tramite `cmd.exe`. Per il costo di gopls su più progetti e l'alternativa del daemon condiviso: [gopls con 1, 3 e 5 progetti](gopls-multi-2026-10-25.md).
+
+
+
+## Registrazione tra Hub e Code Studio (2026-11-01)
+
+Il campionatore frontend è unico per finestra: avviare una registrazione nella Hub e passare a Code Studio mantiene scenario, durata e campioni. La registrazione esplicita campiona ogni secondo anche senza pannelli risorse montati e durante l'inattività; le letture non si sovrappongono. Un campione finale viene richiesto al termine della durata. Ritardi del runtime possono produrre intervalli più lunghi, riportati nei dati. Il monitoraggio live fuori registrazione mantiene la pausa per inattività.
+
+La registrazione completata resta in memoria finché si avvia un'altra registrazione, si sceglie Live history o si chiude/ricarica la finestra. Nel pulsante Resources di Code Studio un punto rosso indica la raccolta in corso; verde indica una registrazione disponibile. Aprire Resources e scegliere JSON → Export per salvare l'intera finestra, non soltanto l'ultimo campione.
+
+Il JSON conserva le misure per processo e aggiunge facoltativamente `samples[].uiContext`: schermata, workspace, file attivo, numero di documenti aperti/modificati ed esecuzioni in corso, quando Code Studio espone questi dati. Non include il contenuto dei file. Il contesto è un'osservazione al momento della richiesta del campione: aiuta a correlare l'apertura di file ai picchi, ma non misura CPU/RAM per singola tab e non prova causalità.
+
+Verifica automatica: timer simulato per 60 secondi con smontaggio Hub, assenza di pannelli, rimontaggio Code Studio, campione finale e conservazione dello storico; campionatore condiviso, stop manuale e contesto JSON. La prova nativa con progetto grande e salvataggio tramite dialog desktop resta manuale.

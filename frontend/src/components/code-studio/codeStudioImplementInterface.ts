@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import type { Monaco } from '@/lib/monacoRef'
 import {
   requestCodeActions,
   requestDocumentSymbols,
@@ -59,7 +59,7 @@ export function interfaceAssertion(typeName: string, reference: string): string 
 }
 
 /** Prepara la richiesta Implement Interface dal cursore; spiega cosa manca se il cursore non è su una struct. */
-export async function requestImplementInterface(editor: monaco.editor.ICodeEditor): Promise<void> {
+export async function requestImplementInterface(editor: Monaco.editor.ICodeEditor): Promise<void> {
   const model = editor.getModel()
   const position = editor.getPosition()
   const prepared = model ? await prepareDocument(model) : null
@@ -77,7 +77,7 @@ export async function requestImplementInterface(editor: monaco.editor.ICodeEdito
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds))
 
 /** gopls propone il quick fix solo dopo aver ricalcolato la diagnostica del buffer appena modificato. */
-async function waitForDeclareMethods(editor: monaco.editor.ICodeEditor, line: number): Promise<string | null> {
+async function waitForDeclareMethods(editor: Monaco.editor.ICodeEditor, line: number): Promise<string | null> {
   for (let attempt = 0; attempt < QUICK_FIX_ATTEMPTS; attempt++) {
     const model = editor.getModel()
     const prepared = model ? await prepareDocument(model) : null
@@ -96,7 +96,7 @@ async function waitForDeclareMethods(editor: monaco.editor.ICodeEditor, line: nu
  * Implementa l'interfaccia scelta: inserisce l'asserzione, aggiunge l'import con Optimize Imports,
  * poi applica (dopo anteprima) i metodi generati da gopls. Annullando, l'editor torna com'era.
  */
-export async function implementInterface(editor: monaco.editor.ICodeEditor, request: GoIDEImplementRequest, symbol: GoIDEWorkspaceSymbol): Promise<void> {
+export async function implementInterface(editor: Monaco.editor.ICodeEditor, request: GoIDEImplementRequest, symbol: GoIDEWorkspaceSymbol): Promise<void> {
   const model = editor.getModel()
   if (!model) return
   const reference = interfaceReference(symbol, request.directory)

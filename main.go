@@ -10,7 +10,9 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 
+	"crypto/sha256"
 	"embed"
+	"fmt"
 	"github.com/Andrea-Cavallo/adOmnia/internal/adomniacli"
 	"github.com/Andrea-Cavallo/adOmnia/internal/browser"
 	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
@@ -20,9 +22,11 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/themes"
 	"github.com/Andrea-Cavallo/adOmnia/internal/windowchrome"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -122,13 +126,14 @@ func main() {
 	claudeService.manager.SetTurnObserver(goIDE.agentReview)
 	piService.manager.SetTurnObserver(goIDE.agentReview)
 	agentTasks := NewAgentTasks(milkService.manager, claudeService.manager, piService.manager)
+	agentTasks.configure(filepath.Join(dataDir(), "code-studio", "worktrees"), goIDE.service)
 	collabService := NewCollab(goIDE.sessionRoot)
 
 	var mainWindow *application.WebviewWindow
 	appOptions := application.Options{
 		Name: "adOmnia paratus.",
 		Assets: application.AssetOptions{
-			Handler: application.BundledAssetFileServer(assets),
+			Handler: desktopAssetHandler(application.BundledAssetFileServer(assets)),
 		},
 		Services: []application.Service{
 			application.NewService(app),
@@ -169,6 +174,13 @@ func main() {
 		},
 		Windows: application.WindowsOptions{
 			WebviewUserDataPath: dataDir(),
+			// Tetto all'heap V8 dei renderer: senza, un workspace grande con molti modelli
+			// Monaco fa crescere il renderer e non lo restituisce, e ogni finestra pannello
+			// staccata aggiunge un renderer. 512 MiB restano molto sopra l'uso osservato
+			// (~265 MB RSS) e fermano solo la crescita anomala: oltre la soglia V8 fa GC
+			// più spesso invece di allocare. Non è un tetto RSS: si misura con il monitor
+			// risorse integrato, non si assume.
+			AdditionalBrowserArgs: webviewBrowserArgs(),
 		},
 		Linux: application.LinuxOptions{
 			ProgramName: "adomnia",
@@ -195,7 +207,7 @@ func main() {
 		Height:    winH,
 		MinWidth:  winMinW,
 		MinHeight: winMinH,
-		URL:       "/",
+		URL:       desktopEntryURL(),
 		Frameless: windowchrome.IsApp(startupWindowChrome),
 		// Carries over the v2 DragAndDrop.EnableFileDrop behaviour. Without it
 		// the drop handlers never fire and App.ReadDroppedFiles is unreachable.
@@ -256,3 +268,30 @@ func NewPluginManager() *PluginManager {
 type WasmRuntime struct{ *plugins.WasmRuntime }
 
 func NewWasmRuntime() *WasmRuntime { return &WasmRuntime{WasmRuntime: plugins.NewWasmRuntime()} }
+
+// The WebView profile survives executable updates; the entry page must track the embedded bundle.
+func desktopEntryURL() string {
+	index, err := assets.ReadFile("frontend/dist/index.html")
+	if err != nil {
+		return "/"
+	}
+	return fmt.Sprintf("/?bundle=%x", sha256.Sum256(index))
+}
+
+func desktopAssetHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// webviewBrowserArgs are the WebView2 flags. ADOMNIA_WEBVIEW2_ARGS appends space-separated
+// flags for measuring startup and memory variants without a rebuild (development only).
+func webviewBrowserArgs() []string {
+	args := []string{
+		"--js-flags=--max-old-space-size=512",
+		"--disable-background-networking",
+		"--disable-component-update",
+	}
+	return append(args, strings.Fields(os.Getenv("ADOMNIA_WEBVIEW2_ARGS"))...)
+}

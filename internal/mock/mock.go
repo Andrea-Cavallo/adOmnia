@@ -118,6 +118,8 @@ type mockHitEntry struct {
 	ResponseName string `json:"responseName,omitempty"`
 	Reason       string `json:"reason,omitempty"`
 	Status       int    `json:"status"`
+	// seq orders hits for observers (Agent Task verifications) without parsing the ID.
+	seq int64
 }
 
 func mockStartHandler(w http.ResponseWriter, r *http.Request) {
@@ -710,6 +712,7 @@ func recordHitDetailed(method, path string, matched bool, responseID string, sta
 		ResponseName: details.ResponseName,
 		Reason:       details.Reason,
 		Status:       status,
+		seq:          seq,
 	}
 	mockHitsMu.Lock()
 	if len(mockHits) >= 500 {

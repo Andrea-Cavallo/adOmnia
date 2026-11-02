@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { parseProjectSettings } from '@/lib/code-studio/projectSettings'
 import { jsonCursorContext, settingsJsonCompletions, type JsonCursorContext, type SettingsJsonSuggestion } from '@/lib/code-studio/settingsJsonCompletion'
 import { CODE_STUDIO_COMMANDS } from './codeStudioCommands'
@@ -12,11 +12,11 @@ import { CODE_STUDIO_COMMANDS } from './codeStudioCommands'
 const SETTINGS_MODEL_SUFFIX = '.adomnia/settings.json'
 const VALIDATION_DELAY_MS = 300
 
-function isSettingsModel(model: monaco.editor.ITextModel): boolean {
+function isSettingsModel(model: Monaco.editor.ITextModel): boolean {
   return model.uri.path.replace(/\\/g, '/').endsWith(SETTINGS_MODEL_SUFFIX)
 }
 
-function toCompletionItem(model: monaco.editor.ITextModel, position: monaco.Position, suggestion: SettingsJsonSuggestion, context: JsonCursorContext): monaco.languages.CompletionItem {
+function toCompletionItem(model: Monaco.editor.ITextModel, position: Monaco.Position, suggestion: SettingsJsonSuggestion, context: JsonCursorContext): Monaco.languages.CompletionItem {
   const range = context.stringSpan
     ? new monaco.Range(
         model.getPositionAt(context.stringSpan.start).lineNumber,
@@ -35,7 +35,7 @@ function toCompletionItem(model: monaco.editor.ITextModel, position: monaco.Posi
   }
 }
 
-function lineForKey(model: monaco.editor.ITextModel, message: string): number {
+function lineForKey(model: Monaco.editor.ITextModel, message: string): number {
   if (/JSON|object/.test(message)) return 1
   const key = message.split(':')[0].split('.').pop() ?? ''
   if (!key) return 1
@@ -43,7 +43,7 @@ function lineForKey(model: monaco.editor.ITextModel, message: string): number {
   return index < 0 ? 1 : model.getPositionAt(index).lineNumber
 }
 
-function validateModel(model: monaco.editor.ITextModel): void {
+function validateModel(model: Monaco.editor.ITextModel): void {
   const { errors } = parseProjectSettings(model.getValue())
   const markers = errors.map((message) => {
     const line = lineForKey(model, message)

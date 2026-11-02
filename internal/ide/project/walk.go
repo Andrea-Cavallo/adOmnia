@@ -59,7 +59,7 @@ func WalkDirectories(ctx context.Context, root string, maxDirectories int, visit
 		children := make([]string, 0, len(entries))
 		for _, entry := range entries {
 			if entry.IsDir() {
-				if IgnoredDirectory(entry.Name()) {
+				if SkipDirectory(path, entry.Name()) {
 					continue
 				}
 				children = append(children, entry.Name())

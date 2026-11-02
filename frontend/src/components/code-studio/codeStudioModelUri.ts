@@ -1,22 +1,25 @@
-import { monaco } from '@/lib/monacoSetup'
+import { URI } from 'monaco-editor/base/common/uri.js'
+import { isMonacoLoaded, monaco } from '@/lib/monacoRef'
 
 /**
  * URI del modello Monaco di un documento: il file più la sessione. Lo stesso file aperto in due
  * progetti (es. /repo e /repo/svc) ha così due modelli e due buffer indipendenti.
  */
 export function editorModelUri(document: { uri: string; sessionId: string }): string {
-  return monaco.Uri.parse(document.uri).with({ fragment: `session=${document.sessionId}` }).toString()
+  // Monaco's own URI class (same encoding as `monaco.Uri`), loaded without the editor.
+  return URI.parse(document.uri).with({ fragment: `session=${document.sessionId}` }).toString()
 }
 
 /** URI del file su disco, confrontabile con quelli restituiti da gopls. */
 export function fileUri(uri: string): string {
-  return monaco.Uri.parse(uri).with({ fragment: '' }).toString()
+  return URI.parse(uri).with({ fragment: '' }).toString()
 }
 
 let cleanupInstalled = false
 
 /** Release only reconstructible models. Monaco owns undo history: never discard it. */
 export function releaseDormantModels(documents: readonly { document: { uri: string; sessionId: string }; dirty: boolean; buffer: string }[]): void {
+  if (!isMonacoLoaded()) return
   for (const document of documents) {
     const model = monaco.editor.getModel(monaco.Uri.parse(editorModelUri(document.document)))
     if (!model || document.dirty || model.isAttachedToEditor() || model.canUndo() || model.canRedo()) continue
@@ -39,7 +42,7 @@ export async function releaseModelsOfClosedDocuments(): Promise<void> {
     const open = new Set(state.documents.map((item) => editorModelUri(item.document)))
     const closed = previous.documents.map((item) => editorModelUri(item.document)).filter((uri) => !open.has(uri))
     // After React has switched the editors to the next document.
-    if (closed.length) window.setTimeout(() => {
+    if (closed.length && isMonacoLoaded()) window.setTimeout(() => {
       // A close/reopen can complete before this deferred cleanup. Never dispose
       // a model now owned by a reopened document or another editor.
       const current = new Set(useCodeStudioStore.getState().documents.map((item) => editorModelUri(item.document)))

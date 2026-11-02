@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco } from '@/lib/monacoRef'
 import { registerEmmet } from './emmet'
 import { useIdeLanguageServersStore, serverLanguageForEditor, serverEntry } from '@/stores/ideLanguageServers'
 

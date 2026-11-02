@@ -1,11 +1,10 @@
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import type { CSSProperties } from 'react'
 import './codeStudioFunctionExplorer.css'
-import { CodeStudioSourcePreview } from './CodeStudioSourcePreview'
 import { activeCodeStudioEditor } from './codeStudioEditorRegistry'
 import { documentForModel } from './codeStudioLanguageFeatures'
 import { useCodeStudioNavigationStore } from '@/stores/codeStudioNavigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -31,6 +30,9 @@ import {
   type CallDirection,
   type ExpandCalls,
 } from './functionExplorerGraph'
+
+// Loads Monaco: only when shown.
+const CodeStudioSourcePreview = lazy(() => import('./CodeStudioSourcePreview').then((m) => ({ default: m.CodeStudioSourcePreview })))
 
 type Mode = 'explorer' | 'graph'
 const EMPTY_ANCESTORS = new Set<string>()
@@ -494,13 +496,13 @@ export function CodeStudioFunctionExplorer({ view, side, onSideChange, onClose }
             Loading source…
           </p>
         ) : (
-          <CodeStudioSourcePreview
+          <Suspense fallback={null}><CodeStudioSourcePreview
             code={preview.code || 'Source not available.'}
             path={preview.location.path || selected.location.path}
             startLine={preview.startLine || selected.location.range.startLine}
             truncated={preview.truncated}
             highlightLines={callSiteLines}
-          />
+          /></Suspense>
         )}
       </section>
     </div>

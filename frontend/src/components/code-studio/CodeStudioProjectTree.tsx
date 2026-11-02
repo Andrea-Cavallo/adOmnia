@@ -3,7 +3,7 @@ import { goModules } from '@/lib/code-studio/goProject'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { unitBadges } from '@/lib/code-studio/projectUnits'
 import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import { ChevronRight, Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
 import { CodeStudioExplorerToolbar } from './CodeStudioExplorerToolbar'
 import { CodeStudioProjectNavigation } from './CodeStudioProjectNavigation'
@@ -23,9 +23,12 @@ import { openHtmlWithLivePreview } from './codeStudioPreviewCommands'
 import { copyReference, findInFiles, findInFolder, moveTreePath, openInSplit, openTerminalIn, pasteInto, previewHtml, repairIde, replaceInFiles, runPackageCommand, runTreeGitAction, useCodeStudioTreeClipboard } from './codeStudioTreeActions'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { CodeStudioPathDialog, type CodeStudioPathRequest } from './CodeStudioPathDialog'
-import { CodeStudioCompareDialog } from './CodeStudioCompareDialog'
 import { CodeStudioGistDialog } from './CodeStudioGistDialog'
 import { directoryMarkLabel, loadDirectoryMarks, saveDirectoryMark, type CodeStudioDirectoryMark } from './codeStudioDirectoryMarks'
+import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
+
+// Loads Monaco: only when shown.
+const CodeStudioCompareDialog = lazy(() => import('./CodeStudioCompareDialog').then((m) => ({ default: m.CodeStudioCompareDialog })))
 
 /** entry null = radice del progetto. */
 type TreeContextHandler = (entry: GoIDEFileEntry | null, x: number, y: number) => void
@@ -55,15 +58,21 @@ function markTitle(mark: CodeStudioTreeMark | undefined): string {
 function useTreeMarks(sessionId: string): TreeMarks {
   const status = useCodeStudioVCSStore((state) => state.status[sessionId] ?? null)
   const diagnostics = useCodeStudioLspStore((state) => state.diagnostics[sessionId])
-  const runs = useCodeStudioTestsStore((state) => state.runs[sessionId])
+  // Le run sono dalla più recente: conta runs[0]. Una stringa come selettore ridisegna l'albero solo quando
+  // cambia l'insieme dei file con test falliti, non a ogni aggiornamento di una run in corso.
+  const failedTestKey = useCodeStudioTestsStore((state) => failedTestFilesKey(state.runs[sessionId]?.[0]))
   return useMemo(() => {
-    const lastRun = runs?.[runs.length - 1]
-    const failedTestFiles = (lastRun?.results ?? []).filter((result) => result.status === 'fail' && result.failure?.relativePath).map((result) => result.failure!.relativePath!)
+    const failedTestFiles = failedTestKey ? failedTestKey.split('\n') : []
     const changes = status?.available ? status.changes : []
     const reports = diagnostics ? Object.values(diagnostics) : []
     if (changes.length === 0 && reports.length === 0 && failedTestFiles.length === 0) return EMPTY_MARKS
     return buildTreeMarks({ changes, diagnostics: reports, failedTestFiles })
-  }, [diagnostics, runs, status])
+  }, [diagnostics, failedTestKey, status])
+}
+
+function failedTestFilesKey(run: GoIDETestRun | undefined): string {
+  if (!run) return ''
+  return [...new Set(run.results.filter((result) => result.status === 'fail' && result.failure?.relativePath).map((result) => result.failure!.relativePath!))].join('\n')
 }
 
 interface CodeStudioProjectTreeProps {
@@ -419,7 +428,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
       <div className="shrink-0 truncate border-t border-border-1 px-3 py-1.5 text-[10px] text-text-4" title={projectSummary}>{projectSummary}</div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={buildTreeMenu(menu.entry, menuContext)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
       <CodeStudioPathDialog sessionId={session.id} request={pathRequest} onClose={() => setPathRequest(null)} />
-      <CodeStudioCompareDialog sessionId={session.id} sourcePath={compareRequest?.path ?? null} sourceDirectory={compareRequest?.directory ?? false} onClose={() => setCompareRequest(null)} />
+      {compareRequest && <Suspense fallback={null}><CodeStudioCompareDialog sessionId={session.id} sourcePath={compareRequest.path} sourceDirectory={compareRequest.directory} onClose={() => setCompareRequest(null)} /></Suspense>}
       <CodeStudioGistDialog sessionId={session.id} relativePath={gistRequest} onClose={() => setGistRequest(null)} />
     </aside>
   )

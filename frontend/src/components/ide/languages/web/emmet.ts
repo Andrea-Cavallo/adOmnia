@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 
 /**
  * Emmet per HTML, CSS e JSX/TSX: un suggerimento "Emmet Abbreviation" quando il testo prima del
@@ -55,7 +55,7 @@ interface Context {
   needsStructure: boolean
 }
 
-function contextFor(model: monaco.editor.ITextModel): Context | null {
+function contextFor(model: Monaco.editor.ITextModel): Context | null {
   const language = model.getLanguageId()
   const path = model.uri.path.toLowerCase()
   if (language === 'html') return { syntax: 'html', needsStructure: false }
@@ -64,7 +64,7 @@ function contextFor(model: monaco.editor.ITextModel): Context | null {
   return null
 }
 
-async function provide(model: monaco.editor.ITextModel, position: monaco.Position): Promise<monaco.languages.CompletionList> {
+async function provide(model: Monaco.editor.ITextModel, position: Monaco.Position): Promise<Monaco.languages.CompletionList> {
   const none = { suggestions: [] }
   const context = contextFor(model)
   if (!context) return none

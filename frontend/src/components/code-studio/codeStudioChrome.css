@@ -512,9 +512,10 @@ html.dark .code-studio-root {
 
 /* The tab strip scrolls independently; the action dock always keeps its width. */
 .code-studio-editor-tabbar { isolation: isolate; background: var(--color-surface-0); }
-.code-studio-editor-tablist { scrollbar-width: thin; scrollbar-color: var(--color-border-2) transparent; }
-.code-studio-editor-tablist::-webkit-scrollbar { height: 3px; }
-.code-studio-editor-tablist::-webkit-scrollbar-thumb { background: var(--color-border-2); }
+.code-studio-editor-tablist { scrollbar-width: none; }
+.code-studio-editor-tablist::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.code-studio-tab-name { display: inline-flex; min-width: 0; overflow: hidden; white-space: nowrap; }
+.code-studio-tab-stem { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .code-studio-editor-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: 0 7px; border-left: 1px solid var(--color-border-2); background: var(--color-surface-0); }
 .code-studio-editor-actions > button { flex-shrink: 0; }
 .code-studio-editor-action-divider { height: 14px; width: 1px; background: var(--color-border-1); margin-inline: 2px; }

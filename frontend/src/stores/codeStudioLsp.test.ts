@@ -7,7 +7,7 @@ vi.mock('@/lib/code-studio-lsp-api', () => ({
   stopLanguageServer: vi.fn(), getLanguageServerStatus: vi.fn(), openExternalDocument: vi.fn(),
 }))
 
-import { diagnosticCounts, isGoplsInstall, useCodeStudioLspStore } from './codeStudioLsp'
+import { diagnosticCounts, importCodeStudioSettings, isGoplsInstall, isHoverKind, useCodeStudioLspStore } from './codeStudioLsp'
 import { getLanguageServerStatus, restartLanguageServer, startLanguageServer } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from './codeStudio'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
@@ -21,6 +21,26 @@ const event = (sessionId: string, type: string, payload: unknown) => ({ version:
 
 describe('Code Studio language server store', () => {
   beforeEach(() => useCodeStudioLspStore.setState({ diagnostics: {}, status: {}, progress: {}, activity: {} }))
+
+  it('defaults the gopls hover to synopsis and only accepts known hover kinds', () => {
+    // gopls parte da FullDocumentation: senza questa preferenza ogni hover carica il doc
+    // comment del simbolo e delle dipendenze, il costo visto entrando nei metodi.
+    expect(useCodeStudioLspStore.getState().settings.hoverKind).toBe('synopsis')
+    expect(isHoverKind('full')).toBe(true)
+    expect(isHoverKind('FULL')).toBe(false)
+    expect(isHoverKind(undefined)).toBe(false)
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: vi.fn() })
+    vi.stubGlobal('window', { dispatchEvent: vi.fn() })
+    try {
+      expect(importCodeStudioSettings({ settings: { hoverKind: 'nonsense' } }, null)).toBe(false)
+      expect(useCodeStudioLspStore.getState().settings.hoverKind).toBe('synopsis')
+      expect(importCodeStudioSettings({ settings: { hoverKind: 'full' } }, null)).toBe(true)
+      expect(useCodeStudioLspStore.getState().settings.hoverKind).toBe('full')
+      useCodeStudioLspStore.getState().updateSettings(null, { hoverKind: 'synopsis' })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 
   it('keeps multi-row tabs off by default and persists the toggle', () => {
     expect(useCodeStudioLspStore.getState().preferences.multilineTabs).toBe(false)
@@ -65,7 +85,7 @@ describe('Code Studio language server store', () => {
     const original = useCodeStudioLspStore.getState()
     const sessions = useCodeStudioStore.getState().sessions
     const start = vi.fn(async () => undefined)
-    useCodeStudioStore.setState({ sessions: [{ id: 'low', project: { authorization: 'tooling-permitted' } } as never] })
+    useCodeStudioStore.setState({ sessions: [{ id: 'low', project: { authorization: 'tooling-permitted', units: [{ language: 'go', kind: 'module', root: '/p' }] } } as never] })
     useCodeStudioLspStore.setState({ start, preferences: { ...original.preferences, resourceMode: 'low' }, userStopped: {}, gopls: { low: { available: true } as never }, linter: { low: null } })
     vi.mocked(getLanguageServerStatus).mockResolvedValue({ state: 'stopped' } as never)
     try {
@@ -73,6 +93,11 @@ describe('Code Studio language server store', () => {
       expect(start).toHaveBeenCalledWith('low', false)
       start.mockClear()
       useCodeStudioLspStore.setState({ userStopped: { low: true } })
+      await useCodeStudioLspStore.getState().ensureStarted('low')
+      expect(start).not.toHaveBeenCalled()
+      // A project without Go (Python, Java, a plain folder) never starts gopls by itself.
+      useCodeStudioLspStore.setState({ userStopped: {} })
+      useCodeStudioStore.setState({ sessions: [{ id: 'low', project: { authorization: 'tooling-permitted', units: [{ language: 'python', kind: 'project', root: '/p' }] } } as never] })
       await useCodeStudioLspStore.getState().ensureStarted('low')
       expect(start).not.toHaveBeenCalled()
     } finally {

@@ -1,12 +1,12 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 
 /** One annotation per starting line; errors win over warnings and information. */
 export function inlineDiagnosticDecorations(
-  model: monaco.editor.ITextModel,
-  markers: readonly monaco.editor.IMarker[],
+  model: Monaco.editor.ITextModel,
+  markers: readonly Monaco.editor.IMarker[],
   severities: readonly number[],
-): monaco.editor.IModelDeltaDecoration[] {
-  const lines = new Map<number, monaco.editor.IMarker[]>()
+): Monaco.editor.IModelDeltaDecoration[] {
+  const lines = new Map<number, Monaco.editor.IMarker[]>()
   for (const marker of markers) {
     if (!severities.includes(marker.severity) || marker.startLineNumber < 1 || marker.startLineNumber > model.getLineCount()) continue
     const group = lines.get(marker.startLineNumber) ?? []
@@ -38,7 +38,7 @@ export function inlineDiagnosticDecorations(
 }
 
 /** Each editor (including splits) owns its decorations and subscriptions. */
-export function installInlineDiagnostics(editor: monaco.editor.IStandaloneCodeEditor, severities: readonly number[]): () => void {
+export function installInlineDiagnostics(editor: Monaco.editor.IStandaloneCodeEditor, severities: readonly number[]): () => void {
   const decorations = editor.createDecorationsCollection()
   let timer: ReturnType<typeof setTimeout> | undefined
   const refresh = () => {

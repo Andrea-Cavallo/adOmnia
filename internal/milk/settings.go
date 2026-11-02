@@ -23,6 +23,9 @@ type Settings struct {
 	// SkipPermissions approva automaticamente ogni tool call senza chiedere
 	// (milk: dangerously_skip_permissions). Off per default per sicurezza.
 	SkipPermissions bool `json:"skipPermissions"`
+	// PermissionRules decide per categoria (read, write, shell, network, other): allow o
+	// deny senza chiedere. Una categoria assente chiede all'utente. Deny vale anche con SkipPermissions.
+	PermissionRules map[string]string `json:"permissionRules,omitempty"`
 	// IgnoreAPIKey (solo Claude Code) toglie ANTHROPIC_API_KEY dall'ambiente
 	// dell'agente: vale il login di `claude` (abbonamento) invece della chiave API.
 	IgnoreAPIKey bool `json:"ignoreApiKey,omitzero"`
@@ -81,6 +84,11 @@ func (s Settings) Validate() (Settings, error) {
 		cleanEnv[name] = value
 	}
 	s.Env = cleanEnv
+	rules, err := validatePermissionRules(s.PermissionRules)
+	if err != nil {
+		return Settings{}, err
+	}
+	s.PermissionRules = rules
 	for index := range s.ExtraArgs {
 		s.ExtraArgs[index] = strings.TrimSpace(s.ExtraArgs[index])
 		if s.ExtraArgs[index] == "" || strings.ContainsRune(s.ExtraArgs[index], '\x00') {

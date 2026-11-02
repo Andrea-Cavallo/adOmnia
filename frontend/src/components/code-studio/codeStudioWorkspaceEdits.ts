@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import type { Monaco } from '@/lib/monacoRef'
 import type { GoIDEEditorTextEdit, GoIDEWorkspaceChange } from '@/lib/code-studio-lsp-api'
 import { createGoIDEFiles } from '@/lib/code-studio-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -9,7 +9,7 @@ import { applyTextEdits } from './codeStudioChangePreview'
 
 export { applyTextEdits }
 
-function editsFor(edits: GoIDEEditorTextEdit[]): monaco.editor.IIdentifiedSingleEditOperation[] {
+function editsFor(edits: GoIDEEditorTextEdit[]): Monaco.editor.IIdentifiedSingleEditOperation[] {
   return edits.map((edit) => ({
     range: { startLineNumber: edit.range.startLine, startColumn: edit.range.startColumn, endLineNumber: edit.range.endLine, endColumn: edit.range.endColumn },
     text: edit.text,

@@ -507,6 +507,9 @@ func (b *BrowserDebug) LaunchBrowserForDebug(url string, port int) ([]DebugTarge
 		"--no-default-browser-check",
 		fmt.Sprintf("--user-data-dir=%s", profileDir),
 	}
+	if b.headless {
+		args = append(args, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=1280,800")
+	}
 	if url != "" {
 		args = append(args, url)
 	}

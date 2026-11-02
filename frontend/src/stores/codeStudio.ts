@@ -76,7 +76,7 @@ const LAYOUT_KEY = 'adomnia.codestudio.layout.v1'
 const MAX_CLOSED_HISTORY = 20
 
 /** Comandi go lanciabili direttamente da menu, CodeLens e gutter. */
-export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script' | 'bin' | 'example'
+export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script' | 'bin' | 'example' | 'build-run'
 
 export type GoIDESplitOrientation = 'right' | 'down'
 
@@ -290,9 +290,14 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function replaceSession(sessions: GoIDESession[], next: GoIDESession): GoIDESession[] {
+/**
+ * Sostituisce la sessione con la sua versione più recente. Le unità dei progetti grandi arrivano con
+ * session.updated, che può precedere la risposta di OpenProject: la risposta più vecchia non la sovrascrive.
+ */
+export function replaceSession(sessions: GoIDESession[], next: GoIDESession): GoIDESession[] {
   const index = sessions.findIndex((session) => session.id === next.id)
   if (index < 0) return [...sessions, next]
+  if (Date.parse(sessions[index].updatedAt) > Date.parse(next.updatedAt)) return sessions
   return sessions.map((session) => session.id === next.id ? next : session)
 }
 

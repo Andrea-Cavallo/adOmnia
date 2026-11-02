@@ -8,7 +8,10 @@
 
 <p align="center">
   <strong>A local-first desktop IDE to run, test and debug the code your AI agent writes.</strong><br>
-  Routes, API client, Delve debugger, database and brokers in one window. No account, no cloud, no telemetry.
+  Routes, API client, debugger, database and brokers in one window. No account, no cloud, no telemetry.<br>
+  <sub><b>Run, test and debug:</b> Go · Java · Python · TypeScript/JavaScript · Rust · C/C++ · C# · F# · PHP · Swift<br>
+  <b>Run and debug:</b> Dart · Zig · Objective-C · <b>Run:</b> Ruby · Elixir · Lua · Perl · R · Julia · PowerShell<br>
+  <b>Editor with language server</b> for 20+ more, including Kotlin, Scala, Haskell, SQL, YAML, Dockerfile, Terraform and Vue.</sub>
 </p>
 
 <p align="center">
@@ -281,7 +284,7 @@ Every tool carries a title and read-only / destructive / open-world hints, so cl
 
 ### Create an API collection from Code Studio
 
-Route discovery reuses the Developer Context detectors already used by Code Studio. It currently covers Go, Java/Spring, Python, Rust and OpenAPI contracts. The scan is static: it does not execute the project, start language servers or return `.env` values.
+Route discovery reuses the Developer Context detectors already used by Code Studio. It currently covers Go, Java/Spring, Python, Rust, ASP.NET (minimal APIs and controllers), Laravel, Symfony, Rails, Sinatra, Phoenix, Vapor and OpenAPI contracts. The scan is static: it does not execute the project, start language servers or return `.env` values.
 
 Ask the agent, replacing both paths with real folders:
 

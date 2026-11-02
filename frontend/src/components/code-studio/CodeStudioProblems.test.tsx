@@ -7,7 +7,7 @@ import { CodeStudioProblems } from './CodeStudioProblems'
 
 // Niente Monaco né AI in questo test: si verifica il raggruppamento per unità (6.5).
 vi.mock('@/lib/aiAvailability', () => ({ isAICompanionAvailable: () => false }))
-vi.mock('@/lib/monacoSetup', () => ({ monaco: {} }))
+vi.mock('@/lib/monacoRef', () => ({ monaco: {} }))
 vi.mock('./codeStudioLanguageFeatures', () => ({ navigateToLocation: vi.fn() }))
 vi.mock('./CodeStudioFileIcon', () => ({ CodeStudioFileIcon: () => null }))
 vi.mock('./codeStudioAIFixRunner', () => ({ MAX_RESOLVE_ALL_FILES: 10, fixCodeStudioProblemWithAI: vi.fn(), resolveAllCodeStudioProblemsWithAI: vi.fn() }))

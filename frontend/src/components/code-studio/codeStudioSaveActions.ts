@@ -1,5 +1,5 @@
 import type { CancellablePromise } from '@wailsio/runtime'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { requestFormatting, requestOrganizeImports } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
@@ -24,7 +24,7 @@ async function withTimeout<T>(request: CancellablePromise<T>): Promise<T | null>
   }
 }
 
-function applyToEditor(editor: monaco.editor.IStandaloneCodeEditor, edits: Parameters<typeof toMonacoEdits>[0]): void {
+function applyToEditor(editor: Monaco.editor.IStandaloneCodeEditor, edits: Parameters<typeof toMonacoEdits>[0]): void {
   if (edits.length === 0) return
   editor.pushUndoStop()
   editor.executeEdits('code-studio-save', toMonacoEdits(edits))
@@ -38,6 +38,7 @@ function applyToEditor(editor: monaco.editor.IStandaloneCodeEditor, edits: Param
 export async function runSaveActions(documentId: string): Promise<void> {
   const document = useCodeStudioStore.getState().documents.find((item) => item.document.id === documentId)
   if (!document || !document.dirty || document.document.readOnly) return
+  if (document.document.language === 'toml') return applyTomlFormatting(document)
   if (!document.document.name.endsWith('.go')) return applyNonGoWhitespace(document)
   const lsp = useCodeStudioLspStore.getState()
   const { formatOnSave, organizeImportsOnSave } = lsp.preferences
@@ -57,6 +58,34 @@ export async function runSaveActions(documentId: string): Promise<void> {
     await flushCodeStudioDocument(documentId)
     const result = await withTimeout(requestFormatting(sessionId, documentId))
     if (result && currentCodeStudioDocumentVersion(documentId) === result.version) applyToEditor(editor, result.edits)
+  }
+}
+
+async function applyTomlFormatting(document: GoIDEEditorDocument): Promise<void> {
+  // Generic trailing-space removal can change the contents of TOML multiline strings.
+  if (!useCodeStudioLspStore.getState().preferences.formatOnSave) return
+  const { sessionId, relativePath, id } = document.document
+  const config = editorConfigFor(parseEditorConfig(await editorConfigText(sessionId)), relativePath)
+  const current = useCodeStudioStore.getState().documents.find(item => item.document.id === id)
+  if (!current || current.document.readOnly) return
+  const source = current.buffer
+  const editor = activeCodeStudioEditor(), model = editor?.getModel()
+  const active = model?.uri.toString() === editorModelUri(current.document)
+  const options = active ? model?.getOptions() : undefined
+  try {
+    const { formatTomlInWorker } = await import('@/lib/code-studio/tomlFormatterClient')
+    const text = await formatTomlInWorker(source, {
+      tabSize: config.indent_size ?? config.tab_width ?? options?.tabSize ?? 2,
+      insertSpaces: config.indent_style ? config.indent_style !== 'tab' : options?.insertSpaces ?? true,
+      trailingNewline: config.insert_final_newline,
+    }, undefined, SAVE_ACTION_TIMEOUT_MS)
+    const latest = useCodeStudioStore.getState().documents.find(item => item.document.id === id)
+    if (!latest || latest.document.readOnly || latest.buffer !== source || text === source) return
+    if (active && editor && model && !model.isDisposed() && editor.getModel() === model && model.getValue() === source) {
+      editor.pushUndoStop(); editor.executeEdits('code-studio-save', [{ range: model.getFullModelRange(), text }]); editor.pushUndoStop()
+    } else useCodeStudioStore.getState().updateDocument(id, text)
+  } catch (error) {
+    useCodeStudioLspStore.setState({ message: `${error instanceof Error ? error.message : String(error)}. Saving the unchanged TOML buffer.` })
   }
 }
 
@@ -85,7 +114,7 @@ async function applyNonGoWhitespace(document: GoIDEEditorDocument): Promise<void
   const model = editor?.getModel()
   if (editor && model && model.uri.toString() === editorModelUri(document.document)) {
     // Modifiche minime (solo gli spazi in coda e la newline finale): il cursore resta dov'è.
-    const edits: monaco.editor.IIdentifiedSingleEditOperation[] = []
+    const edits: Monaco.editor.IIdentifiedSingleEditOperation[] = []
     const lineCount = trim ? model.getLineCount() : 0
     for (let line = 1; line <= lineCount; line++) {
       const content = model.getLineContent(line)

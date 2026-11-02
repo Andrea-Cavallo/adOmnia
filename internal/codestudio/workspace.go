@@ -23,38 +23,64 @@ type WorkspaceManager struct {
 	mu         sync.RWMutex
 	sessions   map[SessionID]Session
 	languages  *language.Registry
+	// detections annulla la detection in corso di una sessione (chiusura o shutdown).
+	detections map[SessionID]context.CancelFunc
+	// detectWait è quanto OpenProject attende la detection prima di rispondere senza unità.
+	detectWait time.Duration
 }
 
 func NewWorkspaceManager(languages *language.Registry) *WorkspaceManager {
-	return &WorkspaceManager{sessions: make(map[SessionID]Session), languages: languages}
+	return &WorkspaceManager{sessions: make(map[SessionID]Session), languages: languages, detections: make(map[SessionID]context.CancelFunc), detectWait: defaultDetectionWait}
 }
 
 // OpenProject registra una cartella locale nel workspace Code Studio indicato, senza eseguire comandi.
 // Lo stesso progetto può essere aperto in workspace diversi: ciascuno ha la propria sessione.
-func (m *WorkspaceManager) OpenProject(path, workspaceID string) (Session, error) {
+// La detection delle unità gira in background: se finisce entro detectWait la sessione torna completa,
+// altrimenti torna senza unità e late(id) viene chiamata quando le unità sono pronte.
+func (m *WorkspaceManager) OpenProject(path, workspaceID string, late func(SessionID)) (Session, error) {
 	root, realRoot, err := resolveProjectRoot(path)
 	if err != nil {
 		return Session{}, err
 	}
-
+	if existing, ok := m.openSession(workspaceID, realRoot); ok {
+		// Riaprire un progetto già aperto lo mette a fuoco: nessuna nuova detection.
+		return existing, nil
+	}
 	now := time.Now().UTC()
-	project := inspectProject(m.languages, root, realRoot, m.onDetected)
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	for _, existing := range m.sessions {
-		if existing.WorkspaceID == workspaceID && samePath(existing.Project.RealPath, realRoot) {
-			return existing, nil
-		}
+	// Ricontrollo sotto lock: un'apertura concorrente dello stesso progetto può aver vinto nel frattempo.
+	if existing, ok := m.openSessionLocked(workspaceID, realRoot); ok {
+		m.mu.Unlock()
+		return existing, nil
 	}
 	session := Session{
 		ID:          SessionID(newID("session")),
-		Project:     project,
+		Project:     newProject(root, realRoot),
 		WorkspaceID: workspaceID,
 		OpenedAt:    now,
 		UpdatedAt:   now,
 	}
+	// Il cancel vive quanto la detection: lo chiama finishDetection, CloseSession o CancelDetections.
+	ctx, cancel := context.WithCancel(context.Background())
+	m.detections[session.ID] = cancel
 	m.sessions[session.ID] = session
-	return session, nil
+	m.mu.Unlock()
+	return m.awaitDetection(ctx, session, late), nil
+}
+
+func (m *WorkspaceManager) openSession(workspaceID, realRoot string) (Session, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.openSessionLocked(workspaceID, realRoot)
+}
+
+func (m *WorkspaceManager) openSessionLocked(workspaceID, realRoot string) (Session, bool) {
+	for _, existing := range m.sessions {
+		if existing.WorkspaceID == workspaceID && samePath(existing.Project.RealPath, realRoot) {
+			return existing, true
+		}
+	}
+	return Session{}, false
 }
 
 // ListSessions restituisce una copia ordinata per apertura delle sessioni correnti.
@@ -131,14 +157,21 @@ func (m *WorkspaceManager) SetToolAuthorization(id SessionID, allowed bool) (Ses
 
 // RefreshProject rilegge moduli e go.work del progetto (es. dopo go work init/use).
 func (m *WorkspaceManager) RefreshProject(id SessionID) (Session, error) {
+	m.mu.RLock()
+	current, ok := m.sessions[id]
+	m.mu.RUnlock()
+	if !ok {
+		return Session{}, fmt.Errorf("Code Studio session not found")
+	}
+	// La detection legge il disco: fuori dal lock, così le altre sessioni non aspettano.
+	units := detectUnits(context.Background(), m.languages, current.Project.RootPath, m.onDetected)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	session, ok := m.sessions[id]
 	if !ok {
 		return Session{}, fmt.Errorf("Code Studio session not found")
 	}
-	fresh := inspectProject(m.languages, session.Project.RootPath, session.Project.RealPath, m.onDetected)
-	session.Project.Units = fresh.Units
+	session.Project.Units = units
 	session.UpdatedAt = time.Now().UTC()
 	m.sessions[id] = session
 	return session, nil
@@ -148,6 +181,10 @@ func (m *WorkspaceManager) RefreshProject(id SessionID) (Session, error) {
 func (m *WorkspaceManager) CloseSession(id SessionID) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if cancel, ok := m.detections[id]; ok {
+		cancel()
+		delete(m.detections, id)
+	}
 	if _, ok := m.sessions[id]; !ok {
 		return false
 	}
@@ -230,26 +267,35 @@ func fileExists(path string) bool {
 
 // inspectProject chiede ai language adapter le unità del progetto, senza eseguire comandi.
 func inspectProject(languages *language.Registry, root, realRoot string, observers ...func(time.Time)) Project {
-	result := Project{
+	result := newProject(root, realRoot)
+	result.Units = detectUnits(context.Background(), languages, root, observers...)
+	return result
+}
+
+func newProject(root, realRoot string) Project {
+	return Project{
 		ID:            newID("project"),
 		Name:          filepath.Base(root),
 		RootPath:      root,
 		RealPath:      realRoot,
 		Authorization: AuthorizationOpened,
+		Units:         []project.Unit{},
 	}
-	// La detection di un linguaggio non blocca l'apertura: un detector in errore restituisce
-	// comunque le unità trovate (come prima, quando gli errori del walk venivano ignorati).
+}
+
+// detectUnits non blocca mai l'apertura: un detector in errore restituisce comunque le unità trovate.
+func detectUnits(ctx context.Context, languages *language.Registry, root string, observers ...func(time.Time)) []project.Unit {
 	started := time.Now()
-	result.Units, _ = languages.DetectUnits(context.Background(), root)
+	units, _ := languages.DetectUnits(ctx, root)
 	for _, observe := range observers {
 		if observe != nil {
 			observe(started)
 		}
 	}
-	if result.Units == nil {
-		result.Units = []project.Unit{}
+	if units == nil {
+		units = []project.Unit{}
 	}
-	return result
+	return units
 }
 
 // goLayout è la vista Go di un progetto: moduli, go.work e cartelle sciolte, derivati dalle unità.

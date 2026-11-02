@@ -4,7 +4,7 @@ import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { heavyFeatureEditorLanguages, inlayHintEditorLanguages, semanticTokenEditorLanguages } from '@/components/ide/languages'
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import type { CancellablePromise } from '@wailsio/runtime'
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import {
   requestDocumentHighlights,
   requestHover,
@@ -28,8 +28,9 @@ const INLAY_PARAMETER = 2
 const RECURSION_DEBOUNCE_MS = 800
 
 let registered = false
-const semanticChanged = new monaco.Emitter<void>()
-const inlayChanged = new monaco.Emitter<void>()
+// Created on registration: Monaco is loaded only with the first editor.
+let semanticChanged: Monaco.Emitter<void>
+let inlayChanged: Monaco.Emitter<void>
 
 /** Errore riconosciuto da Monaco come annullamento: conserva i token precedenti invece di azzerarli (niente flicker). */
 function cancelled(): Error {
@@ -43,7 +44,7 @@ function isCurrent(documentId: string, version: number): boolean {
   return current === null || current === version
 }
 
-async function settle<T>(request: CancellablePromise<T>, token: monaco.CancellationToken): Promise<T> {
+async function settle<T>(request: CancellablePromise<T>, token: Monaco.CancellationToken): Promise<T> {
   const subscription = token.onCancellationRequested(() => request.cancel())
   try {
     const result = await request
@@ -79,7 +80,7 @@ function scheduleSemanticRetry(documentId: string): void {
 }
 
 /** Java: `@Nome` è sempre un'annotazione (JDT LS la tipa a volte come interfaccia) e le variabili hanno il loro colore. */
-function semanticContextFor(model: monaco.editor.ITextModel): SemanticRemapContext {
+function semanticContextFor(model: Monaco.editor.ITextModel): SemanticRemapContext {
   const importRanges = importColorRanges(model.getValue(), model.getLanguageId())
   if (model.getLanguageId() !== 'java') return { importRanges }
   return {
@@ -137,10 +138,9 @@ function registerInlayHints(): void {
   })
 }
 
-const HIGHLIGHT_KINDS: Record<string, monaco.languages.DocumentHighlightKind> = {
-  read: monaco.languages.DocumentHighlightKind.Read,
-  write: monaco.languages.DocumentHighlightKind.Write,
-  text: monaco.languages.DocumentHighlightKind.Text,
+function highlightKind(kind: string): Monaco.languages.DocumentHighlightKind {
+  const { Read, Write, Text } = monaco.languages.DocumentHighlightKind
+  return kind === 'read' ? Read : kind === 'write' ? Write : Text
 }
 
 function registerDocumentHighlights(): void {
@@ -150,7 +150,7 @@ function registerDocumentHighlights(): void {
       if (!prepared || !featuresForEditor(prepared.sessionId, prepared.document.document.language)?.documentHighlight) return null
       const result = await settle(requestDocumentHighlights(prepared.sessionId, prepared.documentId, position.lineNumber, position.column), token).catch(() => null)
       if (!result || !isCurrent(prepared.documentId, result.version)) return null
-      return result.highlights.map((highlight) => ({ range: toMonacoRange(highlight.range), kind: HIGHLIGHT_KINDS[highlight.kind] ?? HIGHLIGHT_KINDS.text }))
+      return result.highlights.map((highlight) => ({ range: toMonacoRange(highlight.range), kind: highlightKind(highlight.kind) }))
     },
   })
 }
@@ -168,6 +168,8 @@ export function showTypeHint(label: string): boolean {
 export function registerCodeStudioSemanticFeatures(): void {
   if (registered) return
   registered = true
+  semanticChanged = new monaco.Emitter<void>()
+  inlayChanged = new monaco.Emitter<void>()
   registerSemanticTokens()
   registerInlayHints()
   registerDocumentHighlights()
@@ -198,7 +200,7 @@ export function registerCodeStudioSemanticFeatures(): void {
  * Marca nel gutter le chiamate ricorsive dirette, ricavate da call hierarchy di gopls.
  * Si aggiorna con debounce durante la digitazione e scarta risposte di versioni superate.
  */
-export function installRecursiveCallMarkers(editor: monaco.editor.IStandaloneCodeEditor): void {
+export function installRecursiveCallMarkers(editor: Monaco.editor.IStandaloneCodeEditor): void {
   const decorations = editor.createDecorationsCollection()
   let timer: ReturnType<typeof setTimeout> | null = null
   let inFlight: CancellablePromise<unknown> | null = null
@@ -239,7 +241,7 @@ function report(message: string): void {
   useCodeStudioLspStore.setState({ message })
 }
 
-export function caretAnchor(editor: monaco.editor.ICodeEditor): { x: number; y: number } | null {
+export function caretAnchor(editor: Monaco.editor.ICodeEditor): { x: number; y: number } | null {
   const position = editor.getPosition()
   const node = editor.getDomNode()
   const visible = position ? editor.getScrolledVisiblePosition(position) : null
@@ -248,7 +250,7 @@ export function caretAnchor(editor: monaco.editor.ICodeEditor): { x: number; y: 
   return { x: rect.left + visible.left, y: rect.top + visible.top + visible.height }
 }
 
-async function caretContext(editor: monaco.editor.ICodeEditor) {
+async function caretContext(editor: Monaco.editor.ICodeEditor) {
   const model = editor.getModel()
   const position = editor.getPosition()
   const prepared = model ? await prepareDocument(model) : null
@@ -260,7 +262,7 @@ async function caretContext(editor: monaco.editor.ICodeEditor) {
 }
 
 /** Quick Definition: sorgente della dichiarazione in un popup, senza lasciare il file. */
-export async function showQuickDefinition(editor: monaco.editor.ICodeEditor): Promise<void> {
+export async function showQuickDefinition(editor: Monaco.editor.ICodeEditor): Promise<void> {
   const context = await caretContext(editor)
   if (!context) return
   try {
@@ -274,7 +276,7 @@ export async function showQuickDefinition(editor: monaco.editor.ICodeEditor): Pr
 }
 
 /** Show Usages: utilizzi raggruppati per tipo in un popup accanto al cursore. */
-export async function showUsagesPopup(editor: monaco.editor.ICodeEditor): Promise<void> {
+export async function showUsagesPopup(editor: Monaco.editor.ICodeEditor): Promise<void> {
   const context = await caretContext(editor)
   if (!context) return
   const word = context.model.getWordAtPosition(context.position)?.word ?? 'symbol'
@@ -289,11 +291,11 @@ export async function showUsagesPopup(editor: monaco.editor.ICodeEditor): Promis
 }
 
 interface MessageController {
-  showMessage(message: string, position: monaco.IPosition): void
+  showMessage(message: string, position: Monaco.IPosition): void
 }
 
 /** Type Info: mostra accanto al cursore il tipo dell'espressione, ricavato dalla hover di gopls. */
-export async function showTypeInfo(editor: monaco.editor.ICodeEditor): Promise<void> {
+export async function showTypeInfo(editor: Monaco.editor.ICodeEditor): Promise<void> {
   const context = await caretContext(editor)
   if (!context) return
   try {
@@ -309,7 +311,7 @@ export async function showTypeInfo(editor: monaco.editor.ICodeEditor): Promise<v
 }
 
 /** Call Hierarchy / Type Hierarchy sul simbolo al cursore. */
-export async function showHierarchy(editor: monaco.editor.ICodeEditor, kind: 'call' | 'type'): Promise<void> {
+export async function showHierarchy(editor: Monaco.editor.ICodeEditor, kind: 'call' | 'type'): Promise<void> {
   const context = await caretContext(editor)
   if (!context) return
   const label = kind === 'call' ? 'Call Hierarchy' : 'Type Hierarchy'

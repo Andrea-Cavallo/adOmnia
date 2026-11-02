@@ -1,4 +1,4 @@
-import { monaco } from '@/lib/monacoSetup'
+import { monaco, type Monaco } from '@/lib/monacoRef'
 import { getMyBatisIndex } from '@/lib/code-studio-api'
 import type { MyBatisIndex } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import { mybatisLinkAt, mybatisTarget, type MyBatisSide } from '@/lib/code-studio/mybatisLinks'
@@ -26,7 +26,7 @@ async function indexFor(sessionId: string): Promise<MyBatisIndex | null> {
   return request
 }
 
-function provider(side: MyBatisSide): monaco.languages.DefinitionProvider {
+function provider(side: MyBatisSide): Monaco.languages.DefinitionProvider {
   return {
     async provideDefinition(model, position) {
       const document = documentForModel(model)

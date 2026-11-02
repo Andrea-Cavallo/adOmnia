@@ -11,6 +11,11 @@ import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { usePiAgentStore } from '@/stores/piAgent'
 import { useMilkStore } from '@/stores/milk'
 import { agentTaskDraft, agentTaskMessage, agentTaskReceipt, type AgentTaskPreview } from './agentTaskComposer'
+import { CodeStudioAgentTaskVerifications } from './CodeStudioAgentTaskVerifications'
+import { CodeStudioAgentTaskPlan } from './CodeStudioAgentTaskPlan'
+import { CodeStudioAgentTaskScenarios } from './CodeStudioAgentTaskScenarios'
+import { CodeStudioAgentTaskPullRequest } from './CodeStudioAgentTaskPullRequest'
+import { CodeStudioAgentTaskWorkspace } from './CodeStudioAgentTaskWorkspace'
 import { selectedRange } from './CodeStudioCopilotChat'
 import { CodeStudioAlert, CodeStudioButton } from './CodeStudioModal'
 
@@ -25,6 +30,7 @@ const activeStatus = (task: AgentTask) => ['running', 'waiting_permission', 'sto
 
 export function CodeStudioAgentTaskDetail({ session, document, task, onEdit }: Props) {
   const root = session.project.realPath
+  const reviewRoot = task.workspace?.state === 'ready' ? task.workspace.path : root
   const [includeDocument, setIncludeDocument] = useState(true)
   const [includeWorkspace, setIncludeWorkspace] = useState(true)
   const [includeRules, setIncludeRules] = useState(true)
@@ -101,7 +107,9 @@ export function CodeStudioAgentTaskDetail({ session, document, task, onEdit }: P
     </header>
     {actionError && <CodeStudioAlert>{actionError}</CodeStudioAlert>}
     {!ready && !active && <CodeStudioAlert tone="warning">The selected agent is not ready. Open its provider tab to check configuration, then return to this task.</CodeStudioAlert>}
-    <p className="text-[11px] text-text-3">The agent works directly in this project's working tree. Only one task per project can run at a time; its changes appear in Review changes. Worktree isolation and Docker sandboxing are not available yet.</p>
+    <p className="text-[11px] text-text-3">The agent works in this task&apos;s workspace. Verifications are run by adOmnia, and their results stay attached to the task even when a check fails.</p>
+
+    <CodeStudioAgentTaskWorkspace task={task} />
 
     <section className="agent-task-section flex flex-col gap-2">
       <h3 className="gs-section-title">Context and attempt</h3>
@@ -115,7 +123,7 @@ export function CodeStudioAgentTaskDetail({ session, document, task, onEdit }: P
         <CodeStudioButton small loading={previewing} disabled={active} onClick={() => void makePreview()}>Preview context</CodeStudioButton>
         {active ? <CodeStudioButton small variant="danger" icon={Square} loading={busy || task.status === 'stopping'} onClick={() => void useAgentTaskStore.getState().stop(task.id).catch(() => undefined)}>Stop</CodeStudioButton>
           : <CodeStudioButton small variant="primary" icon={Play} loading={busy} disabled={!previewValid || !ready} title={!previewValid ? 'Preview the current context first' : !ready ? 'The selected agent is not ready' : undefined} onClick={() => void start()}>{task.attempts.length ? 'Start new attempt' : 'Start task'}</CodeStudioButton>}
-        <CodeStudioButton small onClick={() => useAgentReviewStore.getState().open(root)}>Review changes</CodeStudioButton>
+        <CodeStudioButton small onClick={() => useAgentReviewStore.getState().open(reviewRoot)}>Review changes</CodeStudioButton>
       </div>
       {!previewValid && !active && <p className="text-[11px] text-text-3">Preview is required for every new attempt. Changes to the draft or context options invalidate it.</p>}
       {preview && previewValid && <div className="gs-surface flex min-h-0 flex-col gap-2 p-2">
@@ -127,9 +135,16 @@ export function CodeStudioAgentTaskDetail({ session, document, task, onEdit }: P
 
     {permissions.map((permission) => <div key={permission.requestId} className="milk-permission" role="alertdialog" aria-label="Task tool permission"><p className="milk-permission-title">{permission.title || 'The agent requests tool access'}</p>{permission.description && <p className="milk-permission-detail">{permission.description}</p>}<div className="milk-permission-actions"><CodeStudioButton small variant="primary" onClick={() => respondPermission(permission.requestId, true)}>Allow</CodeStudioButton><CodeStudioButton small onClick={() => respondPermission(permission.requestId, false)}>Deny</CodeStudioButton></div></div>)}
 
+    <CodeStudioAgentTaskVerifications task={task} ready={ready} />
+    <CodeStudioAgentTaskPlan task={task} active={active} />
+    <CodeStudioAgentTaskScenarios task={task} active={active} />
+    <CodeStudioAgentTaskPullRequest task={task} />
+
     {task.attempts.length > 0 && <section className="agent-task-section flex flex-col gap-2">
       <div className="flex items-center gap-2"><h3 className="gs-section-title flex-1">Attempt output</h3><select aria-label="Attempt" className="gs-input h-7 w-auto text-[11px]" value={attempt?.id ?? ''} onChange={(event) => setAttemptChoice(event.target.value)}>{[...task.attempts].reverse().map((item, index) => <option key={item.id} value={item.id}>Attempt {task.attempts.length - index} · {item.status.replace(/_/g, ' ')}</option>)}</select></div>
       {attempt?.error && <CodeStudioAlert>{attempt.error}</CodeStudioAlert>}
+      {attempt?.stepId && <p className="text-[11px] text-text-3">Plan step: {task.plan?.steps.find((step) => step.id === attempt.stepId)?.title ?? attempt.stepId}</p>}
+      {attempt?.correctionOf && <p className="text-[11px] text-text-3">Correction of attempt {attempt.correctionOf.slice(-8)}{attempt.evidenceIds?.length ? ` · ${attempt.evidenceIds.length} selected result${attempt.evidenceIds.length === 1 ? '' : 's'}` : ''}. The same verifications are re-run when it finishes.</p>}
       {attempt?.prompt && <details className="milk-thought"><summary>Approved prompt</summary><pre className="milk-output agent-task-preview">{attempt.prompt}</pre></details>}
       {!!plan?.length && <details className="milk-thought" open><summary>Plan · {plan.filter((item) => item.status === 'completed').length}/{plan.length}</summary><ol className="flex flex-col gap-1 py-2">{plan.map((item) => <li key={`${item.content}-${item.status}`} className="text-[11px]"><span className="text-text-3">{item.status.replace(/_/g, ' ')}: </span>{item.content}</li>)}</ol></details>}
       {!!tools.length && <ul className="milk-tools" aria-label="Task tool calls">{tools.map((event) => <li key={event.id}><details><summary><span className="milk-tool-name">{event.toolName || 'Tool'}</span><span className="milk-tool-status">{event.toolStatus}</span></summary>{event.message && <pre className="milk-output">{event.message}</pre>}</details></li>)}</ul>}

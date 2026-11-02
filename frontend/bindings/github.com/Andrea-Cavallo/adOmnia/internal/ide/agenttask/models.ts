@@ -22,6 +22,19 @@ export class Attempt {
     "error"?: string;
     "events": Event[];
 
+    /**
+     * CorrectionOf collega un tentativo di correzione all'attempt che ha prodotto le
+     * evidenze selezionate: la cronologia non perde mai il primo fallimento.
+     */
+    "correctionOf"?: string;
+    "evidenceIds"?: string[];
+    "commentIds"?: string[];
+
+    /**
+     * StepID è lo step del piano su cui ha lavorato il tentativo.
+     */
+    "stepId"?: string;
+
     /** Creates a new Attempt instance. */
     constructor($$source: Partial<Attempt> = {}) {
         if (!("id" in $$source)) {
@@ -52,6 +65,8 @@ export class Attempt {
     static createFrom($$source: any = {}): Attempt {
         const $$createField4_0 = $$createType0;
         const $$createField9_0 = $$createType2;
+        const $$createField11_0 = $$createType3;
+        const $$createField12_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("context" in $$parsedSource) {
             $$parsedSource["context"] = $$createField4_0($$parsedSource["context"]);
@@ -59,9 +74,45 @@ export class Attempt {
         if ("events" in $$parsedSource) {
             $$parsedSource["events"] = $$createField9_0($$parsedSource["events"]);
         }
+        if ("evidenceIds" in $$parsedSource) {
+            $$parsedSource["evidenceIds"] = $$createField11_0($$parsedSource["evidenceIds"]);
+        }
+        if ("commentIds" in $$parsedSource) {
+            $$parsedSource["commentIds"] = $$createField12_0($$parsedSource["commentIds"]);
+        }
         return new Attempt($$parsedSource as Partial<Attempt>);
     }
 }
+
+/**
+ * CommentStatus is where a review comment stands in the correction loop.
+ */
+export enum CommentStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * CommentOpen: written by the user, not sent to the agent yet.
+     */
+    CommentOpen = "open",
+
+    /**
+     * CommentSent: part of a correction attempt that is still running.
+     */
+    CommentSent = "sent",
+
+    /**
+     * CommentToReview: the correction finished; the user must check the new revision.
+     */
+    CommentToReview = "to_review",
+
+    /**
+     * CommentResolved: the user confirmed the new revision addresses it.
+     */
+    CommentResolved = "resolved",
+};
 
 export class ContextReceipt {
     "bytes": number;
@@ -213,6 +264,169 @@ export class Event {
     }
 }
 
+/**
+ * Evidence è il risultato registrato di una verifica: cosa è stato eseguito, su quale
+ * contenuto, con quale esito, log e osservazioni. È l'unità che la review mostra accanto al diff.
+ */
+export class Evidence {
+    "id": string;
+    "taskId": string;
+    "attemptId"?: string;
+    "verificationId": string;
+    "kind": VerificationKind;
+    "label": string;
+    "outcome": EvidenceOutcome;
+
+    /**
+     * Command è il comando eseguito o "METHOD URL": permette di riprodurre la verifica.
+     */
+    "command": string;
+    "environment"?: string;
+    "workdir"?: string;
+
+    /**
+     * DiffFingerprint identifica il contenuto misurato; ChangedFiles ne è la dimensione.
+     */
+    "diffFingerprint"?: string;
+    "changedFiles": number;
+    "exitCode"?: number | null;
+    "durationMs": number;
+    "startedAt": string;
+    "finishedAt": string;
+    "log"?: string;
+    "truncated"?: boolean;
+    "observations"?: Observation[];
+
+    /** Creates a new Evidence instance. */
+    constructor($$source: Partial<Evidence> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("taskId" in $$source)) {
+            this["taskId"] = "";
+        }
+        if (!("verificationId" in $$source)) {
+            this["verificationId"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = VerificationKind.$zero;
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("outcome" in $$source)) {
+            this["outcome"] = EvidenceOutcome.$zero;
+        }
+        if (!("command" in $$source)) {
+            this["command"] = "";
+        }
+        if (!("changedFiles" in $$source)) {
+            this["changedFiles"] = 0;
+        }
+        if (!("durationMs" in $$source)) {
+            this["durationMs"] = 0;
+        }
+        if (!("startedAt" in $$source)) {
+            this["startedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("finishedAt" in $$source)) {
+            this["finishedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Evidence instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Evidence {
+        const $$createField18_0 = $$createType8;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("observations" in $$parsedSource) {
+            $$parsedSource["observations"] = $$createField18_0($$parsedSource["observations"]);
+        }
+        return new Evidence($$parsedSource as Partial<Evidence>);
+    }
+}
+
+/**
+ * EvidenceOutcome distingue un controllo superato da uno fallito, non eseguito o
+ * interrotto da un errore: un dato non raccolto non diventa mai "superato".
+ */
+export enum EvidenceOutcome {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    EvidencePassed = "passed",
+    EvidenceFailed = "failed",
+    EvidenceError = "error",
+    EvidenceNotRun = "not_run",
+};
+
+/**
+ * Integration records the application of a workspace to the project. Nothing is
+ * committed: the changes are staged in the project and the user decides what follows.
+ */
+export class Integration {
+    "applied": boolean;
+    "checked": boolean;
+    "targetBranch": string;
+    "targetHead": string;
+    "fingerprint": string;
+    "files": string[];
+    "conflicts": string[];
+    "output"?: string;
+    "at": string;
+
+    /** Creates a new Integration instance. */
+    constructor($$source: Partial<Integration> = {}) {
+        if (!("applied" in $$source)) {
+            this["applied"] = false;
+        }
+        if (!("checked" in $$source)) {
+            this["checked"] = false;
+        }
+        if (!("targetBranch" in $$source)) {
+            this["targetBranch"] = "";
+        }
+        if (!("targetHead" in $$source)) {
+            this["targetHead"] = "";
+        }
+        if (!("fingerprint" in $$source)) {
+            this["fingerprint"] = "";
+        }
+        if (!("files" in $$source)) {
+            this["files"] = [];
+        }
+        if (!("conflicts" in $$source)) {
+            this["conflicts"] = [];
+        }
+        if (!("at" in $$source)) {
+            this["at"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Integration instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Integration {
+        const $$createField5_0 = $$createType3;
+        const $$createField6_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("files" in $$parsedSource) {
+            $$parsedSource["files"] = $$createField5_0($$parsedSource["files"]);
+        }
+        if ("conflicts" in $$parsedSource) {
+            $$parsedSource["conflicts"] = $$createField6_0($$parsedSource["conflicts"]);
+        }
+        return new Integration($$parsedSource as Partial<Integration>);
+    }
+}
+
 export enum Intent {
     /**
      * The Go zero value for the underlying type of the enum.
@@ -227,6 +441,13 @@ export enum Intent {
 export class Limits {
     "timeoutMinutes": number;
     "maxContextBytes": number;
+
+    /**
+     * MaxCorrections limita le correzioni consecutive dello stesso task: oltre il
+     * limite il ciclo si ferma e la decisione torna all'utente. 0 = valore predefinito
+     * (task salvati prima dell'introduzione del campo).
+     */
+    "maxCorrections"?: number;
 
     /** Creates a new Limits instance. */
     constructor($$source: Partial<Limits> = {}) {
@@ -246,6 +467,102 @@ export class Limits {
     static createFrom($$source: any = {}): Limits {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Limits($$parsedSource as Partial<Limits>);
+    }
+}
+
+/**
+ * Observation è un fatto misurato durante la verifica (stato HTTP, durata, ambiente).
+ */
+export class Observation {
+    "name": string;
+    "value": string;
+
+    /** Creates a new Observation instance. */
+    constructor($$source: Partial<Observation> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("value" in $$source)) {
+            this["value"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Observation instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Observation {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Observation($$parsedSource as Partial<Observation>);
+    }
+}
+
+/**
+ * PRDraft is an editable pull request title and body built from what adOmnia measured:
+ * it states what was verified and what was not, never more than the evidence shows.
+ */
+export class PRDraft {
+    "title": string;
+    "body": string;
+
+    /** Creates a new PRDraft instance. */
+    constructor($$source: Partial<PRDraft> = {}) {
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("body" in $$source)) {
+            this["body"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PRDraft instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PRDraft {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PRDraft($$parsedSource as Partial<PRDraft>);
+    }
+}
+
+/**
+ * Plan is the persistent, approvable plan of a task.
+ */
+export class Plan {
+    "steps": PlanStep[];
+    "revision": number;
+    "approvedRevision"?: number;
+    "approvedAt"?: string | null;
+    "revisions"?: PlanRevision[];
+
+    /** Creates a new Plan instance. */
+    constructor($$source: Partial<Plan> = {}) {
+        if (!("steps" in $$source)) {
+            this["steps"] = [];
+        }
+        if (!("revision" in $$source)) {
+            this["revision"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Plan instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Plan {
+        const $$createField0_0 = $$createType10;
+        const $$createField4_0 = $$createType12;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("steps" in $$parsedSource) {
+            $$parsedSource["steps"] = $$createField0_0($$parsedSource["steps"]);
+        }
+        if ("revisions" in $$parsedSource) {
+            $$parsedSource["revisions"] = $$createField4_0($$parsedSource["revisions"]);
+        }
+        return new Plan($$parsedSource as Partial<Plan>);
     }
 }
 
@@ -275,6 +592,336 @@ export class PlanEntry {
     }
 }
 
+/**
+ * PlanRevision is a saved version of the plan's content (without execution state).
+ */
+export class PlanRevision {
+    "revision": number;
+    "steps": PlanStepDraft[];
+    "at": string;
+
+    /** Creates a new PlanRevision instance. */
+    constructor($$source: Partial<PlanRevision> = {}) {
+        if (!("revision" in $$source)) {
+            this["revision"] = 0;
+        }
+        if (!("steps" in $$source)) {
+            this["steps"] = [];
+        }
+        if (!("at" in $$source)) {
+            this["at"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PlanRevision instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PlanRevision {
+        const $$createField1_0 = $$createType14;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("steps" in $$parsedSource) {
+            $$parsedSource["steps"] = $$createField1_0($$parsedSource["steps"]);
+        }
+        return new PlanRevision($$parsedSource as Partial<PlanRevision>);
+    }
+}
+
+/**
+ * PlanStep is one step of a task plan.
+ */
+export class PlanStep {
+    "id": string;
+    "title": string;
+    "goal"?: string;
+    "dependsOn"?: string[];
+    "expectedFiles"?: string[];
+    "verificationIds"?: string[];
+    "status": StepStatus;
+
+    /**
+     * ConfirmedWithoutVerification marks a step completed by the user because it has no verification.
+     */
+    "confirmedWithoutVerification"?: boolean;
+    "attemptIds"?: string[];
+
+    /**
+     * CommitSHA is the commit of this step on the task branch, once the user committed it.
+     */
+    "commitSha"?: string;
+    "committedFiles"?: string[];
+    "note"?: string;
+    "updatedAt": string;
+
+    /** Creates a new PlanStep instance. */
+    constructor($$source: Partial<PlanStep> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = StepStatus.$zero;
+        }
+        if (!("updatedAt" in $$source)) {
+            this["updatedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PlanStep instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PlanStep {
+        const $$createField3_0 = $$createType3;
+        const $$createField4_0 = $$createType3;
+        const $$createField5_0 = $$createType3;
+        const $$createField8_0 = $$createType3;
+        const $$createField10_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("dependsOn" in $$parsedSource) {
+            $$parsedSource["dependsOn"] = $$createField3_0($$parsedSource["dependsOn"]);
+        }
+        if ("expectedFiles" in $$parsedSource) {
+            $$parsedSource["expectedFiles"] = $$createField4_0($$parsedSource["expectedFiles"]);
+        }
+        if ("verificationIds" in $$parsedSource) {
+            $$parsedSource["verificationIds"] = $$createField5_0($$parsedSource["verificationIds"]);
+        }
+        if ("attemptIds" in $$parsedSource) {
+            $$parsedSource["attemptIds"] = $$createField8_0($$parsedSource["attemptIds"]);
+        }
+        if ("committedFiles" in $$parsedSource) {
+            $$parsedSource["committedFiles"] = $$createField10_0($$parsedSource["committedFiles"]);
+        }
+        return new PlanStep($$parsedSource as Partial<PlanStep>);
+    }
+}
+
+/**
+ * PlanStepDraft is a step as edited by the user. An empty ID creates a new step.
+ */
+export class PlanStepDraft {
+    "id"?: string;
+    "title": string;
+    "goal"?: string;
+    "dependsOn"?: string[];
+    "expectedFiles"?: string[];
+    "verificationIds"?: string[];
+
+    /** Creates a new PlanStepDraft instance. */
+    constructor($$source: Partial<PlanStepDraft> = {}) {
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PlanStepDraft instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PlanStepDraft {
+        const $$createField3_0 = $$createType3;
+        const $$createField4_0 = $$createType3;
+        const $$createField5_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("dependsOn" in $$parsedSource) {
+            $$parsedSource["dependsOn"] = $$createField3_0($$parsedSource["dependsOn"]);
+        }
+        if ("expectedFiles" in $$parsedSource) {
+            $$parsedSource["expectedFiles"] = $$createField4_0($$parsedSource["expectedFiles"]);
+        }
+        if ("verificationIds" in $$parsedSource) {
+            $$parsedSource["verificationIds"] = $$createField5_0($$parsedSource["verificationIds"]);
+        }
+        return new PlanStepDraft($$parsedSource as Partial<PlanStepDraft>);
+    }
+}
+
+/**
+ * ReviewComment is a remark on a line range of a changed file (or on an evidence)
+ * that the user can send to the agent as part of a correction.
+ */
+export class ReviewComment {
+    "id": string;
+
+    /**
+     * Path is relative to the reviewed folder, with forward slashes.
+     */
+    "path": string;
+
+    /**
+     * Side is "new" (agent version) or "old" (version before the agent).
+     */
+    "side": string;
+    "startLine": number;
+    "endLine": number;
+
+    /**
+     * Excerpt is the commented text exactly as shown: the agent receives what the user saw.
+     */
+    "excerpt"?: string;
+    "body": string;
+    "evidenceId"?: string;
+
+    /**
+     * AttemptID is the attempt whose content was commented; SentInAttemptID the correction that received it.
+     */
+    "attemptId"?: string;
+    "sentInAttemptId"?: string;
+    "status": CommentStatus;
+    "createdAt": string;
+    "updatedAt": string;
+
+    /** Creates a new ReviewComment instance. */
+    constructor($$source: Partial<ReviewComment> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("side" in $$source)) {
+            this["side"] = "";
+        }
+        if (!("startLine" in $$source)) {
+            this["startLine"] = 0;
+        }
+        if (!("endLine" in $$source)) {
+            this["endLine"] = 0;
+        }
+        if (!("body" in $$source)) {
+            this["body"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = CommentStatus.$zero;
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("updatedAt" in $$source)) {
+            this["updatedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewComment instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewComment {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewComment($$parsedSource as Partial<ReviewComment>);
+    }
+}
+
+/**
+ * ReviewCommentDraft is what the renderer sends: no ID, status or timestamps.
+ */
+export class ReviewCommentDraft {
+    "path": string;
+    "side": string;
+    "startLine": number;
+    "endLine": number;
+    "excerpt"?: string;
+    "body": string;
+    "evidenceId"?: string;
+
+    /** Creates a new ReviewCommentDraft instance. */
+    constructor($$source: Partial<ReviewCommentDraft> = {}) {
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("side" in $$source)) {
+            this["side"] = "";
+        }
+        if (!("startLine" in $$source)) {
+            this["startLine"] = 0;
+        }
+        if (!("endLine" in $$source)) {
+            this["endLine"] = 0;
+        }
+        if (!("body" in $$source)) {
+            this["body"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ReviewCommentDraft instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ReviewCommentDraft {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ReviewCommentDraft($$parsedSource as Partial<ReviewCommentDraft>);
+    }
+}
+
+/**
+ * ScenarioRef is the snapshot of a scenario kept on the task for the agent prompts.
+ */
+export class ScenarioRef {
+    "id": string;
+    "title": string;
+    "criteria": string[];
+
+    /** Creates a new ScenarioRef instance. */
+    constructor($$source: Partial<ScenarioRef> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("criteria" in $$source)) {
+            this["criteria"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ScenarioRef instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ScenarioRef {
+        const $$createField2_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("criteria" in $$parsedSource) {
+            $$parsedSource["criteria"] = $$createField2_0($$parsedSource["criteria"]);
+        }
+        return new ScenarioRef($$parsedSource as Partial<ScenarioRef>);
+    }
+}
+
+/**
+ * ServiceLaunch è la configurazione di Run che una verifica avvia prima della richiesta.
+ * Configuration è lo snapshot JSON approvato dall'utente, senza valori segreti: il core non ne
+ * conosce il formato, l'host lo traduce con gli stessi servizi del pannello Run.
+ */
+export class ServiceLaunch {
+    "name"?: string;
+    "configuration"?: string;
+    "readyTimeoutSeconds"?: number;
+
+    /** Creates a new ServiceLaunch instance. */
+    constructor($$source: Partial<ServiceLaunch> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ServiceLaunch instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ServiceLaunch {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ServiceLaunch($$parsedSource as Partial<ServiceLaunch>);
+    }
+}
+
 export enum Status {
     /**
      * The Go zero value for the underlying type of the enum.
@@ -289,6 +936,60 @@ export enum Status {
     StatusFailed = "failed",
     StatusStopped = "stopped",
     StatusNeedsIntervention = "needs_intervention",
+};
+
+/**
+ * StepCommitPreview is what committing a step would record: shown before the commit.
+ */
+export class StepCommitPreview {
+    "message": string;
+    "files": string[];
+    "branch": string;
+
+    /** Creates a new StepCommitPreview instance. */
+    constructor($$source: Partial<StepCommitPreview> = {}) {
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+        if (!("files" in $$source)) {
+            this["files"] = [];
+        }
+        if (!("branch" in $$source)) {
+            this["branch"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new StepCommitPreview instance from a string or object.
+     */
+    static createFrom($$source: any = {}): StepCommitPreview {
+        const $$createField1_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("files" in $$parsedSource) {
+            $$parsedSource["files"] = $$createField1_0($$parsedSource["files"]);
+        }
+        return new StepCommitPreview($$parsedSource as Partial<StepCommitPreview>);
+    }
+}
+
+/**
+ * StepStatus is the explicit state of a plan step. A step reaches "completed" only
+ * through its verifications or an explicit user confirmation, never because the agent says so.
+ */
+export enum StepStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    StepTodo = "todo",
+    StepRunning = "running",
+    StepToVerify = "to_verify",
+    StepCompleted = "completed",
+    StepFailed = "failed",
+    StepCancelled = "cancelled",
 };
 
 export class Task {
@@ -308,6 +1009,42 @@ export class Task {
     "createdAt": string;
     "updatedAt": string;
     "attempts": Attempt[];
+
+    /**
+     * Workspace è la cartella isolata del task, quando ne esiste una.
+     */
+    "workspace"?: Workspace | null;
+
+    /**
+     * Verifications sono i controlli che adOmnia esegue su questo task.
+     */
+    "verifications"?: Verification[];
+
+    /**
+     * Evidences è il registro di ciò che le verifiche hanno misurato, in ordine di esecuzione.
+     */
+    "evidences"?: Evidence[];
+
+    /**
+     * Plan è il piano approvabile del task, con gli step e il loro stato.
+     */
+    "plan"?: Plan | null;
+
+    /**
+     * Comments sono le osservazioni dell'utente sul diff o sulle evidenze, inviabili come correzione.
+     */
+    "comments"?: ReviewComment[];
+
+    /**
+     * Scenarios are the acceptance scenarios the user added to the task: their criteria
+     * travel in the agent prompts (selected by the user, bounded by the context limit).
+     */
+    "scenarios"?: ScenarioRef[];
+
+    /**
+     * VerifyingIDs elenca le verifiche in corso; vuoto quando nessuna sta girando.
+     */
+    "verifyingIds"?: string[];
 
     /** Creates a new Task instance. */
     constructor($$source: Partial<Task> = {}) {
@@ -366,7 +1103,14 @@ export class Task {
         const $$createField7_0 = $$createType3;
         const $$createField9_0 = $$createType4;
         const $$createField12_0 = $$createType0;
-        const $$createField15_0 = $$createType8;
+        const $$createField15_0 = $$createType16;
+        const $$createField16_0 = $$createType18;
+        const $$createField17_0 = $$createType20;
+        const $$createField18_0 = $$createType22;
+        const $$createField19_0 = $$createType24;
+        const $$createField20_0 = $$createType26;
+        const $$createField21_0 = $$createType28;
+        const $$createField22_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("criteria" in $$parsedSource) {
             $$parsedSource["criteria"] = $$createField5_0($$parsedSource["criteria"]);
@@ -386,9 +1130,459 @@ export class Task {
         if ("attempts" in $$parsedSource) {
             $$parsedSource["attempts"] = $$createField15_0($$parsedSource["attempts"]);
         }
+        if ("workspace" in $$parsedSource) {
+            $$parsedSource["workspace"] = $$createField16_0($$parsedSource["workspace"]);
+        }
+        if ("verifications" in $$parsedSource) {
+            $$parsedSource["verifications"] = $$createField17_0($$parsedSource["verifications"]);
+        }
+        if ("evidences" in $$parsedSource) {
+            $$parsedSource["evidences"] = $$createField18_0($$parsedSource["evidences"]);
+        }
+        if ("plan" in $$parsedSource) {
+            $$parsedSource["plan"] = $$createField19_0($$parsedSource["plan"]);
+        }
+        if ("comments" in $$parsedSource) {
+            $$parsedSource["comments"] = $$createField20_0($$parsedSource["comments"]);
+        }
+        if ("scenarios" in $$parsedSource) {
+            $$parsedSource["scenarios"] = $$createField21_0($$parsedSource["scenarios"]);
+        }
+        if ("verifyingIds" in $$parsedSource) {
+            $$parsedSource["verifyingIds"] = $$createField22_0($$parsedSource["verifyingIds"]);
+        }
         return new Task($$parsedSource as Partial<Task>);
     }
 }
+
+/**
+ * Verification è una verifica riutilizzabile del task. È una definizione, non un
+ * risultato: i risultati sono Evidence.
+ */
+export class Verification {
+    "id": string;
+    "kind": VerificationKind;
+    "label": string;
+
+    /**
+     * Test del linguaggio.
+     */
+    "language"?: string;
+    "workingDirectory"?: string;
+    "packages"?: string[];
+    "run"?: string;
+    "coverage"?: boolean;
+
+    /**
+     * Richiesta HTTP.
+     */
+    "method"?: string;
+    "url"?: string;
+    "headers"?: VerificationHeader[];
+    "body"?: string;
+    "expectedStatus"?: number;
+
+    /**
+     * AllowRemote consente un host non locale. Vuoto significa: solo loopback.
+     */
+    "allowRemote"?: boolean;
+
+    /**
+     * SettleSeconds (pagina) è l'attesa dopo la navigazione prima dello screenshot.
+     */
+    "settleSeconds"?: number;
+
+    /**
+     * Service avvia nel workspace del task, prima della richiesta, una configurazione
+     * di Run approvata dall'utente, e la ferma a fine verifica.
+     */
+    "service"?: ServiceLaunch;
+
+    /**
+     * Watch elenca i topic del broker osservati durante la verifica (messaggi prodotti).
+     */
+    "watch"?: VerificationWatch;
+    "timeoutSeconds": number;
+    "createdAt": string;
+
+    /**
+     * ScenarioID/CriterionID link a verification to the acceptance criterion it executes.
+     */
+    "scenarioId"?: string;
+    "criterionId"?: string;
+
+    /** Creates a new Verification instance. */
+    constructor($$source: Partial<Verification> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = VerificationKind.$zero;
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("timeoutSeconds" in $$source)) {
+            this["timeoutSeconds"] = 0;
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Verification instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Verification {
+        const $$createField5_0 = $$createType3;
+        const $$createField10_0 = $$createType30;
+        const $$createField15_0 = $$createType31;
+        const $$createField16_0 = $$createType32;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("packages" in $$parsedSource) {
+            $$parsedSource["packages"] = $$createField5_0($$parsedSource["packages"]);
+        }
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField10_0($$parsedSource["headers"]);
+        }
+        if ("service" in $$parsedSource) {
+            $$parsedSource["service"] = $$createField15_0($$parsedSource["service"]);
+        }
+        if ("watch" in $$parsedSource) {
+            $$parsedSource["watch"] = $$createField16_0($$parsedSource["watch"]);
+        }
+        return new Verification($$parsedSource as Partial<Verification>);
+    }
+}
+
+/**
+ * VerificationDraft è ciò che arriva dal renderer: nessun ID, nessun timestamp.
+ */
+export class VerificationDraft {
+    "kind": VerificationKind;
+    "label": string;
+    "language"?: string;
+    "workingDirectory"?: string;
+    "packages"?: string[];
+    "run"?: string;
+    "coverage"?: boolean;
+    "method"?: string;
+    "url"?: string;
+    "headers"?: VerificationHeader[];
+    "body"?: string;
+    "expectedStatus"?: number;
+    "allowRemote"?: boolean;
+    "settleSeconds"?: number;
+    "service"?: ServiceLaunch;
+    "watch"?: VerificationWatch;
+    "timeoutSeconds"?: number;
+
+    /** Creates a new VerificationDraft instance. */
+    constructor($$source: Partial<VerificationDraft> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = VerificationKind.$zero;
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VerificationDraft instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VerificationDraft {
+        const $$createField4_0 = $$createType3;
+        const $$createField9_0 = $$createType30;
+        const $$createField14_0 = $$createType31;
+        const $$createField15_0 = $$createType32;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("packages" in $$parsedSource) {
+            $$parsedSource["packages"] = $$createField4_0($$parsedSource["packages"]);
+        }
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField9_0($$parsedSource["headers"]);
+        }
+        if ("service" in $$parsedSource) {
+            $$parsedSource["service"] = $$createField14_0($$parsedSource["service"]);
+        }
+        if ("watch" in $$parsedSource) {
+            $$parsedSource["watch"] = $$createField15_0($$parsedSource["watch"]);
+        }
+        return new VerificationDraft($$parsedSource as Partial<VerificationDraft>);
+    }
+}
+
+/**
+ * VerificationHeader è un'intestazione HTTP della verifica, in ordine stabile.
+ */
+export class VerificationHeader {
+    "name": string;
+    "value": string;
+
+    /** Creates a new VerificationHeader instance. */
+    constructor($$source: Partial<VerificationHeader> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("value" in $$source)) {
+            this["value"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VerificationHeader instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VerificationHeader {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new VerificationHeader($$parsedSource as Partial<VerificationHeader>);
+    }
+}
+
+/**
+ * VerificationKind è il tipo di controllo eseguito da adOmnia sul contenuto del task.
+ */
+export enum VerificationKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * VerificationTest esegue i test del linguaggio con l'adapter registrato.
+     */
+    VerificationTest = "test",
+
+    /**
+     * VerificationRequest esegue una richiesta HTTP su un ambiente locale approvato.
+     */
+    VerificationRequest = "request",
+
+    /**
+     * VerificationPage apre una pagina in un browser headless: screenshot, errori JS e richieste.
+     */
+    VerificationPage = "page",
+};
+
+/**
+ * VerificationWatch è ciò che la verifica osserva mentre gira: i messaggi prodotti sui topic Kafka
+ * e le query eseguite su una connessione database salvata. Solo indirizzi e un riferimento opaco
+ * alla connessione, nessuna credenziale: i broker non locali richiedono AllowRemote.
+ */
+export class VerificationWatch {
+    "brokers"?: string[];
+    "topics"?: string[];
+
+    /**
+     * Database è l'ID di una connessione salvata in Database; le credenziali restano in Go.
+     */
+    "database"?: string;
+
+    /** Creates a new VerificationWatch instance. */
+    constructor($$source: Partial<VerificationWatch> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VerificationWatch instance from a string or object.
+     */
+    static createFrom($$source: any = {}): VerificationWatch {
+        const $$createField0_0 = $$createType3;
+        const $$createField1_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("brokers" in $$parsedSource) {
+            $$parsedSource["brokers"] = $$createField0_0($$parsedSource["brokers"]);
+        }
+        if ("topics" in $$parsedSource) {
+            $$parsedSource["topics"] = $$createField1_0($$parsedSource["topics"]);
+        }
+        return new VerificationWatch($$parsedSource as Partial<VerificationWatch>);
+    }
+}
+
+/**
+ * Workspace è la cartella isolata (Git worktree) in cui lavora un task.
+ * Root del task resta la radice del progetto: le associazioni si riconciliano al riavvio.
+ */
+export class Workspace {
+    "repository": string;
+    "path": string;
+    "branch": string;
+    "baseRef": string;
+    "baseSha"?: string;
+    "state": WorkspaceState;
+    "notice"?: string;
+    "createdAt": string;
+
+    /**
+     * IncludedLocalChanges conta i file tracciati del progetto le cui modifiche non
+     * committate sono state copiate nel worktree su richiesta esplicita dell'utente.
+     * 0 = nessuna copia: il worktree contiene solo il commit di partenza.
+     */
+    "includedLocalChanges"?: number;
+
+    /**
+     * Integration è l'ultima applicazione del workspace al progetto, se c'è stata.
+     */
+    "integration"?: Integration;
+
+    /** Creates a new Workspace instance. */
+    constructor($$source: Partial<Workspace> = {}) {
+        if (!("repository" in $$source)) {
+            this["repository"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("branch" in $$source)) {
+            this["branch"] = "";
+        }
+        if (!("baseRef" in $$source)) {
+            this["baseRef"] = "";
+        }
+        if (!("state" in $$source)) {
+            this["state"] = WorkspaceState.$zero;
+        }
+        if (!("createdAt" in $$source)) {
+            this["createdAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Workspace instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Workspace {
+        const $$createField9_0 = $$createType33;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("integration" in $$parsedSource) {
+            $$parsedSource["integration"] = $$createField9_0($$parsedSource["integration"]);
+        }
+        return new Workspace($$parsedSource as Partial<Workspace>);
+    }
+}
+
+/**
+ * WorkspaceComparison describes what integrating a task workspace would mean: what the
+ * agent changed since the starting commit and what happened meanwhile on the project
+ * branch that would receive it.
+ */
+export class WorkspaceComparison {
+    /**
+     * Fingerprint identifies the workspace content: evidence with the same fingerprint
+     * measured exactly what would be integrated.
+     */
+    "fingerprint": string;
+    "changedFiles": string[];
+    "targetBranch": string;
+    "targetHead": string;
+
+    /**
+     * TargetCommits counts the commits the target received after the workspace started.
+     */
+    "targetCommits": number;
+    "targetChanged": string[];
+    "localChanges": string[];
+
+    /**
+     * Overlaps are workspace files the target also changed after the start: likely conflicts.
+     */
+    "overlaps": string[];
+
+    /**
+     * LocalOverlaps are workspace files with uncommitted changes in the project.
+     */
+    "localOverlaps": string[];
+
+    /** Creates a new WorkspaceComparison instance. */
+    constructor($$source: Partial<WorkspaceComparison> = {}) {
+        if (!("fingerprint" in $$source)) {
+            this["fingerprint"] = "";
+        }
+        if (!("changedFiles" in $$source)) {
+            this["changedFiles"] = [];
+        }
+        if (!("targetBranch" in $$source)) {
+            this["targetBranch"] = "";
+        }
+        if (!("targetHead" in $$source)) {
+            this["targetHead"] = "";
+        }
+        if (!("targetCommits" in $$source)) {
+            this["targetCommits"] = 0;
+        }
+        if (!("targetChanged" in $$source)) {
+            this["targetChanged"] = [];
+        }
+        if (!("localChanges" in $$source)) {
+            this["localChanges"] = [];
+        }
+        if (!("overlaps" in $$source)) {
+            this["overlaps"] = [];
+        }
+        if (!("localOverlaps" in $$source)) {
+            this["localOverlaps"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WorkspaceComparison instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WorkspaceComparison {
+        const $$createField1_0 = $$createType3;
+        const $$createField5_0 = $$createType3;
+        const $$createField6_0 = $$createType3;
+        const $$createField7_0 = $$createType3;
+        const $$createField8_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("changedFiles" in $$parsedSource) {
+            $$parsedSource["changedFiles"] = $$createField1_0($$parsedSource["changedFiles"]);
+        }
+        if ("targetChanged" in $$parsedSource) {
+            $$parsedSource["targetChanged"] = $$createField5_0($$parsedSource["targetChanged"]);
+        }
+        if ("localChanges" in $$parsedSource) {
+            $$parsedSource["localChanges"] = $$createField6_0($$parsedSource["localChanges"]);
+        }
+        if ("overlaps" in $$parsedSource) {
+            $$parsedSource["overlaps"] = $$createField7_0($$parsedSource["overlaps"]);
+        }
+        if ("localOverlaps" in $$parsedSource) {
+            $$parsedSource["localOverlaps"] = $$createField8_0($$parsedSource["localOverlaps"]);
+        }
+        return new WorkspaceComparison($$parsedSource as Partial<WorkspaceComparison>);
+    }
+}
+
+/**
+ * WorkspaceState dice se la cartella isolata esiste ancora e può essere usata.
+ */
+export enum WorkspaceState {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * WorkspaceReady: il worktree esiste ed è la directory di lavoro del task.
+     */
+    WorkspaceReady = "ready",
+
+    /**
+     * WorkspaceMissing: la cartella è sparita (rimossa a mano, disco esterno rimosso).
+     * Il task resta consultabile: nessuna operazione riparte da sola.
+     */
+    WorkspaceMissing = "missing",
+};
 
 // Private type creation functions
 const $$createType0 = ContextReceipt.createFrom;
@@ -398,5 +1592,30 @@ const $$createType3 = $Create.Array($Create.Any);
 const $$createType4 = Limits.createFrom;
 const $$createType5 = PlanEntry.createFrom;
 const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = Attempt.createFrom;
+const $$createType7 = Observation.createFrom;
 const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = PlanStep.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = PlanRevision.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = PlanStepDraft.createFrom;
+const $$createType14 = $Create.Array($$createType13);
+const $$createType15 = Attempt.createFrom;
+const $$createType16 = $Create.Array($$createType15);
+const $$createType17 = Workspace.createFrom;
+const $$createType18 = $Create.Nullable($$createType17);
+const $$createType19 = Verification.createFrom;
+const $$createType20 = $Create.Array($$createType19);
+const $$createType21 = Evidence.createFrom;
+const $$createType22 = $Create.Array($$createType21);
+const $$createType23 = Plan.createFrom;
+const $$createType24 = $Create.Nullable($$createType23);
+const $$createType25 = ReviewComment.createFrom;
+const $$createType26 = $Create.Array($$createType25);
+const $$createType27 = ScenarioRef.createFrom;
+const $$createType28 = $Create.Array($$createType27);
+const $$createType29 = VerificationHeader.createFrom;
+const $$createType30 = $Create.Array($$createType29);
+const $$createType31 = ServiceLaunch.createFrom;
+const $$createType32 = VerificationWatch.createFrom;
+const $$createType33 = Integration.createFrom;

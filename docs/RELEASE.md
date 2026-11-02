@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in [V1 release scope TODO](../mds/V1-RELEASE-SCOPE-TODO.md). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.0.23 — Code Studio tasks and startup
+
+[Release notes](releases/v1.0.23.md). Native desktop and multi-platform acceptance remain separate from automated verification.
+
 ## v1.0.7 — CPU/RAM recordings and Go memory controls
 
 [Release notes](releases/v1.0.7.md), [measurements and charts](performance/resources-2026-10-19.md). Native monitor acceptance remains RES-1.M1–M3 in `mds/MANUAL-CHECK.md`.

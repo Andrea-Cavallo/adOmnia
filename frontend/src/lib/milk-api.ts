@@ -74,6 +74,8 @@ export interface MilkPermissionEvent {
   title: string
   description: string
   options: MilkPermissionOption[]
+  /** read, write, shell, network or other: what the agent asks to do. */
+  category?: string
 }
 
 export const getMilkStatus = (): Promise<MilkStatus> => MilkBindings.Status()
@@ -92,6 +94,11 @@ export const sendMilkPrompt = (request: MilkPromptRequest): Promise<MilkPromptRe
 export const cancelMilkPrompt = (token: string): Promise<void> => MilkBindings.CancelPrompt(token)
 export const resetMilkSession = (root: string): Promise<void> => MilkBindings.ResetSession(root)
 export const cancelMilkSession = (sessionId: string): Promise<void> => MilkBindings.CancelSession(sessionId)
+/** Permission rules of a project, applied to every agent (milk, Claude Code, Pi) on top of its own. */
+export const getProjectPermissionRules = async (root: string): Promise<Record<string, string>> => clean(await MilkBindings.ProjectPermissionRules(root))
+export const saveProjectPermissionRules = async (root: string, rules: Record<string, string>): Promise<Record<string, string>> => clean(await MilkBindings.SaveProjectPermissionRules(root, rules))
+const clean = (rules: Record<string, string | undefined> | null | undefined): Record<string, string> =>
+  Object.fromEntries(Object.entries(rules ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
 export const respondMilkPermission = (requestId: string, allow: boolean): Promise<void> => MilkBindings.RespondPermission(requestId, allow)
 
 export interface AgentEventHandlers {
