@@ -12,7 +12,8 @@ const statusBarSource = readFileSync(resolve(process.cwd(), 'src/components/layo
 
 describe('Terminal Green skin and hub', () => {
   it('loads as a scoped green treatment with a recoloured adOmnia mark', () => {
-    expect(entrypoint).toContain("import './styles/skin-terminal-green.css'")
+    expect(entrypoint).not.toContain("import './styles/skin-terminal-green.css'")
+    expect(readFileSync(resolve(process.cwd(), 'src/lib/skinStyleLoader.ts'), 'utf8')).toContain("import('@/styles/skin-terminal-green.css')")
     expect(stylesheet).toContain("[data-skin='terminal-green'] img[data-brand-mark]")
     expect(stylesheet).toContain('hue-rotate(235deg)')
     expect(statusBarSource).not.toContain('TERMINAL_GREEN_THEME_ID')

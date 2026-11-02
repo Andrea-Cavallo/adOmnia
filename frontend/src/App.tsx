@@ -33,7 +33,6 @@ const CommandPalette = React.lazy(() => import('@/components/layout/CommandPalet
 // Code Studio (store, API, LSP) resta fuori dal bundle iniziale: la guardia di chiusura serve
 // solo con buffer modificati o processi attivi, impossibili prima del primo frame stabile.
 const CodeStudioCloseGuard = React.lazy(() => import('@/components/code-studio/CodeStudioCloseGuard').then((module) => ({ default: module.CodeStudioCloseGuard })))
-const CodeStudioWarmup = React.lazy(() => import('@/components/code-studio/CodeStudioWarmup').then((module) => ({ default: module.CodeStudioWarmup })))
 // Live Development Session: the debug bar and its overlays load after the first frame, outside the startup bundle.
 const DebugBar = React.lazy(() => import('@/components/devsession/DebugBar').then((module) => ({ default: module.DebugBar })))
 const DevSessionHost = React.lazy(() => import('@/components/devsession/DevSessionHost').then((module) => ({ default: module.DevSessionHost })))
@@ -154,7 +153,6 @@ function App() {
         <EntityNotice />
         <ConfirmDialogHost />
         {firstStableFrame && <Suspense fallback={null}><CodeStudioCloseGuard /></Suspense>}
-        {firstStableFrame && <Suspense fallback={null}><CodeStudioWarmup /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><DevSessionHost /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><UpdateNotice /></Suspense>}
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}

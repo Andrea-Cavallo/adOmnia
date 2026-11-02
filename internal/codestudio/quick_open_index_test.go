@@ -129,3 +129,24 @@ func TestShutdownStopsPendingIndexWarm(t *testing.T) {
 	case <-time.After(60 * time.Millisecond):
 	}
 }
+
+func TestQuickOpenBuildsOnlyOnDemand(t *testing.T) {
+	root := writeOpenFixture(t, 100)
+	service := NewService(&memoryStore{}, nil)
+	t.Cleanup(service.Shutdown)
+	session, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := service.GetWorkspaceLoadPerformance()["fileIndexBuildCount"]; got != 0 {
+		t.Fatalf("index built before search: %v", got)
+	}
+	first := quickOpenNames(t, service, session.ID, "")
+	if len(first) == 0 {
+		t.Fatal("first search returned no results")
+	}
+	quickOpenNames(t, service, session.ID, "")
+	if got := service.GetWorkspaceLoadPerformance()["fileIndexBuildCount"]; got != 1 {
+		t.Fatalf("expected a single cached build: %v", got)
+	}
+}

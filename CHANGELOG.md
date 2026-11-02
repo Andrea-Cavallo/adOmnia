@@ -6,6 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.23] — 2026-11-02
+
+Release notes: [docs/releases/v1.0.23.md](docs/releases/v1.0.23.md).
+
+### Startup
+
+- Load Monaco, Code Studio tools and optional skin styles on demand. Restore project units outside the startup path; avoid background Quick Open scans and unnecessary language-server and Docker probes.
+- Disable WebView2 background networking and component updates.
+
 ### Agent Tasks: isolated workspace, verifications and evidence (Code Studio)
 
 - **Isolated workspace per task.** *Create workspace* makes a Git worktree (branch `adomnia/<task>`) from the commit, branch or tag you choose, under the app data folder. The agent, its verifications and the review work there; the project's working tree is never touched. The task shows repository, branch, starting commit, folder and pending changes; associations are reconciled with `git worktree list` at startup, and removal never forces past unsaved work.

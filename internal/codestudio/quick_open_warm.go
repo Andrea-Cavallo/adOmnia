@@ -5,10 +5,9 @@ import (
 	"time"
 )
 
-// defaultIndexWarmDelay sposta la costruzione dell'indice Quick Open fuori dal percorso dell'utente:
-// parte dopo il watcher e dopo i primi secondi dall'apertura, così la prima ricerca trova l'indice pronto
-// senza rubare CPU all'apertura. Zero o negativo la disattiva (test).
-var defaultIndexWarmDelay = 2 * time.Second
+// Quick Open builds and caches its file index on demand. Hidden/restored sessions do not scan twice
+// (watcher plus index) just because the application has become idle. Tests can opt into warming.
+var defaultIndexWarmDelay time.Duration
 
 // indexWarmer tiene un timer per sessione; chiusura e shutdown lo fermano prima che parta.
 type indexWarmer struct {

@@ -288,6 +288,10 @@ func desktopAssetHandler(next http.Handler) http.Handler {
 // webviewBrowserArgs are the WebView2 flags. ADOMNIA_WEBVIEW2_ARGS appends space-separated
 // flags for measuring startup and memory variants without a rebuild (development only).
 func webviewBrowserArgs() []string {
-	args := []string{"--js-flags=--max-old-space-size=512"}
+	args := []string{
+		"--js-flags=--max-old-space-size=512",
+		"--disable-background-networking",
+		"--disable-component-update",
+	}
 	return append(args, strings.Fields(os.Getenv("ADOMNIA_WEBVIEW2_ARGS"))...)
 }

@@ -1,3 +1,4 @@
+import { loadSkinStyles } from '@/lib/skinStyleLoader'
 import { jsonColorTokens } from '@/lib/jsonColors'
 import { personalColors } from '@/lib/personalAppearance'
 import { accentHue, validAccent, luminance } from '@/lib/accentPalette'
@@ -116,6 +117,7 @@ function syncDocumentMode(theme: Theme) {
   // and the matching stylesheet keys off this attribute. Themes without one
   // clear it, so switching away removes the treatment.
   const skin = theme.meta?.skin
+  void loadSkinStyles(skin).catch(error => console.error('[ThemeProvider] Skin styles failed to load', error))
   if (skin) html.setAttribute('data-skin', skin)
   else html.removeAttribute('data-skin')
   // Canvas-based consumers (Monaco) cannot read CSS variables: tell them to re-sample.
