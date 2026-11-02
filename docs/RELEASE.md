@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in [V1 release scope TODO](../mds/V1-RELEASE-SCOPE-TODO.md). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.0.24 — Windows installer and install-aware updates
+
+[Release notes](releases/v1.0.24.md). The installer still needs a first run on a physical Windows machine.
+
 ## v1.0.23 — Code Studio tasks and startup
 
 [Release notes](releases/v1.0.23.md). Native desktop and multi-platform acceptance remain separate from automated verification.

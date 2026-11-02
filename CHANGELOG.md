@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.24] — 2026-11-02
+
+Release notes: [docs/releases/v1.0.24.md](docs/releases/v1.0.24.md).
+
 ### Install and update
 
 - Windows installer (`adomnia-<version>-windows-amd64-setup.exe`): per-user install with no admin rights, Start menu and optional desktop shortcut, entry in Installed apps, upgrade over an installed copy, uninstaller that keeps your data unless you ask, WebView2 check, silent `/S` mode.
