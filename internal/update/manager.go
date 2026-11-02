@@ -330,7 +330,16 @@ func (m *Manager) Download() (State, error) {
 	selected := m.selected
 	m.mu.Unlock()
 	go func() {
-		defer func() { cancel(); m.mu.Lock(); m.busy = false; m.cancel = nil; m.mu.Unlock() }()
+		defer func() {
+			cancel()
+			m.mu.Lock()
+			m.busy = false
+			m.cancel = nil
+			if m.prepared != "" && m.state.Phase == "verifying" {
+				m.state.Phase = "ready"
+			}
+			m.mu.Unlock()
+		}()
 		if err := m.download(ctx, selected); err != nil {
 			if errors.Is(err, context.Canceled) {
 				m.mu.Lock()
@@ -370,6 +379,9 @@ func (m *Manager) fetchBody(ctx context.Context, raw string, limit int64) ([]byt
 	return b, e
 }
 func (m *Manager) download(ctx context.Context, r release) error {
+	if m.reusePrepared(ctx, r) {
+		return nil
+	}
 	manifestURL := ""
 	for _, a := range r.Assets {
 		if a.Name == "update-manifest.json" {
@@ -475,8 +487,9 @@ func (m *Manager) download(ctx context.Context, r release) error {
 	m.mu.Lock()
 	m.prepared = stage
 	m.asset = asset
-	m.state.Phase = "ready"
+	m.state.Phase = "verifying"
 	m.mu.Unlock()
+	m.rememberPrepared(stage)
 	return nil
 }
 

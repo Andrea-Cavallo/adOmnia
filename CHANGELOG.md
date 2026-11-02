@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Updates
+
+- Optional **Install downloaded updates when I close adOmnia**, separate from automatic downloads; the save and running-task checks still apply. Postponing turns it off.
+- Repeated checks and downloads are coalesced, and a verified download is reused after a restart (signature, version and hash are checked again).
+
 ## [1.0.24] — 2026-11-02
 
 Release notes: [docs/releases/v1.0.24.md](docs/releases/v1.0.24.md).

@@ -36,6 +36,7 @@ export interface AppSettings {
   general: {
     autoCheckUpdates?: boolean
     autoDownloadUpdates?: boolean
+    installUpdatesOnExit?: boolean
     updateChannel?: 'auto' | 'stable' | 'beta'
     confirmBeforeClosingDirtyTabs: boolean
     restoreTabsOnStartup: boolean
@@ -222,6 +223,7 @@ const defaultSettings: AppSettings = {
   general: {
     autoCheckUpdates: true,
     autoDownloadUpdates: true,
+    installUpdatesOnExit: false,
     updateChannel: 'auto',
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
