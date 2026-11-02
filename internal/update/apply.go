@@ -288,9 +288,14 @@ func verifyArchive(path string, asset Asset) error {
 	if err != nil {
 		return err
 	}
+	defer archive.Close()
+	return verifyArchiveReader(archive, asset)
+}
+
+// verifyArchiveReader checks size and SHA-256 of an already opened archive.
+func verifyArchiveReader(archive io.Reader, asset Asset) error {
 	hash := sha256.New()
 	n, err := io.Copy(hash, io.LimitReader(archive, maxPackageSize+1))
-	archive.Close()
 	if err != nil || n != asset.Size || hex.EncodeToString(hash.Sum(nil)) != strings.ToLower(asset.SHA256) {
 		return errors.New("staged update checksum rejected")
 	}

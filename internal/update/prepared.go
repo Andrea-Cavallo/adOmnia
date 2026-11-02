@@ -27,12 +27,17 @@ func (m *Manager) reusePrepared(ctx context.Context, r release) bool {
 	if filepath.Base(name) != name || !strings.HasPrefix(name, "verified-") || strings.ContainsAny(name, `/\`) {
 		return false
 	}
-	stage := filepath.Join(m.dir, name)
-	info, err := os.Lstat(stage)
+	// os.Root keeps every access below the updater's own directory.
+	root, err := os.OpenRoot(m.dir)
+	if err != nil {
+		return false
+	}
+	defer root.Close()
+	info, err := root.Lstat(name)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return false
 	}
-	raw, err := os.ReadFile(stage + ".json")
+	raw, err := root.ReadFile(name + ".json")
 	if err != nil {
 		return false
 	}
@@ -44,9 +49,15 @@ func (m *Manager) reusePrepared(ctx context.Context, r release) bool {
 	if err != nil || asset.Size > maxPackageSize || !allowedURL(asset.URL) {
 		return false
 	}
-	if err := verifyArchive(stage+".zip", asset); err != nil || ctx.Err() != nil {
+	archive, err := root.Open(name + ".zip")
+	if err != nil {
 		return false
 	}
+	defer archive.Close()
+	if err := verifyArchiveReader(archive, asset); err != nil || ctx.Err() != nil {
+		return false
+	}
+	stage := filepath.Join(m.dir, name)
 	m.mu.Lock()
 	m.prepared, m.asset = stage, asset
 	m.state.Phase = "verifying"
