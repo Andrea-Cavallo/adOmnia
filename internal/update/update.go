@@ -1,10 +1,8 @@
-// Package update checks GitHub Releases for a newer adOmnia version.
+// Package update keeps adOmnia current from GitHub Releases.
 //
-// Notify-only: queried on an explicit user action from Settings > About, never
-// at startup; no download or self-replace.
-// ponytail: notify + open page. Assisted download / auto-replace is the upgrade
-// path if users ask, but a portable cross-platform self-updater is days of work
-// and risks breaking the install.
+// Manager checks, downloads and verifies a signed release, and the helper in
+// apply.go swaps it in with a startup rollback. DetectInstall decides whether this
+// copy may update itself. Check below is the older notify-only query.
 package update
 
 import (

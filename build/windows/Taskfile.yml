@@ -34,6 +34,13 @@ tasks:
     cmds:
       - cmd: echo "Built {{.BIN_DIR}}/{{.APP_NAME}}.exe"
 
+  installer:
+    summary: Build the per-user setup.exe (needs NSIS) into dist/ from the executable built by `build`.
+    deps:
+      - task: build
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1 -Version "{{.WINDOWS_VERSION}}"
+
   run:
     cmds:
       - '{{.BIN_DIR}}/{{.APP_NAME}}.exe'

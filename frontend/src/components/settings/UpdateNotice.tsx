@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ArrowDownToLine, FileText, ShieldCheck, X } from 'lucide-react'
+import { Browser } from '@wailsio/runtime'
 import { DialogOverlay } from '@/components/ui/dialog'
 import { useUpdaterStore } from '@/stores/updater'
 import { restartForUpdate } from '@/lib/updateRestart'
@@ -13,6 +14,7 @@ export default function UpdateNotice() {
  const ready = status.phase === 'ready'
  const busy = ['downloading','verifying'].includes(status.phase)
  const rollback = status.phase === 'rollback'
+ const manual = status.phase === 'available' && !status.install.selfUpdate
  const close = () => { if(!restarting)setDismissed(key) }
  const progress = status.total > 0 ? Math.min(100,Math.floor(status.received/status.total*100)) : 0
  const problem = restartError || error || status.error
@@ -29,14 +31,15 @@ export default function UpdateNotice() {
     <div className="update-nothing-glyph" aria-hidden="true">{ready?<ShieldCheck size={42} strokeWidth={1}/>:<ArrowDownToLine size={42} strokeWidth={1}/>}</div>
     <p className="update-nothing-version">ADOMNIA / {status.version || 'UPDATE'}</p>
     <h2 id="update-title">{rollback?'UPDATE RESTORED.':ready?'READY TO EVOLVE.':busy?'GETTING READY.':status.phase==='error'?'LET’S TRY AGAIN.':'NEXT VERSION.'}</h2>
-    <p id="update-description">{rollback?`Update failed; restored ${status.restoredVersion || 'the previous version'}${status.failedVersion ? ` after ${status.failedVersion} could not start` : ''}. Your local data was preserved.`:ready?'Your update is verified. Save and restart to replace the application. Your workspaces, collections and settings stay on this computer.':busy?'Downloading and verifying your update. You can keep working while it finishes.':'A new version is available. Download it securely, then choose when to restart.'}</p>
+    <p id="update-description">{rollback?`Update failed; restored ${status.restoredVersion || 'the previous version'}${status.failedVersion ? ` after ${status.failedVersion} could not start` : ''}. Your local data was preserved.`:ready?'Your update is verified. Save and restart to replace the application. Your workspaces, collections and settings stay on this computer.':busy?'Downloading and verifying your update. You can keep working while it finishes.':manual?status.install.reason:'A new version is available. Download it securely, then choose when to restart.'}</p>
     {busy && <div className="update-nothing-progress" role="status"><div className="flex justify-between"><span>{status.phase==='verifying'?'VERIFYING SIGNATURE':'DOWNLOADING'}</span><span>{progress}%</span></div><progress aria-label="Update download" max={100} value={progress}/><p>{(status.received/1048576).toFixed(1)} / {(status.total/1048576).toFixed(1)} MB</p></div>}
     {ready && <p className="update-nothing-trust"><ShieldCheck size={14}/> SIGNATURE VERIFIED · RECOVERY ENABLED</p>}
     {(problem || status.failureReason) && <p role="alert" className="update-nothing-error">{status.failureReason || problem}</p>}
    </div>
    <footer><button disabled={restarting} onClick={close}>Later</button>
     {status.phase==='downloading' && <button onClick={()=>void cancel()}>Cancel download</button>}
-    {status.phase==='available' && status.trusted && <button className="update-nothing-primary" onClick={()=>void download()}>Download update ↗</button>}
+    {status.phase==='available' && status.trusted && !manual && <button className="update-nothing-primary" onClick={()=>void download()}>Download update ↗</button>}
+    {manual && status.releaseUrl && <button className="update-nothing-primary" onClick={()=>void Browser.OpenURL(status.releaseUrl)}>Open download page ↗</button>}
     {status.phase==='error' && <button className="update-nothing-primary" onClick={()=>void check(true)}>Try again ↗</button>}
     {rollback && status.applyLogAvailable && <button className="update-nothing-primary" onClick={()=>void openApplyLog()}><FileText size={14}/>Open apply.log</button>}
     {ready && <button className="update-nothing-primary" disabled={restarting} onClick={()=>void restart()}>{restarting?'Saving your work…':'Save & restart ↗'}</button>}
