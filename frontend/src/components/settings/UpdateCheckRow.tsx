@@ -2,6 +2,8 @@ import { RefreshCw, Download, X } from 'lucide-react'
 import { useUpdaterStore } from '@/stores/updater'
 import { useSettingsStore } from '@/stores/settings'
 import { BrowserOpenURL } from '@/wailsjs/runtime/runtime'
+import { restartForUpdate } from '@/lib/updateRestart'
+import { useState } from 'react'
 
 const INSTALL_LABELS: Record<string, string> = {
  installer: 'Installed with the Windows installer · updates replace it in place',
@@ -13,6 +15,13 @@ export function UpdateCheckRow() {
  const {status,error,check,download,cancel,schedule} = useUpdaterStore()
  const general = useSettingsStore(s=>s.settings.general)
  const updateGeneral = useSettingsStore(s=>s.updateGeneral)
+ const [restarting, setRestarting] = useState(false)
+ const restart = async () => {
+  setRestarting(true)
+  try { await restartForUpdate() }
+  catch (problem) { useUpdaterStore.setState({ error: problem instanceof Error ? problem.message : String(problem) }) }
+  finally { setRestarting(false) }
+ }
  const busy = ['checking','downloading','verifying'].includes(status.phase)
  const selfUpdate = status.install.selfUpdate
  const progress = status.total > 0 ? Math.min(100,Math.floor(status.received/status.total*100)) : 0
@@ -27,7 +36,11 @@ export function UpdateCheckRow() {
     <option value="auto">Follow installed version</option><option value="stable">Stable</option><option value="beta">Beta + stable</option>
    </select>
   </div>
-  <label className="flex items-start gap-2 text-xs text-text-2"><input type="checkbox" checked={general.autoDownloadUpdates !== false} disabled={!selfUpdate} onChange={e=>{updateGeneral({autoDownloadUpdates:e.target.checked});if(!e.target.checked&&status.scheduled)void schedule(false)}}/>Download verified updates in the background (installing always asks first)</label>
+  <label className="flex items-start gap-2 text-xs text-text-2"><input type="checkbox" checked={general.autoDownloadUpdates !== false} disabled={!selfUpdate} onChange={e=>{updateGeneral({autoDownloadUpdates:e.target.checked,...(!e.target.checked ? {installUpdatesOnExit:false} : {})});if(!e.target.checked&&status.scheduled)void schedule(false)}}/>Download verified updates in the background (installing always asks first)</label>
+  <label className="flex items-start gap-2 text-xs text-text-2"><input type="checkbox" checked={general.installUpdatesOnExit === true} disabled={!selfUpdate} onChange={e=>{
+   updateGeneral({installUpdatesOnExit:e.target.checked,...(e.target.checked ? {autoDownloadUpdates:true} : {})})
+   if (status.phase==='ready') void schedule(e.target.checked)
+  }}/>Install downloaded updates when I close adOmnia, then reopen it</label>
   <p className="text-xs text-text-3">{selfUpdate ? INSTALL_LABELS[status.install.kind] : status.install.reason}</p>
   <div role="status" aria-live="polite" className="text-xs text-text-3">
    {error || status.error || (status.scheduled ? `${status.version} ready — will update and restart after you close adOmnia` : ({idle:'Checks at startup and every six hours while open',dev:'Development build — updates skipped',checking:'Checking…',current:'No newer signed release for this channel',available:`${status.version} available`,downloading:`Downloading ${status.version}: ${progress}%`,verifying:'Verifying update package…',ready:`${status.version} ready to install`} as Record<string,string>)[status.phase])}
@@ -38,7 +51,8 @@ export function UpdateCheckRow() {
    {status.phase==='available' && status.trusted && selfUpdate && <button className="flex items-center gap-1.5 text-xs text-accent" onClick={()=>void download()}><Download size={12}/>Download update</button>}
    {status.phase==='available' && !selfUpdate && status.releaseUrl && <button className="flex items-center gap-1.5 text-xs text-accent" onClick={()=>BrowserOpenURL(status.releaseUrl)}><Download size={12}/>Download installer</button>}
    {status.phase==='downloading' && <button className="flex items-center gap-1.5 text-xs text-text-2" onClick={()=>void cancel()}><X size={12}/>Cancel download</button>}
-   {status.phase==='ready' && <button className="text-xs text-accent" onClick={()=>void schedule(!status.scheduled)}>{status.scheduled?'Postpone update':'Install on exit'}</button>}
+   {status.phase==='ready' && <button className="text-xs text-accent disabled:opacity-50" disabled={restarting} onClick={()=>void restart()}>{restarting?'Saving…':'Save & restart'}</button>}
+   {status.phase==='ready' && <button className="text-xs text-accent" disabled={restarting} onClick={()=>{if(status.scheduled)updateGeneral({installUpdatesOnExit:false});void schedule(!status.scheduled)}}>{status.scheduled?'Postpone update':'Install on exit'}</button>}
    {status.releaseUrl && <button className="text-xs text-accent" onClick={()=>BrowserOpenURL(status.releaseUrl)}>Release notes</button>}
   </div>
  </div>

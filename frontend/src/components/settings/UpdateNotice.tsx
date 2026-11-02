@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ArrowDownToLine, FileText, ShieldCheck, X } from 'lucide-react'
 import { Browser } from '@wailsio/runtime'
 import { DialogOverlay } from '@/components/ui/dialog'
+import { useSettingsStore } from '@/stores/settings'
 import { useUpdaterStore } from '@/stores/updater'
 import { restartForUpdate } from '@/lib/updateRestart'
 import './updateNotice.css'
@@ -44,7 +45,7 @@ export default function UpdateNotice() {
     {rollback && status.applyLogAvailable && <button className="update-nothing-primary" onClick={()=>void openApplyLog()}><FileText size={14}/>Open apply.log</button>}
     {ready && <button className="update-nothing-primary" disabled={restarting} onClick={()=>void restart()}>{restarting?'Saving your work…':'Save & restart ↗'}</button>}
    </footer>
-   {ready && <button className="update-nothing-postpone" disabled={restarting} onClick={()=>void schedule(!status.scheduled)}>{status.scheduled?'Install on exit is enabled · click to postpone':'Install the next time I close adOmnia'}</button>}
+   {ready && <button className="update-nothing-postpone" disabled={restarting} onClick={()=>{if(status.scheduled)useSettingsStore.getState().updateGeneral({installUpdatesOnExit:false});void schedule(!status.scheduled)}}>{status.scheduled?'Install on exit is enabled · click to postpone':'Install the next time I close adOmnia'}</button>}
   </section>
  </DialogOverlay>
 }

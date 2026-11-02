@@ -17,6 +17,8 @@ Release files:
 | Linux | [`adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
 | macOS | [`adomnia-<version>-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
 
+The Windows setup installs for the current user in `%LOCALAPPDATA%\Programs\adOmnia`, creates a Start menu entry and registers an uninstaller in Windows Settings. A desktop shortcut is optional. No administrator access is requested. If WebView2 is missing, Setup runs the bundled, Microsoft-signed Evergreen bootstrapper; that step needs internet access. Close adOmnia before reinstalling or uninstalling: Setup refuses to replace a locked application. Uninstallation leaves workspaces, settings and unrelated files intact. The portable `adomnia-<version>-windows-amd64.exe` remains available.
+
 ## Install or update with a script
 
 Official releases also include `install.sh` and `install.ps1`. Download the script,
@@ -67,6 +69,12 @@ After the Ed25519 signature and the SHA-256 checksum are verified, choose **Save
 restart** or **Install on exit**. **Later** leaves the application unchanged. The
 updater keeps your local data, keeps the previous application while the new one
 starts, and restores it if the new build does not confirm a successful startup.
+
+**Install downloaded updates when I close adOmnia** (off by default) lets a verified
+update install on exit without asking each time; turning it on also turns on background
+downloads. **Postpone update** turns it off. Repeated checks and downloads are
+coalesced, and a verified download is reused after a restart once its signature and
+hash are checked again.
 
 How adOmnia updates depends on how it was installed; Settings shows which case applies:
 

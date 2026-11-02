@@ -1,0 +1,99 @@
+{
+  "date": "2026-11-02",
+  "machine": "Intel i7-14700KF (28 threads), 64 GB, Windows 11 Pro",
+  "project": "adOmnia repository (45,958 files on disk)",
+  "adomnia": [
+    {
+      "run": 1,
+      "windowMs": 554,
+      "readyMs": 8292,
+      "cpuSeconds": 5.67,
+      "ussMB": 570,
+      "idleCpuPct": 2,
+      "quitMs": 68
+    },
+    {
+      "run": 2,
+      "windowMs": 477,
+      "readyMs": 9338,
+      "cpuSeconds": 5.98,
+      "ussMB": 475,
+      "idleCpuPct": 2.3,
+      "quitMs": 64
+    },
+    {
+      "run": 3,
+      "windowMs": 456,
+      "readyMs": 8112,
+      "cpuSeconds": 5.84,
+      "ussMB": 477,
+      "idleCpuPct": 1.8,
+      "quitMs": 63
+    },
+    {
+      "run": 4,
+      "windowMs": 471,
+      "readyMs": 8764,
+      "cpuSeconds": 5.53,
+      "ussMB": 569,
+      "idleCpuPct": 1.5,
+      "quitMs": 62
+    },
+    {
+      "run": 5,
+      "windowMs": 488,
+      "readyMs": 8302,
+      "cpuSeconds": 5.64,
+      "ussMB": 472,
+      "idleCpuPct": 1.5,
+      "quitMs": 60
+    }
+  ],
+  "intellij_idea_2026_2_4": [
+    {
+      "run": 1,
+      "windowMs": 569,
+      "readyMs": 24357,
+      "cpuSeconds": 215.09,
+      "ussMB": 3541,
+      "idleCpuPct": 4.3,
+      "quitMs": 3378
+    },
+    {
+      "run": 2,
+      "windowMs": 625,
+      "readyMs": 20438,
+      "cpuSeconds": 52,
+      "ussMB": 1906,
+      "idleCpuPct": 4.9,
+      "quitMs": 3145
+    },
+    {
+      "run": 3,
+      "windowMs": 604,
+      "readyMs": 14831,
+      "cpuSeconds": 48.08,
+      "ussMB": 1924,
+      "idleCpuPct": 2.9,
+      "quitMs": 3129
+    },
+    {
+      "run": 4,
+      "windowMs": 618,
+      "readyMs": 13379,
+      "cpuSeconds": 51.47,
+      "ussMB": 2118,
+      "idleCpuPct": 6.3,
+      "quitMs": 3130
+    },
+    {
+      "run": 5,
+      "windowMs": 608,
+      "readyMs": 19929,
+      "cpuSeconds": 50.64,
+      "ussMB": 1999,
+      "idleCpuPct": 4.1,
+      "quitMs": 3136
+    }
+  ]
+}

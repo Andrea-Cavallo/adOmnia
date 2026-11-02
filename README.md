@@ -60,6 +60,21 @@ AI agents now write a large share of backend code. Checking it is the slow part:
 
 adOmnia puts that loop in one window. It reads your routes from the code, so the API client and the debugger already know which service and handler a request belongs to.
 
+## Opening a large project: adOmnia vs IntelliJ IDEA
+
+On **2026-11-02**, adOmnia and IntelliJ IDEA 2026.2.4 each opened the adOmnia repository five times: **45,958 files** (3.3 GB) in 3,409 folders, of which 3,803 are tracked by Git (1,458 `.go`, 1,836 `.ts`/`.tsx`) and 27,980 are in `node_modules`. Same machine (i7-14700KF, 64 GB, Windows 11), same script, whole process tree measured. End state for both: project open, file tree visible, no file open.
+
+| Median of 5 | adOmnia | IntelliJ IDEA | |
+| --- | ---: | ---: | --- |
+| Window visible | **477 ms** | 608 ms | 1.3× faster |
+| Ready (tree CPU < 5 % for 1 s) | **8.3 s** | 19.9 s | 2.4× faster |
+| CPU spent to get there | **5.7 s** | 51.5 s | 9× less |
+| RAM, whole tree | **477 MB** | 2.0 GB | 4.2× less |
+| Idle CPU after ready | **1.8 %** | 4.3 % | |
+| Close | **63 ms** | 3.1 s | 50× faster |
+
+IntelliJ indexes the whole project, `node_modules` included, for search and refactoring across languages. adOmnia relies on the language servers instead. The comparison is about what you wait for and what it costs to get a project ready, not about matching features. Per-run numbers, method and notes: [vs-intellij-2026-11-02.md](docs/performance/vs-intellij-2026-11-02.md).
+
 ## Try it in 2 minutes
 
 <p align="center">
