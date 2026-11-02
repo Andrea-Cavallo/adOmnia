@@ -4,9 +4,10 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // jdtSettings sono le impostazioni che JDT LS legge con workspace/configuration: i JDK installati (cosÃ¬ un progetto

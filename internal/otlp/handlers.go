@@ -3,9 +3,10 @@ package otlp
 import (
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"strconv"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // receiver is the process-wide trace receiver behind the sidecar endpoints.

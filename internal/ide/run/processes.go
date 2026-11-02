@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	processcore "github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io"
 	"os/exec"
 	"slices"
@@ -16,6 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
+
+	processcore "github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (

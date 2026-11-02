@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"path/filepath"
+	"strings"
+	"sync/atomic"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
 	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
 	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
@@ -19,10 +24,6 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
-	"log"
-	"path/filepath"
-	"strings"
-	"sync/atomic"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/windowchrome"
 	"github.com/wailsapp/wails/v3/pkg/application"

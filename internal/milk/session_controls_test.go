@@ -5,13 +5,14 @@ import (
 	"encoding/base64"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestSessionControlUsesAdvertisedModelAndDoesNotCrossProjects(t *testing.T) {

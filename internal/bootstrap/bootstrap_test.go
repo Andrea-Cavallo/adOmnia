@@ -2,11 +2,12 @@ package bootstrap
 
 import (
 	"encoding/json/v2"
+	"testing"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/collectionsstore"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	bolt "go.etcd.io/bbolt"
-	"testing"
 )
 
 func TestLoadMigratesOnceThenUsesReadOnlyTransactions(t *testing.T) {

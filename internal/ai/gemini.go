@@ -7,8 +7,9 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type geminiProvider struct {

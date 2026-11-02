@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/json/v2"
 	"fmt"
+	"path/filepath"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
-	"path/filepath"
 )
 
 type GitSync struct {

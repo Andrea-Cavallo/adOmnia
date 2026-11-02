@@ -2,9 +2,10 @@ package milk
 
 import (
 	"context"
-	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
 )
 
 // Split so the repository never contains a contiguous credential-shaped string.

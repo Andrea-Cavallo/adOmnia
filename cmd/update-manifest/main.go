@@ -10,12 +10,13 @@ import (
 	"encoding/json/jsontext"
 	"flag"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 )
 
 func main() {

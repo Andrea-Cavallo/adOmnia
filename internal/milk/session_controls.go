@@ -8,14 +8,15 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
-	"github.com/Andrea-Cavallo/adOmnia/internal/airedact"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
+	"github.com/Andrea-Cavallo/adOmnia/internal/airedact"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func (m *Manager) SessionControls(root string) (SessionControls, error) {

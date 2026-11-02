@@ -4,13 +4,14 @@ import (
 	"archive/zip"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Limiti dello scan della repository Maven locale: senza freni è un lavoro da minuti.

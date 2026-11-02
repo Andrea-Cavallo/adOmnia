@@ -2,11 +2,12 @@ package maven
 
 import (
 	"context"
-	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/securityintel"
 )
 
 func TestGradleBuildIsDiscoveredAndResolved(t *testing.T) {

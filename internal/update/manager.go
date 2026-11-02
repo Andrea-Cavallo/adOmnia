@@ -10,9 +10,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
-	"golang.org/x/mod/semver"
 	"io"
 	"net/http"
 	"net/url"
@@ -22,6 +19,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"golang.org/x/mod/semver"
 )
 
 // PublicKey is a pinned Ed25519 public key, injected at build time. An unsigned

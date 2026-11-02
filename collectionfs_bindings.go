@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json/v2"
 	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
-	"path/filepath"
-	"strings"
 )
 
 type CollectionFS struct{}

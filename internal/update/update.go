@@ -10,11 +10,12 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"golang.org/x/mod/semver"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"golang.org/x/mod/semver"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 )

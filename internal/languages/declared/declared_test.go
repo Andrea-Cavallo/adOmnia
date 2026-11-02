@@ -98,6 +98,9 @@ func TestNpmServersPreferAdOmniasToolsFolder(t *testing.T) {
 				t.Fatalf("csharp-ls comes from PATH: %+v", info)
 			}
 		}
+		if a.pinned != nil {
+			continue // pinned downloads: TestPinnedServers
+		}
 		if plan, err := a.InstallPlan(tools); (a.npm != "") != (err == nil) || (err == nil && plan.Arguments[len(plan.Arguments)-1] != a.npm) {
 			t.Fatalf("%s: install plan %+v %v", a.id, plan, err)
 		}

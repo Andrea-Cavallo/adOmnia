@@ -3,8 +3,9 @@
 package vault
 
 import (
-	"golang.org/x/sys/windows"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 func protectKeyFile(data []byte) ([]byte, error) {

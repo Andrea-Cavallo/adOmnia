@@ -2,6 +2,7 @@ package ai
 
 import (
 	"errors"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 
 	"context"

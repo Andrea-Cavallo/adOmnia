@@ -40,6 +40,10 @@ type definition struct {
 	// npm is the pinned package of the first server when npm can install it into adOmnia's tools
 	// folder (the Install… button); empty means the hint is the only way.
 	npm string
+	// pinned is a server adOmnia downloads at a fixed release into its tools folder (Install…).
+	pinned *pinnedServer
+	// tool is a .NET tool adOmnia installs at a pinned version into its tools folder (Install…).
+	tool *dotnetTool
 	// manifests are lower-case file name patterns that make a folder a project unit (CMakeLists.txt, *.csproj).
 	manifests []string
 	// interpreters run one source file (the first found on PATH wins); empty means no script Run.
@@ -120,6 +124,16 @@ func (a adapter) find(toolsRoot string) (server, string, string, bool) {
 			return a.servers[0], binary, "managed", true
 		}
 	}
+	if a.pinned != nil {
+		if binary, args, ok := a.pinned.command(toolsRoot, a.servers[0].args); ok {
+			return server{command: a.servers[0].command, args: args}, binary, "managed", true
+		}
+	}
+	if a.tool != nil {
+		if binary := a.tool.managed(toolsRoot); binary != "" {
+			return a.servers[0], binary, "managed", true
+		}
+	}
 	for _, candidate := range a.servers {
 		if binary, err := lookPath(candidate.command); err == nil {
 			return candidate, binary, "PATH", true
@@ -163,6 +177,12 @@ func (a adapter) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 // InstallPlan installs npm-distributed servers into adOmnia's tools folder, after confirmation.
 // The others come from their ecosystem's installer (dotnet, gem, ghcup…): the notice shows the hint.
 func (a adapter) InstallPlan(toolsRoot string) (lsp.InstallPlan, error) {
+	if a.pinned != nil {
+		return a.pinned.installPlan(toolsRoot, a.id, a.hint)
+	}
+	if a.tool != nil {
+		return a.tool.installPlan(toolsRoot, a.id, a.hint)
+	}
 	if a.npm == "" || toolsRoot == "" {
 		return lsp.InstallPlan{}, fmt.Errorf("%s", a.hint)
 	}

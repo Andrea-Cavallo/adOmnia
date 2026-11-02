@@ -7,11 +7,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func signedFixture(t *testing.T, m Manifest) ([]byte, string) {

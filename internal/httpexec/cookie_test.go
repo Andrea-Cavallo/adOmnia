@@ -2,10 +2,11 @@ package httpexec
 
 import (
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestCookieJarReplaysCookiesWithinRun(t *testing.T) {

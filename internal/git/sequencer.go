@@ -2,10 +2,11 @@ package git
 
 import (
 	"bytes"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // noOpEditorEnv returns env entries that make git use a non-interactive,

@@ -3,13 +3,14 @@ package claudecode
 import (
 	"encoding/json/v2"
 	"errors"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Claude Code legge da sé i suoi settings (l'adapter gli passa user, project e local); adOmnia

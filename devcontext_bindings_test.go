@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
 )
 
 func TestDevContextReactsToGoIDEEvents(t *testing.T) {

@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestInteractiveBidiStreamSendsAndReceivesOneByOne(t *testing.T) {

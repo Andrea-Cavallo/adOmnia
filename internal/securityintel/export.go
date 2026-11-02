@@ -3,11 +3,12 @@ package securityintel
 import (
 	"encoding/json/jsontext"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"html"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Formati di esportazione supportati.
@@ -441,7 +442,7 @@ func HTMLReport(report ScanReport) string {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>adOmnia Security Intelligence — ` + html.EscapeString(report.Workspace) + `</title>
+<title>adOmnia Security Intelligence — `);builder.WriteString(html.EscapeString(report.Workspace));builder.WriteString(`</title>
 <style>
 :root { color-scheme: light dark; }
 body { font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 32px; max-width: 1100px; margin-inline: auto; }
@@ -465,39 +466,35 @@ th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; opacity:
 </head>
 <body>
 <h1>adOmnia Security Intelligence</h1>
-<div class="meta">` + html.EscapeString(report.Workspace) + ` · scanned ` + html.EscapeString(report.ScannedAt) + `</div>
+<div class="meta">`);builder.WriteString(html.EscapeString(report.Workspace));builder.WriteString(` · scanned `);builder.WriteString(html.EscapeString(report.ScannedAt));builder.WriteString(`</div>
 <div class="stats">
-<div class="stat"><b>` + fmt.Sprint(report.Summary.Findings) + `</b>findings</div>
-<div class="stat"><b>` + fmt.Sprint(report.Summary.Critical) + `</b>critical</div>
-<div class="stat"><b>` + fmt.Sprint(report.Summary.High) + `</b>high</div>
-<div class="stat"><b>` + fmt.Sprint(report.Summary.ActivelyExploited) + `</b>exploited in the wild</div>
-<div class="stat"><b>` + fmt.Sprint(report.Summary.Reachable) + `</b>reachable</div>
-<div class="stat"><b>` + fmt.Sprint(report.Summary.FixAvailable) + `</b>with a fix</div>
+<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.Findings));builder.WriteString(`</b>findings</div>
+<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.Critical));builder.WriteString(`</b>critical</div>
+<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.High));builder.WriteString(`</b>high</div>
+<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.ActivelyExploited));builder.WriteString(`</b>exploited in the wild</div>
+<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.Reachable));builder.WriteString(`</b>reachable</div>
+<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.FixAvailable));builder.WriteString(`</b>with a fix</div>
 </div>
 <h2>Findings</h2>
 <table>
 <thead><tr><th>Priority</th><th>Vulnerability</th><th>Component</th><th>Reachability</th><th>Fix</th></tr></thead>
 <tbody>`)
 	for _, finding := range report.Findings {
-		builder.WriteString("<tr><td><span class=\"badge " + html.EscapeString(finding.Risk.Band) + "\">" +
-			html.EscapeString(finding.Risk.Priority) + "</span></td>")
-		builder.WriteString("<td><b>" + html.EscapeString(CanonicalAdvisoryID(finding.Advisory)) + "</b><br>" +
-			html.EscapeString(finding.Advisory.Summary) + "<ul class=\"reasons\">")
+		builder.WriteString("<tr><td><span class=\"badge ");builder.WriteString(html.EscapeString(finding.Risk.Band));builder.WriteString("\">");builder.WriteString(html.EscapeString(finding.Risk.Priority));builder.WriteString("</span></td>")
+		builder.WriteString("<td><b>");builder.WriteString(html.EscapeString(CanonicalAdvisoryID(finding.Advisory)));builder.WriteString("</b><br>");builder.WriteString(html.EscapeString(finding.Advisory.Summary));builder.WriteString("<ul class=\"reasons\">")
 		for _, reason := range finding.Risk.Reasons {
-			builder.WriteString("<li>" + html.EscapeString(reason) + "</li>")
+			builder.WriteString("<li>");builder.WriteString(html.EscapeString(reason));builder.WriteString("</li>")
 		}
 		builder.WriteString("</ul></td>")
-		builder.WriteString("<td class=\"mono\">" + html.EscapeString(finding.Component.Name) + "<br>" +
-			html.EscapeString(finding.Component.Version) + "</td>")
-		builder.WriteString("<td>" + html.EscapeString(finding.Reachability.Label()) + "</td>")
-		builder.WriteString("<td class=\"mono\">" + html.EscapeString(finding.Remediation.FixedVersion) + "</td></tr>")
+		builder.WriteString("<td class=\"mono\">");builder.WriteString(html.EscapeString(finding.Component.Name));builder.WriteString("<br>");builder.WriteString(html.EscapeString(finding.Component.Version));builder.WriteString("</td>")
+		builder.WriteString("<td>");builder.WriteString(html.EscapeString(finding.Reachability.Label()));builder.WriteString("</td>")
+		builder.WriteString("<td class=\"mono\">");builder.WriteString(html.EscapeString(finding.Remediation.FixedVersion));builder.WriteString("</td></tr>")
 	}
 	builder.WriteString(`</tbody></table>
 <h2>Data sources</h2>
 <table><thead><tr><th>Source</th><th>Endpoint</th><th>Last updated</th></tr></thead><tbody>`)
 	for _, source := range report.Sources {
-		builder.WriteString("<tr><td>" + html.EscapeString(source.Name) + "</td><td class=\"mono\">" +
-			html.EscapeString(source.Endpoint) + "</td><td>" + html.EscapeString(source.LastUpdated) + "</td></tr>")
+		builder.WriteString("<tr><td>");builder.WriteString(html.EscapeString(source.Name));builder.WriteString("</td><td class=\"mono\">");builder.WriteString(html.EscapeString(source.Endpoint));builder.WriteString("</td><td>");builder.WriteString(html.EscapeString(source.LastUpdated));builder.WriteString("</td></tr>")
 	}
 	builder.WriteString(`</tbody></table>
 </body>

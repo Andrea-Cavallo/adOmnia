@@ -2,8 +2,9 @@
 package httputil
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // JSONError writes the standard sidecar error payload.

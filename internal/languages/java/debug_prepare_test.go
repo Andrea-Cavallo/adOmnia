@@ -4,13 +4,14 @@ import (
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestDebugRuntimeBuildsMainBeforeLaunchingJava(t *testing.T) {

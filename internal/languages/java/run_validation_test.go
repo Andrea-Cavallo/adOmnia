@@ -2,8 +2,9 @@ package java
 
 import (
 	"encoding/json"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func TestRunConfigurationValidationWithoutLaunchingTools(t *testing.T) {
