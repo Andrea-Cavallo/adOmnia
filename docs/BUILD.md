@@ -49,6 +49,21 @@ VERSION=1.2.3 BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" GIT_COMMIT="$(git rev-
 Windows produces `bin/adomnia.exe`. macOS packaging produces an `.app` bundle;
 use `scripts/build-macos.sh <version>` on a macOS host for the universal DMG.
 
+### Windows installer
+
+The per-user setup (`build/windows/installer/adomnia.nsi`) needs NSIS 3
+(`winget install NSIS.NSIS` or `choco install nsis`):
+
+```powershell
+$env:VERSION = "1.2.3"; wails3 task windows:installer
+# or, from an existing bin\adomnia.exe:
+./scripts/build-windows-installer.ps1 -Version 1.2.3
+```
+
+It writes `dist/adomnia-<version>-windows-amd64-setup.exe`. The script also
+compiles on Linux with `makensis` (`apt install nsis`) for a quick syntax check:
+`makensis -WX -DVERSION=1.2.3 -DVI_VERSION=1.2.3.0 build/windows/installer/adomnia.nsi`.
+
 ## Linux
 
 Local builds (`./build.sh` or `wails3 task build`) use Wails 3's default
@@ -119,6 +134,18 @@ from Windows or Linux is not supported because Wails needs Xcode and CGO.
 installed application (`internal/update/trust.go` or the build-time
 `internal/update.PublicKey` override). Keep the private key out of source control.
 Unsigned/missing manifests are not installable by the in-app updater.
+
+The Windows job also builds the setup with `scripts/build-windows-installer.ps1`.
+When the `WINDOWS_CERTIFICATE` (base64 `.pfx`) and `WINDOWS_CERTIFICATE_PASSWORD`
+secrets are set, `scripts/sign-windows.ps1` Authenticode-signs `adomnia.exe` before
+it is packaged, then the setup; without them the binaries stay unsigned and the
+job only logs a notice. The PR build compiles the same installer, so a broken
+script fails the PR, not the release.
+
+The release is uploaded as a draft and published in a final step, after a check
+that every download and `update-manifest.json` are present: the in-app updater
+and the install scripts never see a half-uploaded release. The tag must be
+`v<major>.<minor>.<patch>[-prerelease]`; any other tag fails the first job.
 
 The workflow includes `scripts/install.sh` and `scripts/install.ps1` in release
 assets before generating `SHA256SUMS.txt`. These bootstrap scripts check release

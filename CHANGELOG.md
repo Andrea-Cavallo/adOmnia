@@ -6,6 +6,17 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.24] — 2026-11-02
+
+Release notes: [docs/releases/v1.0.24.md](docs/releases/v1.0.24.md).
+
+### Install and update
+
+- Windows installer (`adomnia-<version>-windows-amd64-setup.exe`): per-user install with no admin rights, Start menu and optional desktop shortcut, entry in Installed apps, upgrade over an installed copy, uninstaller that keeps your data unless you ask, WebView2 check, silent `/S` mode.
+- The updater knows how adOmnia was installed. An installed copy updates in place and keeps the version in Installed apps current. A copy in a read-only folder or managed by a package manager is never downloaded for; adOmnia links the release instead.
+- Verified updates download in the background by default (switched on once for existing settings). Installing still waits for **Save & restart** or **Install on exit**.
+- Releases are uploaded as drafts and published only once every download and the signed manifest are present. Windows binaries are Authenticode-signed when a certificate is configured.
+
 ## [1.0.23] — 2026-11-02
 
 Release notes: [docs/releases/v1.0.23.md](docs/releases/v1.0.23.md).

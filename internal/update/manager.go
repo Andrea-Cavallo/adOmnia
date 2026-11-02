@@ -60,20 +60,21 @@ type release struct {
 	Assets     []releaseAsset `json:"assets"`
 }
 type State struct {
-	Phase             string `json:"phase"`
-	Version           string `json:"version"`
-	Channel           string `json:"channel"`
-	ReleaseURL        string `json:"releaseUrl"`
-	Notes             string `json:"notes"`
-	Received          int64  `json:"received"`
-	Total             int64  `json:"total"`
-	Error             string `json:"error"`
-	Trusted           bool   `json:"trusted"`
-	Scheduled         bool   `json:"scheduled"`
-	FailedVersion     string `json:"failedVersion"`
-	RestoredVersion   string `json:"restoredVersion"`
-	FailureReason     string `json:"failureReason"`
-	ApplyLogAvailable bool   `json:"applyLogAvailable"`
+	Phase             string  `json:"phase"`
+	Version           string  `json:"version"`
+	Channel           string  `json:"channel"`
+	ReleaseURL        string  `json:"releaseUrl"`
+	Notes             string  `json:"notes"`
+	Received          int64   `json:"received"`
+	Total             int64   `json:"total"`
+	Error             string  `json:"error"`
+	Trusted           bool    `json:"trusted"`
+	Scheduled         bool    `json:"scheduled"`
+	FailedVersion     string  `json:"failedVersion"`
+	RestoredVersion   string  `json:"restoredVersion"`
+	FailureReason     string  `json:"failureReason"`
+	ApplyLogAvailable bool    `json:"applyLogAvailable"`
+	Install           Install `json:"install"`
 }
 type cachedReleases struct {
 	ETag      string    `json:"etag"`
@@ -94,11 +95,20 @@ type Manager struct {
 	failedVersion string
 	scheduledPlan string
 	scheduledHelp string
+	install       Install
 }
 
 func NewManager(dir, current string) *Manager {
 	cleanupCache(dir)
-	m := &Manager{client: updateClient, dir: dir, current: current, state: State{Phase: "idle", Channel: "stable", Trusted: trustedKey()}}
+	m := &Manager{client: updateClient, dir: dir, current: current, install: detectRunningInstall()}
+	m.state = m.freshState()
+	m.state.Phase = "idle"
+	m.state.Channel = "stable"
+	if m.install.Kind == InstallInstaller && semver.IsValid(normalizeVersion(current)) {
+		if exe, err := os.Executable(); err == nil {
+			_ = syncInstallRecord(exe, current) // best effort: only the version shown in "Installed apps"
+		}
+	}
 	raw, err := os.ReadFile(filepath.Join(dir, "releases-cache.json"))
 	if err == nil {
 		_ = json.Unmarshal(raw, &m.cache)
@@ -122,6 +132,10 @@ func NewManager(dir, current string) *Manager {
 	}
 	return m
 }
+
+// freshState is the starting point of every state the manager reports.
+func (m *Manager) freshState() State { return State{Trusted: trustedKey(), Install: m.install} }
+
 func trustedKey() bool {
 	k, e := base64.StdEncoding.DecodeString(PublicKey)
 	return e == nil && len(k) == ed25519.PublicKeySize
@@ -157,13 +171,15 @@ func (m *Manager) Check(channel string, force bool) (State, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if chosen == nil {
-		m.state = State{Phase: "current", Channel: channel, Trusted: trustedKey()}
+		m.state = m.freshState()
+		m.state.Phase = "current"
+		m.state.Channel = channel
 		m.selected = release{}
 	} else {
 		// Do not discard a verified download when checking the same version again.
 		if m.selected.Tag != chosen.Tag {
 			m.prepared = ""
-			m.state = State{Trusted: trustedKey()}
+			m.state = m.freshState()
 		}
 		m.selected = *chosen
 		m.state.Version = chosen.Tag
@@ -300,6 +316,10 @@ func (m *Manager) Download() (State, error) {
 	if m.selected.Tag == "" || !trustedKey() {
 		m.mu.Unlock()
 		return m.Status(), errors.New("No signed update is available for this build")
+	}
+	if !m.install.SelfUpdate {
+		m.mu.Unlock()
+		return m.Status(), errors.New(m.install.Reason)
 	}
 	m.busy = true
 	ctx, cancel := context.WithCancel(context.Background())

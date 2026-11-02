@@ -88,12 +88,9 @@ func (m *Manager) Schedule(enable bool) (State, error) {
 	if _, err := os.Stat(filepath.Join(m.prepared, entry)); err != nil {
 		return m.state, errors.New("The verified package does not contain this platform's application")
 	}
-	probe, err := os.CreateTemp(filepath.Dir(target), ".adomnia-write-test-*")
-	if err != nil {
-		return m.state, errors.New("The install directory is not writable; use the installer or package manager")
+	if !dirWritable(filepath.Dir(target)) {
+		return m.state, errInstallNotWritable
 	}
-	probe.Close()
-	os.Remove(probe.Name())
 	if err := m.prepareScheduledLocked(exe, target); err != nil {
 		return m.state, err
 	}

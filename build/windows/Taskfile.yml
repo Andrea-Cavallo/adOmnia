@@ -7,7 +7,7 @@ vars:
   WINDOWS_ARCH: '{{.ARCH | default "amd64"}}'
   # CI supplies VERSION from the release tag. Local builds use the current
   # release version, so Windows never receives a non-numeric `dev` resource.
-  WINDOWS_VERSION: '{{.VERSION | default "1.0.23"}}'
+  WINDOWS_VERSION: '{{.VERSION | default "1.0.24"}}'
   GENERATED_INFO: '../.wails/windows-info-{{.WINDOWS_ARCH}}.json'
   GENERATED_MANIFEST: '../.wails/windows-manifest-{{.WINDOWS_ARCH}}.xml'
 
@@ -33,6 +33,13 @@ tasks:
       - task: build
     cmds:
       - cmd: echo "Built {{.BIN_DIR}}/{{.APP_NAME}}.exe"
+
+  installer:
+    summary: Build the per-user setup.exe (needs NSIS) into dist/ from the executable built by `build`.
+    deps:
+      - task: build
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1 -Version "{{.WINDOWS_VERSION}}"
 
   run:
     cmds:

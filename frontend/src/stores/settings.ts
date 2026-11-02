@@ -218,10 +218,10 @@ function migrateAIModel(ai: AppSettings['ai']): AppSettings['ai'] {
 }
 
 const defaultSettings: AppSettings = {
-  version: 15,
+  version: 16,
   general: {
     autoCheckUpdates: true,
-    autoDownloadUpdates: false,
+    autoDownloadUpdates: true,
     updateChannel: 'auto',
     confirmBeforeClosingDirtyTabs: true,
     restoreTabsOnStartup: true,
@@ -392,6 +392,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const migratedSettingsVersion = (parsed.version ?? 0) < defaultSettings.version
       const general = mergeBlock(defaultSettings.general, parsed.general)
       general.startupBehavior = general.startupBehavior === 'fixed' ? 'fixed' : 'resume'
+      // v16: verified updates download in the background by default. The old `false` was the
+      // default, not a choice, so it is switched once; installing still waits for the user.
+      if ((parsed.version ?? 0) < 16 && general.autoDownloadUpdates === false) general.autoDownloadUpdates = true
       // v15: le scorciatoie Code Studio passano dalla chiave localStorage alla sezione JSON
       // `keymap`; la vecchia chiave resta scritta per il rollback, ma non è più la fonte.
       const keymap = mergeBlock(defaultSettings.keymap, parsed.keymap)
