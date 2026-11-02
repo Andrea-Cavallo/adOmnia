@@ -12,9 +12,11 @@ Release files:
 
 | Platform | Artifact |
 |---|---|
-| Windows | [`adomnia-<version>-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
+| Windows setup | [`adomnia-<version>-windows-amd64-setup.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
 | Linux | [`adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
 | macOS | [`adomnia-<version>-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) |
+
+The Windows setup installs for the current user in `%LOCALAPPDATA%\Programs\adOmnia`, creates a Start menu entry and registers an uninstaller in Windows Settings. A desktop shortcut is optional. No administrator access is requested. If WebView2 is missing, Setup runs the bundled, Microsoft-signed Evergreen bootstrapper; that step needs internet access. Close adOmnia before reinstalling or uninstalling: Setup refuses to replace a locked application. Uninstallation leaves workspaces, settings and unrelated files intact. The portable `adomnia-<version>-windows-amd64.exe` remains available.
 
 ## Install or update with a script
 
@@ -60,10 +62,12 @@ unlike the in-app updater, these scripts do not verify the Ed25519 manifest.
 Use **Settings → Check now**, then **Download update**. New installations default
 to asking before downloading; existing explicit automatic-download preferences
 remain compatible. Automatic downloads can be enabled separately in Settings,
-but never authorize installation.
+and do not authorize installation by themselves. The separate **Install downloaded updates when I close adOmnia** preference explicitly permits future verified updates to be scheduled on exit; it is off by default and enables automatic downloads when selected. Disable it or choose **Postpone update** to cancel that permission and the pending installation.
+
+Checks and downloads are coalesced so repeated clicks do not start duplicate work. Completed downloads can be reused after an application restart within the cache retention period; their signatures and package hashes are checked again before reuse. Notifications do not take focus or block the editor.
 
 After signature and checksum verification, choose **Save & restart** or **Install
-on exit**. **Later** leaves the application unchanged unless you have explicitly
+on exit**. **Dismiss** hides the notice and leaves the application unchanged unless you have explicitly
 scheduled installation. The updater preserves local data, retains the previous
 application during startup, and restores it if the new build does not confirm
 successful startup. Development builds and system-managed Linux copies cannot
@@ -91,7 +95,7 @@ Available artifact groups:
 
 ## Windows
 
-Download the `.exe` file and run it.
+Download and run `adomnia-<version>-windows-amd64-setup.exe`. Alternatively, run the portable `adomnia-<version>-windows-amd64.exe` without installing. Installed copies and user-writable portable copies use the same signed in-app updater. Windows installed-app version metadata is refreshed after successful startup, only for the registered installation.
 
 Binaries are not OS-code-signed yet. If SmartScreen shows "Windows protected your PC", choose **More info → Run anyway**, but only for a file you downloaded from this repository's releases; compare it with `SHA256SUMS.txt` if you want to be sure. The in-app updater verifies its own publisher signature and checksum.
 

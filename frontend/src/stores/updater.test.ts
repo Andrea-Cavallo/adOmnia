@@ -1,11 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-const api = vi.hoisted(()=>({check:vi.fn(),status:vi.fn(),download:vi.fn(),cancel:vi.fn(),schedule:vi.fn(),confirm:vi.fn(),openLog:vi.fn(),general:{autoCheckUpdates:true,autoDownloadUpdates:true,updateChannel:'auto'}}))
+const api = vi.hoisted(()=>({check:vi.fn(),status:vi.fn(),download:vi.fn(),cancel:vi.fn(),schedule:vi.fn(),confirm:vi.fn(),openLog:vi.fn(),general:{autoCheckUpdates:true,autoDownloadUpdates:true,installUpdatesOnExit:false,updateChannel:'auto'}}))
 vi.mock('../../bindings/github.com/Andrea-Cavallo/adOmnia/app',()=>({CheckUpdateChannel:api.check,GetUpdateState:api.status,DownloadUpdate:api.download,CancelUpdateDownload:api.cancel,ScheduleUpdateOnExit:api.schedule,ConfirmUpdateStartup:api.confirm,OpenUpdateApplyLog:api.openLog}))
 vi.mock('./settings',()=>({useSettingsStore:{getState:()=>({loaded:true,settings:{general:api.general}})}}))
 vi.mock('@/lib/buildInfo',()=>({APP_VERSION:'0.10.0-beta.2'}))
 import { startUpdater, useUpdaterStore } from './updater'
 const state = (phase:string,trusted=true)=>({phase,trusted,version:'v0.10.0-beta.3',channel:'beta',releaseUrl:'',notes:'',received:0,total:0,error:'',scheduled:false,failedVersion:'',restoredVersion:'',failureReason:'',applyLogAvailable:false})
-beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal("window",{setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,addEventListener:vi.fn(),removeEventListener:vi.fn()});vi.stubGlobal("document",{visibilityState:"visible"});vi.clearAllMocks();Object.assign(api.general,{autoCheckUpdates:true,autoDownloadUpdates:true,updateChannel:'auto'});api.confirm.mockResolvedValue(undefined);api.openLog.mockResolvedValue(undefined);api.check.mockResolvedValue(state('current'));api.status.mockResolvedValue(state('current'));api.download.mockResolvedValue(state('downloading'));api.schedule.mockResolvedValue({...state('ready'),scheduled:true});useUpdaterStore.setState({status:state('idle'),error:''})})
+beforeEach(()=>{vi.useFakeTimers();vi.stubGlobal("window",{setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,addEventListener:vi.fn(),removeEventListener:vi.fn()});vi.stubGlobal("document",{visibilityState:"visible"});vi.clearAllMocks();Object.assign(api.general,{autoCheckUpdates:true,autoDownloadUpdates:true,installUpdatesOnExit:false,updateChannel:'auto'});api.confirm.mockResolvedValue(undefined);api.openLog.mockResolvedValue(undefined);api.check.mockResolvedValue(state('current'));api.status.mockResolvedValue(state('current'));api.download.mockResolvedValue(state('downloading'));api.schedule.mockResolvedValue({...state('ready'),scheduled:true});useUpdaterStore.setState({status:state('idle'),error:''})})
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals()})
 describe('automatic updater',()=>{
  it('follows beta version and never downloads an untrusted release',async()=>{api.check.mockResolvedValue(state('available',false));await useUpdaterStore.getState().check();expect(api.check).toHaveBeenCalledWith('beta',true);expect(api.download).not.toHaveBeenCalled()})
@@ -17,4 +17,53 @@ describe('automatic updater',()=>{
  it('does not automatically retry a release that failed startup',async()=>{api.check.mockResolvedValue({...state('available'),error:'Previous update failed'});await useUpdaterStore.getState().check(false);expect(api.download).not.toHaveBeenCalled()})
  it('loads a rollback notification immediately at startup',async()=>{api.status.mockResolvedValue({...state('rollback'),failedVersion:'v1.0.1',failureReason:'startup failed',applyLogAvailable:true});const stop=startUpdater();await Promise.resolve();await Promise.resolve();expect(useUpdaterStore.getState().status.phase).toBe('rollback');expect(useUpdaterStore.getState().status.failedVersion).toBe('v1.0.1');stop()})
  it('stops the checking state after an offline error',async()=>{api.check.mockRejectedValue(new Error('Offline mode'));await useUpdaterStore.getState().check();expect(useUpdaterStore.getState().status.phase).toBe('error');expect(useUpdaterStore.getState().error).toContain('Offline')})
+})
+
+
+describe('update installation policy', () => {
+ it('schedules a completed download only after opting into installation on exit', async () => {
+  api.general.installUpdatesOnExit = true
+  api.status.mockResolvedValue(state('ready'))
+  useUpdaterStore.setState({status:state('downloading')})
+  const stop = startUpdater()
+  await vi.advanceTimersByTimeAsync(15000)
+  expect(api.schedule).toHaveBeenCalledWith(true)
+  expect(useUpdaterStore.getState().status.scheduled).toBe(true)
+  stop()
+ })
+ it('does not schedule a failed update even when automatic installation is enabled', async () => {
+  api.general.installUpdatesOnExit = true
+  api.status.mockResolvedValue({...state('ready'),error:'Previous update failed'})
+  const stop = startUpdater()
+  await vi.advanceTimersByTimeAsync(15000)
+  expect(api.schedule).not.toHaveBeenCalled()
+  stop()
+ })
+ it('does not repeatedly schedule an update whose installation could not be prepared', async () => {
+  api.general.installUpdatesOnExit = true
+  api.status.mockResolvedValue(state('ready'))
+  api.schedule.mockRejectedValue(new Error('Install directory is read-only'))
+  const stop = startUpdater()
+  await vi.advanceTimersByTimeAsync(180000)
+  expect(api.schedule).toHaveBeenCalledTimes(1)
+  expect(useUpdaterStore.getState().error).toContain('read-only')
+  stop()
+ })
+ it('joins concurrent downloads and does not check again while downloading', async () => {
+  let complete!: (value: ReturnType<typeof state>) => void
+  api.download.mockReturnValue(new Promise(resolve => {complete = resolve}))
+  const first = useUpdaterStore.getState().download()
+  const second = useUpdaterStore.getState().download()
+  await useUpdaterStore.getState().check()
+  expect(api.download).toHaveBeenCalledTimes(1)
+  expect(api.check).not.toHaveBeenCalled()
+  complete(state('downloading'))
+  await Promise.all([first, second])
+ })
+ it('exposes a failed download as retryable rather than remaining busy', async () => {
+  api.download.mockRejectedValue(new Error('Network unavailable'))
+  await useUpdaterStore.getState().download()
+  expect(useUpdaterStore.getState().status.phase).toBe('error')
+  expect(useUpdaterStore.getState().error).toBe('Network unavailable')
+ })
 })

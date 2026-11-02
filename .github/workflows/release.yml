@@ -75,6 +75,15 @@ jobs:
         run: |
           Compress-Archive -LiteralPath bin/adomnia.exe -DestinationPath "dist/adomnia-${{ steps.ver.outputs.version }}-windows-amd64-update.zip"
 
+      - name: Build Windows setup
+        shell: pwsh
+        run: |
+          choco install nsis --version=3.11 --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS installation failed' }
+          $version = "${{ steps.ver.outputs.version }}"
+          ./scripts/build-windows-installer.ps1 -Version $version
+          ./scripts/test-windows-installer.ps1 -Installer "dist/adomnia-$version-windows-amd64-setup.exe" -Version $version
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: windows-amd64
@@ -247,6 +256,7 @@ jobs:
         run: |
           cd dist
           cp adomnia-*-windows-amd64.exe adomnia-windows-amd64.exe
+          cp adomnia-*-windows-amd64-setup.exe adomnia-windows-amd64-setup.exe
           cp adomnia-*-macos-universal.dmg adomnia-macos-universal.dmg
           cp adomnia-*-linux-amd64-gtk3-webkitgtk-4.1.tar.gz adomnia-linux-amd64-gtk3-webkitgtk-4.1.tar.gz
 

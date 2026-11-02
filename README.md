@@ -223,7 +223,7 @@ Get adOmnia from **[GitHub Releases](https://github.com/Andrea-Cavallo/adOmnia/r
 
 | Platform | Download | Setup |
 | --- | --- | --- |
-| Windows x64 | [`adomnia-<version>-windows-amd64.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | Requires WebView2; portable executable, not an MSI wizard |
+| Windows x64 | [`adomnia-<version>-windows-amd64-setup.exe`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | Per-user setup, WebView2 bootstrapper and uninstaller; portable `.exe` also available |
 | macOS Intel / Apple Silicon | [`adomnia-<version>-macos-universal.dmg`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | Install from the DMG |
 | Linux x64 | [`adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`](https://github.com/Andrea-Cavallo/adOmnia/releases/latest) | Requires GTK 3 and WebKitGTK 4.1 |
 

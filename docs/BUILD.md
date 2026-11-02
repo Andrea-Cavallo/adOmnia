@@ -128,3 +128,19 @@ backup and package-manager limitations. Offline Linux installer checks:
 ```bash
 python3 -B -m unittest discover -s scripts -p test_install.py
 ```
+
+
+## Windows setup
+
+`wails3 task windows:package` builds the app and an NSIS installer in `dist/`.
+Install NSIS 3.11 or newer first. For an already-built app:
+
+```powershell
+./scripts/build-windows-installer.ps1 -Version 1.0.24 -Executable bin/adomnia.exe
+```
+
+The builder downloads the WebView2 Evergreen bootstrapper from Microsoft and checks its Authenticode signature before embedding it. An offline builder can pass a previously downloaded, Microsoft-signed `-WebViewBootstrapper` and `-MakeNSIS` path. Installer version resources are numeric; artifact names can use `-ArtifactVersion` for CI commit IDs. The setup itself remains unsigned unless the publisher applies Authenticode signing separately; Ed25519 updater signatures do not replace Windows code signing.
+
+On a clean Windows account, run `./scripts/test-windows-installer.ps1 -Installer <setup.exe> -Version <version>` to test actual silent install/reinstall, rejection of locked-app replacement, Start menu and uninstall metadata, and preservation of unrelated files during uninstall. The test refuses to touch an existing registered installation. Native wizard review, installation without an existing WebView2 runtime, and a release-to-release update with unsaved desktop work remain manual acceptance checks.
+
+The Windows installer follows the NSIS packaging and signed background-update workflow used by [OpenIDEA](https://github.com/l0ng-ai/openidea/tree/3be40bd57c5718df39977c5f8b5d31f0ff3e692a). No OpenIDEA source code is included: adOmnia uses its existing Wails/Go signature verification, helper and startup rollback instead of Tauri's updater.

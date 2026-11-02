@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { ArrowDownToLine, FileText, ShieldCheck, X } from 'lucide-react'
-import { DialogOverlay } from '@/components/ui/dialog'
+import { FileText, X } from 'lucide-react'
+import { useSettingsStore } from '@/stores/settings'
 import { useUpdaterStore } from '@/stores/updater'
 import { restartForUpdate } from '@/lib/updateRestart'
+import { BrowserOpenURL } from '@/wailsjs/runtime/runtime'
 import './updateNotice.css'
 export default function UpdateNotice() {
  const {status,error,schedule,download,cancel,check,openApplyLog} = useUpdaterStore()
  const [dismissed,setDismissed] = useState('')
  const [restarting,setRestarting] = useState(false)
  const [restartError,setRestartError] = useState('')
- const key = `${status.version}:${status.phase}`
+ const key = `${status.version}:${status.phase === 'rollback' ? 'rollback' : 'update'}`
  const ready = status.phase === 'ready'
  const busy = ['downloading','verifying'].includes(status.phase)
  const rollback = status.phase === 'rollback'
@@ -18,30 +19,29 @@ export default function UpdateNotice() {
  const problem = restartError || error || status.error
  const restart = async () => {
   setRestarting(true);setRestartError('')
-  try { await restartForUpdate();setDismissed(key) }
+  try { await restartForUpdate() }
   catch(e) { setRestartError(e instanceof Error ? e.message : String(e)) }
   finally { setRestarting(false) }
  }
- return <DialogOverlay open={['available','downloading','verifying','ready','error','rollback'].includes(status.phase) && dismissed!==key} onClose={close}>
-  <section role="dialog" aria-modal="true" aria-labelledby="update-title" aria-describedby="update-description" className="update-nothing">
-   <header><span>SYSTEM / UPDATE</span><button aria-label="Close update notification" disabled={restarting} onClick={close}><X size={18}/></button></header>
+ if (!['available','downloading','verifying','ready','error','rollback'].includes(status.phase) || dismissed===key) return null
+ return <aside className="update-nothing" aria-label="Application update">
+   <header><span>Application update</span><button aria-label="Close update notification" disabled={restarting} onClick={close}><X size={18}/></button></header>
    <div className="update-nothing-content">
-    <div className="update-nothing-glyph" aria-hidden="true">{ready?<ShieldCheck size={42} strokeWidth={1}/>:<ArrowDownToLine size={42} strokeWidth={1}/>}</div>
     <p className="update-nothing-version">ADOMNIA / {status.version || 'UPDATE'}</p>
-    <h2 id="update-title">{rollback?'UPDATE RESTORED.':ready?'READY TO EVOLVE.':busy?'GETTING READY.':status.phase==='error'?'LET’S TRY AGAIN.':'NEXT VERSION.'}</h2>
-    <p id="update-description">{rollback?`Update failed; restored ${status.restoredVersion || 'the previous version'}${status.failedVersion ? ` after ${status.failedVersion} could not start` : ''}. Your local data was preserved.`:ready?'Your update is verified. Save and restart to replace the application. Your workspaces, collections and settings stay on this computer.':busy?'Downloading and verifying your update. You can keep working while it finishes.':'A new version is available. Download it securely, then choose when to restart.'}</p>
-    {busy && <div className="update-nothing-progress" role="status"><div className="flex justify-between"><span>{status.phase==='verifying'?'VERIFYING SIGNATURE':'DOWNLOADING'}</span><span>{progress}%</span></div><progress aria-label="Update download" max={100} value={progress}/><p>{(status.received/1048576).toFixed(1)} / {(status.total/1048576).toFixed(1)} MB</p></div>}
-    {ready && <p className="update-nothing-trust"><ShieldCheck size={14}/> SIGNATURE VERIFIED · RECOVERY ENABLED</p>}
+    <h2 id="update-title" role="status" aria-live="polite">{rollback?'Previous version restored':ready?'Ready to install':busy?'Downloading update':status.phase==='error'?'Update could not complete':'Update available'}</h2>
+    <p id="update-description">{rollback?`Update failed; restored ${status.restoredVersion || 'the previous version'}${status.failedVersion ? ` after ${status.failedVersion} could not start` : ''}. Your local data was preserved.`:ready?status.scheduled?'The verified update will install and reopen adOmnia after you close it. Your normal save and running-task checks still apply.':'Your update is verified. Save and restart when you are ready. Your workspaces and settings are preserved.':busy?'Downloading and verifying your update. You can keep working while it finishes.':'A new version is available. Download it securely, then choose when to restart.'}</p>
+    {busy && <div className="update-nothing-progress" role="status"><div className="flex justify-between"><span>{status.phase==='verifying'?'Verifying package':'Downloading'}</span><span>{status.total > 0 ? `${progress}%` : ''}</span></div><progress aria-label="Update download" max={100} value={status.total > 0 ? progress : undefined}/><p>{(status.received/1048576).toFixed(1)} MB{status.total > 0 ? ` / ${(status.total/1048576).toFixed(1)} MB` : ''}</p></div>}
+    {ready && <p className="update-nothing-trust">Signature verified · startup recovery enabled</p>}
     {(problem || status.failureReason) && <p role="alert" className="update-nothing-error">{status.failureReason || problem}</p>}
    </div>
-   <footer><button disabled={restarting} onClick={close}>Later</button>
+   <footer><button disabled={restarting} onClick={close}>Dismiss</button>
     {status.phase==='downloading' && <button onClick={()=>void cancel()}>Cancel download</button>}
-    {status.phase==='available' && status.trusted && <button className="update-nothing-primary" onClick={()=>void download()}>Download update ↗</button>}
-    {status.phase==='error' && <button className="update-nothing-primary" onClick={()=>void check(true)}>Try again ↗</button>}
+    {status.phase==='available' && status.trusted && <button className="update-nothing-primary" onClick={()=>void download()}>Download update</button>}
+    {status.phase==='error' && <button className="update-nothing-primary" onClick={()=>void check(true)}>Try again</button>}
     {rollback && status.applyLogAvailable && <button className="update-nothing-primary" onClick={()=>void openApplyLog()}><FileText size={14}/>Open apply.log</button>}
-    {ready && <button className="update-nothing-primary" disabled={restarting} onClick={()=>void restart()}>{restarting?'Saving your work…':'Save & restart ↗'}</button>}
+    {ready && <button className="update-nothing-primary" disabled={restarting} onClick={()=>void restart()}>{restarting?'Saving your work…':'Save & restart'}</button>}
+    {status.releaseUrl && <button onClick={()=>BrowserOpenURL(status.releaseUrl)}>Release notes</button>}
    </footer>
-   {ready && <button className="update-nothing-postpone" disabled={restarting} onClick={()=>void schedule(!status.scheduled)}>{status.scheduled?'Install on exit is enabled · click to postpone':'Install the next time I close adOmnia'}</button>}
-  </section>
- </DialogOverlay>
+   {ready && <button className="update-nothing-postpone" disabled={restarting} onClick={()=>{if(status.scheduled)useSettingsStore.getState().updateGeneral({installUpdatesOnExit:false});void schedule(!status.scheduled)}}>{status.scheduled?'Install on exit is enabled · click to postpone':'Install the next time I close adOmnia'}</button>}
+ </aside>
 }

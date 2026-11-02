@@ -11,25 +11,55 @@ export interface UpdateState {
 }
 const idle: UpdateState = { phase: 'idle', version: '', channel: 'stable', releaseUrl: '', notes: '', received: 0, total: 0, error: '', trusted: false, scheduled: false, failedVersion: '', restoredVersion: '', failureReason: '', applyLogAvailable: false }
 interface UpdaterStore { status: UpdateState; error: string; check: (force?: boolean) => Promise<void>; download: () => Promise<void>; cancel: () => Promise<void>; schedule: (enable: boolean) => Promise<void>; openApplyLog: () => Promise<void> }
-let checking = false
+let checking: Promise<void> | null = null
+let downloading: Promise<void> | null = null
+let scheduling: Promise<void> | null = null
 function channel(): string {
  const selected = useSettingsStore.getState().settings.general.updateChannel
  return selected === 'stable' || selected === 'beta' ? selected : APP_VERSION.includes('-') ? 'beta' : 'stable'
 }
 function failure(error: unknown) { useUpdaterStore.setState({ error: error instanceof Error ? error.message : String(error) }) }
+async function applyAutomaticPolicy(): Promise<void> {
+ const { status, error } = useUpdaterStore.getState()
+ const general = useSettingsStore.getState().settings.general
+ if (status.phase === 'ready' && !status.scheduled && !status.error && !error && general.installUpdatesOnExit === true) {
+  await useUpdaterStore.getState().schedule(true)
+ }
+}
 export const useUpdaterStore = create<UpdaterStore>((set,get) => ({
  status: idle, error: '',
- check: async (force = true) => {
-  if (checking) return
-  checking = true; set({ error: '', status: { ...get().status, phase: 'checking' } })
-  try {
-   const status = await CheckUpdateChannel(channel(), force); set({ status })
-   if (status.phase === 'available' && status.trusted && !status.error && useSettingsStore.getState().settings.general.autoDownloadUpdates === true) await get().download()
-  } catch(error) { set({ status: { ...get().status, phase: 'error' } }); failure(error) } finally { checking = false }
+ check: (force = true) => {
+  if (checking) return checking
+  if (['downloading', 'verifying'].includes(get().status.phase) || get().status.scheduled) return Promise.resolve()
+  checking = (async () => {
+   set({ error: '', status: { ...get().status, phase: 'checking' } })
+   try {
+    const status = await CheckUpdateChannel(channel(), force); set({ status })
+    if (status.phase === 'available' && status.trusted && !status.error && useSettingsStore.getState().settings.general.autoDownloadUpdates === true) await get().download()
+    await applyAutomaticPolicy()
+   } catch(error) { set({ status: { ...get().status, phase: 'error' } }); failure(error) }
+  })().finally(() => { checking = null })
+  return checking
  },
- download: async () => { try { set({ status: await DownloadUpdate(), error: '' }) } catch(error) { failure(error) } },
+ download: () => {
+  if (downloading) return downloading
+  if (['downloading', 'verifying'].includes(get().status.phase) || get().status.scheduled) return Promise.resolve()
+  downloading = (async () => {
+   set({ error: '', status: { ...get().status, phase: 'downloading', received: 0, total: 0 } })
+   try { set({ status: await DownloadUpdate(), error: '' }); await applyAutomaticPolicy() }
+   catch(error) { set({ status: { ...get().status, phase: 'error' } }); failure(error) }
+  })().finally(() => { downloading = null })
+  return downloading
+ },
  cancel: async () => { try { await CancelUpdateDownload() } catch(error) { failure(error) } },
- schedule: async (enable) => { try { set({ status: await ScheduleUpdateOnExit(enable), error: '' }) } catch(error) { failure(error) } },
+ schedule: (enable) => {
+  const previous = scheduling ?? Promise.resolve()
+  const operation = previous.then(async () => {
+   try { set({ status: await ScheduleUpdateOnExit(enable), error: '' }) } catch(error) { failure(error) }
+  }).finally(() => { if (scheduling === operation) scheduling = null })
+  scheduling = operation
+  return operation
+ },
  openApplyLog: async () => { try { await OpenUpdateApplyLog() } catch(error) { failure(error) } },
 }))
 
@@ -38,13 +68,14 @@ export const useUpdaterStore = create<UpdaterStore>((set,get) => ({
 export function startUpdater(): () => void {
  let disposed = false, polling = false, lastCheck = 0
  let timer: number | undefined
- void GetUpdateState().then((status) => { if (!disposed) useUpdaterStore.setState({ status }) }).catch(failure)
+ void GetUpdateState().then((status) => { if (!disposed && !checking && !downloading && useUpdaterStore.getState().status.phase === 'idle') useUpdaterStore.setState({ status }) }).catch(failure)
  void ConfirmUpdateStartup().catch(failure)
  const tick = async () => {
   if (disposed || polling) return
   if (timer !== undefined) window.clearTimeout(timer)
   const general = useSettingsStore.getState().settings.general
   if (!useSettingsStore.getState().loaded) { timer = window.setTimeout(() => void tick(), 2000); return }
+  if (checking || downloading) { timer = window.setTimeout(() => void tick(), 1000); return }
   const state = useUpdaterStore.getState().status
   if (['downloading','verifying','checking'].includes(state.phase)) {
    polling = true
@@ -52,17 +83,18 @@ export function startUpdater(): () => void {
     const status = await GetUpdateState()
     if (!disposed) {
      useUpdaterStore.setState({ status })
-     // A completed download is never consent to replace the application.
     }
    } catch(error) { if (!disposed) failure(error) } finally { polling = false }
   }
-  if (!disposed && currentActivityPhase() === 'Active' && general.autoCheckUpdates !== false && Date.now()-lastCheck > 6*60*60*1000) {
+  if (!disposed) await applyAutomaticPolicy()
+  const latest = useUpdaterStore.getState().status
+  if (!disposed && !['checking','downloading','verifying','ready'].includes(latest.phase) && !latest.scheduled && currentActivityPhase() === 'Active' && general.autoCheckUpdates !== false && Date.now()-lastCheck > 6*60*60*1000) {
    lastCheck = Date.now(); await useUpdaterStore.getState().check(false)
   }
   if (!disposed) timer = window.setTimeout(() => void tick(), ['checking','downloading','verifying'].includes(useUpdaterStore.getState().status.phase) ? 1000 : 60000)
  }
  timer = window.setTimeout(() => void tick(), 15000)
- const unsubscribe = useUpdaterStore.subscribe((state, previous) => { if (state.status.phase !== previous.status.phase && ['downloading','verifying'].includes(state.status.phase)) void tick() })
+ const unsubscribe = useUpdaterStore.subscribe((state, previous) => { if (state.status.phase !== previous.status.phase && ['downloading','verifying'].includes(state.status.phase)) queueMicrotask(() => void tick()) })
  const onFocus = () => void tick()
  window.addEventListener('focus',onFocus)
  return () => { disposed = true; if (timer !== undefined) window.clearTimeout(timer); unsubscribe(); window.removeEventListener('focus',onFocus) }

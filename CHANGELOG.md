@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Windows setup and automatic updates
+
+- Per-user NSIS setup with Start menu registration, optional desktop shortcut, Windows uninstaller and a Microsoft-signed WebView2 bootstrapper. Locked applications are preserved; uninstall leaves user data and unrelated files intact.
+- Both release workflows build and smoke-test setup installation, reinstall, blocked upgrades and uninstall, while retaining portable executables and signed updater ZIPs.
+- Optional installation on exit, separate from automatic downloads; save and running-task guards remain active. Update notices no longer block the editor or steal focus.
+- Coalesced checks/downloads, retryable download errors, and revalidated reuse of completed downloads after restart.
+- Windows installed-app version metadata follows successful starts of the registered executable; portable copies leave it untouched.
+
 ## [1.0.23] — 2026-11-02
 
 Release notes: [docs/releases/v1.0.23.md](docs/releases/v1.0.23.md).

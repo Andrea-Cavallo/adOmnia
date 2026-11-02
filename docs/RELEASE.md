@@ -538,6 +538,7 @@ Verified with `go build ./...`, `go vet ./...`, `go test ./...`,
 
 The build workflow produces:
 
+- `adomnia-<version>-windows-amd64-setup.exe` — per-user NSIS setup with WebView2 detection and an uninstaller; the portable executable remains available.
 - `adOmnia-<version>-windows-amd64.exe`
 - `adOmnia-<version>-linux-amd64`
 - `adOmnia-<version>-linux-amd64.tar.gz`

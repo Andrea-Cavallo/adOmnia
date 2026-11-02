@@ -629,6 +629,9 @@ func ConfirmStartup(current string) error {
 	marker := os.Getenv("ADOMNIA_UPDATE_CONFIRM")
 	version := os.Getenv("ADOMNIA_UPDATE_VERSION")
 	if marker == "" {
+		if err := syncInstalledVersion(current); err != nil {
+			logf("could not synchronize installed version: %v", err)
+		}
 		return nil
 	}
 	if !filepath.IsAbs(marker) || !strings.HasSuffix(marker, ".zip.started") {
@@ -645,6 +648,9 @@ func ConfirmStartup(current string) error {
 	}
 	_ = os.Unsetenv("ADOMNIA_UPDATE_CONFIRM")
 	_ = os.Unsetenv("ADOMNIA_UPDATE_VERSION")
+	if err := syncInstalledVersion(current); err != nil {
+		logf("could not synchronize installed version: %v", err)
+	}
 	return nil
 }
 

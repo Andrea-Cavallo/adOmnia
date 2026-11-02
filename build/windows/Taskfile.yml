@@ -28,11 +28,11 @@ tasks:
       - wails3 generate syso -arch {{.WINDOWS_ARCH}} -icon windows/icon.ico -manifest "{{.GENERATED_MANIFEST}}" -info "{{.GENERATED_INFO}}" -out ../wails_windows_{{.WINDOWS_ARCH}}.syso
 
   package:
-    summary: Windows ships the bare executable, so packaging is just a build.
+    summary: Build a per-user Windows setup (NSIS required); retain the portable executable.
     deps:
       - task: build
     cmds:
-      - cmd: echo "Built {{.BIN_DIR}}/{{.APP_NAME}}.exe"
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1 -Version "{{.WINDOWS_VERSION}}" -Executable "{{.BIN_DIR}}/{{.APP_NAME}}.exe"
 
   run:
     cmds:
