@@ -83,6 +83,8 @@ describe('Code Studio command availability', () => {
     expect(commandAvailability('debug.pause', { ...ready, debugState: 'running' })).toBe(true)
     expect(commandAvailability('debug.stop', ready)).toMatch(/No debug/)
     expect(commandAvailability('debug.debug', { ...ready, authorized: false })).toMatch(/Trust/)
+    expect(commandAvailability('rust.attach', { ...ready, authorized: false })).toMatch(/Trust/)
+    expect(commandAvailability('rust.attach', ready)).toBe(true)
     const stepOver = commandForKey({ key: 'F8', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false })
     expect(stepOver?.id).toBe('debug.stepOver')
     expect(stepOver?.passThroughWhenUnavailable).toBe(true)

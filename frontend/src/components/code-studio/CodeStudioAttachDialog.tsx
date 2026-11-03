@@ -4,7 +4,8 @@ import { listGoIDEProcesses, type GoIDEProcessInfo } from '@/lib/code-studio-deb
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioField, CodeStudioModal } from './CodeStudioModal'
 
-export type CodeStudioAttachMode = 'attach' | 'remote'
+/** attach = Delve su un processo Go, attach-rust = CodeLLDB su un processo Rust, remote = Delve remoto. */
+export type CodeStudioAttachMode = 'attach' | 'attach-rust' | 'remote'
 
 interface CodeStudioAttachDialogProps {
   sessionId: string
@@ -61,14 +62,14 @@ export function CodeStudioAttachDialog({ sessionId, mode, onClose }: CodeStudioA
       setQuery('')
       setSelected(0)
       setAddress(readRemoteAddress())
-      if (mode === 'attach') { setLoading(true); setError(null) }
+      if (mode !== 'remote') { setLoading(true); setError(null) }
     }
   }
 
   useEffect(() => {
     if (!mode) return
     let cancelled = false
-    if (mode === 'attach') {
+    if (mode !== 'remote') {
       listGoIDEProcesses()
         .then((result) => { if (!cancelled) setProcesses(result) })
         .catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason)) })
@@ -88,7 +89,9 @@ export function CodeStudioAttachDialog({ sessionId, mode, onClose }: CodeStudioA
   const attach = (process: GoIDEProcessInfo | undefined) => {
     if (!process) return
     onClose()
-    void useCodeStudioDebugStore.getState().start({ sessionId, mode: 'attach', processId: process.pid, workingDirectory: '', target: '' })
+    const debug = useCodeStudioDebugStore.getState()
+    if (mode === 'attach-rust') void debug.startRust({ sessionId, processId: process.pid })
+    else void debug.start({ sessionId, mode: 'attach', processId: process.pid, workingDirectory: '', target: '' })
   }
   const connect = () => {
     if (!address.trim()) return
@@ -102,7 +105,8 @@ export function CodeStudioAttachDialog({ sessionId, mode, onClose }: CodeStudioA
     else if (event.key === 'Enter') { event.preventDefault(); attach(visible[selected]) }
   }
 
-  const attachMode = mode === 'attach'
+  const attachMode = mode !== 'remote'
+  const rustMode = mode === 'attach-rust'
   return (
     <CodeStudioModal
       open={!!mode}
@@ -110,7 +114,7 @@ export function CodeStudioAttachDialog({ sessionId, mode, onClose }: CodeStudioA
       top
       size="lg"
       icon={attachMode ? Bug : Network}
-      title={attachMode ? 'Attach to process' : 'Connect to remote Delve'}
+      title={rustMode ? 'Attach to Rust process' : attachMode ? 'Attach to process' : 'Connect to remote Delve'}
       subtitle="Stop detaches the debugger: the program keeps running."
       footerStart={attachMode ? <><span className="gs-kbd">↑↓</span> move <span className="gs-kbd">Enter</span> attach</> : undefined}
       footer={attachMode ? undefined : <>
@@ -135,7 +139,9 @@ export function CodeStudioAttachDialog({ sessionId, mode, onClose }: CodeStudioA
             </div>
           ))}
         </div>
-        <p className="gs-hint">Build with <code className="gs-mono">-gcflags=all=-N -l</code> for accurate variables. On Linux, attaching may need ptrace permissions.</p>
+        <p className="gs-hint">{rustMode
+          ? <>Uses CodeLLDB. Build with debug info (the default <code className="gs-mono">dev</code> profile) for breakpoints and variables. On Linux, attaching may need ptrace permissions.</>
+          : <>Build with <code className="gs-mono">-gcflags=all=-N -l</code> for accurate variables. On Linux, attaching may need ptrace permissions.</>}</p>
       </> : (
         <form id="code-studio-remote-form" className="flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); connect() }}>
           <CodeStudioField label="Delve server address (host:port)">
