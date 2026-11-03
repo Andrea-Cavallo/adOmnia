@@ -8,7 +8,7 @@ on:
         required: true
 
 env:
-  WAILS_VERSION: v3.0.0
+  WAILS_VERSION: v3.1.0
 
 # Least-privilege default for GITHUB_TOKEN; the publish job raises contents: write to
 # create the GitHub Release.

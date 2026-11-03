@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -434,16 +435,8 @@ func sanitizeID(value string) string {
 	return builder.String()
 }
 
-// HTMLReport produce un report HTML autonomo: un file che si apre, si stampa e si
-// invia, senza dipendere da adOmnia o da una rete.
-func HTMLReport(report ScanReport) string {
-	var builder strings.Builder
-	builder.WriteString(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>adOmnia Security Intelligence — `);builder.WriteString(html.EscapeString(report.Workspace));builder.WriteString(`</title>
-<style>
+// htmlReportStyle is the inline stylesheet of the standalone HTML report.
+const htmlReportStyle = `<style>
 :root { color-scheme: light dark; }
 body { font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 32px; max-width: 1100px; margin-inline: auto; }
 h1 { font-size: 22px; margin: 0 0 4px; }
@@ -462,42 +455,47 @@ th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; opacity:
 .low { background: rgba(21,128,61,.16); color: #15803d; border-color: rgba(21,128,61,.32); }
 .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
 .reasons { margin: 4px 0 0; padding-left: 16px; opacity: .8; font-size: 12px; }
-</style>
-</head>
-<body>
-<h1>adOmnia Security Intelligence</h1>
-<div class="meta">`);builder.WriteString(html.EscapeString(report.Workspace));builder.WriteString(` · scanned `);builder.WriteString(html.EscapeString(report.ScannedAt));builder.WriteString(`</div>
-<div class="stats">
-<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.Findings));builder.WriteString(`</b>findings</div>
-<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.Critical));builder.WriteString(`</b>critical</div>
-<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.High));builder.WriteString(`</b>high</div>
-<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.ActivelyExploited));builder.WriteString(`</b>exploited in the wild</div>
-<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.Reachable));builder.WriteString(`</b>reachable</div>
-<div class="stat"><b>`);builder.WriteString(fmt.Sprint(report.Summary.FixAvailable));builder.WriteString(`</b>with a fix</div>
-</div>
-<h2>Findings</h2>
-<table>
-<thead><tr><th>Priority</th><th>Vulnerability</th><th>Component</th><th>Reachability</th><th>Fix</th></tr></thead>
-<tbody>`)
-	for _, finding := range report.Findings {
-		builder.WriteString("<tr><td><span class=\"badge ");builder.WriteString(html.EscapeString(finding.Risk.Band));builder.WriteString("\">");builder.WriteString(html.EscapeString(finding.Risk.Priority));builder.WriteString("</span></td>")
-		builder.WriteString("<td><b>");builder.WriteString(html.EscapeString(CanonicalAdvisoryID(finding.Advisory)));builder.WriteString("</b><br>");builder.WriteString(html.EscapeString(finding.Advisory.Summary));builder.WriteString("<ul class=\"reasons\">")
-		for _, reason := range finding.Risk.Reasons {
-			builder.WriteString("<li>");builder.WriteString(html.EscapeString(reason));builder.WriteString("</li>")
+</style>`
+
+// HTMLReport produce un report HTML autonomo: un file che si apre, si stampa e si
+// invia, senza dipendere da adOmnia o da una rete.
+func HTMLReport(report ScanReport) string {
+	var builder strings.Builder
+	write := func(parts ...string) {
+		for _, part := range parts {
+			builder.WriteString(part)
 		}
-		builder.WriteString("</ul></td>")
-		builder.WriteString("<td class=\"mono\">");builder.WriteString(html.EscapeString(finding.Component.Name));builder.WriteString("<br>");builder.WriteString(html.EscapeString(finding.Component.Version));builder.WriteString("</td>")
-		builder.WriteString("<td>");builder.WriteString(html.EscapeString(finding.Reachability.Label()));builder.WriteString("</td>")
-		builder.WriteString("<td class=\"mono\">");builder.WriteString(html.EscapeString(finding.Remediation.FixedVersion));builder.WriteString("</td></tr>")
 	}
-	builder.WriteString(`</tbody></table>
-<h2>Data sources</h2>
-<table><thead><tr><th>Source</th><th>Endpoint</th><th>Last updated</th></tr></thead><tbody>`)
+	workspace := html.EscapeString(report.Workspace)
+	write("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>adOmnia Security Intelligence — ", workspace, "</title>\n",
+		htmlReportStyle, "\n</head>\n<body>\n<h1>adOmnia Security Intelligence</h1>\n",
+		"<div class=\"meta\">", workspace, " · scanned ", html.EscapeString(report.ScannedAt), "</div>\n<div class=\"stats\">\n")
+	summary := report.Summary
+	for _, stat := range []struct {
+		value int
+		label string
+	}{
+		{summary.Findings, "findings"}, {summary.Critical, "critical"}, {summary.High, "high"},
+		{summary.ActivelyExploited, "exploited in the wild"}, {summary.Reachable, "reachable"}, {summary.FixAvailable, "with a fix"},
+	} {
+		write("<div class=\"stat\"><b>", strconv.Itoa(stat.value), "</b>", stat.label, "</div>\n")
+	}
+	write("</div>\n<h2>Findings</h2>\n<table>\n<thead><tr><th>Priority</th><th>Vulnerability</th><th>Component</th><th>Reachability</th><th>Fix</th></tr></thead>\n<tbody>")
+	for _, finding := range report.Findings {
+		write("<tr><td><span class=\"badge ", html.EscapeString(finding.Risk.Band), "\">", html.EscapeString(finding.Risk.Priority), "</span></td>")
+		write("<td><b>", html.EscapeString(CanonicalAdvisoryID(finding.Advisory)), "</b><br>", html.EscapeString(finding.Advisory.Summary), "<ul class=\"reasons\">")
+		for _, reason := range finding.Risk.Reasons {
+			write("<li>", html.EscapeString(reason), "</li>")
+		}
+		write("</ul></td>")
+		write("<td class=\"mono\">", html.EscapeString(finding.Component.Name), "<br>", html.EscapeString(finding.Component.Version), "</td>")
+		write("<td>", html.EscapeString(finding.Reachability.Label()), "</td>")
+		write("<td class=\"mono\">", html.EscapeString(finding.Remediation.FixedVersion), "</td></tr>")
+	}
+	write("</tbody></table>\n<h2>Data sources</h2>\n<table><thead><tr><th>Source</th><th>Endpoint</th><th>Last updated</th></tr></thead><tbody>")
 	for _, source := range report.Sources {
-		builder.WriteString("<tr><td>");builder.WriteString(html.EscapeString(source.Name));builder.WriteString("</td><td class=\"mono\">");builder.WriteString(html.EscapeString(source.Endpoint));builder.WriteString("</td><td>");builder.WriteString(html.EscapeString(source.LastUpdated));builder.WriteString("</td></tr>")
+		write("<tr><td>", html.EscapeString(source.Name), "</td><td class=\"mono\">", html.EscapeString(source.Endpoint), "</td><td>", html.EscapeString(source.LastUpdated), "</td></tr>")
 	}
-	builder.WriteString(`</tbody></table>
-</body>
-</html>`)
+	write("</tbody></table>\n</body>\n</html>")
 	return builder.String()
 }

@@ -25,7 +25,7 @@ if [[ -z "$WAILS3_BIN" && -x "$(go env GOPATH)/bin/wails3" ]]; then
     WAILS3_BIN="$(go env GOPATH)/bin/wails3"
 fi
 if [[ -z "$WAILS3_BIN" ]]; then
-    echo "Wails 3 CLI not found. Install: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.5" >&2
+    echo "Wails 3 CLI not found. Install: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0" >&2
     exit 1
 fi
 

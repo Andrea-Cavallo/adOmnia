@@ -21,6 +21,7 @@ import (
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/digitorus/pdf"
+	"github.com/digitorus/pdfsign"
 	"github.com/digitorus/pdfsign/revocation"
 	"github.com/digitorus/pdfsign/sign"
 	"github.com/digitorus/pdfsign/verify"
@@ -93,75 +94,16 @@ func Sign(reqJSON string) (string, error) {
 		return "", err
 	}
 
-	reader := bytes.NewReader(input)
-	pdfReader, err := pdf.NewReader(reader, int64(len(input)))
+	document, err := pdfsign.Open(bytes.NewReader(input), int64(len(input)))
 	if err != nil {
 		return "", fmt.Errorf("read PDF for signing: %w", err)
 	}
-
-	var appearanceImage []byte
-	if strings.TrimSpace(req.AppearanceBase64) != "" {
-		appearanceImage, err = base64.StdEncoding.DecodeString(req.AppearanceBase64)
-		if err != nil {
-			return "", fmt.Errorf("invalid signature appearance image: %w", err)
-		}
-	}
-
-	page := req.Page
-	if page <= 0 {
-		page = 1
-	}
-	w := req.W
-	h := req.H
-	if w <= 0 {
-		w = 180
-	}
-	if h <= 0 {
-		h = 70
-	}
-
-	signData := sign.SignData{
-		Signature: sign.SignDataSignature{
-			CertType:   sign.ApprovalSignature,
-			DocMDPPerm: sign.AllowFillingExistingFormFieldsAndSignaturesPerms,
-			Info: sign.SignDataSignatureInfo{
-				Name:        req.Name,
-				Location:    req.Location,
-				Reason:      req.Reason,
-				ContactInfo: req.ContactInfo,
-				Date:        time.Now().Local(),
-			},
-		},
-		DigestAlgorithm:   crypto.SHA256,
-		Signer:            cred.signer,
-		Certificate:       cred.cert,
-		CertificateChains: cred.chain,
-		Appearance: sign.Appearance{
-			Visible:     req.Visible,
-			Page:        uint32(page),
-			LowerLeftX:  req.X,
-			LowerLeftY:  req.Y,
-			UpperRightX: req.X + w,
-			UpperRightY: req.Y + h,
-			Image:       appearanceImage,
-		},
-	}
-
-	if strings.TrimSpace(req.TSAUrl) != "" {
-		signData.TSA = sign.TSA{
-			URL:      strings.TrimSpace(req.TSAUrl),
-			Username: req.TSAUsername,
-			Password: req.TSAPassword,
-		}
-	}
-
-	if req.EnableLTV {
-		signData.RevocationData = revocation.InfoArchival{}
-		signData.RevocationFunction = sign.DefaultEmbedRevocationStatusFunction
+	if err := stageSignature(document, req, cred); err != nil {
+		return "", err
 	}
 
 	var out bytes.Buffer
-	if err := sign.Sign(reader, &out, pdfReader, int64(len(input)), signData); err != nil {
+	if _, err := document.Write(&out); err != nil {
 		return "", fmt.Errorf("sign PDF: %w", err)
 	}
 
@@ -173,6 +115,69 @@ func Sign(reqJSON string) (string, error) {
 	return string(data), nil
 }
 
+// Default size of a visible signature, in PDF points.
+const (
+	defaultAppearanceWidth  = 180
+	defaultAppearanceHeight = 70
+)
+
+// stageSignature adds the approval signature of req to the document: signer
+// details, optional visible appearance (the uploaded image, or the standard
+// text block), RFC 3161 timestamp and LTV revocation data.
+func stageSignature(document *pdfsign.Document, req Request, cred *resolvedCredential) error {
+	builder := document.Sign(cred.signer, cred.cert).
+		CertificateChains(cred.chain).
+		Digest(crypto.SHA256).
+		Type(pdfsign.ApprovalSignature).
+		SignerName(req.Name).
+		Reason(req.Reason).
+		Location(req.Location).
+		Contact(req.ContactInfo).
+		RevocationFunction(noRevocationData)
+	if req.Visible {
+		appearance, err := signatureAppearance(req)
+		if err != nil {
+			return err
+		}
+		page := req.Page
+		if page <= 0 {
+			page = 1
+		}
+		builder.Appearance(appearance, req.X, req.Y).Page(page)
+	}
+	if url := strings.TrimSpace(req.TSAUrl); url != "" {
+		builder.Timestamp(url).TimestampAuth(req.TSAUsername, req.TSAPassword)
+	}
+	if req.EnableLTV {
+		builder.RevocationFunction(sign.DefaultEmbedRevocationStatusFunction)
+	}
+	return nil
+}
+
+// noRevocationData embeds nothing: without LTV the signature must not fetch
+// OCSP or CRL responses (the library default would, on every signature).
+func noRevocationData(_, _ *x509.Certificate, _ *revocation.InfoArchival) error { return nil }
+
+func signatureAppearance(req Request) (*pdfsign.Appearance, error) {
+	width, height := req.W, req.H
+	if width <= 0 {
+		width = defaultAppearanceWidth
+	}
+	if height <= 0 {
+		height = defaultAppearanceHeight
+	}
+	appearance := pdfsign.NewAppearance(width, height)
+	if strings.TrimSpace(req.AppearanceBase64) == "" {
+		return appearance.Standard(), nil
+	}
+	image, err := base64.StdEncoding.DecodeString(req.AppearanceBase64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid signature appearance image: %w", err)
+	}
+	appearance.Image(&pdfsign.Image{Name: "signature", Data: image}).Rect(0, 0, width, height).ScaleStretch()
+	return appearance, nil
+}
+
 // Verify validates the signatures of a base64-encoded PDF and returns the
 // verification report as JSON.
 func Verify(pdfBase64 string) (string, error) {
@@ -180,13 +185,60 @@ func Verify(pdfBase64 string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("invalid PDF base64: %w", err)
 	}
-	opts := verify.DefaultVerifyOptions()
-	resp, err := verify.VerifyWithOptions(bytes.NewReader(input), int64(len(input)), opts)
+	resp, err := verifySignatures(input)
 	if err != nil {
 		return "", fmt.Errorf("verify PDF: %w", err)
 	}
 	data, _ := jsonutil.Marshal(resp)
 	return string(data), nil
+}
+
+// verifyOptions are the RFC 9336 defaults of pdfsign (Document Signing EKU,
+// Digital Signature key usage, timestamp certificates validated, embedded
+// certificates not trusted as roots, no network access).
+func verifyOptions() *verify.VerifyOptions {
+	return &verify.VerifyOptions{
+		RequiredEKUs:                  []x509.ExtKeyUsage{documentSigningEKU},
+		AllowedEKUs:                   []x509.ExtKeyUsage{x509.ExtKeyUsageEmailProtection, x509.ExtKeyUsageClientAuth},
+		RequireDigitalSignatureKU:     true,
+		ValidateTimestampCertificates: true,
+		HTTPTimeout:                   10 * time.Second,
+	}
+}
+
+// documentSigningEKU is id-kp-documentSigning (1.3.6.1.5.5.7.3.36, RFC 9336),
+// which crypto/x509 does not name.
+const documentSigningEKU = x509.ExtKeyUsage(36)
+
+// verifySignatures reports every signature of the PDF in the verify.Response
+// shape the PDF editor reads (Error, Signers with valid_signature,
+// trusted_issuer, timestamp fields…).
+func verifySignatures(input []byte) (response *verify.Response, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			response, err = nil, fmt.Errorf("malformed PDF (%v)", recovered)
+		}
+	}()
+	reader := bytes.NewReader(input)
+	document, err := pdf.NewReader(reader, int64(len(input)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	if document.Trailer().Key("Root").Key("AcroForm").Key("SigFlags").IsNull() {
+		return nil, fmt.Errorf("no digital signature in document")
+	}
+	signers, found := verify.VerifySignatures(document, reader, int64(len(input)), verifyOptions())
+	if found == 0 || len(signers) == 0 {
+		return nil, fmt.Errorf("no readable digital signature in document")
+	}
+	response = &verify.Response{}
+	for _, signer := range signers {
+		if len(signer.ValidationErrors) > 0 && response.Error == "" {
+			response.Error = signer.ValidationErrors[0].Error()
+		}
+		response.Signers = append(response.Signers, *signer)
+	}
+	return response, nil
 }
 
 // InspectCertificate resolves the signing credential (PEM or keystore) and
