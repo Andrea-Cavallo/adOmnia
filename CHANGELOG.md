@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### License
+
+- adOmnia is now released under the **GNU General Public License v3.0** (GPL-3.0-only) instead of MIT. `LICENSE` holds the full text; README, NOTICE, citation, package manifests, the Windows installer and file metadata, the Homebrew and Scoop manifests and *Settings → About* say the same.
+- Removed the unused react-bits `Threads` component: its "MIT + Commons Clause" license adds a restriction GPL-3.0 does not allow.
+
 ### Updates
 
 - Optional **Install downloaded updates when I close adOmnia**, separate from automatic downloads; the save and running-task checks still apply. Postponing turns it off.

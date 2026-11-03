@@ -5,6 +5,6 @@ type: software
 authors:
   - family-names: "Cavallo"
     given-names: "Andrea"
-license: "MIT"
+license: "GPL-3.0-only"
 repository-code: "https://github.com/Andrea-Cavallo/adOmnia"
 abstract: "A local-first desktop toolbox for API development, backend integration, protocol debugging, and enterprise workflows."

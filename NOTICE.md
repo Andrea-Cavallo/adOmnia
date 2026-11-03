@@ -1,6 +1,6 @@
 # Notices
 
-Third-party software notices, disclaimer and attribution request for adOmnia. adOmnia itself is released under the MIT license in [LICENSE](LICENSE).
+Third-party software notices, disclaimer and attribution request for adOmnia. adOmnia itself is Copyright © 2026 Andrea Cavallo and is released under the GNU General Public License, version 3 only (GPL-3.0-only), in [LICENSE](LICENSE). The third-party components below keep their own licenses, all compatible with GPL-3.0.
 
 ## Third-Party Licenses
 

@@ -66,7 +66,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "FileDescription" "${APP_NAME} ${VERSION} Setup"
 VIAddVersionKey "CompanyName" "${PUBLISHER}"
-VIAddVersionKey "LegalCopyright" "MIT License, ${PUBLISHER}"
+VIAddVersionKey "LegalCopyright" "GNU GPL v3, ${PUBLISHER}"
 
 !define MUI_ICON "..\icon.ico"
 !define MUI_UNICON "..\icon.ico"

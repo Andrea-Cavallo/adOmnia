@@ -1106,6 +1106,10 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 <span className="text-xs text-text-1">Developer</span>
                 <span className="text-xs text-text-2">Andrea Cavallo</span>
               </div>
+              <div className="py-2 px-1 flex items-center justify-between">
+                <span className="text-xs text-text-1">License</span>
+                <span className="text-xs text-text-2">GNU GPL v3.0</span>
+              </div>
               <UpdateCheckRow />
             </SettingsCard>
             <SettingsCard>

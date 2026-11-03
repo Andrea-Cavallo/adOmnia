@@ -9,7 +9,7 @@
       "FileDescription": "adOmnia — Local-first API developer toolbox",
       "FileVersion": "@@PRODUCT_VERSION@@",
       "InternalName": "adomnia",
-      "LegalCopyright": "© 2027 Andrea Cavallo. All rights reserved.",
+      "LegalCopyright": "© 2027 Andrea Cavallo. Licensed under the GNU GPL v3.",
       "OriginalFilename": "adomnia.exe",
       "ProductName": "adOmnia",
       "ProductVersion": "@@PRODUCT_VERSION@@",

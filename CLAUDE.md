@@ -564,7 +564,7 @@ Four files live at the root — everything else is under `docs/`:
 
 - `README.md` — User-facing overview, quick start, feature list
 - `AGENTS.md` — Detailed architecture, conventions, file-by-file breakdown
-- `LICENSE` — MIT license (third-party notices in `NOTICE.md`)
+- `LICENSE` — GNU GPL v3.0, GPL-3.0-only (third-party notices in `NOTICE.md`). New third-party code must have a GPL-3.0-compatible license (MIT, BSD, Apache-2.0, LGPL, GPL-3.0); no Commons Clause or other "no selling" terms.
 - `CLAUDE.md` — This file
 
 ### docs/ index
