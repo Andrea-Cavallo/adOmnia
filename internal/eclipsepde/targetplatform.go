@@ -3,6 +3,7 @@ package eclipsepde
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 )
 
@@ -112,11 +113,41 @@ func (tp *TargetPlatform) Index() (*BundleIndex, error) {
 	if !ok {
 		return nil, fmt.Errorf("no active target platform")
 	}
-	idx := NewBundleIndex()
-	if err := idx.IndexTargetDirectory(profile.Path); err != nil {
+	idx, err := indexProfile(profile)
+	if err != nil {
 		return nil, err
 	}
 	tp.index = idx
+	return idx, nil
+}
+
+func indexProfile(profile TargetProfile) (*BundleIndex, error) {
+	idx := NewBundleIndex()
+	if profile.Kind != TargetEclipseDefinition {
+		return idx, idx.IndexTargetDirectory(profile.Path)
+	}
+	definition, err := ReadTargetDefinition(profile.Path)
+	if err != nil {
+		return nil, err
+	}
+	for _, directory := range definition.DirectoryLocations() {
+		if !filepath.IsAbs(directory) {
+			directory = filepath.Join(filepath.Dir(profile.Path), directory)
+		}
+		if err := idx.IndexTargetDirectory(directory); err != nil {
+			idx.Problems = append(idx.Problems, Problem{
+				Severity: "warning", File: profile.Path,
+				Message: "target location is not available: " + err.Error(),
+			})
+		}
+	}
+	// ponytail: p2 locations are read, not downloaded; download them when a real target needs it.
+	if units := len(definition.Locations) - len(definition.DirectoryLocations()); units > 0 {
+		idx.Problems = append(idx.Problems, Problem{
+			Severity: "warning", File: profile.Path,
+			Message: fmt.Sprintf("%d p2 or feature locations are not downloaded: point the target to a folder that contains their bundles", units),
+		})
+	}
 	return idx, nil
 }
 
@@ -140,6 +171,8 @@ type ValidationResult struct {
 	ExactDuplicates map[string][]string
 	// MultiVersion lists names indexed at several versions.
 	MultiVersion map[string][]string
+	// Bundles is the resolution of each workspace bundle.
+	Bundles []*BundleResolution
 }
 
 // Validate checks the active target and, optionally, a workspace against it:
@@ -176,8 +209,8 @@ func (tp *TargetPlatform) Validate(ws *Workspace) (*ValidationResult, error) {
 
 	if ws != nil {
 		result.WorkspaceBundles = len(ws.Bundles())
-		resolver := NewResolver(idx)
-		for _, res := range resolver.StatusOf(ws.Projects) {
+		result.Bundles = NewResolver(withWorkspace(idx, ws)).StatusOf(ws.Projects)
+		for _, res := range result.Bundles {
 			if res.Status == StatusUnresolved {
 				result.Unresolved++
 				for _, missing := range res.Missing {
@@ -191,6 +224,19 @@ func (tp *TargetPlatform) Validate(ws *Workspace) (*ValidationResult, error) {
 	}
 	sort.SliceStable(result.Problems, func(i, j int) bool { return result.Problems[i].Message < result.Problems[j].Message })
 	return result, nil
+}
+
+// withWorkspace adds the workspace bundles to a copy of the target index: bundles
+// of the same workspace depend on each other, and the cached index must stay target-only.
+func withWorkspace(target *BundleIndex, ws *Workspace) *BundleIndex {
+	merged := NewBundleIndex()
+	for _, entry := range target.All() {
+		merged.Add(entry)
+	}
+	for _, proj := range ws.Projects {
+		merged.AddWorkspaceProject(proj)
+	}
+	return merged
 }
 
 // String renders the statistics block of the section 7 layout.

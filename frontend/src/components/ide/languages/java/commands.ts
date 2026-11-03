@@ -5,7 +5,7 @@ export type JavaLanguageCommandId =
   | 'java.runMain' | 'java.debugMain' | 'java.runTest' | 'java.debugTest' | 'java.springBootRun'
   | 'java.mvnCompile' | 'java.mvnTest' | 'java.mvnPackage' | 'java.mvnCleanInstall'
   | 'java.optimizeImports' | 'java.goToTest' | 'java.generate'
-  | 'java.checkUpdates' | 'java.scanVulnerabilities' | 'java.selectJdk' | 'java.dependencyTree' | 'java.jvmMonitor' | 'java.springEndpoints' | 'java.springBeanGraph'
+  | 'java.checkUpdates' | 'java.scanVulnerabilities' | 'java.selectJdk' | 'java.dependencyTree' | 'java.osgi' | 'java.jvmMonitor' | 'java.springEndpoints' | 'java.springBeanGraph'
 
 const requires = { language: JAVA_LANGUAGE_ID }
 
@@ -27,6 +27,7 @@ export const JAVA_LANGUAGE_COMMANDS: ReadonlyArray<CodeStudioCommand> = ([
   { id: 'java.goToTest', menu: 'java', label: 'Go to Test / Source' },
   { id: 'java.selectJdk', menu: 'java', label: 'Select JDK…', separatorBefore: true },
   { id: 'java.dependencyTree', menu: 'java', label: 'Maven Dependency Tree…' },
+  { id: 'java.osgi', menu: 'java', label: 'OSGi Bundles & Target Platform…' },
   { id: 'java.jvmMonitor', menu: 'java', label: 'JVM Monitor (heap, GC, JFR)…' },
   { id: 'java.checkUpdates', menu: 'java', label: 'Check for Updates (pom.xml)', separatorBefore: true },
   { id: 'java.scanVulnerabilities', menu: 'java', label: 'Scan Vulnerabilities (pom.xml)' },

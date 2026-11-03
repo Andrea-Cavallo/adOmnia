@@ -3,6 +3,7 @@ import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/a
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
+import type { WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -905,6 +906,16 @@ export async function cleanRustAnalyzerCache(sessionId: string, confirmed: boole
 /** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */
 export async function getJavaDependencyTree(sessionId: string, module: string): Promise<TreeNode[]> {
   return GoIDEBindings.JavaDependencyTree(sessionId, module)
+}
+
+/** Bundle OSGi/PDE del progetto e come si risolvono sulla target platform attiva (legge solo i manifest). */
+export async function getJavaOsgiWorkspace(sessionId: string): Promise<WorkspaceReport | null> {
+  return GoIDEBindings.JavaOsgiWorkspace(sessionId)
+}
+
+/** Sceglie la target platform: cartella di bundle, Eclipse installato o file .target. */
+export async function setJavaOsgiTarget(sessionId: string, path: string): Promise<WorkspaceReport | null> {
+  return GoIDEBindings.SetJavaOsgiTarget(sessionId, path)
 }
 
 /** Collegamenti mapper MyBatis ↔ statement XML del progetto (analisi dei sorgenti, nessun server). */

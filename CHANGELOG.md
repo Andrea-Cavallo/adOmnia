@@ -11,6 +11,24 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - Optional **Install downloaded updates when I close adOmnia**, separate from automatic downloads; the save and running-task checks still apply. Postponing turns it off.
 - Repeated checks and downloads are coalesced, and a verified download is reused after a restart (signature, version and hash are checked again).
 
+### OSGi bundles and target platform for legacy Eclipse PDE projects (Code Studio, first step)
+
+- New **Java → OSGi Bundles & Target Platform…**: lists the bundles of the project (Eclipse projects with `META-INF/MANIFEST.MF`, also nested such as `plugins/<name>`). Choose a target platform (a folder of bundles, an Eclipse installation such as Kepler, or a `.target` file) and each bundle shows *Resolved*, *Warning* or *Unresolved*, with the missing dependency, the required range and the versions found in the target.
+- The choice is saved in `.adomnia/eclipse-target.json`, relative when inside the project so it can be shared through Git. It reads manifests only, runs nothing, never writes Eclipse metadata, and needs a trusted project.
+- More accurate diagnosis: workspace bundles satisfy each other, `system.bundle` maps to `org.eclipse.osgi`, packages of the JavaSE-1.6 profile count as provided by the JRE, and missing optional imports of a dependency are no longer reported on the bundles that use it.
+- **Verified by automated tests with hand-written bundles only:** the panel has not been opened in the desktop app or tried on a real Kepler target yet.
+- **Still missing:**
+  - Compiling at Java 6 level: the compiler in JDT LS 1.60 rejects anything below 1.8, so the plan is to build with Kepler's `ecj`.
+  - Exporting bundles as JARs from `build.properties`.
+  - Launching and debugging in Equinox on a real Java 6 JVM.
+  - Editor accuracy: JDT LS works at 1.8 at best, so it accepts syntax Java 6 does not have and does not read the target platform classpath.
+  - Downloading p2 locations of a `.target` file (reported as a warning today).
+  - bnd workspaces, which generate their manifests at build time.
+
+### Run console
+
+- The input field for a running program is hidden until requested: open it from the Run toolbar, close it with Escape or its close button.
+
 ## [1.0.24] — 2026-11-02
 
 Release notes: [docs/releases/v1.0.24.md](docs/releases/v1.0.24.md).

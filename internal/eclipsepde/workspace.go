@@ -5,7 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
+
+// maxProjectDepth bounds the search for nested projects in a large repository.
+const maxProjectDepth = 4
 
 // Workspace is the result of importing an Eclipse workspace folder: one or more
 // projects plus the problems found reading them. The import is strictly
@@ -33,22 +39,11 @@ func ImportWorkspace(root string) (*Workspace, error) {
 	}
 	ws := &Workspace{Root: abs}
 
-	entries, err := os.ReadDir(abs)
-	if err != nil {
-		return nil, err
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		dir := filepath.Join(abs, entry.Name())
-		if !fileExists(filepath.Join(dir, ".project")) {
-			continue
-		}
+	for _, dir := range projectDirectories(abs) {
 		proj, err := ReadEclipseProject(dir)
 		if err != nil {
 			ws.Problems = append(ws.Problems, Problem{
-				Severity: "error", File: filepath.Join(entry.Name(), ".project"),
+				Severity: "error", File: filepath.Join(dir, ".project"),
 				Message: "project cannot be imported: " + err.Error(),
 			})
 			continue
@@ -76,6 +71,34 @@ func ImportWorkspace(root string) (*Workspace, error) {
 		}
 	}
 	return ws, nil
+}
+
+// projectDirectories finds the folders holding a `.project`: the opened folder
+// itself, or projects nested in it (legacy repositories often use plugins/<name>).
+// It does not descend into a project, build output or hidden folders such as
+// Eclipse's `.metadata`. Unreadable folders are skipped.
+func projectDirectories(root string) []string {
+	var out []string
+	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return filepath.SkipDir
+		}
+		if !entry.IsDir() {
+			return nil
+		}
+		if path != root && (project.IgnoredDirectory(entry.Name()) || strings.HasPrefix(entry.Name(), ".")) {
+			return filepath.SkipDir
+		}
+		if fileExists(filepath.Join(path, ".project")) {
+			out = append(out, path)
+			return filepath.SkipDir
+		}
+		if rel, relErr := filepath.Rel(root, path); relErr == nil && strings.Count(rel, string(filepath.Separator)) >= maxProjectDepth {
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	return out
 }
 
 // Bundles lists the workspace projects that are OSGi bundles.

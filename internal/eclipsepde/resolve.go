@@ -187,7 +187,11 @@ func requirementOf(kind string, clause Clause) Requirement {
 }
 
 func (r *Resolver) checkBundleRequirement(req Requirement, from *IndexedBundle, chain []string, result *BundleResolution, out map[string]*BundleResolution, visited map[string]bool, optional bool) {
-	match, candidates, ok := r.Index.BestMatch(req.Name, req.Range, req.RangeOK)
+	lookup := req.Name
+	if lookup == systemBundleAlias {
+		lookup = equinoxFramework
+	}
+	match, candidates, ok := r.Index.BestMatch(lookup, req.Range, req.RangeOK)
 	if !ok {
 		missing := MissingRequirement{
 			Requirement: req,
@@ -202,11 +206,47 @@ func (r *Resolver) checkBundleRequirement(req Requirement, from *IndexedBundle, 
 		return
 	}
 	sub := r.resolveEntry(match, append(chain, labelOf(match)), visited, out)
-	// Surface transitive failures with the local chain so the user sees who
-	// actually pulls the broken dependency in.
+	noteTransitiveFailures(result, match, sub)
+}
+
+// noteTransitiveFailures surfaces failures of a dependency so the user sees who
+// actually pulls the broken requirement in. Its optional imports are not failures:
+// in a real target nearly every platform bundle has some that are not installed.
+func noteTransitiveFailures(result *BundleResolution, dependency *IndexedBundle, sub *BundleResolution) {
 	for _, m := range sub.Missing {
-		result.Notes = append(result.Notes, "via "+labelOf(match)+": "+m.Requirement.String()+" is unresolved")
+		if !m.Requirement.Optional {
+			result.Notes = append(result.Notes, "via "+labelOf(dependency)+": "+m.Requirement.String()+" is unresolved")
+		}
 	}
+}
+
+// Names of the OSGi framework as a bundle. ponytail: Equinox only (Kepler), add
+// other framework names when a target based on them appears.
+const (
+	systemBundleAlias = "system.bundle"
+	equinoxFramework  = "org.eclipse.osgi"
+)
+
+// jrePackagePrefixes are the non-java.* packages of the JavaSE-1.6 profile, which
+// the framework exports on behalf of the JRE. javax is listed by subpackage because
+// javax.servlet, javax.inject, javax.persistence... must come from a real bundle.
+// ponytail: one list for every execution environment, per-EE profiles when a
+// bundle needs J2SE-1.5 to report javax.script as missing.
+var jrePackagePrefixes = []string{
+	"java.", "javax.accessibility", "javax.activation", "javax.activity", "javax.annotation", "javax.crypto",
+	"javax.imageio", "javax.jws", "javax.lang.model", "javax.management", "javax.naming", "javax.net",
+	"javax.print", "javax.rmi", "javax.script", "javax.security.auth", "javax.security.cert", "javax.security.sasl",
+	"javax.smartcardio", "javax.sound", "javax.sql", "javax.swing", "javax.tools", "javax.transaction", "javax.xml",
+	"org.ietf.jgss", "org.omg.", "org.w3c.dom", "org.xml.sax",
+}
+
+func providedByJRE(pkg string) bool {
+	for _, prefix := range jrePackagePrefixes {
+		if pkg == strings.TrimSuffix(prefix, ".") || strings.HasPrefix(pkg, strings.TrimSuffix(prefix, ".")+".") {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Resolver) checkPackageRequirement(req Requirement, chain []string, result *BundleResolution, out map[string]*BundleResolution, visited map[string]bool, optional bool) {
@@ -221,6 +261,9 @@ func (r *Resolver) checkPackageRequirement(req Requirement, chain []string, resu
 		}
 	}
 	if chosen == nil {
+		if len(providers) == 0 && providedByJRE(req.Name) {
+			return
+		}
 		missing := MissingRequirement{Requirement: req, Available: candidates, Chain: chain, Actions: suggestActions(req, candidates, r.Index)}
 		result.Missing = append(result.Missing, missing)
 		if optional {
@@ -229,9 +272,7 @@ func (r *Resolver) checkPackageRequirement(req Requirement, chain []string, resu
 		return
 	}
 	sub := r.resolveEntry(chosen.Entry, append(chain, labelOf(chosen.Entry)), visited, out)
-	for _, m := range sub.Missing {
-		result.Notes = append(result.Notes, "via "+labelOf(chosen.Entry)+": "+m.Requirement.String()+" is unresolved")
-	}
+	noteTransitiveFailures(result, chosen.Entry, sub)
 }
 
 // suggestActions turns a missing requirement into the actionable hints of the

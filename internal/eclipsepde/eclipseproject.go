@@ -52,13 +52,13 @@ type ClasspathEntry struct {
 // Problem is one non-fatal issue discovered during import or resolution.
 type Problem struct {
 	// Severity is "error", "warning" or "info".
-	Severity string
+	Severity string `json:"severity"`
 	// Project is the owning project name, when the problem is project-scoped.
-	Project string
+	Project string `json:"project"`
 	// File is the file the problem refers to, relative to the workspace when possible.
-	File string
+	File string `json:"file"`
 	// Message is a human-readable, actionable description.
-	Message string
+	Message string `json:"message"`
 }
 
 func (p Problem) String() string {

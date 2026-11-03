@@ -13,6 +13,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
 	"github.com/Andrea-Cavallo/adOmnia/internal/codestudiowindow"
 	"github.com/Andrea-Cavallo/adOmnia/internal/copilot"
+	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/agentreview"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/apicontract"
@@ -1637,6 +1638,16 @@ func (g *GoIDE) JavaJDKs(sessionID string) (codestudio.JavaJDKReport, error) {
 // JavaDependencyTree è l'albero delle dipendenze Maven di un modulo (mvn dependency:tree): lancia Maven.
 func (g *GoIDE) JavaDependencyTree(sessionID, module string) ([]java.TreeNode, error) {
 	return g.service.JavaDependencyTree(sessionID, module)
+}
+
+// JavaOsgiWorkspace elenca i bundle OSGi/PDE del progetto e come si risolvono sulla target platform.
+func (g *GoIDE) JavaOsgiWorkspace(sessionID string) (*eclipsepde.WorkspaceReport, error) {
+	return g.service.JavaOsgiWorkspace(sessionID)
+}
+
+// SetJavaOsgiTarget sceglie la target platform del progetto: cartella di bundle, Eclipse installato o file .target.
+func (g *GoIDE) SetJavaOsgiTarget(sessionID, path string) (*eclipsepde.WorkspaceReport, error) {
+	return g.service.SetJavaOsgiTarget(sessionID, path)
 }
 
 // PomManagedVersions: versioni ereditate da parent e BOM per le dipendenze senza <version>.

@@ -97,6 +97,7 @@ import { CodeStudioRustToolchain } from './CodeStudioRustToolchain'
 import { CodeStudioRustTree } from './CodeStudioRustTree'
 import { CodeStudioRustEnvironment } from './CodeStudioRustEnvironment'
 import { CodeStudioJavaTree } from './CodeStudioJavaTree'
+import { CodeStudioJavaOsgi } from './CodeStudioJavaOsgi'
 import { CodeStudioJavaJvm } from './CodeStudioJavaJvm'
 import { CodeStudioSpringGraph } from './CodeStudioSpringGraph'
 import { CodeStudioSearchEverywhere } from './CodeStudioSearchEverywhere'
@@ -1112,6 +1113,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioRustTree />
       <CodeStudioRustEnvironment />
       <CodeStudioJavaTree />
+      <CodeStudioJavaOsgi />
       <CodeStudioJavaJvm />
       <CodeStudioSpringGraph />
       {sharedDialogs}
