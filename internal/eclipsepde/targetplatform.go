@@ -113,7 +113,7 @@ func (tp *TargetPlatform) Index() (*BundleIndex, error) {
 	if !ok {
 		return nil, fmt.Errorf("no active target platform")
 	}
-	idx, err := indexProfile(profile)
+	idx, err := cachedProfileIndex(profile)
 	if err != nil {
 		return nil, err
 	}
@@ -130,10 +130,7 @@ func indexProfile(profile TargetProfile) (*BundleIndex, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, directory := range definition.DirectoryLocations() {
-		if !filepath.IsAbs(directory) {
-			directory = filepath.Join(filepath.Dir(profile.Path), directory)
-		}
+	for _, directory := range definitionDirectories(profile.Path, definition) {
 		if err := idx.IndexTargetDirectory(directory); err != nil {
 			idx.Problems = append(idx.Problems, Problem{
 				Severity: "warning", File: profile.Path,
@@ -141,20 +138,71 @@ func indexProfile(profile TargetProfile) (*BundleIndex, error) {
 			})
 		}
 	}
-	// ponytail: p2 locations are read, not downloaded; download them when a real target needs it.
-	if units := len(definition.Locations) - len(definition.DirectoryLocations()); units > 0 {
+	indexP2Bundles(idx, profile.Path, definition)
+	if features := countLocations(definition, "Feature"); features > 0 {
 		idx.Problems = append(idx.Problems, Problem{
 			Severity: "warning", File: profile.Path,
-			Message: fmt.Sprintf("%d p2 or feature locations are not downloaded: point the target to a folder that contains their bundles", units),
+			Message: fmt.Sprintf("%d feature locations of an installation are not read: point the target to the installation folder instead", features),
 		})
 	}
 	return idx, nil
 }
 
-// Reindex drops the cache and indexes the active target again.
+// indexP2Bundles indexes the bundles downloaded for the p2 locations of this
+// exact .target, or says that they still have to be downloaded.
+func indexP2Bundles(idx *BundleIndex, targetPath string, definition *TargetDefinition) {
+	if len(definition.P2) == 0 {
+		return
+	}
+	lock, ok := readP2Lock(targetPath)
+	if !ok {
+		idx.Problems = append(idx.Problems, Problem{
+			Severity: "warning", File: targetPath,
+			Message: fmt.Sprintf("%d p2 locations are not downloaded yet: use Download p2 bundles", len(definition.P2)),
+		})
+		return
+	}
+	for _, jar := range lock.Bundles {
+		if !fileExists(jar) {
+			idx.Problems = append(idx.Problems, Problem{Severity: "warning", File: jar, Message: "downloaded p2 bundle is missing from the cache: download the p2 bundles again"})
+			continue
+		}
+		idx.indexJarBundle(jar)
+	}
+	for _, problem := range lock.Problems {
+		idx.Problems = append(idx.Problems, Problem{Severity: "warning", File: targetPath, Message: "p2: " + problem})
+	}
+}
+
+func countLocations(definition *TargetDefinition, kind string) int {
+	count := 0
+	for _, location := range definition.Locations {
+		if location.Kind == kind {
+			count++
+		}
+	}
+	return count
+}
+
+// Reindex drops the cache, the process-wide one included, and indexes the active target again.
 func (tp *TargetPlatform) Reindex() (*BundleIndex, error) {
 	tp.index = nil
+	if profile, ok := tp.ActiveProfile(); ok {
+		InvalidateTargetIndex(profile.Path)
+	}
 	return tp.Index()
+}
+
+// definitionDirectories are the directory locations of a .target, relative ones
+// resolved against the folder of the .target file.
+func definitionDirectories(targetPath string, definition *TargetDefinition) []string {
+	directories := definition.DirectoryLocations()
+	for i, directory := range directories {
+		if !filepath.IsAbs(directory) {
+			directories[i] = filepath.Join(filepath.Dir(targetPath), directory)
+		}
+	}
+	return directories
 }
 
 // ValidationResult is the outcome of Validate: profile problems plus index

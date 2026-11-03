@@ -1258,6 +1258,23 @@ func (g *GoIDE) SelectFolder(title string) (string, error) {
 	return strings.TrimSpace(path), nil
 }
 
+// SelectFile apre il selettore nativo di un file con il filtro indicato (es. "Target definitions", "*.target"),
+// senza leggerne il contenuto.
+func (g *GoIDE) SelectFile(title, filterLabel, pattern string) (string, error) {
+	if g.desktop == nil {
+		return "", fmt.Errorf("runtime desktop non inizializzato")
+	}
+	dialog := g.desktop.Dialog.OpenFile().CanChooseFiles(true).CanChooseDirectories(false).SetTitle(strings.TrimSpace(title))
+	if pattern = strings.TrimSpace(pattern); pattern != "" {
+		dialog = dialog.AddFilter(strings.TrimSpace(filterLabel), pattern)
+	}
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(path), nil
+}
+
 // SelectProjectParent apre il selettore nativo per la cartella che conterrà un nuovo progetto.
 func (g *GoIDE) SelectProjectParent() (string, error) {
 	if g.desktop == nil {
@@ -1648,6 +1665,26 @@ func (g *GoIDE) JavaOsgiWorkspace(sessionID string) (*eclipsepde.WorkspaceReport
 // SetJavaOsgiTarget sceglie la target platform del progetto: cartella di bundle, Eclipse installato o file .target.
 func (g *GoIDE) SetJavaOsgiTarget(sessionID, path string) (*eclipsepde.WorkspaceReport, error) {
 	return g.service.SetJavaOsgiTarget(sessionID, path)
+}
+
+// ReindexJavaOsgiTarget rilegge tutti i manifest della target platform, ignorando la cache.
+func (g *GoIDE) ReindexJavaOsgiTarget(sessionID string) (*eclipsepde.WorkspaceReport, error) {
+	return g.service.ReindexJavaOsgiTarget(sessionID)
+}
+
+// PreviewJavaOsgiP2 elenca i repository p2 del file .target attivo, senza rete.
+func (g *GoIDE) PreviewJavaOsgiP2(sessionID string) (*eclipsepde.P2Preview, error) {
+	return g.service.PreviewJavaOsgiP2(sessionID)
+}
+
+// DownloadJavaOsgiP2 scarica i bundle delle location p2 del .target attivo, dopo conferma esplicita.
+func (g *GoIDE) DownloadJavaOsgiP2(sessionID string, confirmed bool) (*eclipsepde.P2DownloadResult, error) {
+	return g.service.DownloadJavaOsgiP2(sessionID, confirmed)
+}
+
+// CancelJavaOsgiP2 interrompe il download p2 in corso del progetto.
+func (g *GoIDE) CancelJavaOsgiP2(sessionID string) {
+	g.service.CancelJavaOsgiP2(sessionID)
 }
 
 // PomManagedVersions: versioni ereditate da parent e BOM per le dipendenze senza <version>.

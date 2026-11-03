@@ -42,3 +42,36 @@ func TestJavaOsgiNeedsTrustThenPersistsTheTarget(t *testing.T) {
 		t.Fatalf("report = %+v", report)
 	}
 }
+
+func TestJavaOsgiP2NeedsTrustAndConfirmation(t *testing.T) {
+	root := t.TempDir()
+	service := NewService(&memoryStore{}, nil)
+	session, err := service.OpenProject(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := string(session.ID)
+	if _, err := service.PreviewJavaOsgiP2(id); err == nil {
+		t.Fatal("an untrusted project must not read its .target")
+	}
+	if _, err := service.ReindexJavaOsgiTarget(id); err == nil {
+		t.Fatal("an untrusted project must not index its target")
+	}
+	if _, err := service.SetToolAuthorization(id, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.DownloadJavaOsgiP2(id, false); err == nil {
+		t.Fatal("a download without confirmation must be refused")
+	}
+	// A folder target has no p2 location to download.
+	if _, err := service.SetJavaOsgiTarget(id, t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.DownloadJavaOsgiP2(id, true); err == nil {
+		t.Fatal("a folder target has nothing to download from p2")
+	}
+	if _, err := service.ReindexJavaOsgiTarget(id); err != nil {
+		t.Fatal(err)
+	}
+	service.CancelJavaOsgiP2(id) // no download running: a no-op
+}

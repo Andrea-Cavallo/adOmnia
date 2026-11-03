@@ -4,6 +4,8 @@
 export {
     BundleStatus,
     MissingDependency,
+    P2DownloadResult,
+    P2Preview,
     Problem,
     ResolutionStatus,
     WorkspaceReport

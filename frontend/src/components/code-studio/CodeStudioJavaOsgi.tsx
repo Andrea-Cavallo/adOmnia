@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Boxes, FolderOpen, Loader2, Search } from 'lucide-react'
+import { Boxes, FileCode2, FolderOpen, Loader2, RefreshCw, Search } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
-import { getJavaOsgiWorkspace, selectGoIDEFolder, setJavaOsgiTarget } from '@/lib/code-studio-api'
+import { getJavaOsgiWorkspace, reindexJavaOsgiTarget, selectGoIDEFile, selectGoIDEFolder, setJavaOsgiTarget } from '@/lib/code-studio-api'
+import { CodeStudioJavaOsgiP2 } from './CodeStudioJavaOsgiP2'
 import type { BundleStatus, MissingDependency, WorkspaceReport } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import { withContentKeys } from '@/lib/contentKeys'
 
@@ -88,9 +89,14 @@ export function CodeStudioJavaOsgi() {
     return () => { openRequest = null }
   }, [])
 
-  const browse = async (): Promise<void> => {
+  // Native pickers choose either files or folders: two buttons, one click each.
+  const browseFolder = async (): Promise<void> => {
     const folder = await selectGoIDEFolder('Target platform: a folder of bundles or an Eclipse installation')
     if (folder && sessionId) load(setJavaOsgiTarget(sessionId, folder))
+  }
+  const browseTargetFile = async (): Promise<void> => {
+    const file = await selectGoIDEFile('Target platform: an Eclipse .target definition', 'Target definitions (*.target)', '*.target')
+    if (file && sessionId) load(setJavaOsgiTarget(sessionId, file))
   }
 
   const visible = useMemo(() => {
@@ -108,9 +114,12 @@ export function CodeStudioJavaOsgi() {
           onSubmit={(event) => { event.preventDefault(); if (sessionId && target.trim()) load(setJavaOsgiTarget(sessionId, target.trim())) }}
         >
           <input value={target} onChange={(event) => setTarget(event.target.value)} placeholder="Target platform: bundles folder, Eclipse install or .target file" className="gs-input flex-1 font-mono" aria-label="Target platform path" />
-          <button type="button" className="gs-btn shrink-0" onClick={() => { void browse() }} disabled={busy}><FolderOpen size={13} /> Browse…</button>
+          <button type="button" className="gs-btn shrink-0" onClick={() => { void browseFolder() }} disabled={busy} title="A folder of bundles or an Eclipse installation"><FolderOpen size={13} /> Folder…</button>
+          <button type="button" className="gs-btn shrink-0" onClick={() => { void browseTargetFile() }} disabled={busy} title="An Eclipse .target definition"><FileCode2 size={13} /> .target…</button>
           <button type="submit" className="gs-btn shrink-0" disabled={busy || !target.trim()}>Apply</button>
+          <button type="button" className="gs-btn gs-btn-icon shrink-0" onClick={() => { if (sessionId) load(reindexJavaOsgiTarget(sessionId)) }} disabled={busy || !report?.hasTarget} title="Reindex: read every manifest of the target again" aria-label="Reindex target platform"><RefreshCw size={13} /></button>
         </form>
+        {sessionId && report?.hasTarget && <CodeStudioJavaOsgiP2 sessionId={sessionId} targetPath={report.targetPath} onDownloaded={() => load(getJavaOsgiWorkspace(sessionId))} />}
         <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
           <Search size={14} className="text-text-3" />
           <input data-autofocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter by bundle name" className="gs-input flex-1" />

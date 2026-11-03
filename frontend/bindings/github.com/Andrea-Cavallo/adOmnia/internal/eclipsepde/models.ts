@@ -114,6 +114,98 @@ export class MissingDependency {
 }
 
 /**
+ * P2DownloadResult is the outcome of DownloadTargetP2.
+ */
+export class P2DownloadResult {
+    "bundles": number;
+    "downloaded": number;
+    "reused": number;
+    "problems": string[];
+
+    /** Creates a new P2DownloadResult instance. */
+    constructor($$source: Partial<P2DownloadResult> = {}) {
+        if (!("bundles" in $$source)) {
+            this["bundles"] = 0;
+        }
+        if (!("downloaded" in $$source)) {
+            this["downloaded"] = 0;
+        }
+        if (!("reused" in $$source)) {
+            this["reused"] = 0;
+        }
+        if (!("problems" in $$source)) {
+            this["problems"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new P2DownloadResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): P2DownloadResult {
+        const $$createField3_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("problems" in $$parsedSource) {
+            $$parsedSource["problems"] = $$createField3_0($$parsedSource["problems"]);
+        }
+        return new P2DownloadResult($$parsedSource as Partial<P2DownloadResult>);
+    }
+}
+
+/**
+ * P2Preview describes what DownloadTargetP2 would do, without network access.
+ */
+export class P2Preview {
+    "targetPath": string;
+    "locations": number;
+    "units": number;
+    "repositories": string[];
+
+    /**
+     * Downloaded is true when the bundles of this exact .target are in the cache.
+     */
+    "downloaded": boolean;
+    "bundles": number;
+
+    /** Creates a new P2Preview instance. */
+    constructor($$source: Partial<P2Preview> = {}) {
+        if (!("targetPath" in $$source)) {
+            this["targetPath"] = "";
+        }
+        if (!("locations" in $$source)) {
+            this["locations"] = 0;
+        }
+        if (!("units" in $$source)) {
+            this["units"] = 0;
+        }
+        if (!("repositories" in $$source)) {
+            this["repositories"] = [];
+        }
+        if (!("downloaded" in $$source)) {
+            this["downloaded"] = false;
+        }
+        if (!("bundles" in $$source)) {
+            this["bundles"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new P2Preview instance from a string or object.
+     */
+    static createFrom($$source: any = {}): P2Preview {
+        const $$createField3_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("repositories" in $$parsedSource) {
+            $$parsedSource["repositories"] = $$createField3_0($$parsedSource["repositories"]);
+        }
+        return new P2Preview($$parsedSource as Partial<P2Preview>);
+    }
+}
+
+/**
  * Problem is one non-fatal issue discovered during import or resolution.
  */
 export class Problem {

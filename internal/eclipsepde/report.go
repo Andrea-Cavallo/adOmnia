@@ -90,6 +90,24 @@ func BuildReport(root string) (*WorkspaceReport, error) {
 	return report, nil
 }
 
+// ReindexReport forgets the cached index of the active target and builds the report again.
+func ReindexReport(root string) (*WorkspaceReport, error) {
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	settings, err := LoadTargetSettings(absRoot)
+	if err != nil {
+		return nil, err
+	}
+	platform := NewTargetPlatform()
+	platform.LoadFromSettings(absoluteProfiles(settings, absRoot))
+	if profile, ok := platform.ActiveProfile(); ok {
+		InvalidateTargetIndex(profile.Path)
+	}
+	return BuildReport(absRoot)
+}
+
 // SetTarget makes path (a folder of bundles, an Eclipse install or a `.target`
 // file) the active target of the project and returns the updated report.
 func SetTarget(root, path string) (*WorkspaceReport, error) {

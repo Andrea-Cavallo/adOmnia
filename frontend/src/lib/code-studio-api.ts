@@ -3,7 +3,7 @@ import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/a
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
-import type { WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
+import type { P2DownloadResult, P2Preview, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -361,6 +361,11 @@ export async function getGoIDEWatcherStatus(sessionId: string): Promise<WatcherS
 /** Selettore nativo di cartelle; stringa vuota se l'utente annulla. */
 export async function selectGoIDEFolder(title: string): Promise<string> {
   return GoIDEBindings.SelectFolder(title)
+}
+
+/** Selettore nativo di un file con filtro (es. "Target definitions", "*.target"); stringa vuota se l'utente annulla. */
+export async function selectGoIDEFile(title: string, filterLabel: string, pattern: string): Promise<string> {
+  return GoIDEBindings.SelectFile(title, filterLabel, pattern)
 }
 
 export async function startGoIDERun(request: RunRequest): Promise<GoIDEExecution> {
@@ -916,6 +921,25 @@ export async function getJavaOsgiWorkspace(sessionId: string): Promise<Workspace
 /** Sceglie la target platform: cartella di bundle, Eclipse installato o file .target. */
 export async function setJavaOsgiTarget(sessionId: string, path: string): Promise<WorkspaceReport | null> {
   return GoIDEBindings.SetJavaOsgiTarget(sessionId, path)
+}
+
+/** Rilegge tutti i manifest della target platform, ignorando la cache dell'indice. */
+export async function reindexJavaOsgiTarget(sessionId: string): Promise<WorkspaceReport | null> {
+  return GoIDEBindings.ReindexJavaOsgiTarget(sessionId)
+}
+
+/** Repository e unità p2 del file .target attivo (nessun accesso alla rete). */
+export async function previewJavaOsgiP2(sessionId: string): Promise<P2Preview | null> {
+  return GoIDEBindings.PreviewJavaOsgiP2(sessionId)
+}
+
+/** Scarica i bundle delle location p2 nella cache della macchina; l'avanzamento arriva come `osgi.p2.progress`. */
+export async function downloadJavaOsgiP2(sessionId: string): Promise<P2DownloadResult | null> {
+  return GoIDEBindings.DownloadJavaOsgiP2(sessionId, true)
+}
+
+export async function cancelJavaOsgiP2(sessionId: string): Promise<void> {
+  return GoIDEBindings.CancelJavaOsgiP2(sessionId)
 }
 
 /** Collegamenti mapper MyBatis ↔ statement XML del progetto (analisi dei sorgenti, nessun server). */
