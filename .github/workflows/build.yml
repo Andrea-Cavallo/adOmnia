@@ -43,6 +43,15 @@ jobs:
       - name: Wails version consistency
         run: node scripts/check-wails-version.mjs
 
+      - name: Release version guard
+        # A pushed v* tag publishes a release: refuse a tag that does not match the
+        # declared version or is not the highest one (v0.1.24 after v1.0.24).
+        if: github.ref_type == 'tag'
+        run: node scripts/check-release-version.mjs "$GITHUB_REF_NAME"
+
+      - name: Release scripts unit tests
+        run: node --test scripts/check-release-version.test.mjs
+
       # Stessa installazione degli altri workflow (azione condivisa). Il frontend reale si compila più sotto,
       # quindi niente stub di frontend/dist. Il timeout evita che un mirror apt bloccato tenga il job per ore.
       - uses: ./.github/actions/go-wails-prereqs
@@ -324,6 +333,10 @@ jobs:
           path: dist/*
           retention-days: 30
 
+      - name: Release version guard
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node scripts/check-release-version.mjs "$GITHUB_REF_NAME"
+
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
@@ -332,3 +345,4 @@ jobs:
           body_path: ${{ steps.notes.outputs.path }}
           generate_release_notes: ${{ steps.notes.outputs.path == '' }}
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+          make_latest: ${{ !(contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha')) }}
