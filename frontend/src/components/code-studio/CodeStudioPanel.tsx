@@ -940,6 +940,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (runPreviewCommand(id, activeSession?.id ?? null)) return
     if (runJavaCommand(id, activeSession?.id ?? null, currentActiveDocument() ?? null, useCodeStudioCursorStore.getState().line, runTarget)) return
     if (runPythonCommand(id, activeSession?.id ?? null)) return
+    if (id === 'rust.attach') return setAttachMode('attach-rust')
     if (runRustCommand(id, activeSession?.id ?? null)) return
     if (runDeclaredDebuggerCommand(id, activeSession?.id ?? null)) return
     if (runWebCommand(id, activeSession?.id ?? null)) return

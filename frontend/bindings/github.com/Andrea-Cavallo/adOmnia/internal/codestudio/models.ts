@@ -4653,6 +4653,11 @@ export class RustDebugRequest {
     "programArguments"?: string[];
     "environment"?: { [_ in string]?: string };
 
+    /**
+     * ProcessID è il processo a cui collegarsi (Attach to Rust Process): niente build.
+     */
+    "processId"?: number;
+
     /** Creates a new RustDebugRequest instance. */
     constructor($$source: Partial<RustDebugRequest> = {}) {
         if (!("sessionId" in $$source)) {

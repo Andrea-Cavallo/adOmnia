@@ -112,6 +112,12 @@ describe('IDE language contributions', () => {
     expect(pythonMenu.every((command) => command.requires?.language === 'python')).toBe(true)
   })
 
+  it('every Rust menu command requires Rust, attach included', () => {
+    const rustMenu = CODE_STUDIO_COMMANDS.filter((command) => command.menu === 'rust')
+    expect(rustMenu.map((command) => command.id)).toContain('rust.attach')
+    expect(rustMenu.every((command) => command.requires?.language === 'rust')).toBe(true)
+  })
+
   it('disable commands of a language the backend does not register', () => {
     expect(languageRequirement('go', undefined)).toBe(true)
     expect(languageRequirement('go', [{ id: 'go', name: 'Go' }])).toBe(true)

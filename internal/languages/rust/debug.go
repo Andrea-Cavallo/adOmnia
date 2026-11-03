@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -39,6 +40,9 @@ type DebugOptions struct {
 	Target            string   `json:"target,omitempty"`
 	// Adapter è il CodeLLDB già localizzato dall'host (cartella strumenti, PATH, VS Code).
 	Adapter string `json:"adapter,omitempty"`
+	// ProcessID chiede l'attach a un processo Rust già in esecuzione: niente build, niente
+	// toolchain, e allo Stop il debugger si stacca lasciando vivo il programma.
+	ProcessID int `json:"processId,omitzero"`
 }
 
 // DebugAdapter implementa dap.DebugAdapterProvider con CodeLLDB: un adapter DAP standalone (LLDB
@@ -54,6 +58,9 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 	}
 	if err := validateDebugOptions(options); err != nil {
 		return dap.AdapterSpec{}, err
+	}
+	if options.ProcessID != 0 {
+		return attachAdapter(request, options)
 	}
 	if options.Source != "" {
 		var err error
@@ -76,12 +83,9 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 	if err != nil {
 		return dap.AdapterSpec{}, err
 	}
-	codeLLDB := options.Adapter
-	if codeLLDB == "" {
-		codeLLDB, _, _ = LocateCodeLLDB("")
-	}
-	if codeLLDB == "" || !hasFile(codeLLDB) {
-		return dap.AdapterSpec{}, fmt.Errorf("CodeLLDB is not installed: install it (see the Rust debugger notice) to debug Rust programs")
+	codeLLDB, err := locateAdapter(options.Adapter)
+	if err != nil {
+		return dap.AdapterSpec{}, err
 	}
 	programArguments := options.ProgramArguments
 	artifact := ""
@@ -95,14 +99,78 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 	if err != nil {
 		return dap.AdapterSpec{}, err
 	}
-	// CodeLLDB non annuncia la porta in alcun modo (provato con v1.12.3: nessun output): si riserva
-	// una porta libera di loopback, gli si passa con `--port` e il manager si collega a indirizzo
-	// noto (come per debugpy). Era il `ReadyPattern` mai verificato di RS-6.1.
+	spec, err := codeLLDBSpec(codeLLDB, request)
+	if err != nil {
+		return dap.AdapterSpec{}, err
+	}
+	spec.Title = debugTitle(options)
+	spec.Launch = func(string) (string, map[string]any) {
+		return "launch", map[string]any{
+			"type": "lldb", "request": "launch", "program": artifact,
+			"args": append([]string(nil), programArguments...),
+			"cwd":  request.WorkingDirectory,
+		}
+	}
+	spec.ExplainError = func(err error) error {
+		return fmt.Errorf("CodeLLDB could not launch the program: %w", err)
+	}
+	return spec, nil
+}
+
+// attachAdapter collega CodeLLDB a un processo già in esecuzione: nessuna build, nessuna
+// toolchain. Detach fa sì che Stop stacchi il debugger senza terminare il programma.
+func attachAdapter(request dap.LaunchRequest, options DebugOptions) (dap.AdapterSpec, error) {
+	codeLLDB, err := locateAdapter(options.Adapter)
+	if err != nil {
+		return dap.AdapterSpec{}, err
+	}
+	spec, err := codeLLDBSpec(codeLLDB, request)
+	if err != nil {
+		return dap.AdapterSpec{}, err
+	}
+	processID := options.ProcessID
+	spec.Detach = true
+	spec.Title = "Attach Rust " + strconv.Itoa(processID)
+	spec.Launch = func(string) (string, map[string]any) {
+		return "attach", map[string]any{"type": "lldb", "request": "attach", "pid": processID}
+	}
+	spec.ExplainError = func(err error) error {
+		return fmt.Errorf("CodeLLDB could not attach to process %d (%s): %w", processID, attachPermissionHint(), err)
+	}
+	return spec, nil
+}
+
+// attachPermissionHint spiega il motivo più comune di un attach rifiutato sul sistema corrente.
+func attachPermissionHint() string {
+	switch runtime.GOOS {
+	case "linux":
+		return "check that it is still running and that ptrace is allowed: kernel.yama.ptrace_scope must be 0, or run the program from adOmnia"
+	case "darwin":
+		return "check that it is still running and that macOS lets the debugger attach to it (Developer Tools permission)"
+	}
+	return "check that it is still running and that it belongs to your user"
+}
+
+// locateAdapter restituisce il CodeLLDB già localizzato dall'host o lo cerca; errore se manca.
+func locateAdapter(adapter string) (string, error) {
+	if adapter == "" {
+		adapter, _, _ = LocateCodeLLDB("")
+	}
+	if adapter == "" || !hasFile(adapter) {
+		return "", fmt.Errorf("CodeLLDB is not installed: install it (see the Rust debugger notice) to debug Rust programs")
+	}
+	return adapter, nil
+}
+
+// codeLLDBSpec è la parte comune a launch e attach. CodeLLDB non annuncia la porta in alcun modo
+// (provato con v1.12.3: nessun output): si riserva una porta libera di loopback, gli si passa con
+// `--port` e il manager si collega a indirizzo noto (come per debugpy). Era il `ReadyPattern` mai
+// verificato di RS-6.1.
+func codeLLDBSpec(codeLLDB string, request dap.LaunchRequest) (dap.AdapterSpec, error) {
 	port, err := freeLoopbackPort()
 	if err != nil {
 		return dap.AdapterSpec{}, err
 	}
-	address := "127.0.0.1:" + strconv.Itoa(port)
 	return dap.AdapterSpec{
 		AdapterID:        ID,
 		Executable:       codeLLDB,
@@ -110,19 +178,8 @@ func (*Language) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec, error
 		WorkingDirectory: request.WorkingDirectory,
 		Environment:      append([]string(nil), request.Environment...),
 		Transport:        dap.TCPListen,
-		Address:          address,
-		Title:            debugTitle(options),
+		Address:          "127.0.0.1:" + strconv.Itoa(port),
 		PanicFunction:    "rust_panic",
-		Launch: func(string) (string, map[string]any) {
-			return "launch", map[string]any{
-				"type": "lldb", "request": "launch", "program": artifact,
-				"args": append([]string(nil), programArguments...),
-				"cwd":  request.WorkingDirectory,
-			}
-		},
-		ExplainError: func(err error) error {
-			return fmt.Errorf("CodeLLDB could not launch the program: %w", err)
-		},
 	}, nil
 }
 
@@ -216,6 +273,9 @@ func parseArtifactPath(output []byte) (string, error) {
 // target non possono iniziare con `-` né contenere altro che i caratteri ammessi da cargo. Un nome
 // di test non può essere un'opzione di libtest (stessa regola di TestCommand).
 func validateDebugOptions(options DebugOptions) error {
+	if options.ProcessID < 0 || options.ProcessID == os.Getpid() {
+		return fmt.Errorf("choose another process to attach to")
+	}
 	for _, name := range []string{options.Package, options.Bin, options.Example} {
 		if name != "" && !crateName.MatchString(name) {
 			return fmt.Errorf("enter a valid package, binary or example name")
