@@ -158,3 +158,79 @@ func keysOf(m map[string]*BundleResolution) []string {
 	}
 	return out
 }
+
+func TestResolverWarnsAboutAnOlderSingleton(t *testing.T) {
+	idx := indexWith(t,
+		"Bundle-SymbolicName: s;singleton:=true\nBundle-Version: 1.0.0\n",
+		"Bundle-SymbolicName: s;singleton:=true\nBundle-Version: 2.0.0\n",
+	)
+	root, err := ParseBundle([]byte("Bundle-SymbolicName: app\nBundle-Version: 1.0.0\nRequire-Bundle: s;bundle-version=\"[1,2)\"\n"), "app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := NewResolver(idx).Resolve(&IndexedBundle{Bundle: root, Source: SourceWorkspace}).Root
+	if res.Status != StatusWarning || len(res.Notes) != 1 || !strings.Contains(res.Notes[0], "selects s 2.0.0") {
+		t.Fatalf("resolution = %+v", res)
+	}
+}
+
+func TestResolverChecksTheExecutionEnvironment(t *testing.T) {
+	idx := indexWith(t, "Bundle-SymbolicName: lib\nBundle-Version: 1.0.0\n")
+	for _, tc := range []struct {
+		target, required string
+		resolved         bool
+	}{
+		{"JavaSE-1.6", "JavaSE-1.7", false},
+		{"JavaSE-1.6", "J2SE-1.5", true},
+		{"JavaSE-1.6", "JavaSE-1.7,J2SE-1.4", true},
+		{"JavaSE-1.6", "CDC-1.1/Foundation-1.1", false},
+		{"JavaSE-11", "JavaSE-1.8", true},
+		{"JavaSE-1.8", "JavaSE/compact1-1.8", true},
+		{"", "JavaSE-17", true},
+	} {
+		root, err := ParseBundle([]byte("Bundle-SymbolicName: app\nBundle-Version: 1.0.0\nBundle-RequiredExecutionEnvironment: "+tc.required+"\n"), "app")
+		if err != nil {
+			t.Fatal(err)
+		}
+		resolver := NewResolver(idx)
+		resolver.ExecutionEnvironment = tc.target
+		if got := resolver.Resolve(&IndexedBundle{Bundle: root}).Root.Status != StatusUnresolved; got != tc.resolved {
+			t.Errorf("%s on %s: resolved = %v", tc.required, tc.target, got)
+		}
+	}
+}
+
+func TestResolverMatchesImportAttributesAndFragmentExports(t *testing.T) {
+	idx := indexWith(t,
+		"Bundle-SymbolicName: p1\nBundle-Version: 1.0.0\nExport-Package: x;version=\"1.0\";vendor=acme\n",
+		"Bundle-SymbolicName: p2\nBundle-Version: 2.0.0\nExport-Package: x;version=\"2.0\"\n",
+		"Bundle-SymbolicName: m\nBundle-Version: 1.0.0\nExport-Package: y;secret=yes;mandatory:=secret\n",
+		"Bundle-SymbolicName: host\nBundle-Version: 1.0.0\n",
+		"Bundle-SymbolicName: frag\nBundle-Version: 1.0.0\nFragment-Host: host\nExport-Package: frag.api\n",
+	)
+	wired := func(imports string) string {
+		root, err := ParseBundle([]byte("Bundle-SymbolicName: app\nBundle-Version: 1.0.0\nImport-Package: "+imports+"\n"), "app")
+		if err != nil {
+			t.Fatal(err)
+		}
+		res := NewResolver(idx).Resolve(&IndexedBundle{Bundle: root}).Root
+		if len(res.Wires) == 0 {
+			return "unresolved"
+		}
+		return res.Wires[0].Provider
+	}
+	cases := []struct{ imports, want string }{
+		{"x", "p2"},
+		{"x;bundle-symbolic-name=p1", "p1"},
+		{"x;bundle-version=\"[1,2)\"", "p1"},
+		{"x;vendor=acme", "p1"},
+		{"y", "unresolved"},
+		{"y;secret=yes", "m"},
+		{"frag.api", "host"},
+	}
+	for _, tc := range cases {
+		if got := wired(tc.imports); got != tc.want {
+			t.Errorf("Import-Package: %s wired to %s, want %s", tc.imports, got, tc.want)
+		}
+	}
+}

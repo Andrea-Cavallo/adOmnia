@@ -95,7 +95,7 @@ func (idx *BundleIndex) ProvidersOf(pkg string) []Provider {
 			if v, ok, err := clause.VersionRangeOf("version"); err == nil && ok {
 				version = v.Floor
 			}
-			out = append(out, Provider{Entry: e, ExportVersion: version})
+			out = append(out, Provider{Entry: e, ExportVersion: version, Clause: clause})
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
@@ -108,6 +108,8 @@ func (idx *BundleIndex) ProvidersOf(pkg string) []Provider {
 type Provider struct {
 	Entry         *IndexedBundle
 	ExportVersion Version
+	// Clause is the Export-Package clause, for attribute matching.
+	Clause Clause
 }
 
 // Duplicates returns symbolic names indexed more than once at the same version

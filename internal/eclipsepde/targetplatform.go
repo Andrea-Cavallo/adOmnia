@@ -257,7 +257,9 @@ func (tp *TargetPlatform) Validate(ws *Workspace) (*ValidationResult, error) {
 
 	if ws != nil {
 		result.WorkspaceBundles = len(ws.Bundles())
-		result.Bundles = NewResolver(withWorkspace(idx, ws)).StatusOf(ws.Projects)
+		resolver := NewResolver(withWorkspace(idx, ws))
+		resolver.ExecutionEnvironment = profile.ExecutionEnvironment
+		result.Bundles = resolver.StatusOf(ws.Projects)
 		for _, res := range result.Bundles {
 			if res.Status == StatusUnresolved {
 				result.Unresolved++

@@ -28,6 +28,8 @@ type Requirement struct {
 	RangeOK bool
 	// Optional marks resolution:=optional requirements.
 	Optional bool
+	// clause is the manifest clause, for attribute matching.
+	clause Clause
 }
 
 // String renders the requirement as PDE shows it.
@@ -51,6 +53,13 @@ type BundleResolution struct {
 	// Notes are non-blocking findings (optional requirement missing, version
 	// satisfied by an older bundle than the newest...).
 	Notes []string
+	// Wires are the providers chosen for the satisfied requirements, in the
+	// format the PDE bridge reports them.
+	Wires []Wire
+}
+
+func wireTo(req Requirement, provider *IndexedBundle) Wire {
+	return Wire{Kind: req.Kind, Name: req.Name, Provider: provider.Bundle.SymbolicName, ProviderVersion: provider.Bundle.Version.String()}
 }
 
 // MissingRequirement explains exactly why a requirement failed and what is
@@ -101,6 +110,9 @@ type Resolution struct {
 // authoritative PDE/Equinox state is computed by the isolated legacy bridge.
 type Resolver struct {
 	Index *BundleIndex
+	// ExecutionEnvironment is the environment of the target JRE (e.g. JavaSE-1.6):
+	// a bundle requiring a newer one does not resolve. Empty skips the check.
+	ExecutionEnvironment string
 }
 
 // NewResolver builds a resolver over an index.
@@ -134,6 +146,14 @@ func (r *Resolver) resolveEntry(entry *IndexedBundle, chain []string, visited ma
 	visited[key] = true
 	result := &BundleResolution{Bundle: entry}
 	out[key] = result
+
+	if required := entry.Bundle.ExecutionEnvironment; !executionEnvironmentSatisfied(r.ExecutionEnvironment, required) {
+		result.Missing = append(result.Missing, MissingRequirement{
+			Requirement: Requirement{Kind: "Bundle-RequiredExecutionEnvironment", Name: required},
+			Chain:       chain,
+			Actions:     []string{"run the target on " + required + " or newer", "lower Bundle-RequiredExecutionEnvironment if the code allows it"},
+		})
+	}
 
 	// Fragment-Host: the host must exist and resolve.
 	if host := entry.Bundle.FragmentHost; host != nil {
@@ -178,7 +198,7 @@ func requirementOf(kind string, clause Clause) Requirement {
 	if kind != "Import-Package" {
 		attr = "bundle-version"
 	}
-	req := Requirement{Kind: kind, Name: clause.Name, Optional: clause.IsOptional()}
+	req := Requirement{Kind: kind, Name: clause.Name, Optional: clause.IsOptional(), clause: clause}
 	rng, ok, err := clause.VersionRangeOf(attr)
 	if err == nil && ok {
 		req.Range, req.RangeOK = rng, true
@@ -205,6 +225,8 @@ func (r *Resolver) checkBundleRequirement(req Requirement, from *IndexedBundle, 
 		}
 		return
 	}
+	result.Wires = append(result.Wires, wireTo(req, match))
+	r.noteSingleton(result, match)
 	sub := r.resolveEntry(match, append(chain, labelOf(match)), visited, out)
 	noteTransitiveFailures(result, match, sub)
 }
@@ -250,13 +272,16 @@ func providedByJRE(pkg string) bool {
 }
 
 func (r *Resolver) checkPackageRequirement(req Requirement, chain []string, result *BundleResolution, out map[string]*BundleResolution, visited map[string]bool, optional bool) {
+	if r.wireToJRE(req, result) {
+		return
+	}
 	providers := r.Index.ProvidersOf(req.Name)
 	var candidates []string
 	var chosen *Provider
 	for i := len(providers) - 1; i >= 0; i-- {
 		p := providers[i]
 		candidates = append(candidates, p.ExportVersion.String()+" ("+p.Entry.Bundle.SymbolicName+")")
-		if chosen == nil && (!req.RangeOK || req.Range.Match(p.ExportVersion)) {
+		if chosen == nil && (!req.RangeOK || req.Range.Match(p.ExportVersion)) && exportMatchesImport(req.clause, p.Clause, r.exporterOf(p.Entry)) {
 			chosen = &providers[i]
 		}
 	}
@@ -271,8 +296,63 @@ func (r *Resolver) checkPackageRequirement(req Requirement, chain []string, resu
 		}
 		return
 	}
+	result.Wires = append(result.Wires, wireTo(req, r.exporterOf(chosen.Entry)))
+	r.noteSingleton(result, r.exporterOf(chosen.Entry))
 	sub := r.resolveEntry(chosen.Entry, append(chain, labelOf(chosen.Entry)), visited, out)
 	noteTransitiveFailures(result, chosen.Entry, sub)
+}
+
+// wireToJRE satisfies a JRE package from the framework, as Equinox does: the
+// system bundle resolves first and an already resolved exporter wins, even
+// over a bundle exporting a newer version (javax.xml 1.3.4 in Kepler). It
+// applies when the import accepts the unversioned system export and names no
+// exporter attributes.
+func (r *Resolver) wireToJRE(req Requirement, result *BundleResolution) bool {
+	if !providedByJRE(req.Name) || (req.RangeOK && !req.Range.Match(Version{})) || hasSelectionAttributes(req.clause) {
+		return false
+	}
+	if framework, _, ok := r.Index.BestMatch(equinoxFramework, VersionRange{}, false); ok {
+		result.Wires = append(result.Wires, wireTo(req, framework))
+	}
+	return true
+}
+
+func hasSelectionAttributes(clause Clause) bool {
+	for name := range clause.Attributes {
+		if !versionAttributes[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// noteSingleton warns when the chosen provider is a singleton with a newer
+// version in the index: PDE compiles against it, but at runtime Equinox keeps
+// only the newest singleton, so this wiring fails when the product launches.
+func (r *Resolver) noteSingleton(result *BundleResolution, provider *IndexedBundle) {
+	if !provider.Bundle.Singleton {
+		return
+	}
+	for _, other := range r.Index.ByName(provider.Bundle.SymbolicName) {
+		if other.Bundle.Singleton && other.Bundle.Version.Compare(provider.Bundle.Version) > 0 {
+			result.Notes = append(result.Notes, fmt.Sprintf("via %s: singleton, at runtime Equinox selects %s instead", labelOf(provider), labelOf(other)))
+			return
+		}
+	}
+}
+
+// exporterOf is the bundle that exports a package at runtime: a fragment's
+// exports belong to its host, as Equinox wires them.
+func (r *Resolver) exporterOf(entry *IndexedBundle) *IndexedBundle {
+	host := entry.Bundle.FragmentHost
+	if host == nil {
+		return entry
+	}
+	rng, ok, err := host.VersionRangeOf("bundle-version")
+	if match, _, found := r.Index.BestMatch(host.Name, rng, ok && err == nil); found {
+		return match
+	}
+	return entry
 }
 
 // suggestActions turns a missing requirement into the actionable hints of the
