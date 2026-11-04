@@ -64,7 +64,7 @@ Bundle-SymbolicName: com.acme.app
 Bundle-Version: 1.0.0
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: com.acme.ui
-Eclipse-PlatformFilter: (&(osgi.os=linux))
+Eclipse-PlatformFilter: (&(osgi.os=none))
 `
 
 const brokenControlManifest = `Manifest-Version: 1.0

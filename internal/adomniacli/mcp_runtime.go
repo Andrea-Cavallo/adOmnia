@@ -18,6 +18,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 	ideprocess "github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Runtime for agents: start the workspace in Equinox with the console on a local port, read
@@ -142,7 +143,7 @@ func (s *mcpServer) osgiRuntimeStart(args mcpWorkspaceArgs) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	command := exec.Command(jdk.Binary, launch.Arguments...)
+	command := procutil.Command(jdk.Binary, launch.Arguments...)
 	command.Dir = launch.Directory
 	command.Env = append(os.Environ(), java.JavaEnvironment(jdk.Home)...)
 	ideprocess.Configure(command, false)
