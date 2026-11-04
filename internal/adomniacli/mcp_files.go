@@ -136,6 +136,7 @@ func (s *mcpServer) workspaceWriteFile(args mcpWorkspaceArgs) (string, error) {
 		return "", err
 	}
 	s.invalidateWorkspace(root)
+	s.invalidateFlow(root)
 	return jsonText(map[string]any{
 		"path": filepath.ToSlash(args.Path), "bytes": len(data), "sha256": sha256Bytes(data), "created": created,
 	})

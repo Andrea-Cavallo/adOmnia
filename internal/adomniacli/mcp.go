@@ -15,6 +15,7 @@ import (
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
 	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
+	"github.com/Andrea-Cavallo/adOmnia/internal/flowintel"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/mock"
 )
@@ -81,7 +82,7 @@ func MCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if workspace == "" {
 		workspace = defaultFolder
 	}
-	server := &mcpServer{defaultFolder: defaultFolder, workspace: workspace, allowWrite: allowWrite, mux: http.NewServeMux(), osgiReports: map[string]*eclipsepde.ExplorerReport{}, runtimes: map[string]*osgiRuntimeProcess{}}
+	server := &mcpServer{defaultFolder: defaultFolder, workspace: workspace, allowWrite: allowWrite, mux: http.NewServeMux(), osgiReports: map[string]*eclipsepde.ExplorerReport{}, runtimes: map[string]*osgiRuntimeProcess{}, flowIndexes: map[string]*flowintel.Index{}}
 	defer server.stopAllRuntimes()
 	mock.RegisterHandlers(server.mux)
 	scanner := bufio.NewScanner(stdin)
@@ -141,6 +142,8 @@ type mcpServer struct {
 	osgiReports   map[string]*eclipsepde.ExplorerReport
 	runtimeMu     sync.Mutex
 	runtimes      map[string]*osgiRuntimeProcess
+	flowMu        sync.Mutex
+	flowIndexes   map[string]*flowintel.Index
 }
 
 func (s *mcpServer) handle(request mcpRPC) (any, *mcpError) {

@@ -88,7 +88,7 @@ func mcpTools() []mcpTool {
 			"outputDir":  str("Directory to save the .md report (optional; content always returned even if omitted)."),
 		}), network},
 	}
-	return append(tools, mcpWorkspaceTools()...)
+	return append(append(tools, mcpWorkspaceTools()...), mcpFlowTools()...)
 }
 
 func mcpKnownTool(name string) bool {
@@ -126,6 +126,9 @@ func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error)
 	}
 	if workspaceOSGITool(name) {
 		return s.callWorkspaceTool(name, raw)
+	}
+	if flowTool(name) {
+		return s.callFlowTool(name, raw)
 	}
 	switch name {
 	case "project_list_routes":

@@ -652,6 +652,7 @@ func (s *mcpServer) osgiImportPlugins(args mcpWorkspaceArgs) (string, error) {
 	}
 	if len(result.Imported) > 0 {
 		s.invalidateWorkspace(root)
+		s.invalidateFlow(root)
 	}
 	return jsonText(result)
 }
@@ -673,6 +674,7 @@ func (s *mcpServer) osgiAddTargetJars(args mcpWorkspaceArgs) (string, error) {
 	}
 	if len(result.Imported) > 0 {
 		s.invalidateWorkspace(root)
+		s.invalidateFlow(root)
 	}
 	return jsonText(result)
 }

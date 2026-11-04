@@ -6,6 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Flow Intelligence: flows, execution paths and confidence, over MCP
+
+- **The graph gains an execution layer.** `internal/flowintel` fills the existing Semantic Workspace Graph (no second engine) with flows, subflows, Java types/methods/calls, OSGi bundles, Activators, Declarative Services and external systems. Every edge carries its confidence: `declared` (config/XML/annotation), `derived` (target resolved in the workspace), `inferred` (name/import heuristic) or `observed` (runtime, reserved for live tracing).
+- **Adapters, not one framework.** A declared `.adomnia/flows.json` (id, kind, method, subflows, flowsTo, calls, external), generic XML (`<flow>`, `<subflow ref>`, `<call flow>`), Java annotations (`@Flow`/`@Subflow`) and OSGi metadata are read together; a proprietary format means a new adapter.
+- **Java without JDT everywhere.** A comment/string-aware reader extracts package, types, methods, annotations and calls with file and line. It never claims semantic precision: a call matched only by a unique method name is `inferred`, the same class or a known receiver type is `derived`.
+- **Queries** over the cached index: `Trace` (downstream/upstream/both, depth-bounded), `FindPaths` (shortest routes with the weakest confidence), `Impact` (flows, bundles, services and externals that reach a node) and `Explain` (incoming/outgoing relations with the reason and the source snippet). Discovery is bounded (20k files, 1 MiB each, ignored build/VCS folders) and cached per workspace; a write invalidates it.
+- **MCP:** `flow_discover`, `flow_trace`, `flow_find_paths`, `flow_impact`, `flow_explain`, read-only and rooted at the project folder; asking for a method by name resolves to the flow that runs it. The IDE panel and live tracing are the next phases.
+- **Tested:** Go tests with a legacy-style fixture (declared, XML, Java annotations, OSGi bundle/Activator/DS, SOAP class) for discovery counts/adapters, trace confidence, upstream impact, path finding and explanation; MCP tests for the five tools, the flow-over-method resolution and the cache/refresh behaviour. `go test ./internal/flowintel ./internal/adomniacli` and `go build ./...` are green.
+
 ### MCP: the running framework and workspace visibility
 
 - **The runtime is on the other end of the wire too.** `osgi_runtime_start` launches the compiled bundles in Equinox on the project JVM (project JDK, else the newest installed one Equinox 3.9 can run) with the console on an ephemeral loopback port, waits for the framework to settle and returns the same snapshot the IDE shows: ACTIVE bundles with the first activation time, framework start level, service registry, Equinox `diag` text, and the runtime diagnostics. `osgi_runtime_snapshot` refreshes it, `osgi_runtime_stop` stops the JVM and removes the overlay; the process belongs to the MCP server and is killed when it exits (including Ctrl+C on a terminal client). Starting/stopping needs `--write`, because it executes code; reading the snapshot does not.

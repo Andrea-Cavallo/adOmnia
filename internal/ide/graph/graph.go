@@ -28,6 +28,12 @@ const (
 	KindDependency = "dependency" // modulo esterno richiesto da go.mod
 	KindStdlib     = "stdlib"     // package della libreria standard importato dal progetto
 	KindEntry      = "entry"      // main, init, job, cli
+	// Flow Intelligence: il percorso di esecuzione, non solo la dipendenza.
+	KindFlow      = "flow"      // flow dichiarato (config, XML, annotazione)
+	KindSubflow   = "subflow"   // subflow richiamato da un flow
+	KindBundle    = "bundle"    // bundle OSGi/PDE
+	KindActivator = "activator" // Bundle-Activator
+	KindExternal  = "external"  // SOAP, REST, database, coda: fuori dal workspace
 )
 
 // Tipi di arco: From → To si legge "From <kind> To".
@@ -45,6 +51,24 @@ const (
 	EdgeReads      = "reads"      // funzione → variabile d'ambiente
 	EdgeStarts     = "starts"     // entry → funzione
 	EdgeUses       = "uses"       // endpoint/tipo → tipo (DTO di richiesta/risposta, campo)
+	// Flow Intelligence.
+	EdgeFlowsTo  = "flows-to"   // flow → flow/subflow (chiamata dichiarata)
+	EdgeInvokes  = "invokes"    // flow/metodo → metodo
+	EdgeProvides = "provides"   // bundle → servizio
+	EdgeRefers   = "references" // bundle/classe → servizio consumato
+	EdgeCallsExt = "calls-ext"  // metodo → sistema esterno (SOAP/REST/DB/coda)
+)
+
+// Affidabilità di un collegamento: quanto è dimostrabile.
+const (
+	// ConfidenceDeclared: la relazione è scritta (config, XML, annotazione).
+	ConfidenceDeclared = "declared"
+	// ConfidenceDerived: il target è risolto nei sorgenti del workspace.
+	ConfidenceDerived = "derived"
+	// ConfidenceInferred: euristica (nome, import, unicità parziale).
+	ConfidenceInferred = "inferred"
+	// ConfidenceObserved: visto a runtime (trace).
+	ConfidenceObserved = "observed"
 )
 
 // Node è un elemento del progetto, con la posizione da cui viene.
@@ -64,6 +88,9 @@ type Edge struct {
 	Kind string `json:"kind"`
 	// Detail qualifica l'arco: operazione SQL, ruolo del topic…
 	Detail string `json:"detail,omitempty"`
+	// Confidence dice quanto è dimostrabile il collegamento (declared, derived, inferred, observed).
+	// Gli archi senza valore sono intesi "derived" per i grafi esistenti.
+	Confidence string `json:"confidence,omitempty"`
 }
 
 // Graph è il grafo di un progetto. Fingerprint identifica lo stato dei sorgenti da cui è nato.
@@ -113,6 +140,14 @@ func (b *Builder) Edge(from, to, kind, detail string) {
 		return
 	}
 	b.edges[Edge{From: from, To: to, Kind: kind, Detail: detail}] = true
+}
+
+// EdgeWithConfidence aggiunge un arco con la sua affidabilità (Flow Intelligence).
+func (b *Builder) EdgeWithConfidence(from, to, kind, detail, confidence string) {
+	if from == to || !b.Has(from) || !b.Has(to) {
+		return
+	}
+	b.edges[Edge{From: from, To: to, Kind: kind, Detail: detail, Confidence: confidence}] = true
 }
 
 // Graph restituisce il grafo ordinato (stabile, quindi confrontabile e salvabile).
