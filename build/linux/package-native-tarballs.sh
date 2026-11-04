@@ -14,6 +14,11 @@ COMPRESS_WITH_UPX="${COMPRESS_WITH_UPX:-0}"
 
 mkdir -p dist
 
+# Find in Files: stage the pinned ripgrep for this platform (never fatal, the app falls back).
+if command -v node >/dev/null 2>&1 && [[ -f scripts/fetch-ripgrep.mjs ]]; then
+    node scripts/fetch-ripgrep.mjs || true
+fi
+
 package_tarball() {
     local variant="$1"
     local readme_note="$2"
@@ -25,6 +30,14 @@ package_tarball() {
 
     cp bin/adomnia "$stage/adomnia"
     chmod +x "$stage/adomnia"
+
+    if [[ -f build/rg/linux/rg ]]; then
+        cp build/rg/linux/rg "$stage/rg"
+        chmod +x "$stage/rg"
+        mkdir -p "$stage/licenses"
+        [[ -f build/rg/linux/LICENSE-MIT ]] && cp build/rg/linux/LICENSE-MIT "$stage/licenses/ripgrep-LICENSE-MIT"
+        [[ -f build/rg/linux/UNLICENSE ]] && cp build/rg/linux/UNLICENSE "$stage/licenses/ripgrep-UNLICENSE"
+    fi
 
     for size in 16 24 32 48 64 128 256 512; do
         icon="assets/icons/linux/adOmnia_${size}x${size}.png"
