@@ -8,7 +8,7 @@ In API Workspace crea una collection e aggiungi una richiesta. Scegli metodo e U
 
 Premi SEND: leggi status, durata, body e header della risposta. Aggiungi le verifiche in Tests e salva la richiesta con un nome riconoscibile.
 
-![Richiesta con risposta riuscita e handler collegato](screenshots/api-connected.png)
+![Richiesta con risposta riuscita e handler collegato](../assets/screenshots/api-workspace.png)
 
 ## 2. Imposta un environment
 
@@ -28,7 +28,7 @@ Metti un breakpoint nel handler. Avvia Debug oppure scegli Debug Request dalle a
 
 Se adOmnia riconosce la route, la barra HANDLER offre OPEN IN GO IDE. Route dinamiche o framework non supportati possono richiedere la configurazione manuale del debug.
 
-![Code Studio fermo su un breakpoint](screenshots/go-debug-light.png)
+![Code Studio fermo su un breakpoint](../assets/screenshots/go-debugger.png)
 
 ## 5. Collega log, database e messaggi
 

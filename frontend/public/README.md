@@ -163,6 +163,6 @@ Source files, build scripts, frontend package manifests, Docker lab files, works
 
 ## License
 
-GNU General Public License v3.0 (GPL-3.0-only). See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+GNU General Public License v3.0 (GPL-3.0-only). See [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md).
 
 Developed by Andrea Cavallo.

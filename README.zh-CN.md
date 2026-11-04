@@ -142,7 +142,7 @@ Code Studio    →    实时服务        →    API Workspace    →    处理�
 
 ## Code Studio：嵌入工作流中的 IDE
 
-![浅色外观的 Code Studio，在断点处暂停，显示 goroutine 和变量](docs/screenshots/go-debug-light.png)
+![浅色外观的 Code Studio，在断点处暂停，显示 goroutine 和变量](assets/screenshots/go-debugger.png)
 
 *Code Studio 在断点处暂停，显示源代码、goroutine、变量和控制台输出。各版本中的控件可能有所不同。*
 

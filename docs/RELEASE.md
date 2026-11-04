@@ -4,7 +4,7 @@ adOmnia releases are driven by Git tags and GitHub Actions. The automatic tag pa
 
 See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explicit request with native acceptance gates still open.
 
-The v1 frontend scope and reactivation gates are tracked in [V1 release scope TODO](../mds/V1-RELEASE-SCOPE-TODO.md). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
+The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md` (local planning note; the published status is [ISSUES.md](ISSUES.md)). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
 ## v1.0.24 — Windows installer and install-aware updates
 
@@ -40,7 +40,7 @@ The v1 frontend scope and reactivation gates are tracked in [V1 release scope TO
 
 ## v1.0.8 — Workspace loading and Code Studio responsiveness
 
-[Release notes](releases/v1.0.8.md), [loading optimization checkpoint](WORKSPACE-LOADING-OPTIMIZATION.md). Native acceptance of the loading work and the native timing comparison remain open.
+[Release notes](releases/v1.0.8.md), [loading optimization checkpoint](PERFORMANCE.md). Native acceptance of the loading work and the native timing comparison remain open.
 
 ## Unreleased (develop)
 
@@ -52,11 +52,11 @@ The v1 frontend scope and reactivation gates are tracked in [V1 release scope TO
 
 ## v0.10.0-beta.2 — stabilization toward v1
 
-See [beta notes](releases/v0.10.0-beta.2.md) and [v1 acceptance checklist](V1-CHECKLIST.md).
+See [beta notes](releases/v0.10.0-beta.2.md) and the [active queue](ISSUES.md).
 
 ## v0.10.0-beta.1 — stabilization toward v1
 
-See [beta notes](releases/v0.10.0-beta.1.md) and [v1 acceptance checklist](V1-CHECKLIST.md).
+See [beta notes](releases/v0.10.0-beta.1.md) and the [active queue](ISSUES.md).
 Create tags only for reviewed release batches. Use `v0.10.0-beta.N`, then `v1.0.0-rc.N`, then `v1.0.0`.
 Published tag names are never reused. Earlier notes below remain historical records; their remote tags and releases were retired on 2026-10-10.
 
@@ -542,11 +542,21 @@ Verified with `go build ./...`, `go vet ./...`, `go test ./...`,
 
 The build workflow produces:
 
-- `adOmnia-<version>-windows-amd64.exe`
-- `adOmnia-<version>-linux-amd64`
-- `adOmnia-<version>-linux-amd64.tar.gz`
-- `adOmnia-<version>-macos-universal.dmg`
+- `adomnia-<version>-windows-amd64-setup.exe` (installer, recommended)
+- `adomnia-<version>-windows-amd64.exe` (portable)
+- `adomnia-<version>-windows-amd64-update.zip`
+- `adomnia-<version>-linux-amd64-gtk3-webkitgtk-4.1.tar.gz`
+- `adomnia-<version>-linux-amd64-update.zip`
+- `adomnia-<version>-macos-universal.dmg`
+- `adomnia-<version>-macos-universal-update.zip`
+- `install.sh`, `install.ps1`
+- `update-manifest.json` (signed; the in-app updater reads it)
 - `SHA256SUMS.txt`
+
+`<version>` is the tag without its `v` (`v1.0.24` → `1.0.24`). The three
+`*-update.zip` packages are the only payload of `update-manifest.json`: the
+manifest is generated and signed in the release job, so a release that is
+missing one of them is not published.
 
 ## Pre-Release Checklist
 

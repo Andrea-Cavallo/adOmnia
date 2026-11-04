@@ -6,6 +6,13 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Release gates and documentation
+
+- **One app version everywhere:** `node scripts/check-version-consistency.mjs` compares `build/config.yml`, both npm manifests and both lockfiles, and runs on every build. A partial version bump is refused before it can ship a binary that disagrees with its installer. The release tag guard now reuses the same declarations and refuses a tag when any source drifted.
+- **Documentation links checked in CI:** `node scripts/check-doc-links.mjs` resolves every Markdown link against the files git actually tracks, so a link to a local planning note (`mds/*`), a removed page or a screenshot that moved fails the build instead of breaking for readers.
+- **New [Troubleshooting](docs/TROUBLESHOOTING.md) page:** startup, build, update and Code Studio failures with the first check for each, linked from every README, SUPPORT and the getting-started guide. Translations now point at the screenshots that exist in `assets/screenshots`.
+- **P2-06 (first slice):** tests for the bbolt database across a restart (every bucket survives, including the ones added by newer releases) and for the one-shot localStorage migration, which must never overwrite edits made in the desktop app.
+
 ### License
 
 - adOmnia is now released under the **GNU General Public License v3.0** (GPL-3.0-only) instead of MIT. `LICENSE` holds the full text; README, NOTICE, citation, package manifests, the Windows installer and file metadata, the Homebrew and Scoop manifests and *Settings → About* say the same.
@@ -320,7 +327,7 @@ Release notes: [docs/releases/v1.0.8.md](docs/releases/v1.0.8.md).
 
 ### Notes
 
-- Native acceptance of the loading work (cold/warm startup, first switch to an inactive workspace, Studio restore and repeated switching, recovered buffers) and the native timing comparison on the same dataset remain open; no startup speedup is claimed without them. See [the loading optimization checkpoint](docs/WORKSPACE-LOADING-OPTIMIZATION.md).
+- Native acceptance of the loading work (cold/warm startup, first switch to an inactive workspace, Studio restore and repeated switching, recovered buffers) and the native timing comparison on the same dataset remain open; no startup speedup is claimed without them. See the loading optimization checkpoint in [the performance notes](docs/PERFORMANCE.md) and the measured startup baselines there.
 
 ## [1.0.7] — 2026-10-19
 
@@ -873,7 +880,7 @@ Includes the changes tagged as 1.0.2–1.0.4, which had no separate section. Rel
 - **Optional SonarQube in Go Studio:** *View → SonarQube* (or the **Sonar** button in the status bar) configures a SonarQube server (URL, project key, sources, exclusions) and runs `sonar-scanner` on the trusted project, then imports the open issues from the Web API. It is off until you enable it, and it respects adOmnia's **Offline mode** and corporate proxy/CA; the server URL is validated and normalized, and the scan is refused while offline or for an untrusted project. Issues are listed by severity with file:line navigation, security-only and text filters, and per-severity counts. After the scan it waits for the server to finish processing the report, so the issues shown are the new ones; **Refresh** reimports without rescanning. Works with SonarQube 9.9 LTA, 10.x (including the new HIGH/MEDIUM/LOW severities) and SonarCloud, and its calls are listed under *Settings → Network & Privacy*. A **Copy problems** button copies every shown finding as `file:line [SEVERITY rule] message` (most severe first), **Resolve with AI** sends them grouped per file to the connected AI in adOmnia's preview-before-apply fix flow, and a **baseline** (`.adomnia/sonar-baseline.json`, keyed by rule/file/message so it survives code moving) hides the existing debt so only new problems appear. The SonarQube token is kept in memory for the session only — never persisted, never sent back to the UI — and no process starts without the project being trusted.
 
 ### Changed
-- **IDE platform, phases 1–12 complete:** shared language registry, project units, SDK plumbing, language-server lifecycle, Run/Test and DAP live behind the language-neutral IDE core and the Go adapter. Existing `GoIDE` service names, settings, workspaces and saved configurations remain compatible. See [the migration plan](docs/architecture/ide-multilanguage-refactor.md).
+- **IDE platform, phases 1–12 complete:** shared language registry, project units, SDK plumbing, language-server lifecycle, Run/Test and DAP live behind the language-neutral IDE core and the Go adapter. Existing `GoIDE` service names, settings, workspaces and saved configurations remain compatible. See [the migration plan](docs/architecture/ide-package-rules.md) and [the Code Studio reference](docs/CODE-STUDIO-REFERENCE.md).
 - **Language contributions in the UI (phase 10):** the backend now reports its registered languages and their capabilities. The frontend describes each language in `components/ide/languages/<id>/` (icon, menu, commands, editor languages). The Go menu commands require the Go language, the menu bar builds language menus from the contributions, and editor intelligence (completion, hover, navigation, formatting, semantic highlighting, inlay hints, code vision) registers on the contributed editor languages instead of a hard-coded `go`. The status bar shows the active file's language icon, and the language-server status of one language no longer overwrites another's in the same project.
 - **Language icons:** the project tree shows Simple Icons brand marks for Java, Kotlin, PHP, Ruby, .NET, C, C++, Swift, Dart, Scala, Elixir, Haskell, Lua and Zig sources, and for Maven and Gradle build files.
 - **Project model without Go fields (phase 11):** `project.goModPath`, `goWorkPath`, `modules` and `looseGoDirs` are no longer part of the project returned to the UI. Go modules, `go.work` and loose folders are derived from the language units, and sessions saved by older versions are re-inspected on restore. Pure helpers used by the stores moved from `components/goide` to `lib/goide`.

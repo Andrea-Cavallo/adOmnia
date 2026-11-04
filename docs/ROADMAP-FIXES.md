@@ -1,6 +1,6 @@
 # Roadmap dei fix dopo 1.0.2
 
-Aggiornata il 15 ottobre 2026. Fonte operativa: [mds/FIX.md](../mds/FIX.md). Le versioni sono obiettivi indicativi; i gate di test e verifica desktop governano la chiusura delle voci.
+Aggiornata il 15 ottobre 2026. Fonte operativa: `mds/FIX.md`. Le versioni sono obiettivi indicativi; i gate di test e verifica desktop governano la chiusura delle voci.
 
 | Versione obiettivo | Lavoro rimanente | Dipendenze e accettazione |
 |---|---|---|
@@ -14,5 +14,5 @@ Aggiornata il 15 ottobre 2026. Fonte operativa: [mds/FIX.md](../mds/FIX.md). Le 
 ## Lavoro trasversale
 
 - **IDE-5 e GS-10:** riprodurre prima le cause ipotizzate; anticipare i P1 che bloccano l'uso. Poi accessibilità di albero/tab, overflow, feedback asincrono, token dei colori e coerenza dei dialoghi. Le voci duplicate IDE-5.7/GS-10.7 e IDE-5.8/GS-10.12 hanno una sola implementazione.
-- **Prestazioni:** [piano di misurazione e ottimizzazione](../mds/REFACTOR.txt). Prima baseline e profili, poi interventi misurati; il documento è una proposta di lavoro, non una dichiarazione di ottimizzazioni già eseguite.
+- **Prestazioni:** piano di misurazione e ottimizzazione in `mds/REFACTOR.txt` (nota locale). Prima baseline e profili, poi interventi misurati; il documento è una proposta di lavoro, non una dichiarazione di ottimizzazioni già eseguite. Le baseline pubblicate stanno in [PERFORMANCE.md](PERFORMANCE.md).
 - Ogni fase aggiorna registro evidenze, migrazioni e documentazione. Le revisioni indipendenti restano distinte dalla revisione dell'autore.

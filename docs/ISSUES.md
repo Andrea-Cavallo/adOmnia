@@ -15,7 +15,12 @@ This file contains only work that is still open. Completed items are archived in
 
 ## Open Queue
 
-The active stabilization queue is [FIX.md](../mds/FIX.md), with [post-1.0.2 release targets](ROADMAP-FIXES.md). DB-2 implementation is included in 1.0.2; the complete remote-driver desktop matrix and independent review remain open. The historical audit below does not supersede this queue.
+The active stabilization queue is `mds/FIX.md`, with [post-1.0.2 release targets](ROADMAP-FIXES.md). DB-2 implementation is included in 1.0.2; the complete remote-driver desktop matrix and independent review remain open. The historical audit below does not supersede this queue.
+
+> `mds/*` files are local planning documents kept outside this repository: the
+> paths are named here for the maintainers, and links in this page never point at
+> them. Public status lives in this file, [ROADMAP-FIXES.md](ROADMAP-FIXES.md) and
+> [RELEASE.md](RELEASE.md).
 
 ## Recently Resolved (verified against code 2026-06-13)
 
@@ -36,7 +41,7 @@ Backend, correlation and the Delve loop are covered end to end by `internal/code
 
 ### Java / JVM studio — real multimodule verification (2026-10-20)
 
-Verified on `quarkus-super-heroes-main` (10-module Quarkus reactor, Java 25): full compile, tests with Docker Dev Services (75 executed; the 6 failures are the JVM locale only — Hibernate Validator messages in Italian against English expectations), and Eclipse JDT LS importing all 9 modules with the right toolchain. Fixed for projects this size: Run console line alignment (`\r` redraws and chunk-split lines), coalesced process output so the UI stays responsive during `mvn test`, Java toolchain read from the reactor modules, and JDT LS auto-start on Java projects. Manual checks in [MANUAL-CHECK.md](../mds/MANUAL-CHECK.md) (`JS-17.M1`–`M4`), plan in [06-JAVA-SPRING-STUDIO.md](../mds/06-JAVA-SPRING-STUDIO.md) (JS-14, JS-17).
+Verified on `quarkus-super-heroes-main` (10-module Quarkus reactor, Java 25): full compile, tests with Docker Dev Services (75 executed; the 6 failures are the JVM locale only — Hibernate Validator messages in Italian against English expectations), and Eclipse JDT LS importing all 9 modules with the right toolchain. Fixed for projects this size: Run console line alignment (`\r` redraws and chunk-split lines), coalesced process output so the UI stays responsive during `mvn test`, Java toolchain read from the reactor modules, and JDT LS auto-start on Java projects. Manual checks in `mds/MANUAL-CHECK.md` (`JS-17.M1`–`M4`), plan in `mds/06-JAVA-SPRING-STUDIO.md` (JS-14, JS-17).
 
 ### Spring datasource → Database Studio (2026-10-22) — implemented, desktop check open
 
