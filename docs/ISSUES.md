@@ -22,6 +22,12 @@ The active stabilization queue is `mds/FIX.md`, with [post-1.0.2 release targets
 > them. Public status lives in this file, [ROADMAP-FIXES.md](ROADMAP-FIXES.md) and
 > [RELEASE.md](RELEASE.md).
 
+## Manual desktop checks recorded
+
+| Date | Platform | Version | What was checked | Result |
+|---|---|---|---|---|
+| 2026-11-04 | Windows 11 (physical machine) | 1.0.24 | Windows installer: clean per-user install with no administrator rights, in-place upgrade over an installed copy with existing workspaces/collections/settings, uninstall, in-app update applied from the app | Passed. WebView2 presence on the machine was not recorded. Portable build, macOS and Linux installers were not part of this check. |
+
 ## Recently Resolved (verified against code 2026-06-13)
 
 | # | Title | Evidence |

@@ -8,7 +8,7 @@ The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOP
 
 ## v1.0.24 — Windows installer and install-aware updates
 
-[Release notes](releases/v1.0.24.md). The installer still needs a first run on a physical Windows machine.
+[Release notes](releases/v1.0.24.md). Windows installer verified on a physical Windows 11 machine on 4 November 2026 (clean install, in-place upgrade, uninstall, in-app update); portable build and the macOS/Linux installers remain unverified.
 
 ## v1.0.23 — Code Studio tasks and startup
 
