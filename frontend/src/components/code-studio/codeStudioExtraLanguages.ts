@@ -1,5 +1,6 @@
 import { monaco, type Monaco } from '@/lib/monacoRef'
 import { TOML_LANGUAGE } from './codeStudioTomlLanguage'
+import { MANIFEST_LANGUAGE } from './codeStudioManifestLanguage'
 import { tomlOutline } from '@/lib/code-studio/tomlOutline'
 
 let registered = false
@@ -119,6 +120,10 @@ export function registerCodeStudioExtraLanguages(): void {
   monaco.languages.register({ id: 'makefile', filenames: ['Makefile', 'makefile', 'GNUmakefile'], extensions: ['.mk'] })
   monaco.languages.setMonarchTokensProvider('makefile', MAKEFILE)
   monaco.languages.setLanguageConfiguration('makefile', { comments: { lineComment: '#' } })
+  // MANIFEST.MF di JAR e bundle OSGi: manifest-vendor, header, attributi e versioni.
+  monaco.languages.register({ id: 'manifest', filenames: ['MANIFEST.MF'], extensions: ['.mf'] })
+  monaco.languages.setMonarchTokensProvider('manifest', MANIFEST_LANGUAGE)
+  monaco.languages.setLanguageConfiguration('manifest', {})
   // Declared languages without a Monaco grammar: colours come from the language server's semantic tokens.
   monaco.languages.register({ id: 'nix', extensions: ['.nix'] })
   monaco.languages.setLanguageConfiguration('nix', { comments: { lineComment: '#', blockComment: ['/*', '*/'] }, brackets: [['{', '}'], ['[', ']'], ['(', ')']] })

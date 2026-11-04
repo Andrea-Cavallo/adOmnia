@@ -1258,6 +1258,33 @@ func (g *GoIDE) SelectFolder(title string) (string, error) {
 	return strings.TrimSpace(path), nil
 }
 
+// SelectFolders apre il selettore nativo di più cartelle con il titolo indicato: è il modo rapido per
+// importare in un solo gesto i plug-in sparsi sul disco. Elenco vuoto se l'utente annulla.
+func (g *GoIDE) SelectFolders(title string) ([]string, error) {
+	if g.desktop == nil {
+		return nil, fmt.Errorf("runtime desktop non inizializzato")
+	}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "Scegli le cartelle"
+	}
+	paths, err := g.desktop.Dialog.OpenFile().
+		CanChooseFiles(false).
+		CanChooseDirectories(true).
+		SetTitle(title).
+		PromptForMultipleSelection()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if trimmed := strings.TrimSpace(path); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out, nil
+}
+
 // SelectFile apre il selettore nativo di un file con il filtro indicato (es. "Target definitions", "*.target"),
 // senza leggerne il contenuto.
 func (g *GoIDE) SelectFile(title, filterLabel, pattern string) (string, error) {
@@ -1670,6 +1697,12 @@ func (g *GoIDE) SetJavaOsgiTarget(sessionID, path string) (*eclipsepde.Workspace
 // ReindexJavaOsgiTarget rilegge tutti i manifest della target platform, ignorando la cache.
 func (g *GoIDE) ReindexJavaOsgiTarget(sessionID string) (*eclipsepde.WorkspaceReport, error) {
 	return g.service.ReindexJavaOsgiTarget(sessionID)
+}
+
+// ImportJavaOsgiPlugins copia i progetti plug-in scelti in plugins/ del workspace, così più
+// repository convivono nello stesso progetto e si compilano insieme.
+func (g *GoIDE) ImportJavaOsgiPlugins(sessionID string, sources []string) (codestudio.OsgiImportResult, error) {
+	return g.service.ImportJavaOsgiPlugins(sessionID, sources)
 }
 
 // PreviewJavaOsgiP2 elenca i repository p2 del file .target attivo, senza rete.

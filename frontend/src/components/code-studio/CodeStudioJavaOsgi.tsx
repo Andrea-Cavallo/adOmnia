@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Boxes, FileCode2, FolderOpen, Hammer, Loader2, Play, RefreshCw, Search } from 'lucide-react'
+import { Boxes, FileCode2, FolderOpen, FolderPlus, Hammer, Loader2, Play, RefreshCw, Search } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
-import { getJavaOsgiWorkspace, reindexJavaOsgiTarget, selectGoIDEFile, selectGoIDEFolder, setJavaOsgiTarget, startJavaOsgiBuild, startJavaOsgiRun, subscribeGoIDEEvents } from '@/lib/code-studio-api'
+import { getJavaOsgiWorkspace, importJavaOsgiPlugins, reindexJavaOsgiTarget, selectGoIDEFile, selectGoIDEFolder, selectGoIDEFolders, setJavaOsgiTarget, startJavaOsgiBuild, startJavaOsgiRun, subscribeGoIDEEvents } from '@/lib/code-studio-api'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { studioToast } from '@/stores/codeStudioToast'
 import { CodeStudioJavaOsgiP2 } from './CodeStudioJavaOsgiP2'
@@ -146,6 +146,30 @@ export function CodeStudioJavaOsgi() {
     if (file && sessionId) load(setJavaOsgiTarget(sessionId, file))
   }
 
+  // One dialog, several folders: each plug-in project lands under plugins/ of this workspace.
+  const importPlugins = async (): Promise<void> => {
+    if (!sessionId) return
+    const folders = await selectGoIDEFolders('Import plug-in projects into this workspace (they are copied under plugins/)')
+    if (folders.length === 0) return
+    setBusy(true)
+    setError('')
+    try {
+      const result = await importJavaOsgiPlugins(sessionId, folders)
+      if (result.report) setReport(result.report)
+      else if (result.imported.length > 0) load(getJavaOsgiWorkspace(sessionId))
+      const first = result.skipped?.[0]
+      const skipped = result.skipped?.length ?? 0
+      const imported = result.imported?.length ?? 0
+      if (imported === 0 && skipped > 0) setError(`Nothing imported.\n${result.skipped.join('\n')}`)
+      else if (skipped > 0) studioToast(`${imported} plug-in(s) imported. ${skipped} skipped: ${first}`, 'info')
+      else studioToast(`${imported} plug-in(s) imported`, 'success')
+    } catch (reason) {
+      setError(messageOf(reason))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return (report?.bundles ?? []).filter((bundle) => (!issuesOnly || (bundle.missing?.length ?? 0) > 0) && (!needle || bundle.symbolicName.toLowerCase().includes(needle)))
@@ -175,6 +199,7 @@ export function CodeStudioJavaOsgi() {
           </label>
           <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiBuild(sessionId); setSessionId(null) } }} title="Compile with the Eclipse compiler of the target, on the project JVM (Java > Select JDK)"><Hammer size={13} /> Build</button>
           <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiFramework(sessionId); setSessionId(null) } }} title="Start the compiled bundles in Equinox, on the project JVM"><Play size={13} /> Run</button>
+          <button type="button" className="gs-btn shrink-0" disabled={busy} onClick={() => { void importPlugins() }} title="Import plug-in projects from this machine: they are copied under plugins/ so several repositories compile together"><FolderPlus size={13} /> Import…</button>
         </div>
         {busy && <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> A full Eclipse target has about a thousand bundles: this can take a few seconds.</p>}
         {error && <p className="whitespace-pre-wrap px-3 py-3 text-[11px] text-danger">{error}</p>}
@@ -183,6 +208,7 @@ export function CodeStudioJavaOsgi() {
           {empty && (
             <p className="px-3 py-3 text-[11px] text-text-3">
               No OSGi bundles here: a bundle is an Eclipse project (.project) with META-INF/MANIFEST.MF.
+              {' '}Use Import… to bring the plug-in projects of another repository into plugins/ of this workspace.
               {report.otherProjects > 0 && ` Found ${report.otherProjects} Eclipse project(s) without a manifest; bnd workspaces, which generate it at build time, are not supported yet.`}
             </p>
           )}

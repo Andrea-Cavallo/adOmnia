@@ -40,6 +40,7 @@ import type {
   TerminalSession,
   TerminalRequest,
   TerminalProfile,
+  OsgiImportResult,
 } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 import type { FieldSchema, RunTarget, Suggestion as RunSuggestion } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/run/models'
 
@@ -366,6 +367,11 @@ export async function selectGoIDEFolder(title: string): Promise<string> {
 /** Selettore nativo di un file con filtro (es. "Target definitions", "*.target"); stringa vuota se l'utente annulla. */
 export async function selectGoIDEFile(title: string, filterLabel: string, pattern: string): Promise<string> {
   return GoIDEBindings.SelectFile(title, filterLabel, pattern)
+}
+
+/** Selettore nativo di più cartelle; elenco vuoto se l'utente annulla. */
+export async function selectGoIDEFolders(title: string): Promise<string[]> {
+  return GoIDEBindings.SelectFolders(title)
 }
 
 export async function startGoIDERun(request: RunRequest): Promise<GoIDEExecution> {
@@ -926,6 +932,11 @@ export async function setJavaOsgiTarget(sessionId: string, path: string): Promis
 /** Rilegge tutti i manifest della target platform, ignorando la cache dell'indice. */
 export async function reindexJavaOsgiTarget(sessionId: string): Promise<WorkspaceReport | null> {
   return GoIDEBindings.ReindexJavaOsgiTarget(sessionId)
+}
+
+/** Copia i progetti plug-in scelti in `plugins/` del workspace e torna il report aggiornato. */
+export async function importJavaOsgiPlugins(sessionId: string, sources: string[]): Promise<OsgiImportResult> {
+  return GoIDEBindings.ImportJavaOsgiPlugins(sessionId, sources)
 }
 
 const osgiProjects = new Map<string, Promise<boolean>>()

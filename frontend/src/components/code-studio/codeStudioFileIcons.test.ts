@@ -87,3 +87,10 @@ it('uses supplied Maven wrappers and ghost dotfile icons before extension rules'
  for (const name of ['.gitignore', '.env', '.config.json', '.hidden.go', '.mvnw.cmd']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'ghost' })
  expect(resolveCodeStudioFileIcon('main.go', '.hidden/main.go')).toEqual({ kind: 'gopher', test: false })
 })
+
+it('gives JAR and OSGi manifests their own emblem', () => {
+ for (const name of ['MANIFEST.MF', 'manifest.mf', 'META-INF/MANIFEST.MF', 'bundle.mf']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'manifest' })
+ // Solo `.mf`: un `manifest.json` resta JSON, un `.mft` resta un file generico.
+ expect(resolveCodeStudioFileIcon('manifest.json')).toEqual({ kind: 'brand', slug: 'json' })
+ expect(resolveCodeStudioFileIcon('bundle.mft')).toEqual({ kind: 'generic', icon: 'file' })
+})

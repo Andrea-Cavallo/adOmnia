@@ -438,6 +438,8 @@ var languageByExtension = map[string]string{
 	".tf": "hcl", ".hcl": "hcl", ".lua": "lua", ".rb": "ruby", ".php": "php",
 	".dockerfile": "dockerfile", ".mk": "makefile",
 	".http": "http", ".rest": "http",
+	// MANIFEST.MF di JAR e bundle OSGi: colorazione dedicata in Code Studio.
+	".mf": "manifest",
 }
 
 func languageForPath(path string) string {

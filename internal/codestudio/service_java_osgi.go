@@ -290,3 +290,39 @@ func (s *Service) SetJavaOsgiTarget(sessionID, path string) (*eclipsepde.Workspa
 	}
 	return eclipsepde.SetTarget(session.Project.RealPath, path)
 }
+
+// OsgiImportResult is one import: what was copied, what was left out and the report of the merged
+// workspace, so the panel shows the new bundles without a second round trip.
+type OsgiImportResult struct {
+	Imported []string                    `json:"imported"`
+	Skipped  []string                    `json:"skipped"`
+	Report   *eclipsepde.WorkspaceReport `json:"report,omitempty"`
+}
+
+// ImportJavaOsgiPlugins copies Eclipse plug-in projects chosen on the machine into plugins/ of the
+// workspace. It is the fast path for a PDE workspace made of several repositories: the bundles land
+// in the project root, so they compile against each other instead of against the target alone.
+func (s *Service) ImportJavaOsgiPlugins(sessionID string, sources []string) (OsgiImportResult, error) {
+	root, err := s.trustedOsgiRoot(sessionID)
+	if err != nil {
+		return OsgiImportResult{}, err
+	}
+	if len(sources) == 0 {
+		return OsgiImportResult{}, errors.New("choose at least one plug-in folder")
+	}
+	copied, err := eclipsepde.ImportPlugins(root, sources)
+	result := OsgiImportResult{Imported: copied.Imported, Skipped: copied.Skipped}
+	if err != nil {
+		return result, err
+	}
+	if len(copied.Imported) == 0 {
+		// Nothing changed: no report to read, and the reasons are already in Skipped.
+		return result, nil
+	}
+	report, err := eclipsepde.BuildReport(root)
+	if err != nil {
+		return result, nil // the copy is done: the panel reports the read error on reload
+	}
+	result.Report = report
+	return result, nil
+}

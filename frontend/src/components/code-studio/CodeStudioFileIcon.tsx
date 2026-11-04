@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Archive, BookOpen, Database, File, FileCode2, FileImage, FileText, Key, Lock, Scale, SquareTerminal, Workflow } from 'lucide-react'
 import { BrandIcon } from '@/components/ui/BrandIcon'
 import { GoGopherIcon } from './GoGopherIcon'
+import { ManifestFileIcon } from './ManifestFileIcon'
 import { resolveCodeStudioFileIcon } from './codeStudioFileIcons'
 import jenkinsEmblem from './assets/jenkins.png'
 import mavenIcon from './assets/maven.svg'
@@ -32,6 +33,7 @@ export const CodeStudioFileIcon = memo(function CodeStudioFileIcon({ name, relat
     case 'brand': return <BrandIcon slug={resolved.slug} size={size} />
     case 'jenkins': return <img src={jenkinsEmblem} width={size + 1} height={size + 1} alt="Jenkins" draggable={false} className="shrink-0 object-contain" />
     case 'maven': return <img src={mavenIcon} width={size} height={size} alt="Maven" draggable={false} className="shrink-0 object-contain" />
+    case 'manifest': return <ManifestFileIcon size={size} />
     case 'ghost': return <img src={ghostIcon} width={size} height={size} alt="Dotfile" draggable={false} className="shrink-0 object-contain" />
     case 'java': return <img src={javaCup} width={size} height={size} alt="Java" draggable={false} className="shrink-0 object-contain" />
     case 'generic': {

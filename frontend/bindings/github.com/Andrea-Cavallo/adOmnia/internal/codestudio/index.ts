@@ -122,6 +122,7 @@ export {
     NavigationEntry,
     NewFile,
     OpenDocument,
+    OsgiImportResult,
     OsgiRunResult,
     PackageHeatmap,
     PathComparison,
