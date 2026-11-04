@@ -31,6 +31,16 @@ func (s *Service) serverProvider(languageID string) (lsp.ServerProvider, error) 
 
 func (s *Service) locateServer(session Session, provider lsp.ServerProvider) LanguageServerInfo {
 	info := provider.LocateServer(session.Project.RealPath, s.toolsRoot)
+	// A server that cannot model this project is not "missing" and must not be started: the
+	// adapter explains why and the UI shows that reason (never an Install… button).
+	if blocker, ok := provider.(language.ServerBlocker); ok {
+		if reason := blocker.ServerBlocked(session.Project.RealPath); reason != "" {
+			info.Available = false
+			info.Installable = false
+			info.Error = reason
+			return info
+		}
+	}
 	if perUnit, ok := provider.(language.UnitServers); ok && perUnit.ServersPerUnit() && !info.Available {
 		for _, unit := range session.Project.Units {
 			if unit.Language == info.Language {
@@ -86,6 +96,12 @@ func (s *Service) StartProvidedLanguageServer(sessionID, languageID string) (Lan
 	provider, err := s.serverProvider(languageID)
 	if err != nil {
 		return LanguageServerStatus{}, err
+	}
+	// Defence in depth: a debug launch or a stale UI can still ask for it.
+	if blocker, ok := provider.(language.ServerBlocker); ok {
+		if reason := blocker.ServerBlocked(session.Project.RealPath); reason != "" {
+			return LanguageServerStatus{Language: languageID, State: LanguageServerStopped, Error: reason}, nil
+		}
 	}
 	spec := lsp.ServerSpec{Language: languageID}
 	if factory := s.perUnitSpec(languageID, session.Project.RealPath); factory != nil {

@@ -103,7 +103,7 @@ func firstEnvironment(list string) string {
 // PlanBuild computes the compiler runs of every bundle with sources, for the JVM of the given major version.
 func PlanBuild(root string, jvmMajor int) (*BuildPlan, error) {
 	if jvmMajor > maxCompilerJVM {
-		return nil, fmt.Errorf("the Eclipse compiler of this target needs a JVM up to Java %d, the project uses Java %d: Java > Select JDK", maxCompilerJVM, jvmMajor)
+		return nil, fmt.Errorf("the Eclipse compiler needs a JVM up to Java %d, the project uses Java %d: Java > Select JDK", maxCompilerJVM, jvmMajor)
 	}
 	ws, target, err := openWorkspaceTarget(root)
 	if err != nil {

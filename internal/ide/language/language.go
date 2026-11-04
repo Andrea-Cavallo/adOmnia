@@ -49,6 +49,13 @@ type DebuggerInstaller interface {
 // (un interprete o un venv per servizio, una toolchain per modulo): un solo server multi-root
 // userebbe l'ambiente di una sola unità e risolverebbe gli import di tutti con quello.
 // Il core non nomina linguaggi: lo dichiara l'adapter e l'host gli passa una spec per unità.
+// ServerBlocker is an optional capability: a language server that cannot model this project even
+// when it is installed explains why, and the host leaves it stopped. Publishing diagnostics that
+// are wrong for the whole workspace is worse than no language server (JDT LS on a Tycho/PDE one).
+type ServerBlocker interface {
+	ServerBlocked(projectRoot string) string
+}
+
 type UnitServers interface {
 	ServersPerUnit() bool
 	// UnitServerSpec retains the workspace root, where machine-local settings live,

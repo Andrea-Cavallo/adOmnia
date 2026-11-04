@@ -52,6 +52,98 @@ func TestTychoTargetReadsTheRepositoriesOfAPom(t *testing.T) {
 	}
 }
 
+// TestTychoTargetReadsTheRepositoriesOfAParentPom is the earth.sci case: the aggregator's
+// pom.xml only declares <parent> and the p2 repositories (and their properties) live in the
+// parent pom Maven points at.
+func TestTychoTargetReadsTheRepositoriesOfAParentPom(t *testing.T) {
+	root := t.TempDir()
+	writeText(t, filepath.Join(root, "parent-pom.xml"), `<?xml version="1.0"?>
+<project>
+  <properties><luna-site>https://download.eclipse.org/releases/luna</luna-site></properties>
+  <repositories>
+    <repository><id>luna</id><layout>p2</layout><url>${luna-site}</url></repository>
+    <repository><id>sapphire</id><layout>p2</layout><url>http://download.eclipse.org/sapphire/8/repository</url></repository>
+  </repositories>
+</project>`)
+	writePom(t, root, `<?xml version="1.0"?>
+<project>
+  <parent>
+    <groupId>au.gov.ga.earthsci</groupId><artifactId>earthsci-parent</artifactId><version>1.0.0-SNAPSHOT</version>
+    <relativePath>./parent-pom.xml</relativePath>
+  </parent>
+  <modules><module>plugins</module></modules>
+  <repositories>
+    <repository><id>e4</id><layout>p2</layout><url>http://download.eclipse.org/e4/</url></repository>
+  </repositories>
+</project>`)
+
+	target, err := ReadTychoTarget(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var urls []string
+	for _, repository := range target.Repositories {
+		urls = append(urls, repository.URL)
+	}
+	// The child's own repository first, then the inherited ones; `${luna-site}` is resolved
+	// with the property the parent defines.
+	want := []string{
+		"http://download.eclipse.org/e4/",
+		"https://download.eclipse.org/releases/luna",
+		"http://download.eclipse.org/sapphire/8/repository",
+	}
+	if !slices.Equal(urls, want) {
+		t.Fatalf("repositories = %v, want %v", urls, want)
+	}
+	if !slices.Equal(target.Modules, []string{"plugins"}) {
+		t.Fatalf("modules = %v", target.Modules)
+	}
+}
+
+// TestTychoTargetFollowsTheDefaultParentPath covers the standard Maven layout: pom.xml in a
+// module, the parent one folder up with no <relativePath> element.
+func TestTychoTargetFollowsTheDefaultParentPath(t *testing.T) {
+	base := t.TempDir()
+	writeText(t, filepath.Join(base, "pom.xml"), `<project>
+  <repositories><repository><id>kepler</id><layout>p2</layout><url>https://download.eclipse.org/releases/kepler</url></repository></repositories>
+</project>`)
+	child := filepath.Join(base, "module")
+	if err := os.MkdirAll(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeText(t, filepath.Join(child, "pom.xml"), `<project>
+  <parent><groupId>g</groupId><artifactId>p</artifactId><version>1</version></parent>
+</project>`)
+
+	target, err := ReadTychoTarget(child)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(target.Repositories) != 1 || target.Repositories[0].URL != "https://download.eclipse.org/releases/kepler" {
+		t.Fatalf("repositories = %+v", target.Repositories)
+	}
+}
+
+// TestTychoTargetHonoursAnEmptyRelativePath: Maven reads no local parent when <relativePath/>
+// is explicitly empty, so neither does adOmnia.
+func TestTychoTargetHonoursAnEmptyRelativePath(t *testing.T) {
+	base := t.TempDir()
+	writeText(t, filepath.Join(base, "pom.xml"), `<project>
+  <repositories><repository><id>kepler</id><layout>p2</layout><url>https://download.eclipse.org/releases/kepler</url></repository></repositories>
+</project>`)
+	child := filepath.Join(base, "module")
+	if err := os.MkdirAll(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeText(t, filepath.Join(child, "pom.xml"), `<project>
+  <parent><groupId>g</groupId><artifactId>p</artifactId><version>1</version><relativePath/></parent>
+</project>`)
+
+	if _, err := ReadTychoTarget(child); err == nil {
+		t.Fatal("a module whose parent is only in the local repository has no target to read")
+	}
+}
+
 func TestTychoTargetNeedsAPomWithP2(t *testing.T) {
 	root := t.TempDir()
 	if _, err := ReadTychoTarget(root); err == nil {

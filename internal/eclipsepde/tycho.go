@@ -28,6 +28,13 @@ type TychoTarget struct {
 
 // tychoPom models only what the target needs, so a pom that uses any other Maven feature still reads.
 type tychoPom struct {
+	Parent struct {
+		// RelativePath is a pointer because Maven distinguishes an absent element (the
+		// default is ../pom.xml) from an empty one (no local parent at all).
+		RelativePath *string `xml:"relativePath"`
+		GroupID      string  `xml:"groupId"`
+		ArtifactID   string  `xml:"artifactId"`
+	} `xml:"parent"`
 	Properties struct {
 		Entries []struct {
 			XMLName xml.Name
@@ -46,48 +53,139 @@ type tychoPom struct {
 	} `xml:"repositories"`
 }
 
+// maxTychoParents bounds the parent chain. Tycho repositories are commonly declared in a
+// parent pom (earth.sci: parent-pom.xml next to the aggregator), and a chain that points at
+// itself must stop instead of reading forever.
+const maxTychoParents = 8
+
+type tychoPomDocument struct {
+	path string
+	pom  tychoPom
+}
+
 // tychoTargetURLs keeps the repositories p2 can read: http(s) locations with the p2 layout, in the
 // order the pom declares them.
 func ReadTychoTarget(root string) (*TychoTarget, error) {
-	data, err := os.ReadFile(filepath.Join(root, "pom.xml"))
+	chain, err := readTychoPomChain(filepath.Join(root, "pom.xml"))
 	if err != nil {
-		return nil, errors.New("this project has no pom.xml to read a Tycho target from")
-	}
-	var pom tychoPom
-	if err := xml.Unmarshal(data, &pom); err != nil {
-		return nil, fmt.Errorf("pom.xml: %w", err)
+		return nil, err
 	}
 	properties := map[string]string{}
-	for _, entry := range pom.Properties.Entries {
-		properties[entry.XMLName.Local] = strings.TrimSpace(entry.Value)
+	// Maven properties are inherited: the parent is read first, so the child overrides it.
+	for index := len(chain) - 1; index >= 0; index-- {
+		for _, entry := range chain[index].pom.Properties.Entries {
+			properties[entry.XMLName.Local] = strings.TrimSpace(entry.Value)
+		}
 	}
 	target := &TychoTarget{}
-	for _, repository := range pom.Repositories.Repository {
-		url := substituteProperties(strings.TrimSpace(repository.URL), properties)
-		if url == "" {
-			continue
+	seenURLs := map[string]bool{}
+	// The child's own repositories come first, then the inherited ones: Tycho resolves in
+	// declaration order and a project that pins a repository keeps it before the parent's.
+	for _, document := range chain {
+		for _, repository := range document.pom.Repositories.Repository {
+			raw := strings.TrimSpace(repository.URL)
+			// Tycho marks a p2 repository as such: a Maven repository holds no installable units, and a
+			// pom that names only those has no target platform.
+			if !strings.EqualFold(strings.TrimSpace(repository.Layout), "p2") {
+				continue
+			}
+			url := substituteProperties(raw, properties)
+			if url == "" {
+				continue
+			}
+			if !isRemoteLocation(url) {
+				target.Unresolved = appendUnique(target.Unresolved, raw)
+				continue
+			}
+			if seenURLs[url] {
+				continue
+			}
+			seenURLs[url] = true
+			target.Repositories = append(target.Repositories, TychoRepository{ID: strings.TrimSpace(repository.ID), URL: url, Layout: "p2"})
 		}
-		layout := strings.TrimSpace(repository.Layout)
-		// Tycho marks a p2 repository as such: a Maven repository holds no installable units, and a
-		// pom that names only those has no target platform.
-		if layout != "p2" {
-			continue
-		}
-		if !isRemoteLocation(url) {
-			target.Unresolved = append(target.Unresolved, strings.TrimSpace(repository.URL))
-			continue
-		}
-		target.Repositories = append(target.Repositories, TychoRepository{ID: strings.TrimSpace(repository.ID), URL: url, Layout: "p2"})
 	}
-	for _, module := range pom.Modules.Module {
+	// Modules belong to the aggregator the user opened, not to an inherited parent.
+	for _, module := range chain[0].pom.Modules.Module {
 		if module = strings.TrimSpace(module); module != "" {
 			target.Modules = append(target.Modules, module)
 		}
 	}
 	if len(target.Repositories) == 0 && len(target.Unresolved) == 0 {
-		return nil, errors.New("this pom.xml declares no p2 repository: nothing to build a target from")
+		return nil, errors.New("this pom.xml and its parents declare no p2 repository: nothing to build a target from")
 	}
 	return target, nil
+}
+
+// readTychoPomChain reads pom.xml and the parents it inherits from, child first. A parent is
+// resolved the Maven way: <relativePath> when present (an empty one disables the local lookup),
+// ../pom.xml otherwise. A missing or cyclic parent ends the chain: the remaining repositories
+// would only be available from a remote repository, which is not read here.
+func readTychoPomChain(pomPath string) ([]tychoPomDocument, error) {
+	var chain []tychoPomDocument
+	visited := map[string]bool{}
+	path := pomPath
+	for len(chain) < maxTychoParents {
+		absolute, absErr := filepath.Abs(path)
+		if absErr != nil {
+			absolute = path
+		}
+		if visited[absolute] {
+			break
+		}
+		visited[absolute] = true
+		data, err := os.ReadFile(path)
+		if err != nil {
+			if len(chain) == 0 {
+				return nil, errors.New("this project has no pom.xml to read a Tycho target from")
+			}
+			break
+		}
+		var pom tychoPom
+		if err := xml.Unmarshal(data, &pom); err != nil {
+			return nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
+		}
+		chain = append(chain, tychoPomDocument{path: path, pom: pom})
+		parent, ok := parentPomPath(path, pom)
+		if !ok {
+			break
+		}
+		path = parent
+	}
+	return chain, nil
+}
+
+// parentPomPath is where Maven looks for the parent of this pom, or false when there is no
+// local parent to read.
+func parentPomPath(current string, pom tychoPom) (string, bool) {
+	if pom.Parent.ArtifactID == "" && pom.Parent.RelativePath == nil {
+		return "", false
+	}
+	relative := filepath.Join("..", "pom.xml")
+	if pom.Parent.RelativePath != nil {
+		relative = strings.TrimSpace(*pom.Parent.RelativePath)
+		if relative == "" {
+			return "", false
+		}
+	}
+	if !filepath.IsAbs(relative) {
+		relative = filepath.Join(filepath.Dir(current), relative)
+	}
+	if info, err := os.Stat(relative); err == nil && info.IsDir() {
+		relative = filepath.Join(relative, "pom.xml")
+	}
+	if _, err := os.Stat(relative); err != nil {
+		return "", false
+	}
+	return relative, true
+}
+
+func appendUnique(values []string, value string) []string {
+	for _, existing := range values {
+		if existing == value {
+			return values
+		}
+	}
+	return append(values, value)
 }
 
 // substituteProperties replaces `${name}` with the value the pom defines for it. An unknown name
