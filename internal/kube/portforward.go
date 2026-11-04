@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"net"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Forward is one running `kubectl port-forward`, bound to 127.0.0.1 only.

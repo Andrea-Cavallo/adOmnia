@@ -3,6 +3,8 @@ import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/a
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
+import type { BundleDetail, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
+import type { Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Path as FlowPath, RuntimeEvidence as FlowRuntimeEvidence, Trace as FlowTrace } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -39,6 +41,8 @@ import type {
   TerminalSession,
   TerminalRequest,
   TerminalProfile,
+  OsgiImportResult,
+  OsgiTychoResult,
 } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 import type { FieldSchema, RunTarget, Suggestion as RunSuggestion } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/run/models'
 
@@ -360,6 +364,16 @@ export async function getGoIDEWatcherStatus(sessionId: string): Promise<WatcherS
 /** Selettore nativo di cartelle; stringa vuota se l'utente annulla. */
 export async function selectGoIDEFolder(title: string): Promise<string> {
   return GoIDEBindings.SelectFolder(title)
+}
+
+/** Selettore nativo di un file con filtro (es. "Target definitions", "*.target"); stringa vuota se l'utente annulla. */
+export async function selectGoIDEFile(title: string, filterLabel: string, pattern: string): Promise<string> {
+  return GoIDEBindings.SelectFile(title, filterLabel, pattern)
+}
+
+/** Selettore nativo di più cartelle; elenco vuoto se l'utente annulla. */
+export async function selectGoIDEFolders(title: string): Promise<string[]> {
+  return GoIDEBindings.SelectFolders(title)
 }
 
 export async function startGoIDERun(request: RunRequest): Promise<GoIDEExecution> {
@@ -905,6 +919,173 @@ export async function cleanRustAnalyzerCache(sessionId: string, confirmed: boole
 /** Albero delle dipendenze Maven di un modulo (cartella relativa al progetto): lancia `mvn dependency:tree`. */
 export async function getJavaDependencyTree(sessionId: string, module: string): Promise<TreeNode[]> {
   return GoIDEBindings.JavaDependencyTree(sessionId, module)
+}
+
+/** Bundle OSGi/PDE del progetto e come si risolvono sulla target platform attiva (legge solo i manifest). */
+export async function getJavaOsgiWorkspace(sessionId: string): Promise<WorkspaceReport | null> {
+  return GoIDEBindings.JavaOsgiWorkspace(sessionId)
+}
+
+/** Sceglie la target platform: cartella di bundle, Eclipse installato o file .target. */
+export async function setJavaOsgiTarget(sessionId: string, path: string): Promise<WorkspaceReport | null> {
+  return GoIDEBindings.SetJavaOsgiTarget(sessionId, path)
+}
+
+/** Rilegge tutti i manifest della target platform, ignorando la cache dell'indice. */
+export async function reindexJavaOsgiTarget(sessionId: string): Promise<WorkspaceReport | null> {
+  return GoIDEBindings.ReindexJavaOsgiTarget(sessionId)
+}
+
+/** Copia i progetti plug-in scelti in `plugins/` del workspace e torna il report aggiornato. */
+export async function importJavaOsgiPlugins(sessionId: string, sources: string[]): Promise<OsgiImportResult> {
+  return GoIDEBindings.ImportJavaOsgiPlugins(sessionId, sources)
+}
+
+/** Target platform dichiarato dal pom.xml Tycho; con create scrive `.adomnia/tycho.target` e lo attiva. */
+export async function javaOsgiTychoTarget(sessionId: string, create: boolean): Promise<OsgiTychoResult> {
+  return GoIDEBindings.JavaOsgiTychoTarget(sessionId, create)
+}
+
+/** Ferma l'import dei plug-in in corso; quello che aveva copiato viene rimosso. */
+export async function cancelJavaOsgiImport(sessionId: string): Promise<void> {
+  await GoIDEBindings.CancelJavaOsgiImport(sessionId)
+}
+
+/** Rimuove un bundle importato in `plugins/` del workspace e torna il report aggiornato. */
+export async function removeJavaOsgiPlugin(sessionId: string, name: string): Promise<WorkspaceReport | null> {
+  return GoIDEBindings.RemoveJavaOsgiPlugin(sessionId, name)
+}
+
+const osgiProjects = new Map<string, Promise<boolean>>()
+
+/** Se il progetto contiene bundle OSGi. Una volta per sessione: legge i manifest dell'intera cartella. */
+export function isJavaOsgiProject(sessionId: string): Promise<boolean> {
+  let known = osgiProjects.get(sessionId)
+  if (!known) {
+    known = GoIDEBindings.IsJavaOsgiProject(sessionId).catch(() => false)
+    osgiProjects.set(sessionId, known)
+  }
+  return known
+}
+
+/** Compila i bundle con il compilatore della target platform sulla JVM del progetto. */
+export async function startJavaOsgiBuild(sessionId: string): Promise<void> {
+  await GoIDEBindings.StartJavaOsgiBuild(sessionId)
+}
+
+/** Avvia i bundle in Equinox sulla JVM del progetto; restituisce ciò che non si risolverà a runtime. */
+export async function startJavaOsgiRun(sessionId: string): Promise<string[]> {
+  const result = await GoIDEBindings.StartJavaOsgiRun(sessionId)
+  return result.problems ?? []
+}
+
+/** OSGi Control Center: bundle del workspace e della target platform, Activator, start level, diagnostica. */
+export async function getJavaOsgiExplorer(sessionId: string): Promise<ExplorerReport | null> {
+  return GoIDEBindings.JavaOsgiExplorer(sessionId)
+}
+
+/** Rilegge manifest, indice del target e diagnostica: butta la cache dell'explorer. */
+export async function refreshJavaOsgiExplorer(sessionId: string): Promise<ExplorerReport | null> {
+  return GoIDEBindings.RefreshJavaOsgiExplorer(sessionId)
+}
+
+/** Ricerca istantanea tra nome, Activator, package esportati/importati e testo del manifest. */
+export async function searchJavaOsgiBundles(sessionId: string, query: string, limit = 60): Promise<SearchHit[]> {
+  return (await GoIDEBindings.JavaOsgiSearch(sessionId, query, limit)) ?? []
+}
+
+/** Dettaglio di un bundle: stato, wiring, diagnostica, impatto e sottografo. */
+export async function getJavaOsgiBundleDetail(sessionId: string, name: string, depth = 1): Promise<BundleDetail | null> {
+  return GoIDEBindings.JavaOsgiBundleDetail(sessionId, name, depth)
+}
+
+/** Dependency Impact Analyzer: chi dipende da un bundle e cosa verificare prima di cambiarlo. */
+export async function getJavaOsgiImpact(sessionId: string, name: string): Promise<Impact | null> {
+  return GoIDEBindings.JavaOsgiImpact(sessionId, name)
+}
+
+/** Impatto di una classe o interfaccia del workspace (risolta nel suo bundle). */
+export async function getJavaOsgiClassImpact(sessionId: string, className: string): Promise<Impact | null> {
+  return GoIDEBindings.JavaOsgiImpactForClass(sessionId, className)
+}
+
+/** Sottografo attorno a un bundle: dipendenze e consumer, con gli archi irrisolti. */
+export async function getJavaOsgiFocusedGraph(sessionId: string, name: string, depth = 1): Promise<FocusGraph | null> {
+  return GoIDEBindings.JavaOsgiFocusedGraph(sessionId, name, depth)
+}
+
+/** Confronta la target platform attiva con un'altra: bundle aggiunti, rimossi e cambiati di versione. */
+export async function compareJavaOsgiTarget(sessionId: string, path: string): Promise<TargetComparison | null> {
+  return GoIDEBindings.CompareJavaOsgiTarget(sessionId, path)
+}
+
+/** Copia JAR sciolti nella cartella della target platform attiva (conferma esplicita). */
+export async function importJavaOsgiJars(sessionId: string, files: string[]): Promise<LooseJarResult> {
+  return GoIDEBindings.ImportJavaOsgiJars(sessionId, files, true)
+}
+
+/** Avvia i bundle in Equinox con la console locale e legge lo stato reale del framework. */
+export async function startJavaOsgiRuntime(sessionId: string): Promise<RuntimeSnapshot | null> {
+  return GoIDEBindings.StartJavaOsgiRuntime(sessionId)
+}
+
+/** Rilegge lo stato del framework in esecuzione (ACTIVE, servizi, start level, tempi). */
+export async function refreshJavaOsgiRuntime(sessionId: string): Promise<RuntimeSnapshot | null> {
+  return GoIDEBindings.JavaOsgiRuntimeSnapshot(sessionId)
+}
+
+/** Ferma il framework e chiude la console. */
+export async function stopJavaOsgiRuntime(sessionId: string): Promise<void> {
+  await GoIDEBindings.StopJavaOsgiRuntime(sessionId)
+}
+
+/** Flow Intelligence: flow/subflow del progetto, adapter e conteggi. */
+export async function getFlowOverview(sessionId: string, refresh = false): Promise<FlowOverview | null> {
+  return GoIDEBindings.FlowOverview(sessionId, refresh)
+}
+
+/** Filtra i flow per testo e bundle. */
+export async function searchFlows(sessionId: string, query: string, bundle = '', limit = 200): Promise<FlowEntry[]> {
+  return (await GoIDEBindings.FlowSearch(sessionId, query, bundle, limit)) ?? []
+}
+
+/** Percorso di esecuzione a valle, a monte o entrambi. */
+export async function traceFlow(sessionId: string, id: string, direction: 'downstream' | 'upstream' | 'both', depth: number): Promise<FlowTrace | null> {
+  return GoIDEBindings.FlowTrace(sessionId, id, direction, depth)
+}
+
+/** Percorsi di esecuzione tra due nodi. */
+export async function findFlowPaths(sessionId: string, from: string, to: string, depth = 8, limit = 3): Promise<FlowPath[]> {
+  return (await GoIDEBindings.FlowFindPaths(sessionId, from, to, depth, limit)) ?? []
+}
+
+/** Flow, bundle, servizi ed esterni che una modifica può rompere. */
+export async function getFlowImpact(sessionId: string, id: string, depth = 6): Promise<FlowImpact | null> {
+  return GoIDEBindings.FlowImpact(sessionId, id, depth)
+}
+
+/** Spiega un nodo: relazioni, affidabilità e sorgente. */
+export async function explainFlow(sessionId: string, id: string): Promise<FlowExplanation | null> {
+  return GoIDEBindings.FlowExplain(sessionId, id)
+}
+
+/** Correla il runtime Equinox in esecuzione con il grafo dei flow (ACTIVE, servizi, consumer). */
+export async function getFlowRuntimeEvidence(sessionId: string): Promise<FlowRuntimeEvidence | null> {
+  return GoIDEBindings.FlowRuntime(sessionId)
+}
+
+/** Repository e unità p2 del file .target attivo (nessun accesso alla rete). */
+export async function previewJavaOsgiP2(sessionId: string): Promise<P2Preview | null> {
+  return GoIDEBindings.PreviewJavaOsgiP2(sessionId)
+}
+
+/** Scarica i bundle delle location p2 nella cache della macchina; l'avanzamento arriva come `osgi.p2.progress`. */
+export async function downloadJavaOsgiP2(sessionId: string): Promise<P2DownloadResult | null> {
+  return GoIDEBindings.DownloadJavaOsgiP2(sessionId, true)
+}
+
+export async function cancelJavaOsgiP2(sessionId: string): Promise<void> {
+  return GoIDEBindings.CancelJavaOsgiP2(sessionId)
 }
 
 /** Collegamenti mapper MyBatis ↔ statement XML del progetto (analisi dei sorgenti, nessun server). */

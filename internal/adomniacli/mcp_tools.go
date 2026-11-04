@@ -47,7 +47,7 @@ func mcpTools() []mcpTool {
 	write := map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false}
 	destructive := map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false}
 	network := map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": true}
-	return []mcpTool{
+	tools := []mcpTool{
 		{"project_list_routes", "List project routes", "Read HTTP routes from a Code Studio project using the same Developer Context detectors as the IDE. Returns method, path, source and warnings without executing code or exposing dotenv values.", object(map[string]any{"project": project}, "project"), readOnly},
 		{"collection_create_from_code", "Create or sync a collection from code", "Scan project routes and create or update an adOmnia folder collection. Generated request ids are deterministic; custom requests are preserved.", object(map[string]any{"project": project, "collection": collection, "name": str("Collection name for a new collection."), "baseUrl": str("Base URL prefix, for example {{baseUrl}} or http://localhost:8080.")}, "project"), write},
 		{"collection_list_requests", "List requests", "List the requests of an adOmnia collection (id, name, method, url, folder).", object(map[string]any{"collection": collection}), readOnly},
@@ -88,6 +88,7 @@ func mcpTools() []mcpTool {
 			"outputDir":  str("Directory to save the .md report (optional; content always returned even if omitted)."),
 		}), network},
 	}
+	return append(append(tools, mcpWorkspaceTools()...), mcpFlowTools()...)
 }
 
 func mcpKnownTool(name string) bool {
@@ -122,6 +123,12 @@ func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error)
 		if err := json.Unmarshal(raw, &args); err != nil {
 			return "", fmt.Errorf("invalid arguments: %w", err)
 		}
+	}
+	if workspaceOSGITool(name) {
+		return s.callWorkspaceTool(name, raw)
+	}
+	if flowTool(name) {
+		return s.callFlowTool(name, raw)
 	}
 	switch name {
 	case "project_list_routes":

@@ -142,7 +142,7 @@ API ツールは Go プロジェクトを開かなくても使えます。
 
 ## Code Studio: ワークフローの中にある IDE
 
-![ライトテーマの Code Studio。ブレークポイントで停止し、goroutine と変数を表示している](docs/screenshots/go-debug-light.png)
+![ライトテーマの Code Studio。ブレークポイントで停止し、goroutine と変数を表示している](assets/screenshots/go-debugger.png)
 
 *ブレークポイントで停止した Code Studio。ソースコード、goroutine、変数、コンソール出力を表示しています。コントロールはリリースによって異なる場合があります。*
 
@@ -203,4 +203,4 @@ LAN コラボレーションは **ベータ版で、オプトイン** です。�
 
 バージョン、オペレーティングシステム、再現手順を添えて[問題を報告](https://github.com/Andrea-Cavallo/adOmnia/issues)してください。スクリーンショットやエクスポートからは、認証情報と個人データを取り除いてください。プルリクエストを開く前に、リポジトリのコントリビューションガイドラインに従ってください。
 
-[MIT ライセンス](LICENSE) · [サードパーティ通知](NOTICE.md)
+[GNU General Public License v3.0](LICENSE)（GPL-3.0-only） · [サードパーティ通知](NOTICE.md)

@@ -3,10 +3,11 @@ package git
 import (
 	"bytes"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // ConflictFileVersions is the complete three-way input plus the editable

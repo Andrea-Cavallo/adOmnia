@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
-	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 	"path/filepath"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
+	"github.com/Andrea-Cavallo/adOmnia/internal/update"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"

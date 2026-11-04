@@ -11,7 +11,7 @@ Everything runs locally first — the CI workflows only repeat the same commands
 | [gosec](https://github.com/securego/gosec) | Go security rules (crypto, file permissions, subprocess) | CI `quality.yml` (`-severity=HIGH`) |
 | [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) | Reachable vulnerabilities in dependencies **and the Go standard library** | CI `quality.yml` |
 | [oxlint](https://oxc.rs/docs/guide/usage/linter) | Frontend lint (TS native): correctness, React Hooks, React Compiler rules | `frontend/.oxlintrc.json`, CI `quality.yml` |
-| [SonarQube](https://www.sonarqube.org/) / [SonarCloud](https://sonarcloud.io) | Issues, smells, duplications, coverage across Go and TS | `sonar-project.properties`, CI `sonar.yml` |
+| [SonarQube](https://www.sonarqube.org/) / [SonarCloud](https://sonarcloud.io) | Issues, smells, duplications, coverage across Go and TS | `sonar-project.properties`; no CI workflow while SonarCloud is detached (see the header of `quality.yml`) |
 | [CodeQL](https://codeql.github.com/) | Semantic security analysis (Go, TS), results in the Security tab | CI `codeql.yml` |
 | [gitleaks](https://github.com/gitleaks/gitleaks) | Secrets in the working tree and in git history | CI `quality.yml` |
 | [Trivy](https://trivy.dev/) | Vulnerable dependencies, leaked secrets, misconfigurations | CI `quality.yml` (report-only) |
@@ -31,6 +31,9 @@ go vet ./internal/...                 # quick sanity check
 cd frontend && npm test               # frontend tests
 cd frontend && npm run lint           # oxlint
 cd frontend && npm audit              # dependency advisories
+node scripts/check-wails-version.mjs        # one Wails version in go.mod, docs and workflows
+node scripts/check-version-consistency.mjs # one app version in build/config.yml and both npm manifests
+node scripts/check-doc-links.mjs           # Markdown links resolve to files a clone actually has
 ```
 
 Install with `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0`,
@@ -89,7 +92,7 @@ for a desktop app. Publishing the number to Codecov or Coveralls is a separate s
 ### Coverage on new code (Sonar gate)
 
 SonarCloud gates `new_coverage` at 80% on `main`; the current gap, the arithmetic to close it and the
-work waves are in [`mds/COVERAGE-RIENTRO.md`](../mds/COVERAGE-RIENTRO.md). Two facts drive the work and
+work waves are in `mds/COVERAGE-RIENTRO.md`. Two facts drive the work and
 are worth repeating here:
 
 - `sonar.javascript.lcov.reportPaths` only receives files Vitest actually imports, so a component with no

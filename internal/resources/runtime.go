@@ -4,12 +4,13 @@ package resources
 import (
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type GoRuntime struct {

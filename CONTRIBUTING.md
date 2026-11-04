@@ -9,8 +9,8 @@ Read:
 - [README.md](README.md) for product positioning and build overview.
 - [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md) for architecture and local conventions.
 - [docs/SOUL.md](docs/SOUL.md) for product philosophy.
-- [docs/funzionalita.md](docs/funzionalita.md) for the feature catalog.
-- [docs/TODO.md](docs/TODO.md) for active gaps.
+- [docs/adomnia-feature-catalog.en.md](docs/adomnia-feature-catalog.en.md) for the feature catalog.
+- [docs/ISSUES.md](docs/ISSUES.md) for active gaps.
 
 ## Development Setup
 
@@ -42,7 +42,7 @@ go test ./...
 - Preserve local-first behavior: no telemetry, no hidden sync, no external calls without explicit user action.
 - For UI changes, keep the dense professional developer-tool aesthetic.
 - For storage/workspace changes, preserve backward compatibility and document migrations.
-- For security-sensitive changes, update [.github/SECURITY.md](.github/SECURITY.md) or [mds/PRIVACY.md](mds/PRIVACY.md) when behavior changes.
+- For security-sensitive changes, update [.github/SECURITY.md](.github/SECURITY.md) (and the local `mds/PRIVACY.md` note) when behavior changes.
 
 ## Pull Requests
 

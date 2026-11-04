@@ -2,9 +2,10 @@ package java
 
 import (
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"path/filepath"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 // mavenCommand runs a lifecycle goal in the selected module, using the reactor wrapper when available.

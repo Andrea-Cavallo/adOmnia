@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	processcore "github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"io"
 	"os/exec"
 	"slices"
@@ -16,6 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
+
+	processcore "github.com/Andrea-Cavallo/adOmnia/internal/ide/process"
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 const (
@@ -52,6 +53,9 @@ type CommandSpec struct {
 	// Diagnostics riceve una riga di output e restituisce il diagnostico che descrive (se c'è):
 	// il core raccoglie i diagnostici dell'esecuzione e li pubblica sul pannello Problems (RS-3.3).
 	Diagnostics func(line string) (Diagnostic, bool)
+	// SeedDiagnostics sono i diagnostici dei passi precedenti di una build in più processi:
+	// ogni run.finished sostituisce Problems, quindi l'ultimo passo deve riportarli tutti.
+	SeedDiagnostics []Diagnostic
 	// ConsoleLine riscrive una riga dell'output prima della pubblicazione: se handled è true la riga
 	// è sostituita da text (vuoto = la riga sparisce), altrimenti passa intatta. Serve a chi chiede al
 	// compilatore un output strutturato (cargo JSON) ma vuole mostrare il testo leggibile (RS-3.3).
@@ -142,7 +146,7 @@ func (m *ProcessManager) Start(spec CommandSpec) (Execution, error) {
 		ID: RunID(newID("run")), SessionID: spec.SessionID, Kind: spec.Kind, Status: "running",
 		Command: spec.DisplayCommand, WorkingDirectory: spec.WorkingDirectory, StartedAt: time.Now().UTC(),
 	}
-	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit, onStop: spec.OnStop, diagnostics: spec.Diagnostics, console: spec.ConsoleLine}
+	managed := &managedProcess{done: make(chan struct{}), tap: spec.OutputTap, quiet: spec.QuietStdout, onExit: spec.OnExit, onStop: spec.OnStop, diagnostics: spec.Diagnostics, collected: slices.Clone(spec.SeedDiagnostics), console: spec.ConsoleLine}
 	command := procutil.Command(spec.Executable, spec.Arguments...)
 	command.Dir = spec.WorkingDirectory
 	command.Env = spec.Environment

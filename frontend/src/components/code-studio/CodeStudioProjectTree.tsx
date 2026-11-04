@@ -12,6 +12,8 @@ import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { CodeStudioFileIcon } from './CodeStudioFileIcon'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/code-studio-api'
+import { isJavaOsgiProject } from '@/lib/code-studio-api'
+import { openJavaOsgi, openJavaOsgiImport, runOsgiBuild, runOsgiFramework } from './CodeStudioJavaOsgi'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { buildTreeMarks, type CodeStudioTreeMark } from './codeStudioTreeMarks'
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
@@ -249,6 +251,14 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
   const [compareRequest, setCompareRequest] = useState<{ path: string; directory: boolean } | null>(null)
   const [gistRequest, setGistRequest] = useState<string | null>(null)
   const [directoryMarks, setDirectoryMarks] = useState<Record<string, CodeStudioDirectoryMark>>(() => loadDirectoryMarks(session.project.realPath))
+  // Solo un workspace OSGi mostra il menu OSGi: la risposta è in cache per sessione.
+  const [osgi, setOsgi] = useState(false)
+  useEffect(() => {
+    let current = true
+    setOsgi(false)
+    isJavaOsgiProject(session.id).then((next) => { if (current) setOsgi(next) }).catch(() => { if (current) setOsgi(false) })
+    return () => { current = false }
+  }, [session.id])
   // Etichette delle unità di build sulle cartelle che ne sono la radice: un monorepo misto resta leggibile.
   const unitLabels = useMemo(() => unitBadges(session.project), [session.project])
   const [dropTarget, setDropTarget] = useState<string | null>(null)
@@ -339,6 +349,10 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
       case 'createGist': if (entry && !entry.directory) setGistRequest(path); break
       case 'diagramDependencies': case 'diagramCalls': onCommand('view.architecture'); break
       case 'diagramInterfaces': onCommand('view.interfaces'); break
+      case 'osgiImportPlugins': openJavaOsgiImport(session.id); break
+      case 'osgiControlCenter': openJavaOsgi(session.id); break
+      case 'osgiBuild': runOsgiBuild(session.id); break
+      case 'osgiRun': runOsgiFramework(session.id); break
       case 'sendToApi': void sendFileToApiWorkspace(session.id, path); break
       case 'soapTools': void openEnterpriseFile(session.id, path, 'soap'); break
       case 'soapSecurity': void openEnterpriseFile(session.id, path, 'security'); break
@@ -361,7 +375,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
   const hasJava = (session.project.units ?? []).some((unit) => unit.language === 'java')
   const menuEntries = useCodeStudioStore((state) => state.directoryEntries[session.id]?.[menu?.entry?.relativePath ?? ''])
   const hasMavenPom = !!menuEntries?.some((item) => !item.directory && item.name === 'pom.xml')
-  const menuContext = { hasMavenPom, canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, hasJava, changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
+  const menuContext = { hasMavenPom, canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, hasJava, osgi, changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
 
   return (
     <aside aria-label="Project files" className="code-studio-explorer flex h-full min-w-0 flex-col">

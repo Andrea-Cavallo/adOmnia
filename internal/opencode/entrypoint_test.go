@@ -1,9 +1,10 @@
 package opencode
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/milk"
 )
 
 // Split so the repository never contains a contiguous credential-shaped string.

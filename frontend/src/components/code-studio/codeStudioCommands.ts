@@ -467,7 +467,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
     return id === 'preview.openFile' && !context.hasEditor ? 'Open an HTML file first' : true
   }
   if (id === 'java.selectJdk' || id === 'java.jvmMonitor' || id === 'java.springEndpoints' || id === 'java.springBeanGraph') return true
-  if (id === 'java.dependencyTree') return context.authorized ? true : NOT_TRUSTED
+  if (id === 'java.dependencyTree' || id === 'java.osgi' || id === 'java.osgiBuild' || id === 'java.osgiRun') return context.authorized ? true : NOT_TRUSTED
   if (id.startsWith('java.')) {
     if (/^java\.(run|debug|spring|mvn)/.test(id)) return context.authorized ? true : NOT_TRUSTED
     return context.hasEditor ? true : 'Open a Java file first'
@@ -478,7 +478,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   if (id === 'php.installDebugger' || id === 'cpp.installDebugger' || id === 'dotnet.installDebugger') return context.authorized ? true : 'Trust this project to install its debugger'
   if (id === 'web.installDebugger') return context.authorized ? true : 'Trust this project to install the JavaScript debugger'
   if (id === 'rust.selectToolchain' || id === 'rust.dependencyTree') return true
-  if (id === 'python.attach') return context.authorized ? true : 'Trust this project to attach the debugger'
+  if (id === 'python.attach' || id === 'rust.attach') return context.authorized ? true : 'Trust this project to attach the debugger'
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   switch (id) {
     case 'nav.back': return context.canGoBack ? true : 'No earlier location'

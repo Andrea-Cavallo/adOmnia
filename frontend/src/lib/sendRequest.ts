@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useHostsStore } from '@/stores/hosts'
 import { useCookieJarStore } from '@/lib/cookieJar'
 import { resolveSecret, resolveVaultReferences } from '@/lib/vaultRefs'
-import { toHTTPExecPayload, type ResolvedRequest } from '@/lib/requestExecutionContract'
+import { toHTTPExecPayload, type HTTPExecPayload, type ResolvedRequest } from '@/lib/requestExecutionContract'
 import { validatePSD2Request } from '@/lib/psd2Validation'
 import { ExecuteHTTP, CancelHTTP } from '../wailsjs/go/main/App'
 
@@ -14,20 +14,32 @@ export interface SendOptions {
   signal?: AbortSignal
 }
 
-export async function sendRequest(
-  request: RequestItem,
-  vars: Record<string, string>,
-  opts?: SendOptions
-): Promise<ResponseData> {
-  if (opts?.signal?.aborted) return errResp('CANCELED', 'Request cancelled')
+export type RequestSettings = ReturnType<typeof useSettingsStore.getState>['settings']['requests']
+
+/**
+ * A request resolved for the transport: vault, path params, query, cookies,
+ * auth, hosts map and PSD2 are applied, nothing is sent yet. Multipart bodies
+ * still need the browser fetch, so they come back as a separate kind.
+ */
+export type PreparedExecution =
+  | { kind: 'go'; exec: HTTPExecPayload; reqId: string; fullUrl: string }
+  | { kind: 'browser'; method: string; fullUrl: string; headers: Record<string, string>; body: FormData; settings: RequestSettings; timeout?: number; followRedirects?: boolean }
+  | { kind: 'error'; response: ResponseData }
+
+/**
+ * prepareExecution resolves a request exactly as sendRequest does and stops
+ * right before the transport. The hidden parallel send reuses it, so auth,
+ * cookies and TLS settings are never re-implemented on a second path.
+ */
+export async function prepareExecution(request: RequestItem, vars: Record<string, string>): Promise<PreparedExecution> {
   const psd2Issues = validatePSD2Request(request)
-  if (psd2Issues.length > 0) return errResp('PSD2_ERR', psd2Issues.map((issue) => issue.message).join(' '))
+  if (psd2Issues.length > 0) return { kind: 'error', response: errResp('PSD2_ERR', psd2Issues.map((issue) => issue.message).join(' ')) }
   let resolvedVars: Record<string, string>
   try {
     resolvedVars = await resolveVaultReferences(vars)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    return errResp('VAULT_ERR', msg)
+    return { kind: 'error', response: errResp('VAULT_ERR', msg) }
   }
 
   const url = applyPathParams(substVars(request.url, resolvedVars), pathParamValues(request, resolvedVars))
@@ -71,14 +83,14 @@ export async function sendRequest(
 
   // FormData (file uploads) still needs browser fetch; Go binding handles strings only.
   if (rawBody instanceof FormData) {
-    if (request.psd2?.enabled) return errResp('PSD2_ERR', 'PSD2 signing and mTLS require a backend-serializable request body; multipart form-data is not supported in this MVP.')
+    if (request.psd2?.enabled) return { kind: 'error', response: errResp('PSD2_ERR', 'PSD2 signing and mTLS require a backend-serializable request body; multipart form-data is not supported in this MVP.') }
     try {
       await applyAuth(request, headers, resolvedVars, fullUrl, rawBody)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      return errResp('AUTH_ERR', msg)
+      return { kind: 'error', response: errResp('AUTH_ERR', msg) }
     }
-    return sendViaBrowserFetch(request.method, fullUrl, headers, rawBody, requestSettings, request.timeout, request.followRedirects, opts?.signal)
+    return { kind: 'browser', method: request.method, fullUrl, headers, body: rawBody, settings: requestSettings, timeout: request.timeout, followRedirects: request.followRedirects }
   }
 
   // Serialize body to string for Go transport
@@ -96,7 +108,7 @@ export async function sendRequest(
     await applyAuth(request, headers, resolvedVars, fullUrl, rawBody)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    return errResp('AUTH_ERR', msg)
+    return { kind: 'error', response: errResp('AUTH_ERR', msg) }
   }
 
   const timeoutMs = request.timeout && request.timeout > 0
@@ -114,7 +126,7 @@ export async function sendRequest(
         qsealPassword: await resolveSecret(request.psd2.qsealPasswordRef),
       }
     } catch (e) {
-      return errResp('PSD2_ERR', e instanceof Error ? e.message : String(e))
+      return { kind: 'error', response: errResp('PSD2_ERR', e instanceof Error ? e.message : String(e)) }
     }
   }
 
@@ -146,39 +158,55 @@ export async function sendRequest(
     },
     psd2,
   }
-  const execReq = toHTTPExecPayload(resolvedRequest)
+  return { kind: 'go', exec: toHTTPExecPayload(resolvedRequest), reqId, fullUrl }
+}
 
-  const onAbort = () => { void CancelHTTP(reqId) }
+export async function sendRequest(
+  request: RequestItem,
+  vars: Record<string, string>,
+  opts?: SendOptions
+): Promise<ResponseData> {
+  if (opts?.signal?.aborted) return errResp('CANCELED', 'Request cancelled')
+  const prepared = await prepareExecution(request, vars)
+  if (prepared.kind === 'error') return prepared.response
+  if (prepared.kind === 'browser') {
+    return sendViaBrowserFetch(prepared.method, prepared.fullUrl, prepared.headers, prepared.body, prepared.settings, prepared.timeout, prepared.followRedirects, opts?.signal)
+  }
+
+  const onAbort = () => { void CancelHTTP(prepared.reqId) }
   opts?.signal?.addEventListener('abort', onAbort)
   try {
-    const respJSON = await ExecuteHTTP(JSON.stringify(execReq))
-    const resp = JSON.parse(respJSON) as GoHTTPResponse
-    if (resp.error) {
-      return { status: 0, statusText: '', headers: {}, body: '', contentType: '', ms: resp.ms ?? 0, size: 0, error: resp.error }
-    }
-    // Capture Set-Cookie into the session jar
-    const rawSetCookie = resp.headers?.['Set-Cookie'] ?? resp.headers?.['set-cookie'] ?? ''
-    if (rawSetCookie) {
-      useCookieJarStore.getState().capture(fullUrl, [rawSetCookie])
-    }
-    return {
-      status: resp.status,
-      statusText: resp.statusText,
-      headers: resp.headers ?? {},
-      body: resp.body ?? '',
-      // Il doppione base64 serve solo ai body binari (immagini, pdf…): sui testuali è una copia
-      // perfetta del body e non si tiene (poi clonata in history e persistita due volte).
-      bodyBase64: isTextualResponse(resp.contentType ?? '', resp.body ?? '') ? undefined : resp.bodyBase64,
-      contentType: resp.contentType ?? '',
-      ms: resp.ms ?? 0,
-      size: resp.size ?? 0,
-    }
+    const respJSON = await ExecuteHTTP(JSON.stringify(prepared.exec))
+    return responseFromGo(JSON.parse(respJSON) as GoHTTPResponse, prepared.fullUrl)
   } catch (e) {
     if (opts?.signal?.aborted) return errResp('CANCELED', 'Request cancelled')
     const msg = e instanceof Error ? e.message : String(e)
     return errResp('ERR', msg)
   } finally {
     opts?.signal?.removeEventListener('abort', onAbort)
+  }
+}
+
+/** Maps a Go transport response to the UI model and captures Set-Cookie in the jar. */
+export function responseFromGo(resp: GoHTTPResponse, fullUrl: string): ResponseData {
+  if (resp.error) {
+    return { status: 0, statusText: '', headers: {}, body: '', contentType: '', ms: resp.ms ?? 0, size: 0, error: resp.error }
+  }
+  const rawSetCookie = resp.headers?.['Set-Cookie'] ?? resp.headers?.['set-cookie'] ?? ''
+  if (rawSetCookie) {
+    useCookieJarStore.getState().capture(fullUrl, [rawSetCookie])
+  }
+  return {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: resp.headers ?? {},
+    body: resp.body ?? '',
+    // Il doppione base64 serve solo ai body binari (immagini, pdf…): sui testuali è una copia
+    // perfetta del body e non si tiene (poi clonata in history e persistita due volte).
+    bodyBase64: isTextualResponse(resp.contentType ?? '', resp.body ?? '') ? undefined : resp.bodyBase64,
+    contentType: resp.contentType ?? '',
+    ms: resp.ms ?? 0,
+    size: resp.size ?? 0,
   }
 }
 
@@ -566,7 +594,7 @@ function getBody(
 
 // --- Helpers ---
 
-interface GoHTTPResponse {
+export interface GoHTTPResponse {
   status: number
   statusText: string
   headers: Record<string, string>

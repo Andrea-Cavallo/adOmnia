@@ -142,7 +142,7 @@ Code Studio    →    实时服务        →    API Workspace    →    处理�
 
 ## Code Studio：嵌入工作流中的 IDE
 
-![浅色外观的 Code Studio，在断点处暂停，显示 goroutine 和变量](docs/screenshots/go-debug-light.png)
+![浅色外观的 Code Studio，在断点处暂停，显示 goroutine 和变量](assets/screenshots/go-debugger.png)
 
 *Code Studio 在断点处暂停，显示源代码、goroutine、变量和控制台输出。各版本中的控件可能有所不同。*
 
@@ -203,4 +203,4 @@ Code Studio    →    实时服务        →    API Workspace    →    处理�
 
 请[提交问题](https://github.com/Andrea-Cavallo/adOmnia/issues)，并附上你的版本、操作系统和复现步骤。请从截图和导出文件中去除凭据和私人数据。提交拉取请求之前，请先遵循仓库的贡献指南。
 
-[MIT 许可证](LICENSE) · [第三方声明](NOTICE.md)
+[GNU 通用公共许可证 v3.0](LICENSE)（GPL-3.0-only） · [第三方声明](NOTICE.md)

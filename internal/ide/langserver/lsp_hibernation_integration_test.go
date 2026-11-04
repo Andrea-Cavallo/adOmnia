@@ -63,7 +63,7 @@ func testHibernateRealGopls(t *testing.T, budgetPressure bool) {
 		now := time.Now()
 		// Advance residency/inactivity at the owner seam without a 30 s test sleep.
 		state.mu.Lock()
-		state.inactiveSince, state.startedAt = now.Add(-time.Minute), now.Add(-time.Minute)
+		state.inactiveSince, state.startedAt = now.Add(-time.Hour), now.Add(-time.Hour)
 		state.mu.Unlock()
 		policy := resources.NewMemoryBudget(max(1, sample.RAM/2))
 		manager.enforceMemoryBudget(policy, sample, now)

@@ -14,23 +14,23 @@ func one(command string, args ...string) []server { return []server{{command, ar
 // Test commands write their reports into reportDirectory; dotnet writes one .trx per project.
 var dotnetTest = &tester{command: "dotnet", args: []string{"test", "--logger", "trx", "--results-directory", reportDirectory}}
 
-const clangdHint = "clangd comes with LLVM: `winget install LLVM.LLVM`, `brew install llvm` or `apt install clangd`"
+const clangdHint = "click Install… to download clangd into adOmnia, or install LLVM: `winget install LLVM.LLVM`, `brew install llvm` or `apt install clangd`"
 
 // definitions: ids are stable (persisted in run data and used as language server keys) and must
 // match frontend/src/components/ide/languages/declared/index.ts.
 var definitions = []definition{
 	{id: "cpp", name: "C/C++", editor: "cpp", extensions: map[string]string{
 		".c": "c", ".h": "c", ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp", ".hpp": "cpp", ".hh": "cpp", ".hxx": "cpp",
-	}, servers: one("clangd", "--background-index", "--header-insertion=never"), hint: clangdHint, native: true,
+	}, servers: one("clangd", "--background-index", "--header-insertion=never"), pinned: clangdServer, hint: clangdHint, native: true,
 		manifests: []string{"cmakelists.txt", "meson.build", "*.vcxproj"},
 		// ponytail: CTest reads the conventional build/ folder; make it a run option if projects differ.
 		test: &tester{command: "ctest", args: []string{"--test-dir", "build", "--output-junit", reportDirectory + "/ctest.xml"}}, build: true},
 	{id: "objective-c", name: "Objective-C", editor: "objective-c", extensions: same("objective-c", ".m"),
-		servers: one("clangd", "--background-index"), hint: clangdHint, native: true, build: true},
+		servers: one("clangd", "--background-index"), pinned: clangdServer, hint: clangdHint, native: true, build: true},
 	{id: "csharp", name: "C#", editor: "csharp", extensions: same("csharp", ".cs", ".csx"),
-		servers: one("csharp-ls"), hint: "run `dotnet tool install --global csharp-ls`", manifests: []string{"*.sln", "*.csproj"}, dotnet: true, test: dotnetTest},
+		servers: one("csharp-ls"), tool: csharpLS, hint: "click Install… (needs the .NET SDK) or run `dotnet tool install --global csharp-ls`", manifests: []string{"*.sln", "*.csproj"}, dotnet: true, test: dotnetTest},
 	{id: "fsharp", name: "F#", editor: "fsharp", extensions: same("fsharp", ".fs", ".fsi", ".fsx"),
-		servers: one("fsautocomplete"), hint: "run `dotnet tool install --global fsautocomplete`", manifests: []string{"*.fsproj"}, dotnet: true, test: dotnetTest},
+		servers: one("fsautocomplete"), tool: fsAutocomplete, hint: "click Install… (needs the .NET SDK) or run `dotnet tool install --global fsautocomplete`", manifests: []string{"*.fsproj"}, dotnet: true, test: dotnetTest},
 	{id: "php", name: "PHP", editor: "php", extensions: same("php", ".php", ".phtml"),
 		servers: []server{{"intelephense", []string{"--stdio"}}, {"phpactor", []string{"language-server"}}},
 		hint:    "run `npm install -g intelephense`", npm: "intelephense@1.18.5",
@@ -44,7 +44,7 @@ var definitions = []definition{
 		servers:   []server{{"ruby-lsp", nil}, {"solargraph", []string{"stdio"}}}, hint: "run `gem install ruby-lsp`",
 		manifests: []string{"gemfile", "*.gemspec"}, interpreters: one("ruby")},
 	{id: "lua", name: "Lua", editor: "lua", extensions: same("lua", ".lua"),
-		servers: one("lua-language-server"), hint: "download LuaLS from https://luals.github.io and add its bin folder to PATH",
+		servers: one("lua-language-server"), pinned: luaServer, hint: "click Install… to download LuaLS into adOmnia, or download it from https://luals.github.io and add its bin folder to PATH",
 		manifests: []string{"*.rockspec"}, interpreters: []server{{"lua", nil}, {"luajit", nil}}},
 	{id: "kotlin", name: "Kotlin", editor: "kotlin", extensions: same("kotlin", ".kt", ".kts"),
 		servers: []server{{"kotlin-lsp", []string{"--stdio"}}, {"kotlin-language-server", nil}},
@@ -80,10 +80,11 @@ var definitions = []definition{
 		hint:      "in the Julia REPL press `]` and run `add LanguageServer`",
 		manifests: []string{"project.toml"}, interpreters: one("julia")},
 	{id: "clojure", name: "Clojure", editor: "clojure", extensions: same("clojure", ".clj", ".cljs", ".cljc", ".edn"),
-		servers: one("clojure-lsp"), hint: "download clojure-lsp from https://clojure-lsp.io and add it to PATH", manifests: []string{"deps.edn", "project.clj"}},
+		servers: one("clojure-lsp"), pinned: clojureServer, hint: "click Install… to download clojure-lsp into adOmnia, or download it from https://clojure-lsp.io and add it to PATH", manifests: []string{"deps.edn", "project.clj"}},
 	// XML matters for the enterprise side (WSDL, XSD, SOAP envelopes, Maven POMs).
 	{id: "xml", name: "XML", editor: "xml", extensions: same("xml", ".xml", ".xsd", ".wsdl", ".xsl", ".xslt", ".pom"),
-		servers: one("lemminx"), hint: "download the LemMinX binary for your OS and add it to PATH as `lemminx`"},
+		servers: one("lemminx"), pinned: lemminxServer,
+		hint: "click Install… to download LemMinX into adOmnia, or download the LemMinX binary for your OS and add it to PATH as `lemminx`"},
 	{id: "dockerfile", name: "Dockerfile", editor: "dockerfile", extensions: same("dockerfile", ".dockerfile"),
 		filenames: same("dockerfile", "dockerfile", "containerfile"),
 		servers:   one("docker-langserver", "--stdio"), hint: "run `npm install -g dockerfile-language-server-nodejs`", npm: "dockerfile-language-server-nodejs@0.15.0"},
@@ -96,8 +97,8 @@ var definitions = []definition{
 		hint:    "run `npm install -g sql-language-server` or `go install github.com/sqls-server/sqls@latest`", npm: "sql-language-server@1.7.1"},
 	// PowerShell Editor Services ships as a module folder, not a command: a small wrapper on PATH starts it.
 	{id: "powershell", name: "PowerShell", editor: "powershell", extensions: same("powershell", ".ps1", ".psm1", ".psd1"),
-		servers:      one("powershell-editor-services"),
-		hint:         "download PowerShell Editor Services and put on PATH a `powershell-editor-services` script that runs Start-EditorServices.ps1 -Stdio",
+		servers: one("powershell-editor-services"), pinned: powershellEditorServices,
+		hint:         "click Install… to download PowerShell Editor Services into adOmnia (needs pwsh or Windows PowerShell), or put on PATH a `powershell-editor-services` script that runs Start-EditorServices.ps1 -Stdio",
 		interpreters: []server{{"pwsh", []string{"-NoLogo", "-NoProfile", "-NonInteractive", "-File"}}, {"powershell", []string{"-NoLogo", "-NoProfile", "-NonInteractive", "-File"}}}},
 	// The files around a project: configuration, documentation and build scripts.
 	{id: "yaml", name: "YAML", editor: "yaml", extensions: same("yaml", ".yaml", ".yml"),
@@ -107,13 +108,14 @@ var definitions = []definition{
 		servers:   one("taplo", "lsp", "stdio"), hint: "run `npm install -g @taplo/cli` or `cargo install taplo-cli --locked --features lsp`", npm: "@taplo/cli@0.7.0"},
 	{id: "markdown", name: "Markdown", editor: "markdown",
 		extensions: same("markdown", ".md", ".markdown", ".mdown", ".mkd", ".mkdn", ".mdwn", ".mdx", ".ronn"),
-		servers:    one("marksman", "server"), hint: "download marksman from https://github.com/artempyanykh/marksman/releases and add it to PATH"},
+		servers:    one("marksman", "server"), pinned: marksmanServer,
+		hint: "click Install… to download marksman into adOmnia, or download it from https://github.com/artempyanykh/marksman/releases and add it to PATH"},
 	{id: "nix", name: "Nix", editor: "nix", extensions: same("nix", ".nix"),
 		servers: []server{{"nil", nil}, {"nixd", nil}},
 		hint:    "install nil (`nix profile install github:oxalica/nil`) or nixd (`nix profile install nixpkgs#nixd`)"},
 	{id: "latex", name: "LaTeX", editor: "latex",
 		extensions: same("latex", ".tex", ".ltx", ".sty", ".cls", ".dtx", ".ins", ".bbx", ".cbx"),
-		servers:    one("texlab"), hint: "install texlab: `cargo install --locked texlab` or `brew install texlab`"},
+		servers:    one("texlab"), pinned: texlabServer, hint: "click Install… to download texlab into adOmnia, or run `cargo install --locked texlab` or `brew install texlab`"},
 	{id: "ocaml", name: "OCaml", editor: "ocaml", extensions: same("ocaml", ".ml", ".mll", ".mly"),
 		servers: one("ocamllsp"), hint: "run `opam install ocaml-lsp-server`", manifests: []string{"dune-project"}},
 	{id: "erlang", name: "Erlang", editor: "erlang", extensions: same("erlang", ".erl", ".hrl", ".escript"),
@@ -126,13 +128,13 @@ var definitions = []definition{
 		hint:    "build https://github.com/GroovyLanguageServer/groovy-language-server and expose it on PATH as `groovy-language-server`"},
 	{id: "cmake", name: "CMake", editor: "cmake", extensions: same("cmake", ".cmake"),
 		filenames: same("cmake", "cmakelists.txt", "cmakecache.txt"),
-		servers:   []server{{"neocmakelsp", []string{"stdio"}}, {"cmake-language-server", nil}},
-		hint:      "run `cargo install neocmakelsp` or `pip install cmake-language-server`"},
+		servers:   []server{{"neocmakelsp", []string{"stdio"}}, {"cmake-language-server", nil}}, pinned: cmakeServer,
+		hint: "click Install… to download neocmakelsp into adOmnia, or run `cargo install neocmakelsp` or `pip install cmake-language-server`"},
 	{id: "vue", name: "Vue", editor: "vue", extensions: same("vue", ".vue"),
 		servers: one("vue-language-server", "--stdio"), hint: "run `npm install -g @vue/language-server`", npm: "@vue/language-server@3.3.14"},
 	{id: "svelte", name: "Svelte", editor: "svelte", extensions: same("svelte", ".svelte"),
 		servers: one("svelteserver", "--stdio"), hint: "run `npm install -g svelte-language-server`", npm: "svelte-language-server@0.18.5"},
 	{id: "proto", name: "Protocol Buffers", editor: "proto", extensions: same("proto", ".proto"),
-		servers: one("buf", "lsp", "serve"), hint: "install buf from https://buf.build/docs/installation and add it to PATH",
+		servers: one("buf", "lsp", "serve"), pinned: bufServer, hint: "click Install… to download buf into adOmnia, or install it from https://buf.build/docs/installation and add it to PATH",
 		manifests: []string{"buf.yaml", "buf.work.yaml"}},
 }

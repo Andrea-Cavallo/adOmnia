@@ -1,6 +1,7 @@
 {
   "name": "adomnia-frontend",
   "private": true,
+  "license": "GPL-3.0-only",
   "version": "1.0.24",
   "type": "module",
   "engines": {
@@ -34,7 +35,7 @@
     "@radix-ui/react-tabs": "^1.1.22",
     "@taplo/lib": "0.5.0",
     "@types/d3-force": "^3.0.10",
-    "@wailsio/runtime": "3.0.0",
+    "@wailsio/runtime": "3.1.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/xterm": "^6.0.0",

@@ -23,7 +23,7 @@ func (m *LSPManager) TrackDocument(session Session, document Document, text stri
 	}
 	unitRoot := ""
 	if m.unitServerLanguage(owner.ID()) {
-		unitRoot = unitRootForPath(session, owner.ID(), document.Path)
+		unitRoot = m.serverRootForPath(session, owner.ID(), document.Path)
 	}
 	state := m.ensureUnit(session, owner.ID(), unitRoot)
 	state.lifecycle.Lock()

@@ -2,7 +2,6 @@ package devsession
 
 import (
 	"context"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type recorder struct {

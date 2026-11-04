@@ -10,13 +10,13 @@
   <strong>A local-first desktop IDE to run, test and debug the code your AI agent writes.</strong><br>
   Routes, API client, debugger, database and brokers in one window. No account, no cloud, no telemetry.<br>
   <sub><b>Run, test and debug:</b> Go · Java · Python · TypeScript/JavaScript · Rust · C/C++ · C# · F# · PHP · Swift<br>
-  <b>Run and debug:</b> Dart · Zig · Objective-C · <b>Run:</b> Ruby · Elixir · Lua · Perl · R · Julia · PowerShell<br>
-  <b>Editor with language server</b> for 20+ more, including Kotlin, Scala, Haskell, SQL, YAML, Dockerfile, Terraform and Vue.</sub>
+  <b>Run and debug:</b> Dart · Zig · Objective-C &nbsp;—&nbsp; <b>Run:</b> Ruby · Elixir · Lua · Perl · R · Julia · PowerShell<br>
+  <b>45 languages in all</b> — the ones above plus Kotlin, Scala, Haskell, Clojure, OCaml, Erlang, Shell, SQL, YAML, TOML, Dockerfile, Terraform, Vue, Svelte, GraphQL, Protobuf, Markdown, LaTeX, Nix and CMake — each with an editor and its language server.</sub>
 </p>
 
 <p align="center">
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia"></a>
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+  <a href="LICENSE"><img alt="License: GPL v3" src="https://img.shields.io/badge/License-GPLv3-blue.svg"></a>
   <img alt="Go 1.27" src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white">
   <img alt="Platforms: Windows, macOS, Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey">
   <a href="https://github.com/Andrea-Cavallo/adOmnia"><img alt="Stars" src="https://img.shields.io/github/stars/Andrea-Cavallo/adOmnia?style=flat"></a>
@@ -402,4 +402,4 @@ Resource diagnostics: adjust the backend Go GC budget live, restart gopls with a
 
 [Report an issue](https://github.com/Andrea-Cavallo/adOmnia/issues) with your version, operating system and reproduction steps. Remove credentials and private data from screenshots and exports. Follow the [contribution guidelines](CONTRIBUTING.md) before opening a pull request.
 
-[MIT license](LICENSE) · [Third-party notices](NOTICE.md)
+[GNU General Public License v3.0](LICENSE) (GPL-3.0-only) · Copyright © 2026 Andrea Cavallo · [Third-party notices](NOTICE.md)

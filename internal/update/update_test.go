@@ -24,3 +24,23 @@ func TestCompareSemver(t *testing.T) {
 		}
 	}
 }
+
+// A mistyped tag published after the real release (v0.1.24 after v1.0.24) is
+// GitHub's "Latest", but the newest version is still v1.0.24.
+func TestNewestStableReleaseIgnoresPublicationOrder(t *testing.T) {
+	releases := []release{
+		{Tag: "v0.1.24"},
+		{Tag: "v1.0.24", URL: "https://github.com/Andrea-Cavallo/adOmnia/releases/tag/v1.0.24"},
+		{Tag: "v1.1.0-beta.1", Prerelease: true},
+		{Tag: "v1.2.0", Draft: true},
+		{Tag: "v1.0.23"},
+		{Tag: "not-a-version"},
+	}
+	newest := newestStableRelease(releases)
+	if newest == nil || newest.Tag != "v1.0.24" {
+		t.Fatalf("newest = %+v", newest)
+	}
+	if newestStableRelease([]release{{Tag: "v2.0.0-rc.1"}, {Draft: true, Tag: "v2.0.0"}}) != nil {
+		t.Fatal("drafts and prereleases are never the newest stable release")
+	}
+}

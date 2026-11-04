@@ -4,7 +4,7 @@ class Adomnia < Formula
   version "__VERSION__"
   url "https://github.com/Andrea-Cavallo/adOmnia/releases/download/v#{version}/adomnia-#{version}-linux-amd64-gtk3-webkitgtk-4.1.tar.gz"
   sha256 "__SHA256_LINUX__"
-  license "MIT"
+  license "GPL-3.0-only"
 
   # The prebuilt binary links against GTK 3 and WebKitGTK 4.1. These are the
   # runtime libraries; adjust the formula names to your Linuxbrew tap if needed.

@@ -10,8 +10,12 @@ const LOCATION = /(?<![^\s:[\]()](?![A-Za-z]:[\\/]))((?:[A-Za-z]:[\\/])?[^\s:[\]
 /** L'estensione si verifica dopo il match: dentro la regex il `.` del percorso si scontrerebbe col gruppo finale. */
 const SOURCE_EXTENSION = /\.(?:go|java|kt|kts|groovy)$/
 
+/** Scarto immediato: quasi nessuna riga di log è una posizione, e la regex completa pesa con migliaia di righe al secondo. */
+const MAYBE_LOCATION = /\.(?:go|java|kt|kts|groovy):[[\d]/
+
 /** Il primo "file:riga[:colonna]" di una riga di output di build/run, o null; il percorso usa sempre "/". */
 export function parseConsoleLocation(text: string): ConsoleLocation | null {
+  if (!MAYBE_LOCATION.test(text)) return null
   LOCATION.lastIndex = 0
   for (let match = LOCATION.exec(text); match; match = LOCATION.exec(text)) {
     if (!SOURCE_EXTENSION.test(match[1])) continue

@@ -4,13 +4,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestVersionAtLeast(t *testing.T) {

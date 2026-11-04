@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <rect x="1" y="1" width="22" height="22" rx="4" fill="#63AA7B" />
+  <text x="12" y="13.5" text-anchor="middle" textLength="19" lengthAdjust="spacingAndGlyphs"
+        font-family="Arial Narrow, Arial, Helvetica, sans-serif" font-weight="700" font-size="8.8" fill="#FFFFFF">BPMN</text>
+  <rect x="2.7" y="16.3" width="18.6" height="1.7" fill="#FFFFFF" />
+</svg>

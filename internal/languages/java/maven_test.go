@@ -1,12 +1,13 @@
 package java
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 )
 
 func TestMavenCommandUsesReactorWrapperInSelectedModule(t *testing.T) {

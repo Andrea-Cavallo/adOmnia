@@ -2,11 +2,12 @@ package sidecar
 
 import (
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/oauth"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/oauth"
 )
 
 func resetOAuthSessionsForTest() {

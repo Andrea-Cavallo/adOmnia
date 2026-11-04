@@ -7,10 +7,11 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"sync"
 	"sync/atomic"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // maxMessageBytes limita un singolo messaggio JSON-RPC per proteggere la memoria.

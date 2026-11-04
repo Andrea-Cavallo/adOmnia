@@ -1,6 +1,11 @@
 package java
 
 import (
+	"archive/zip"
+	"debug/elf"
+	"debug/macho"
+	"debug/pe"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,13 +36,10 @@ func DiscoverJDKs() []JDK {
 		if seen[key] {
 			return
 		}
-		binary := filepath.Join(home, "bin", sdk.ExecutableName("java"))
-		if !isFile(binary) {
-			return
+		if jdk, ok := InspectJDK(home, source); ok {
+			seen[key] = true
+			found = append(found, jdk)
 		}
-		seen[key] = true
-		version := releaseVersion(home)
-		found = append(found, JDK{Available: true, Binary: binary, Home: home, Source: source, Version: version, Major: Major(version)})
 	}
 	if home := strings.TrimSpace(os.Getenv("JAVA_HOME")); home != "" {
 		add(home, "JAVA_HOME")
@@ -65,6 +67,57 @@ func DiscoverJDKs() []JDK {
 	return found
 }
 
+// InspectJDK descrive la JVM di una cartella senza eseguirla; ok è falso se non contiene bin/java.
+func InspectJDK(home, source string) (JDK, bool) {
+	binary := filepath.Join(home, "bin", sdk.ExecutableName("java"))
+	if !isFile(binary) {
+		return JDK{}, false
+	}
+	version := releaseVersion(home)
+	return JDK{Available: true, Binary: binary, Home: home, Source: source, Version: version, Major: Major(version), Arch: executableArch(binary)}, true
+}
+
+// executableArch legge l'architettura dall'intestazione dell'eseguibile, senza eseguirlo:
+// su Windows una JVM a 32 bit gira su un sistema a 64, e i fragment nativi devono seguire la JVM.
+func executableArch(path string) string {
+	if file, err := pe.Open(path); err == nil {
+		defer func() { _ = file.Close() }() // sola lettura
+		return map[uint16]string{pe.IMAGE_FILE_MACHINE_I386: "x86", pe.IMAGE_FILE_MACHINE_AMD64: "x86_64", pe.IMAGE_FILE_MACHINE_ARM64: "aarch64"}[file.Machine]
+	}
+	if file, err := elf.Open(path); err == nil {
+		defer func() { _ = file.Close() }() // sola lettura
+		return map[elf.Machine]string{elf.EM_386: "x86", elf.EM_X86_64: "x86_64", elf.EM_AARCH64: "aarch64"}[file.Machine]
+	}
+	if file, err := macho.Open(path); err == nil {
+		defer func() { _ = file.Close() }() // sola lettura
+		return map[macho.Cpu]string{macho.Cpu386: "x86", macho.CpuAmd64: "x86_64", macho.CpuArm64: "aarch64"}[file.Cpu]
+	}
+	return ""
+}
+
+// ResolveJavaHome accetta anche la cartella di uno zip scompattato, con la JDK un livello più sotto.
+func ResolveJavaHome(folder string) string {
+	if ValidJavaHome(folder) {
+		return folder
+	}
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return folder
+	}
+	found := folder
+	matches := 0
+	for _, entry := range entries {
+		if nested := filepath.Join(folder, entry.Name()); entry.IsDir() && ValidJavaHome(nested) {
+			found = nested
+			matches++
+		}
+	}
+	if matches != 1 {
+		return folder
+	}
+	return found
+}
+
 // jdkRoots sono le cartelle che contengono un JDK per sottocartella.
 func jdkRoots() []string {
 	home, _ := os.UserHomeDir()
@@ -86,13 +139,41 @@ func jdkRoots() []string {
 
 var releaseVersionLine = regexp.MustCompile(`(?m)^JAVA_VERSION="([^"]+)"`)
 
-// releaseVersion legge JAVA_VERSION dal file `release` che ogni JDK moderno porta nella sua radice.
+// releaseVersion legge JAVA_VERSION dal file `release` dei JDK moderni; Java 6 non lo ha, e lì
+// vale il manifest di rt.jar.
 func releaseVersion(home string) string {
-	data, err := readLimited(filepath.Join(home, "release"))
+	if data, err := readLimited(filepath.Join(home, "release")); err == nil {
+		if match := releaseVersionLine.FindSubmatch(data); match != nil {
+			return string(match[1])
+		}
+	}
+	for _, runtimeJar := range []string{filepath.Join(home, "jre", "lib", "rt.jar"), filepath.Join(home, "lib", "rt.jar")} {
+		if version := rtJarVersion(runtimeJar); version != "" {
+			return version
+		}
+	}
+	return ""
+}
+
+var implementationVersionLine = regexp.MustCompile(`(?m)^Implementation-Version:\s*(\S+)`)
+
+// rtJarVersion legge Implementation-Version dal manifest di rt.jar ("1.6.0_45"), senza eseguire la JVM.
+func rtJarVersion(path string) string {
+	archive, err := zip.OpenReader(path)
 	if err != nil {
 		return ""
 	}
-	if match := releaseVersionLine.FindSubmatch(data); match != nil {
+	defer func() { _ = archive.Close() }() // sola lettura: un errore di chiusura non cambia nulla
+	entry, err := archive.Open("META-INF/MANIFEST.MF")
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = entry.Close() }() // come sopra
+	data, err := io.ReadAll(io.LimitReader(entry, 1<<20))
+	if err != nil {
+		return ""
+	}
+	if match := implementationVersionLine.FindSubmatch(data); match != nil {
 		return string(match[1])
 	}
 	return ""

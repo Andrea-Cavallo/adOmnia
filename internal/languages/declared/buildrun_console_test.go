@@ -30,7 +30,7 @@ func TestRealBuildRunConsoleDoesNotEchoRecipes(t *testing.T) {
 	if err := os.WriteFile(source, []byte("#include <cstdio>\nint main() { puts(\"repeat\"); puts(\"repeat\"); }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, makefile, err := writeBuildRunMakefile(root, source, compiler, []string{source})
+	output, makefile, err := writeBuildRunMakefile(root, source, compiler, []string{source})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,6 +52,10 @@ func TestRealBuildRunConsoleDoesNotEchoRecipes(t *testing.T) {
 		t.Fatalf("expected only program output, got %q", stdout)
 	}
 	if err := os.WriteFile(source, []byte("int main() { invalid syntax here; }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Force this diagnostic check to compile even on coarse-timestamp filesystems.
+	if err := os.Remove(output); err != nil {
 		t.Fatal(err)
 	}
 	_, stderr, err = run()

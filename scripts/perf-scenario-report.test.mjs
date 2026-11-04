@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  budgetProblems,
   classifyProcess,
   parseRecording,
   renderMarkdown,
@@ -24,7 +25,7 @@ const sample = (overrides = {}) => ({
   ram: 701000000,
   cpu: 17.5,
   instances: 2,
-  frontend: { inputKeypresses: 10, inputSamples: 8, inputP50Ms: 12, inputP95Ms: 30, inputMaxMs: 40 },
+  frontend: { inputKeypresses: 10, inputSamples: 8, inputP50Ms: 12, inputP95Ms: 30, inputP99Ms: 35, inputMaxMs: 40, longTasks: 3, longTaskTotalMs: 180.5, longTaskMaxMs: 120.5 },
   ...overrides,
 })
 
@@ -81,7 +82,7 @@ test('summarizes per component with runtime and frontend aggregates', () => {
     sample({
       at: '2026-10-15T10:00:20.000Z',
       runtime: { goroutines: 44, heapInuse: 125829120, sys: 209715200, gcPauseTotalNs: 1500, gcCpuFraction: 0.01 },
-      frontend: { inputKeypresses: 12, inputSamples: 9, inputP50Ms: 14, inputP95Ms: 44, inputMaxMs: 60 },
+      frontend: { inputKeypresses: 12, inputSamples: 9, inputP50Ms: 14, inputP95Ms: 44, inputP99Ms: 37, inputMaxMs: 60, longTasks: 2, longTaskTotalMs: 200, longTaskMaxMs: 150 },
     }),
   ])
   assert.equal(summary.scenario, 'idle-30m')
@@ -96,6 +97,21 @@ test('summarizes per component with runtime and frontend aggregates', () => {
   assert.equal(summary.runtime.gcPauseTotalNsDelta, 500)
   assert.equal(summary.frontend.inputKeypresses, 22)
   assert.equal(summary.frontend.inputP95Ms.max, 44)
+  assert.equal(summary.frontend.inputP99Ms.max, 37)
+  assert.equal(summary.frontend.longTasks, 5)
+  assert.equal(summary.frontend.longTaskTotalMs.max, 200)
+  assert.equal(summary.frontend.longTaskMaxMs.max, 150)
+})
+
+test('keeps a recording made before p99 and long tasks readable', () => {
+  const legacy = sample({ frontend: { inputKeypresses: 4, inputSamples: 3, inputP50Ms: 9, inputP95Ms: 21, inputMaxMs: 25 } })
+  const summary = summarizeRecording([legacy])
+  assert.equal(summary.frontend.inputP95Ms.median, 21)
+  assert.equal(summary.frontend.inputP99Ms.samples, 0)
+  assert.equal(summary.frontend.inputP99Ms.max, null)
+  assert.equal(summary.frontend.longTasks, 0)
+  const markdown = renderMarkdown(summarizeRecordings([{ source: 'legacy.jsonl', samples: [legacy] }]))
+  assert.ok(markdown.includes('p99 max n/a'), markdown)
 })
 
 test('rejects empty or mixed recordings', () => {
@@ -110,4 +126,20 @@ test('renders a markdown table covering every component', () => {
     assert.ok(markdown.includes(`| ${component} |`), `missing ${component} row`)
   }
   assert.ok(markdown.includes('input p95 max 30 ms'))
+  assert.ok(markdown.includes('long tasks 3'))
+})
+
+test('an explicit input budget fails on a slow scenario and on missing data', () => {
+  const fast = summarizeRecordings([{ source: 'fast.jsonl', samples: [sample()] }])
+  assert.deepEqual(budgetProblems(fast, { maxInputP95Ms: 50 }), [])
+  assert.match(budgetProblems(fast, { maxInputP95Ms: 20 })[0], /input p95 max 30 ms exceeds the 20 ms budget/)
+
+  const unmeasured = summarizeRecordings([{
+    source: 'idle.jsonl',
+    samples: [sample({ frontend: { inputKeypresses: 0, inputSamples: 0 } })],
+  }])
+  assert.match(budgetProblems(unmeasured, { maxInputP95Ms: 50 })[0], /no input p95 measurement/)
+
+  assert.match(budgetProblems(fast, { maxInputP95Ms: 0 })[0], /positive number/)
+  assert.deepEqual(budgetProblems({ scenarios: [] }, { maxInputP95Ms: 50 }), ['no scenario in the report'])
 })

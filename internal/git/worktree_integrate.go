@@ -34,12 +34,11 @@ func WorkspacePatch(worktree, base string) (string, []string, error) {
 	_ = os.Remove(indexPath) // an empty file is not a valid index; git creates it
 	defer os.Remove(indexPath)
 	env := []string{"GIT_INDEX_FILE=" + indexPath}
-	// Copiare l'indice vero porta con sé le informazioni di stat: `add -A` rilegge solo i
-	// file cambiati. Senza indice (repository appena creato) si parte da HEAD.
-	if err := copyIndex(worktree, indexPath); err != nil {
-		if _, err := runRaw(worktree, env, "read-tree", "HEAD"); err != nil {
-			return "", nil, err
-		}
+	// A copied index retains stat entries but gets a newer timestamp. Same-size edits made
+	// within the filesystem timestamp resolution can then appear clean to git add.
+	// Seed a fresh index so export and evidence always read the working tree's content.
+	if _, err := runRaw(worktree, env, "read-tree", "HEAD"); err != nil {
+		return "", nil, err
 	}
 	if _, err := runRaw(worktree, env, "add", "-A"); err != nil {
 		return "", nil, err
@@ -63,19 +62,6 @@ func WorkspacePatch(worktree, base string) (string, []string, error) {
 		return "", nil, err
 	}
 	return patch, files, nil
-}
-
-// copyIndex copies the working tree's own index to target.
-func copyIndex(worktree, target string) error {
-	indexPath, err := runGit(worktree, "rev-parse", "--path-format=absolute", "--git-path", "index")
-	if err != nil {
-		return err
-	}
-	content, err := os.ReadFile(filepath.Clean(indexPath)) // #nosec G304 -- path reported by git for this working tree
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(target, content, 0o600) // #nosec G703 -- target is a temp index path built by this package, not renderer input
 }
 
 // TargetComparison describes the project branch a workspace would be integrated into.
@@ -188,7 +174,9 @@ func runRaw(dir string, extraEnv []string, args ...string) (string, error) {
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	noteGitCommand(dir, args)
+	if err != nil {
 		if timedOut(ctx) {
 			return "", gitTimeoutError(args)
 		}

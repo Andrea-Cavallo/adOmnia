@@ -127,7 +127,7 @@ func TestMemoryBudgetMonitorReleasesProcessWithoutVisibleResourcePanel(t *testin
 	manager.EnableMemoryBudget(1)
 	state, pid := budgetServer(t, manager, "background-budget", time.Now())
 	state.mu.Lock()
-	old := time.Now().Add(-time.Minute)
+	old := time.Now().Add(-time.Hour)
 	state.inactiveSince, state.startedAt = old, old
 	state.mu.Unlock()
 	deadline := time.Now().Add(8 * time.Second)

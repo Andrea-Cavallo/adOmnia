@@ -67,6 +67,7 @@ frontend/src/stores/codeStudio*.ts                 stores (one per concern)
 - **Projects are `project.Unit`s** (`go.mod`, tomorrow `pom.xml`/`package.json`); a folder can mix languages. `Project` has no Go fields: use `goLayoutOf(project)` (backend) or `goProjectLayout`/`goModules` from `lib/code-studio/goProject.ts` (frontend).
 - **The UI learns languages from the backend** (`GetCapabilities().languages`). Monaco providers register on `languageServerEditorLanguages()`, never on a literal `'go'`.
 - A language server is an `lsp.ServerSpec` built by its adapter; managed servers expose the existing `lsp.ServerProvider` capability (`internal/ide/lsp/provider.go`). Reuse it rather than introducing a parallel provider interface.
+- A language whose server covers several units groups them with `language.ServerRoots` (Rust: one rust-analyzer per Cargo workspace). The host never starts more than `maxUnitServers` (8) unit servers per language and session.
 - Run-configuration DTO keeps its flat Go fields **on purpose**: it is the `.adomnia/run-configurations.json` format shared via Git. Migrate in loaders; never break persisted JSON.
 - `ide/sdk` tool-version cache stays process-wide.
 

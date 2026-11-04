@@ -2,10 +2,11 @@ package storage
 
 import (
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const redactedSecret = "***REDACTED***"

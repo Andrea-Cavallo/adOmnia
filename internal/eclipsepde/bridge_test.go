@@ -2,9 +2,10 @@ package eclipsepde
 
 import (
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestBridgeRequestResponseRoundTrip(t *testing.T) {

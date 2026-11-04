@@ -11,7 +11,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io/fs"
 	"net/http"
 	"os"
@@ -20,6 +19,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // Walking a monorepo is cheap only if it stays bounded.

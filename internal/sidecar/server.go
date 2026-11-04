@@ -3,6 +3,11 @@ package sidecar
 
 import (
 	"context"
+	"log"
+	"net"
+	"net/http"
+	"time"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
 	"github.com/Andrea-Cavallo/adOmnia/internal/broker"
 	"github.com/Andrea-Cavallo/adOmnia/internal/database"
@@ -24,10 +29,6 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/storage"
 	"github.com/Andrea-Cavallo/adOmnia/internal/vault"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ws"
-	"log"
-	"net"
-	"net/http"
-	"time"
 )
 
 var httpSidecar *http.Server

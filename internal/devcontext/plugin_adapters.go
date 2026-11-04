@@ -1,10 +1,11 @@
 package devcontext
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
-	"golang.org/x/mod/modfile"
 	"os"
 	"path/filepath"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
+	"golang.org/x/mod/modfile"
 )
 
 // WithPluginAdapters recognizes direct module dependencies; it does not invent live services or DSNs.

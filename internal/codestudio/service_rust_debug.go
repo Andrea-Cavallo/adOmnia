@@ -32,6 +32,8 @@ type RustDebugRequest struct {
 	WorkingDirectory  string            `json:"workingDirectory,omitempty"`
 	ProgramArguments  []string          `json:"programArguments,omitempty"`
 	Environment       map[string]string `json:"environment,omitempty"`
+	// ProcessID è il processo a cui collegarsi (Attach to Rust Process): niente build.
+	ProcessID int `json:"processId,omitzero"`
 }
 
 // StartRustDebug avvia il debug Rust per un progetto autorizzato, su azione esplicita: la build
@@ -63,7 +65,7 @@ func (s *Service) StartRustDebug(request RustDebugRequest) (DebugSessionInfo, er
 		Test: request.Test, TestFile: request.TestFile,
 		ProgramArguments: request.ProgramArguments, Features: request.Features,
 		AllFeatures: request.AllFeatures, NoDefaultFeatures: request.NoDefaultFeatures,
-		Profile: request.Profile, Target: request.Target, Adapter: adapter,
+		Profile: request.Profile, Target: request.Target, Adapter: adapter, ProcessID: request.ProcessID,
 	})
 	if err != nil {
 		return DebugSessionInfo{}, err

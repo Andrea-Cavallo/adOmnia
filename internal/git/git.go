@@ -112,7 +112,9 @@ func runGit(dir string, args ...string) (string, error) {
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	noteGitCommand(dir, args)
+	if err != nil {
 		if timedOut(ctx) {
 			return "", gitTimeoutError(args)
 		}
@@ -150,6 +152,7 @@ func gitTimeoutError(args []string) error {
 // (e.g. " M file" → "M file"), shifting the status columns and corrupting the
 // first changed file's name/status. Porcelain parsing must keep column 0.
 func statusPorcelain(repoPath string) (string, error) {
+	porcelainReads.Add(1)
 	ctx, cancel := gitContext([]string{"status"})
 	defer cancel()
 	cmd := procutil.CommandContext(ctx, "git", "status", "--porcelain")
@@ -269,15 +272,63 @@ func AddIgnorePattern(repoPath, pattern string) error {
 }
 
 func GetStatus(repoPath string) (Status, error) {
-	if repoPath == "" {
-		return Status{}, fmt.Errorf("repository path is empty")
+	tree, err := cachedTree(repoPath)
+	if err != nil {
+		return Status{}, err
 	}
-	// Fail clearly when the path is not a git working tree, instead of
-	// returning an empty-but-valid-looking status the UI would misread.
-	if _, err := runGit(repoPath, "rev-parse", "--is-inside-work-tree"); err != nil {
-		return Status{}, fmt.Errorf("not a git repository: %s", repoPath)
-	}
+	return tree.status(), nil
+}
 
+// workingTree is the state every reader derives from: branch, upstream distance and changed
+// files, all read from one `git status`.
+type workingTree struct {
+	branch  string
+	ahead   int
+	behind  int
+	changes []FileChange
+}
+
+// status is the flat view the frontend reads: branch, dirty flag, modified and untracked lists
+// (non-nil so JSON serializes empty collections as [] and not null).
+func (w workingTree) status() Status {
+	modified, untracked := []string{}, []string{}
+	for _, change := range w.changes {
+		if change.Status == "??" {
+			untracked = append(untracked, change.Path)
+			continue
+		}
+		modified = append(modified, change.Path)
+	}
+	return Status{
+		Branch:      w.branch,
+		Dirty:       len(modified)+len(untracked) > 0,
+		AheadCount:  w.ahead,
+		BehindCount: w.behind,
+		Modified:    modified,
+		Untracked:   untracked,
+	}
+}
+
+// RepositoryState is what the VCS bar and the changed-files lint need: branch, HEAD, upstream
+// distance, changed files and local branch names. It deliberately leaves out history, remote
+// branches, remotes and stashes: four more git processes that only the Git panel shows.
+type RepositoryState struct {
+	Status   Status
+	Head     string
+	Branches []string
+	Changes  []FileChange
+}
+
+// readWorkingTree reads branch, ahead/behind and changed files. Failing on a directory that is not
+// a git working tree is deliberate: an empty-but-valid-looking status would be misread.
+func readWorkingTree(repoPath string) (workingTree, error) {
+	if repoPath == "" {
+		return workingTree{}, fmt.Errorf("repository path is empty")
+	}
+	workingTreeReads.Add(1)
+	if _, err := runGit(repoPath, "rev-parse", "--is-inside-work-tree"); err != nil {
+		return workingTree{}, fmt.Errorf("not a git repository: %s", repoPath)
+	}
 	branch, err := runGit(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		// A freshly-initialized repo with no commits has no HEAD yet.
@@ -285,39 +336,49 @@ func GetStatus(repoPath string) (Status, error) {
 	}
 	porcelain, err := statusPorcelain(repoPath)
 	if err != nil {
-		return Status{}, err
+		return workingTree{}, err
 	}
-
-	// Non-nil so JSON marshals empty collections as [] (not null), which the
-	// frontend reads with .length without guarding.
-	modified, untracked := []string{}, []string{}
-	for line := range strings.SplitSeq(porcelain, "\n") {
-		if len(line) < 4 {
-			continue
-		}
-		xy := line[:2]
-		file := strings.TrimSpace(line[3:])
-		if xy == "??" {
-			untracked = append(untracked, file)
-		} else {
-			modified = append(modified, file)
-		}
-	}
-
 	ahead, behind := 0, 0
 	if ab, err := runGit(repoPath, "rev-list", "--left-right", "--count", "HEAD...@{upstream}"); err == nil {
-		// Contatori best-effort: se git cambia formato restano a 0.
+		// Best-effort counters: if git changes the format they stay at 0.
 		_, _ = fmt.Sscanf(ab, "%d\t%d", &ahead, &behind)
 	}
+	return workingTree{branch: branch, ahead: ahead, behind: behind, changes: parsePorcelain(porcelain)}, nil
+}
 
-	return Status{
-		Branch:      branch,
-		Dirty:       len(modified)+len(untracked) > 0,
-		AheadCount:  ahead,
-		BehindCount: behind,
-		Modified:    modified,
-		Untracked:   untracked,
-	}, nil
+// headCommit is the full hash of HEAD, empty while the repository has no commit.
+func headCommit(repoPath string) string {
+	head, err := runGit(repoPath, "rev-parse", "HEAD")
+	if err != nil {
+		return ""
+	}
+	return head
+}
+
+// localBranches lists local branch names: the VCS bar offers only branches it can check out.
+func localBranches(repoPath string) []string {
+	out, err := runGit(repoPath, "branch", "--format=%(refname:short)")
+	branches := []string{}
+	if err != nil {
+		return branches
+	}
+	for line := range strings.SplitSeq(out, "\n") {
+		if name := strings.TrimSpace(line); name != "" {
+			branches = append(branches, name)
+		}
+	}
+	return branches
+}
+
+// BranchState reads the repository without the Git panel payload. The VCS bar is refreshed after
+// every save, so this stays cheap: two git processes more than GetStatus, four fewer than
+// GetOverview.
+func BranchState(repoPath string) (RepositoryState, error) {
+	state, err := cachedState(repoPath)
+	if err != nil {
+		return RepositoryState{}, err
+	}
+	return RepositoryState{Status: state.tree.status(), Head: state.head, Branches: state.branches, Changes: state.tree.changes}, nil
 }
 
 func parsePorcelain(porcelain string) []FileChange {
@@ -342,7 +403,7 @@ func parsePorcelain(porcelain string) []FileChange {
 }
 
 func GetOverview(repoPath string, n int) (Overview, error) {
-	status, err := GetStatus(repoPath)
+	tree, err := cachedTree(repoPath)
 	if err != nil {
 		return Overview{}, err
 	}
@@ -350,8 +411,7 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 		n = 80
 	}
 
-	porcelain, _ := statusPorcelain(repoPath)
-	changes := parsePorcelain(porcelain)
+	changes := tree.changes
 	conflicts := []FileChange{}
 	for _, change := range changes {
 		if change.Conflicted {
@@ -359,30 +419,7 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 		}
 	}
 
-	branches := []BranchInfo{}
-	if out, err := runGit(repoPath, "branch", "--all", "--format=%(refname:short)|%(upstream:short)|%(objectname:short)|%(committerdate:relative)"); err == nil {
-		for line := range strings.SplitSeq(out, "\n") {
-			if strings.TrimSpace(line) == "" {
-				continue
-			}
-			parts := strings.Split(line, "|")
-			name := strings.TrimSpace(parts[0])
-			if name == "" || strings.Contains(name, "HEAD ->") {
-				continue
-			}
-			info := BranchInfo{Name: name, Remote: strings.HasPrefix(name, "remotes/"), Current: name == status.Branch}
-			if len(parts) > 1 {
-				info.Upstream = strings.TrimSpace(parts[1])
-			}
-			if len(parts) > 2 {
-				info.CommitHash = strings.TrimSpace(parts[2])
-			}
-			if len(parts) > 3 {
-				info.Updated = strings.TrimSpace(parts[3])
-			}
-			branches = append(branches, info)
-		}
-	}
+	branches := parseBranches(repoPath, tree.branch)
 
 	remoteURLs := map[string]string{}
 	if out, err := runGit(repoPath, "remote", "-v"); err == nil {
@@ -403,42 +440,10 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 		stashes = strings.Split(out, "\n")
 	}
 
-	commits := []CommitInfo{}
-	if out, err := runGit(repoPath, "log", "--all", "--topo-order", fmt.Sprintf("--max-count=%d", n), "--date=short", "--pretty=format:%h%x1f%H%x1f%P%x1f%an%x1f%ad%x1f%s%x1f%D"); err == nil && out != "" {
-		for line := range strings.SplitSeq(out, "\n") {
-			parts := strings.Split(line, "\x1f")
-			if len(parts) < 7 {
-				continue
-			}
-			var parents []string
-			if p := strings.TrimSpace(parts[2]); p != "" {
-				for parent := range strings.FieldsSeq(p) {
-					if len(parent) > 7 {
-						parent = parent[:7]
-					}
-					parents = append(parents, parent)
-				}
-			}
-			var decorations []string
-			for decoration := range strings.SplitSeq(parts[6], ",") {
-				if trimmed := strings.TrimSpace(decoration); trimmed != "" {
-					decorations = append(decorations, trimmed)
-				}
-			}
-			commits = append(commits, CommitInfo{
-				Hash:        parts[0],
-				FullHash:    parts[1],
-				Parents:     parents,
-				Author:      parts[3],
-				Date:        parts[4],
-				Message:     parts[5],
-				Decorations: decorations,
-			})
-		}
-	}
+	commits := parseCommits(repoPath, n)
 
 	return Overview{
-		Status:    status,
+		Status:    tree.status(),
 		Changes:   changes,
 		Conflicts: conflicts,
 		Branches:  branches,
@@ -446,6 +451,95 @@ func GetOverview(repoPath string, n int) (Overview, error) {
 		Stashes:   stashes,
 		Commits:   commits,
 	}, nil
+}
+
+func parseBranches(repoPath, current string) []BranchInfo {
+	out, err := runGit(repoPath, "branch", "--all", "--format=%(refname)|%(upstream:short)|%(objectname:short)|%(committerdate:relative)")
+	if err != nil {
+		return []BranchInfo{}
+	}
+	return parseBranchLines(out, current)
+}
+
+// parseBranchLines reads the full ref: the short refname of a remote branch ("origin/main") has no
+// "remotes/" prefix, so only refs/remotes identifies it. The panel splits local and remote branches
+// on that flag.
+func parseBranchLines(out, current string) []BranchInfo {
+	branches := []BranchInfo{}
+	for line := range strings.SplitSeq(out, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		parts := strings.Split(line, "|")
+		ref := strings.TrimSpace(parts[0])
+		var name string
+		var remote bool
+		switch {
+		case strings.HasPrefix(ref, "refs/heads/"):
+			name = strings.TrimPrefix(ref, "refs/heads/")
+		case strings.HasPrefix(ref, "refs/remotes/"):
+			name = strings.TrimPrefix(ref, "refs/remotes/")
+			remote = true
+		default:
+			continue
+		}
+		// The symbolic origin/HEAD alias is not a branch the user can open.
+		if name == "" || strings.HasSuffix(name, "/HEAD") {
+			continue
+		}
+		info := BranchInfo{Name: name, Remote: remote, Current: name == current}
+		if len(parts) > 1 {
+			info.Upstream = strings.TrimSpace(parts[1])
+		}
+		if len(parts) > 2 {
+			info.CommitHash = strings.TrimSpace(parts[2])
+		}
+		if len(parts) > 3 {
+			info.Updated = strings.TrimSpace(parts[3])
+		}
+		branches = append(branches, info)
+	}
+	return branches
+}
+
+func parseCommits(repoPath string, n int) []CommitInfo {
+	commits := []CommitInfo{}
+	historyReads.Add(1)
+	out, err := runGit(repoPath, "log", "--all", "--topo-order", fmt.Sprintf("--max-count=%d", n), "--date=short", "--pretty=format:%h%x1f%H%x1f%P%x1f%an%x1f%ad%x1f%s%x1f%D")
+	if err != nil || out == "" {
+		return commits
+	}
+	for line := range strings.SplitSeq(out, "\n") {
+		parts := strings.Split(line, "\x1f")
+		if len(parts) < 7 {
+			continue
+		}
+		var parents []string
+		if p := strings.TrimSpace(parts[2]); p != "" {
+			for parent := range strings.FieldsSeq(p) {
+				if len(parent) > 7 {
+					parent = parent[:7]
+				}
+				parents = append(parents, parent)
+			}
+		}
+		var decorations []string
+		for decoration := range strings.SplitSeq(parts[6], ",") {
+			if trimmed := strings.TrimSpace(decoration); trimmed != "" {
+				decorations = append(decorations, trimmed)
+			}
+		}
+		commits = append(commits, CommitInfo{
+			Hash:        parts[0],
+			FullHash:    parts[1],
+			Parents:     parents,
+			Author:      parts[3],
+			Date:        parts[4],
+			Message:     parts[5],
+			Decorations: decorations,
+		})
+	}
+	return commits
 }
 
 func CommitAll(repoPath, message string) (CommitResult, error) {

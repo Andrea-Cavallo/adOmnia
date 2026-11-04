@@ -79,7 +79,11 @@ export function summarizeRecording(samples, source = 'recording') {
   const goroutines = []
   const heapInuse = []
   const sys = []
-  const frontend = { inputKeypresses: 0, inputSamples: 0, inputP50Ms: [], inputP95Ms: [], inputMaxMs: [] }
+  const frontend = {
+    inputKeypresses: 0, inputSamples: 0,
+    inputP50Ms: [], inputP95Ms: [], inputP99Ms: [], inputMaxMs: [],
+    longTasks: 0, longTaskTotalMs: [], longTaskMaxMs: [],
+  }
   for (const sample of samples) {
     if (sample.scenario !== scenario) throw new Error(`${source}: mixed scenarios in one recording`)
     goroutines.push(sample.runtime.goroutines)
@@ -109,9 +113,12 @@ export function summarizeRecording(samples, source = 'recording') {
     if (sample.frontend) {
       frontend.inputKeypresses += Number(sample.frontend.inputKeypresses ?? 0)
       frontend.inputSamples += Number(sample.frontend.inputSamples ?? 0)
-      frontend.inputP50Ms.push(sample.frontend.inputP50Ms)
-      frontend.inputP95Ms.push(sample.frontend.inputP95Ms)
-      frontend.inputMaxMs.push(sample.frontend.inputMaxMs)
+      // A field added after a recording was made stays absent instead of becoming a zero.
+      for (const field of ['inputP50Ms', 'inputP95Ms', 'inputP99Ms', 'inputMaxMs', 'longTaskTotalMs', 'longTaskMaxMs']) {
+        const value = Number(sample.frontend[field])
+        if (Number.isFinite(value)) frontend[field].push(value)
+      }
+      frontend.longTasks += Number(sample.frontend.longTasks ?? 0)
     }
   }
   const components = {}
@@ -146,7 +153,11 @@ export function summarizeRecording(samples, source = 'recording') {
       inputSamples: frontend.inputSamples,
       inputP50Ms: stats(frontend.inputP50Ms),
       inputP95Ms: stats(frontend.inputP95Ms),
+      inputP99Ms: stats(frontend.inputP99Ms),
       inputMaxMs: stats(frontend.inputMaxMs),
+      longTasks: frontend.longTasks,
+      longTaskTotalMs: stats(frontend.longTaskTotalMs),
+      longTaskMaxMs: stats(frontend.longTaskMaxMs),
     },
   }
 }
@@ -177,6 +188,26 @@ export function buildEnvironment(conditions = 'Local scenario recording; protoco
 const formatBytes = value => value === null ? 'n/a' : `${(value / 1024 / 1024).toFixed(1)} MiB`
 const formatNumber = (value, suffix = '') => value === null ? 'n/a' : `${value}${suffix}`
 
+/**
+ * The scenarios that break an explicit input-latency budget. An absent measurement
+ * is a problem too: a gate that passes on an empty recording would be a lie.
+ */
+export function budgetProblems(report, { maxInputP95Ms }) {
+  if (!Number.isFinite(maxInputP95Ms) || maxInputP95Ms <= 0) return ['--max-input-p95 must be a positive number of milliseconds']
+  const problems = []
+  const scenarios = report.scenarios ?? []
+  if (!scenarios.length) return ['no scenario in the report']
+  for (const scenario of scenarios) {
+    const p95 = scenario.frontend?.inputP95Ms?.max
+    if (typeof p95 !== 'number' || !Number.isFinite(p95)) {
+      problems.push(`${scenario.scenario}: no input p95 measurement (max ${maxInputP95Ms} ms required)`)
+    } else if (p95 > maxInputP95Ms) {
+      problems.push(`${scenario.scenario}: input p95 max ${p95} ms exceeds the ${maxInputP95Ms} ms budget`)
+    }
+  }
+  return problems
+}
+
 export function renderMarkdown(report) {
   const lines = [
     `# adOmnia scenario baseline — ${report.createdAt}`,
@@ -188,7 +219,7 @@ export function renderMarkdown(report) {
     for (const [name, component] of Object.entries(scenario.components)) {
       lines.push(`| ${scenario.scenario} | ${name} | ${formatBytes(component.ramBytes.avg)} | ${formatBytes(component.ramBytes.max)} | ${formatNumber(component.cpuPercent.avg, '%')} | ${formatNumber(component.cpuPercent.max, '%')} | ${component.processesObserved} |`)
     }
-    lines.push(`| ${scenario.scenario} | backend runtime | goroutines max ${formatNumber(scenario.runtime.goroutines.max)} | heap max ${formatBytes(scenario.runtime.heapInuseBytes.max)} | gc pause Δ ${formatNumber(scenario.runtime.gcPauseTotalNsDelta, ' ns')} | input p95 max ${formatNumber(scenario.frontend.inputP95Ms.max, ' ms')} | ${scenario.sampleCount} samples |`)
+    lines.push(`| ${scenario.scenario} | backend runtime | goroutines max ${formatNumber(scenario.runtime.goroutines.max)} | heap max ${formatBytes(scenario.runtime.heapInuseBytes.max)} | gc pause Δ ${formatNumber(scenario.runtime.gcPauseTotalNsDelta, ' ns')} | input p95 max ${formatNumber(scenario.frontend.inputP95Ms.max, ' ms')}, p99 max ${formatNumber(scenario.frontend.inputP99Ms.max, ' ms')}, long tasks ${formatNumber(scenario.frontend.longTasks)}, worst ${formatNumber(scenario.frontend.longTaskMaxMs.max, ' ms')} | ${scenario.sampleCount} samples |`)
     for (const checkpoint of scenario.activityCheckpoints ?? []) {
       if (!checkpoint.complete) continue
       lines.push(`| ${scenario.scenario} | ${checkpoint.minute} min (${checkpoint.states.join(', ')}) | ${formatBytes(checkpoint.ramBytes.avg)} | ${formatBytes(checkpoint.ramBytes.max)} | ${formatNumber(checkpoint.cpuPercent.avg, '%')} | ${formatNumber(checkpoint.cpuPercent.max, '%')} | trailing minute |`)
@@ -213,14 +244,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const options = {}
   const inputs = []
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--out' || args[i] === '--conditions') {
+    if (args[i] === '--out' || args[i] === '--conditions' || args[i] === '--max-input-p95') {
       if (!args[i + 1]) throw new Error(`Expected a value after ${args[i]}`)
       options[args[i].slice(2)] = args[++i]
     } else {
       inputs.push(args[i])
     }
   }
-  if (!inputs.length) throw new Error('usage: node scripts/perf-scenario-report.mjs <perf-dir|recording.jsonl> [--out baseline-report.json] [--conditions "..."]')
+  if (!inputs.length) throw new Error('usage: node scripts/perf-scenario-report.mjs <perf-dir|recording.jsonl> [--out baseline-report.json] [--conditions "..."] [--max-input-p95 <ms>]')
   const files = inputs.flatMap(recordingFiles)
   const recordings = files.map(file => ({ source: file, samples: parseRecording(readFileSync(file, 'utf8'), file) }))
   const report = { environment: buildEnvironment(options.conditions), ...summarizeRecordings(recordings) }
@@ -228,4 +259,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   writeFileSync(out, JSON.stringify(report, null, 2))
   console.log(renderMarkdown(report))
   console.log(`\nLocal report: ${out}`)
+  // Opt-in gate for machines that own a stable baseline: it never runs by default,
+  // because a development workstation is not a comparable measurement environment.
+  if (options['max-input-p95'] !== undefined) {
+    const problems = budgetProblems(report, { maxInputP95Ms: Number(options['max-input-p95']) })
+    for (const problem of problems) console.error(`budget: ${problem}`)
+    if (problems.length) process.exitCode = 1
+  }
 }

@@ -8,7 +8,7 @@ on:
         required: true
 
 env:
-  WAILS_VERSION: v3.0.0
+  WAILS_VERSION: v3.1.0
 
 # Least-privilege default for GITHUB_TOKEN; the publish job raises contents: write to
 # create the GitHub Release.
@@ -201,6 +201,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
 
       - name: Extract version
         id: ver
@@ -224,6 +226,13 @@ jobs:
           echo "--- Release artifacts ---"
           ls -lh
 
+      - name: Release version guard
+        # The tag must match the declared version and be the highest release: a mistyped
+        # tag (v0.1.24 after v1.0.24) would otherwise become GitHub's "Latest" download.
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: node scripts/check-release-version.mjs "$TAG"
+
       - name: Publish
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
@@ -232,6 +241,7 @@ jobs:
           files: dist/*
           generate_release_notes: true
           fail_on_unmatched_files: true
+          make_latest: ${{ !(contains(steps.ver.outputs.tag, '-rc') || contains(steps.ver.outputs.tag, '-beta') || contains(steps.ver.outputs.tag, '-alpha')) }}
           prerelease: >-
             ${{
               contains(steps.ver.outputs.tag, '-rc')   ||

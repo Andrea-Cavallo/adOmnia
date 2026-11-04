@@ -4,11 +4,28 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"sync"
+	"time"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 )
 
 func (s *Service) repositoryRoots(session Session) ([]string, error) {
+	if roots, ok := s.vcsRoots.get(session.ID); ok {
+		return roots, nil
+	}
+	roots, err := discoverRepositoryRoots(session)
+	if err != nil {
+		return nil, err
+	}
+	s.vcsRoots.set(session.ID, roots)
+	return roots, nil
+}
+
+// discoverRepositoryRoots walks the project looking for .git markers. The scan is the expensive
+// part (a tree visit and an os.Stat per folder), and VCSStatus asked for it on every save only to
+// show the repository list.
+func discoverRepositoryRoots(session Session) ([]string, error) {
 	roots := []string{}
 	seen := map[string]bool{}
 	add := func(path string) error {
@@ -36,6 +53,60 @@ func (s *Service) repositoryRoots(session Session) ([]string, error) {
 	}
 	sort.Strings(roots)
 	return roots, nil
+}
+
+// repositoryRootsCache keeps the repository list of a session. The topology changes only when a
+// .git appears or disappears (init, clone, worktree, submodule), never on a save, so a timer is
+// enough: the generation is too eager here because editing a Go file would walk the tree again.
+type repositoryRootsCache struct {
+	mu      sync.Mutex
+	entries map[SessionID]repositoryRootsEntry
+}
+
+const (
+	// repositoryRootsTTL keeps a discovered repository list: walking the project on every save only
+	// to list repositories that did not change was the expensive part of VCSStatus.
+	repositoryRootsTTL = 60 * time.Second
+	// missingRepositoryRootsTTL keeps a "no repository" answer only briefly: `git init` from the
+	// terminal must reach the VCS bar without restarting the session.
+	missingRepositoryRootsTTL = 2 * time.Second
+)
+
+type repositoryRootsEntry struct {
+	roots    []string
+	storedAt time.Time
+}
+
+func (c *repositoryRootsCache) get(sessionID SessionID) ([]string, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	entry, ok := c.entries[sessionID]
+	if !ok {
+		return nil, false
+	}
+	ttl := repositoryRootsTTL
+	if len(entry.roots) == 0 {
+		ttl = missingRepositoryRootsTTL
+	}
+	if time.Since(entry.storedAt) >= ttl {
+		return nil, false
+	}
+	return entry.roots, true
+}
+
+func (c *repositoryRootsCache) set(sessionID SessionID, roots []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.entries == nil {
+		c.entries = map[SessionID]repositoryRootsEntry{}
+	}
+	c.entries[sessionID] = repositoryRootsEntry{roots: roots, storedAt: time.Now()}
+}
+
+func (c *repositoryRootsCache) forget(sessionID SessionID) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.entries, sessionID)
 }
 
 func (s *Service) selectedRepository(session Session, roots []string) string {

@@ -14,6 +14,20 @@ let now = 0
 let listeners: Record<string, (event: Event) => void> = {}
 let rafQueue: Array<(time: number) => void> = []
 let intervalCallback: (() => void) | null = null
+let observerCallback: ((list: { getEntries: () => Array<{ duration: number }> }) => void) | null = null
+let observedEntryTypes: string[] = []
+
+class FakePerformanceObserver {
+  constructor(callback: (list: { getEntries: () => Array<{ duration: number }> }) => void) {
+    observerCallback = callback
+  }
+  observe(options: { entryTypes: string[] }) {
+    observedEntryTypes = options.entryTypes
+  }
+  disconnect() {
+    observerCallback = null
+  }
+}
 
 function flushFrames() {
   while (rafQueue.length) {
@@ -27,8 +41,11 @@ beforeEach(() => {
   listeners = {}
   rafQueue = []
   intervalCallback = null
+  observerCallback = null
+  observedEntryTypes = []
   vi.resetAllMocks()
   vi.stubGlobal('performance', { now: () => now })
+  vi.stubGlobal('PerformanceObserver', FakePerformanceObserver)
   vi.stubGlobal('requestAnimationFrame', (callback: (time: number) => void) => {
     rafQueue.push(callback)
     return rafQueue.length
@@ -75,7 +92,31 @@ it('measures keypress to paint and pushes percentiles to the recording', async (
   expect(payload.inputKeypresses).toBe(2)
   expect(payload.inputP50Ms).toBe(20)
   expect(payload.inputP95Ms).toBe(20)
+  expect(payload.inputP99Ms).toBe(20)
   expect(payload.inputMaxMs).toBe(20)
+})
+
+it('counts renderer long tasks and ignores implausible entries', async () => {
+  byName.mockImplementation(async (method: string) =>
+    method === 'main.App.PerfRecordingStatus' ? '{"active":true,"scenario":"typing"}' : undefined)
+  await maybeStartInputLatencyCapture()
+  expect(observedEntryTypes).toEqual(['longtask'])
+
+  observerCallback?.({ getEntries: () => [{ duration: 60 }, { duration: 120.5 }, { duration: 0 }, { duration: -5 }, { duration: 90_000 }] })
+  now = 10
+  listeners.keydown({ timeStamp: 10 } as Event)
+  flushFrames()
+
+  intervalCallback?.()
+  await vi.waitFor(() => expect(byName).toHaveBeenCalledWith('main.App.PerfPushFrontendMetrics', expect.any(String)))
+  const payload = JSON.parse(byName.mock.calls.find((call: unknown[]) => call[0] === 'main.App.PerfPushFrontendMetrics')?.[1] as string)
+  expect(payload.longTasks).toBe(2)
+  expect(payload.longTaskTotalMs).toBe(180.5)
+  expect(payload.longTaskMaxMs).toBe(120.5)
+
+  // Each window reports its own long tasks: the next push must not repeat them.
+  intervalCallback?.()
+  await vi.waitFor(() => expect(byName.mock.calls.filter((call: unknown[]) => call[0] === 'main.App.PerfPushFrontendMetrics')).toHaveLength(1))
 })
 
 it('flushes remaining metrics and detaches on stop', async () => {
@@ -88,4 +129,5 @@ it('flushes remaining metrics and detaches on stop', async () => {
   await vi.waitFor(() => expect(byName).toHaveBeenCalledWith('main.App.PerfPushFrontendMetrics', expect.any(String)))
   expect(listeners.keydown).toBeUndefined()
   expect(intervalCallback).toBeNull()
+  expect(observerCallback).toBeNull()
 })

@@ -1,5 +1,5 @@
 import {
-  Bug, ClipboardPaste, Copy, CopyPlus, Ellipsis, FileCode2, FilePlus, FolderOpen, GitBranch, GitCompare, KeyRound, Pencil, Play, Radio, Scissors, Search, Send, Trash2, Undo2, Wand2,
+  Bug, ClipboardPaste, Copy, CopyPlus, Ellipsis, FileCode2, FilePlus, FolderOpen, FolderPlus, GitBranch, GitCompare, KeyRound, Package, Pencil, Play, Radio, Scissors, Search, Send, Trash2, Undo2, Wand2,
 } from 'lucide-react'
 import type { ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEFileEntry } from '@/lib/code-studio-api'
@@ -15,6 +15,8 @@ export interface TreeMenuContext {
   /** Il progetto ha un'unità Java: compaiono New Java Class/Package. */
   hasMavenPom?: boolean
   hasJava?: boolean
+  /** Il progetto contiene bundle OSGi/PDE: compare il menu OSGi. */
+  osgi?: boolean
   /** Percorsi modificati rispetto a HEAD, relativi alla radice del progetto. */
   changedPaths: string[]
 }
@@ -175,8 +177,28 @@ function gitItems(entry: Entry, context: TreeMenuContext): ContextMenuItem[] {
   }, ...compare]
 }
 
-function openInItem(entry: Entry): ContextMenuItem {
-  const isFile = !!entry && !entry.directory
+/** Il menu OSGi: import di più plug-in nello stesso workspace, Control Center, build e run. */
+function osgiItem(entry: Entry, context: TreeMenuContext): ContextMenuItem[] {
+  if (entry && !entry.directory) return []
+  if (context.osgi) {
+    return [{
+      id: 'osgi', label: 'OSGi', icon: Package, separatorBefore: true,
+      submenu: [
+        { id: 'osgiImportPlugins', label: 'Import Plug-ins…', icon: FolderPlus },
+        { id: 'osgiControlCenter', label: 'Control Center…' },
+        { id: 'osgiBuild', label: 'Build Bundles', separatorBefore: true },
+        { id: 'osgiRun', label: 'Run in Equinox' },
+      ],
+    }]
+  }
+  // A Java workspace without bundles yet: the import is how it becomes an OSGi workspace.
+  if (context.hasJava) {
+    return [{ id: 'osgiImportPlugins', label: 'Import OSGi Plug-ins…', icon: FolderPlus, separatorBefore: true }]
+  }
+  return []
+}
+
+function openInItem(entry: Entry): ContextMenuItem {  const isFile = !!entry && !entry.directory
   return { id: 'openInGroup', label: 'Open In', icon: FolderOpen, separatorBefore: true, submenu: [
     ...(isFile ? [{ id: 'splitRight', label: 'Split Right' }, { id: 'splitDown', label: 'Split Down' }] : []),
     ...(isHtmlFile(entry) ? [{ id: 'openInBrowser', label: 'Browser', separatorBefore: true }] : []),
@@ -237,6 +259,7 @@ export function buildTreeMenu(entry: Entry, context: TreeMenuContext): ContextMe
       submenu: ['clean', 'compile', 'test', 'package', 'verify', 'install', 'clean package', 'clean install'].map((goal) => ({ id: `maven:${goal}`, label: `mvn ${goal}` })),
     }] : []),
     ...gitItems(entry, context),
+    ...osgiItem(entry, context),
     openInItem(entry),
     moreItem(entry),
     ...handoffItems(entry),

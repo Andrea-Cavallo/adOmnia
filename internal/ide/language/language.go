@@ -49,11 +49,29 @@ type DebuggerInstaller interface {
 // (un interprete o un venv per servizio, una toolchain per modulo): un solo server multi-root
 // userebbe l'ambiente di una sola unità e risolverebbe gli import di tutti con quello.
 // Il core non nomina linguaggi: lo dichiara l'adapter e l'host gli passa una spec per unità.
+// ServerBlocker is an optional capability: a language server that cannot model this project even
+// when it is installed explains why, and the host leaves it stopped. Publishing diagnostics that
+// are wrong for the whole workspace is worse than no language server (JDT LS on a Tycho/PDE one).
+type ServerBlocker interface {
+	ServerBlocked(projectRoot string) string
+}
+
 type UnitServers interface {
 	ServersPerUnit() bool
 	// UnitServerSpec retains the workspace root, where machine-local settings live,
 	// while configuring the server for one unit's environment.
 	UnitServerSpec(projectRoot, unitRoot, toolsRoot string) (lsp.ServerSpec, error)
+}
+
+// ServerRoots è la capability di un linguaggio il cui language server copre più unità: raggruppa le
+// unità nelle radici dei server da avviare. Serve quando l'unità di build non è l'unità del server:
+// rust-analyzer serve un workspace Cargo intero, non il singolo crate, e un server per crate
+// caricherebbe N volte lo stesso grafo. Un linguaggio che non la implementa resta con un server per
+// unità (UnitServers) o per progetto.
+type ServerRoots interface {
+	// ServerRoots restituisce le radici dei server per le unità della lingua in sessione. projectRoot
+	// è la radice del progetto, dove finiscono i file fuori da ogni unità.
+	ServerRoots(projectRoot string, units []project.Unit) []string
 }
 
 // DirectDependencies elenca i pacchetti dichiarati direttamente da un'unità, nella forma che

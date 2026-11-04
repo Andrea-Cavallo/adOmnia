@@ -6,11 +6,12 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // skippedDirs non contengono sorgenti del progetto (o sono enormi).
@@ -54,6 +55,14 @@ type Store struct {
 }
 
 func NewStore(dir string) *Store { return &Store{dir: dir} }
+
+// Dir is the folder the store writes to; empty when no store is configured.
+func (s *Store) Dir() string {
+	if s == nil {
+		return ""
+	}
+	return s.dir
+}
 
 func (s *Store) path(root, language string) string {
 	sum := sha256.Sum256([]byte(language + "\x00" + filepath.Clean(root)))

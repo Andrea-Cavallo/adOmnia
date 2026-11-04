@@ -3,10 +3,11 @@ package collab
 import (
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const redactedValue = "***REDACTED***"

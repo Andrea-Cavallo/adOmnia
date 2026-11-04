@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"net/http"
 	"net/url"
@@ -18,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // HostAccount describes the provider-specific connection selected by the UI.
@@ -401,7 +402,9 @@ func PushWithHostAccount(repoPath, branch string, account HostAccount, token str
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	noteGitCommand(repoPath, []string{"push"})
+	if err != nil {
 		if ctx.Err() != nil {
 			return fmt.Errorf("push timed out")
 		}

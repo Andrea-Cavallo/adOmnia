@@ -105,6 +105,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A4.9 | **Final Summary** | Total passed/failed, total duration, average duration per request. |
 | A4.10 | **Export Report** | Export results as Markdown, HTML, JSON, JUnit XML. |
 | A4.11 | **Assertions in Runner** | Assertions defined on requests are evaluated on each iteration; pass/fail counters are included in the report. |
+| A4.12 | **Parallel Send** | The HTTP core sends a batch concurrently (`ExecuteHTTPBatch`): either unrelated requests, each with its own method, headers and body, or one base request expanded over a list of bodies. Bounded worker pool (default 4, max 64 in flight, 500 items), responses returned in input order with their index, one failing request never aborts the others, an optional batch-level deadline caps the whole call, plugin hooks run per request, and each body variant gets a cancellable id. The API workspace exposes it as a hidden fan-out panel (copies, in-flight limit, one body per copy, results openable in the Response panel) reachable only with `Ctrl/Cmd+Shift+Enter`: no button, menu or palette entry advertises it. Preparation (vault, auth, cookies, TLS) runs once, so every copy shares the same credentials and differs only by its body. |
 
 ---
 
@@ -997,7 +998,7 @@ The standalone MCP client and its session transports have been removed. Existing
 | # | Feature | Description |
 |---|-------------|-------------|
 | I4.1 | **Context Servers for Agents** | One list of MCP servers (stdio or HTTP) in the milk settings, passed to Claude Code and milk (v0.7+) at every new chat session. The project AI policy gates the list: `off` sends none, `local-only` sends only stdio servers. |
-| I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). Per-agent switch to turn it off. |
+| I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). The same server reads and edits the project folder as a Code Studio workspace — `osgi_workspace`, `osgi_bundles`, `osgi_bundle`, `osgi_search`, `osgi_impact`, `osgi_diagnose`, `osgi_resolve`, `osgi_target`, plus `osgi_set_target`, `osgi_manifest_set`, `osgi_manifest_requirement`, `osgi_import_plugins`, `osgi_add_target_jars` and `workspace_read_file` / `workspace_write_file` / `workspace_list_files` with `--write` — against the same target platform the IDE uses. Writes are off by default and confined to the workspace. Per-agent switch to turn it off. |
 | I4.3 | **Review Agent Changes** | After a milk or Claude Code turn, the files the agent created, modified or deleted are listed above the chat and in *Tools → Review Agent Changes…*; accept or reject each change, each file or the whole turn. Rejections never overwrite a file changed after the review was shown. |
 
 ---

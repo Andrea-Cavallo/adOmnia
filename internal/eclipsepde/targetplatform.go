@@ -3,6 +3,7 @@ package eclipsepde
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 )
 
@@ -112,18 +113,100 @@ func (tp *TargetPlatform) Index() (*BundleIndex, error) {
 	if !ok {
 		return nil, fmt.Errorf("no active target platform")
 	}
-	idx := NewBundleIndex()
-	if err := idx.IndexTargetDirectory(profile.Path); err != nil {
+	idx, err := cachedProfileIndex(profile)
+	if err != nil {
 		return nil, err
 	}
 	tp.index = idx
 	return idx, nil
 }
 
-// Reindex drops the cache and indexes the active target again.
+func indexProfile(profile TargetProfile) (*BundleIndex, error) {
+	idx := NewBundleIndex()
+	if profile.Kind != TargetEclipseDefinition {
+		return idx, idx.IndexTargetDirectory(profile.Path)
+	}
+	definition, err := ReadTargetDefinition(profile.Path)
+	if err != nil {
+		return nil, err
+	}
+	for _, directory := range definitionDirectories(profile.Path, definition) {
+		if err := idx.IndexTargetDirectory(directory); err != nil {
+			idx.Problems = append(idx.Problems, Problem{
+				Severity: "warning", File: profile.Path,
+				Message: "target location is not available: " + err.Error(),
+			})
+		}
+	}
+	indexP2Bundles(idx, profile.Path, definition)
+	if features := countLocations(definition, "Feature"); features > 0 {
+		idx.Problems = append(idx.Problems, Problem{
+			Severity: "warning", File: profile.Path,
+			Message: fmt.Sprintf("%d feature locations of an installation are not read: point the target to the installation folder instead", features),
+		})
+	}
+	return idx, nil
+}
+
+// indexP2Bundles indexes the bundles downloaded for the p2 locations of this
+// exact .target, or says that they still have to be downloaded.
+func indexP2Bundles(idx *BundleIndex, targetPath string, definition *TargetDefinition) {
+	if len(definition.P2) == 0 {
+		return
+	}
+	lock, ok := readP2Lock(targetPath)
+	if !ok {
+		idx.Problems = append(idx.Problems, Problem{
+			Severity: "warning", File: targetPath,
+			Message: fmt.Sprintf("%d p2 locations are not downloaded yet: use Download p2 bundles", len(definition.P2)),
+		})
+		return
+	}
+	// The cached p2 bundles are read like a target directory: in parallel, then
+	// added in lock order, so hundreds of jars do not cost a minute on Windows.
+	var entries []targetEntry
+	for _, jar := range lock.Bundles {
+		if !fileExists(jar) {
+			idx.Problems = append(idx.Problems, Problem{Severity: "warning", File: jar, Message: "downloaded p2 bundle is missing from the cache: download the p2 bundles again"})
+			continue
+		}
+		entries = append(entries, targetEntry{path: jar})
+	}
+	idx.indexEntries(entries)
+	for _, problem := range lock.Problems {
+		idx.Problems = append(idx.Problems, Problem{Severity: "warning", File: targetPath, Message: "p2: " + problem})
+	}
+}
+
+func countLocations(definition *TargetDefinition, kind string) int {
+	count := 0
+	for _, location := range definition.Locations {
+		if location.Kind == kind {
+			count++
+		}
+	}
+	return count
+}
+
+// Reindex drops the cache, the process-wide one included, and indexes the active target again.
 func (tp *TargetPlatform) Reindex() (*BundleIndex, error) {
 	tp.index = nil
+	if profile, ok := tp.ActiveProfile(); ok {
+		InvalidateTargetIndex(profile.Path)
+	}
 	return tp.Index()
+}
+
+// definitionDirectories are the directory locations of a .target, relative ones
+// resolved against the folder of the .target file.
+func definitionDirectories(targetPath string, definition *TargetDefinition) []string {
+	directories := definition.DirectoryLocations()
+	for i, directory := range directories {
+		if !filepath.IsAbs(directory) {
+			directories[i] = filepath.Join(filepath.Dir(targetPath), directory)
+		}
+	}
+	return directories
 }
 
 // ValidationResult is the outcome of Validate: profile problems plus index
@@ -140,6 +223,8 @@ type ValidationResult struct {
 	ExactDuplicates map[string][]string
 	// MultiVersion lists names indexed at several versions.
 	MultiVersion map[string][]string
+	// Bundles is the resolution of each workspace bundle.
+	Bundles []*BundleResolution
 }
 
 // Validate checks the active target and, optionally, a workspace against it:
@@ -176,8 +261,10 @@ func (tp *TargetPlatform) Validate(ws *Workspace) (*ValidationResult, error) {
 
 	if ws != nil {
 		result.WorkspaceBundles = len(ws.Bundles())
-		resolver := NewResolver(idx)
-		for _, res := range resolver.StatusOf(ws.Projects) {
+		resolver := NewResolver(withWorkspace(idx, ws))
+		resolver.ExecutionEnvironment = profile.ExecutionEnvironment
+		result.Bundles = resolver.StatusOf(ws.Projects)
+		for _, res := range result.Bundles {
 			if res.Status == StatusUnresolved {
 				result.Unresolved++
 				for _, missing := range res.Missing {
@@ -191,6 +278,19 @@ func (tp *TargetPlatform) Validate(ws *Workspace) (*ValidationResult, error) {
 	}
 	sort.SliceStable(result.Problems, func(i, j int) bool { return result.Problems[i].Message < result.Problems[j].Message })
 	return result, nil
+}
+
+// withWorkspace adds the workspace bundles to a copy of the target index: bundles
+// of the same workspace depend on each other, and the cached index must stay target-only.
+func withWorkspace(target *BundleIndex, ws *Workspace) *BundleIndex {
+	merged := NewBundleIndex()
+	for _, entry := range target.All() {
+		merged.Add(entry)
+	}
+	for _, proj := range ws.Projects {
+		merged.AddWorkspaceProject(proj)
+	}
+	return merged
 }
 
 // String renders the statistics block of the section 7 layout.

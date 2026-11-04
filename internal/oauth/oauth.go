@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"html"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/httputil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 const oauthSessionTTL = 5 * time.Minute

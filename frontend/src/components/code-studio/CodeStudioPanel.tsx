@@ -97,6 +97,8 @@ import { CodeStudioRustToolchain } from './CodeStudioRustToolchain'
 import { CodeStudioRustTree } from './CodeStudioRustTree'
 import { CodeStudioRustEnvironment } from './CodeStudioRustEnvironment'
 import { CodeStudioJavaTree } from './CodeStudioJavaTree'
+import { CodeStudioJavaOsgi } from './CodeStudioJavaOsgi'
+import { CodeStudioFlowExplorer } from './CodeStudioFlowExplorer'
 import { CodeStudioJavaJvm } from './CodeStudioJavaJvm'
 import { CodeStudioSpringGraph } from './CodeStudioSpringGraph'
 import { CodeStudioSearchEverywhere } from './CodeStudioSearchEverywhere'
@@ -939,6 +941,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (runPreviewCommand(id, activeSession?.id ?? null)) return
     if (runJavaCommand(id, activeSession?.id ?? null, currentActiveDocument() ?? null, useCodeStudioCursorStore.getState().line, runTarget)) return
     if (runPythonCommand(id, activeSession?.id ?? null)) return
+    if (id === 'rust.attach') return setAttachMode('attach-rust')
     if (runRustCommand(id, activeSession?.id ?? null)) return
     if (runDeclaredDebuggerCommand(id, activeSession?.id ?? null)) return
     if (runWebCommand(id, activeSession?.id ?? null)) return
@@ -1112,6 +1115,8 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       <CodeStudioRustTree />
       <CodeStudioRustEnvironment />
       <CodeStudioJavaTree />
+      <CodeStudioJavaOsgi />
+      <CodeStudioFlowExplorer />
       <CodeStudioJavaJvm />
       <CodeStudioSpringGraph />
       {sharedDialogs}

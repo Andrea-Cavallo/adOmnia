@@ -65,11 +65,23 @@ func graphRelevant(batch FilesChanged) bool {
 		return true
 	}
 	for _, change := range batch.Changes {
-		if change.Kind != FileChanged || isGoSource(change.RelativePath) {
+		if change.Kind != FileChanged || isGoSource(change.RelativePath) || isProtoSource(change.RelativePath) {
 			return true
 		}
 	}
 	return false
+}
+
+// sourceGeneration returns the watcher generation that already invalidates the workspace graph,
+// and whether the watcher is complete. Architecture, documentation and repository discovery read
+// the same sources, so they share the signal instead of walking the tree on every request.
+func (s *Service) sourceGeneration(sessionID string) (uint64, bool) {
+	graphs := s.graphs()
+	graphs.mu.Lock()
+	generation := graphs.fresh.current(sessionID)
+	graphs.mu.Unlock()
+	status := s.watcher.Status(SessionID(sessionID))
+	return generation, status.Watching && !status.Limited
 }
 
 // noteGraphChanges è chiamata dal watcher per ogni batch.
@@ -121,6 +133,10 @@ const graphBuilderVersion = "9"
 func isGoSource(rel string) bool {
 	return strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "/go.mod") || rel == "go.mod" || rel == "go.work" || graph.IsComposeFile(rel)
 }
+
+// isProtoSource reports whether a file feeds the documentation: .proto files do not change the
+// graph, but they must not stay cached either. One extra invalidation costs one extra read.
+func isProtoSource(rel string) bool { return strings.HasSuffix(rel, ".proto") }
 
 // workspaceGraph restituisce il grafo aggiornato della sessione: memoria, poi disco, poi ricostruzione.
 func (s *Service) workspaceGraph(sessionID string, force bool) (*cachedGraph, bool, error) {

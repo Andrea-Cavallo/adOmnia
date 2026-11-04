@@ -3,10 +3,11 @@
 package nativeicon
 
 import (
-	"golang.org/x/sys/windows"
 	"runtime"
 	"testing"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 func TestPaletteCreatesRealNativeHandles(t *testing.T) {

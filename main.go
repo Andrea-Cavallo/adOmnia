@@ -13,6 +13,13 @@ import (
 	"crypto/sha256"
 	"embed"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/adomniacli"
 	"github.com/Andrea-Cavallo/adOmnia/internal/browser"
 	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
@@ -21,12 +28,6 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/templates"
 	"github.com/Andrea-Cavallo/adOmnia/internal/themes"
 	"github.com/Andrea-Cavallo/adOmnia/internal/windowchrome"
-	"log"
-	"net/http"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )

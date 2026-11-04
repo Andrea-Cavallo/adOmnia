@@ -1,11 +1,12 @@
 package generator
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 func TestGenerateWritesRunnableServerScaffold(t *testing.T) {

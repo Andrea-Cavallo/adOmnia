@@ -10,16 +10,15 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"golang.org/x/mod/semver"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"golang.org/x/mod/semver"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
 )
-
-const releasesAPI = "https://api.github.com/repos/Andrea-Cavallo/adOmnia/releases/latest"
 
 // UpdateInfo is the trimmed shape the UI needs.
 type UpdateInfo struct {
@@ -32,8 +31,10 @@ type UpdateInfo struct {
 	IsDev           bool   `json:"isDev"` // running unversioned dev build; check skipped
 }
 
-// Check queries the latest GitHub release and compares it with current.
-// Errors are frontend-safe.
+// Check finds the newest stable release and compares it with current. It reads
+// the release list, not /releases/latest: GitHub's "Latest" is the most recently
+// published release, so a mistyped tag published later (v0.1.24 after v1.0.24)
+// would hide every real update. Errors are frontend-safe.
 func Check(current string) (UpdateInfo, error) {
 	info := UpdateInfo{CurrentVersion: current}
 	if current == "dev" || current == "" {
@@ -43,7 +44,7 @@ func Check(current string) (UpdateInfo, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, releasesAPI, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, repositoryAPI, nil)
 	if err != nil {
 		return info, fmt.Errorf("could not build update request")
 	}
@@ -62,22 +63,41 @@ func Check(current string) (UpdateInfo, error) {
 		return info, fmt.Errorf("update check failed (%d)", resp.StatusCode)
 	}
 
-	var release struct {
-		TagName     string `json:"tag_name"`
-		HTMLURL     string `json:"html_url"`
-		Body        string `json:"body"`
-		PublishedAt string `json:"published_at"`
-	}
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err := json.Unmarshal(raw, &release); err != nil {
+	var releases []release
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, maxReleaseListBytes))
+	if err := json.Unmarshal(raw, &releases); err != nil {
 		return info, fmt.Errorf("could not parse release info")
 	}
-	info.LatestVersion = release.TagName
-	info.ReleaseURL = release.HTMLURL
-	info.ReleaseNotes = release.Body
-	info.PublishedAt = release.PublishedAt
-	info.UpdateAvailable = CompareSemver(release.TagName, current) > 0
+	newest := newestStableRelease(releases)
+	if newest == nil {
+		return info, fmt.Errorf("no published release found")
+	}
+	info.LatestVersion = newest.Tag
+	info.ReleaseURL = newest.URL
+	info.ReleaseNotes = newest.Notes
+	info.PublishedAt = newest.PublishedAt
+	info.UpdateAvailable = CompareSemver(newest.Tag, current) > 0
 	return info, nil
+}
+
+// maxReleaseListBytes bounds the release list read from GitHub (100 releases with notes).
+const maxReleaseListBytes = 4 << 20
+
+// newestStableRelease is the published, non-prerelease release with the highest
+// semantic version; publication order does not matter.
+func newestStableRelease(releases []release) *release {
+	var newest *release
+	for i := range releases {
+		candidate := &releases[i]
+		version := normalizeVersion(candidate.Tag)
+		if candidate.Draft || candidate.Prerelease || !semver.IsValid(version) || semver.Prerelease(version) != "" {
+			continue
+		}
+		if newest == nil || CompareSemver(candidate.Tag, newest.Tag) > 0 {
+			newest = candidate
+		}
+	}
+	return newest
 }
 
 // CompareSemver includes prerelease ordering (beta.2 < beta.10 < stable).

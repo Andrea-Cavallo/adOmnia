@@ -3,9 +3,10 @@ package git
 import (
 	"bytes"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 	"os"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
 // Commit records the staged index only — no implicit `git add`. This is the

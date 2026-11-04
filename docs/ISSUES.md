@@ -15,7 +15,21 @@ This file contains only work that is still open. Completed items are archived in
 
 ## Open Queue
 
-The active stabilization queue is [FIX.md](../mds/FIX.md), with [post-1.0.2 release targets](ROADMAP-FIXES.md). DB-2 implementation is included in 1.0.2; the complete remote-driver desktop matrix and independent review remain open. The historical audit below does not supersede this queue.
+The active stabilization queue is `mds/FIX.md`, with [post-1.0.2 release targets](ROADMAP-FIXES.md). DB-2 implementation is included in 1.0.2; the complete remote-driver desktop matrix and independent review remain open. The historical audit below does not supersede this queue.
+
+> `mds/*` files are local planning documents kept outside this repository: the
+> paths are named here for the maintainers, and links in this page never point at
+> them. Public status lives in this file, [ROADMAP-FIXES.md](ROADMAP-FIXES.md) and
+> [RELEASE.md](RELEASE.md).
+
+## Manual desktop checks recorded
+
+The reproducible steps for every row live in
+[ACCEPTANCE-DESKTOP.md](ACCEPTANCE-DESKTOP.md).
+
+| Date | Platform | Version | What was checked | Result |
+|---|---|---|---|---|
+| 2026-11-04 | Windows 11 (physical machine) | 1.0.24 | Windows installer: clean per-user install with no administrator rights, in-place upgrade over an installed copy with existing workspaces/collections/settings, uninstall, in-app update applied from the app | Passed. WebView2 presence on the machine was not recorded. Portable build, macOS and Linux installers were not part of this check. |
 
 ## Recently Resolved (verified against code 2026-06-13)
 
@@ -36,7 +50,7 @@ Backend, correlation and the Delve loop are covered end to end by `internal/code
 
 ### Java / JVM studio — real multimodule verification (2026-10-20)
 
-Verified on `quarkus-super-heroes-main` (10-module Quarkus reactor, Java 25): full compile, tests with Docker Dev Services (75 executed; the 6 failures are the JVM locale only — Hibernate Validator messages in Italian against English expectations), and Eclipse JDT LS importing all 9 modules with the right toolchain. Fixed for projects this size: Run console line alignment (`\r` redraws and chunk-split lines), coalesced process output so the UI stays responsive during `mvn test`, Java toolchain read from the reactor modules, and JDT LS auto-start on Java projects. Manual checks in [MANUAL-CHECK.md](../mds/MANUAL-CHECK.md) (`JS-17.M1`–`M4`), plan in [06-JAVA-SPRING-STUDIO.md](../mds/06-JAVA-SPRING-STUDIO.md) (JS-14, JS-17).
+Verified on `quarkus-super-heroes-main` (10-module Quarkus reactor, Java 25): full compile, tests with Docker Dev Services (75 executed; the 6 failures are the JVM locale only — Hibernate Validator messages in Italian against English expectations), and Eclipse JDT LS importing all 9 modules with the right toolchain. Fixed for projects this size: Run console line alignment (`\r` redraws and chunk-split lines), coalesced process output so the UI stays responsive during `mvn test`, Java toolchain read from the reactor modules, and JDT LS auto-start on Java projects. Manual checks in `mds/MANUAL-CHECK.md` (`JS-17.M1`–`M4`), plan in `mds/06-JAVA-SPRING-STUDIO.md` (JS-14, JS-17).
 
 ### Spring datasource → Database Studio (2026-10-22) — implemented, desktop check open
 
@@ -185,9 +199,19 @@ Implemented: live persistent backend GC limit, selectable gopls limit with proje
 
 Python is now a first-class Code Studio language: static unit detection with TOML parsing, per-unit interpreter resolution and selection (`.adomnia/python.local.json`), script/module Run, structured pytest in the Test tree (adOmnia pytest plugin with real node IDs) with optional coverage, debugpy debugging (script/module/pytest, exception breakpoints, explicit local attach, shared debug panels), Ruff formatting as an explicit optional tool, and basedpyright editing assistance (pinned, explicitly installed, one language server per unit so two units with different virtualenvs never share an interpreter). HTTP routes from FastAPI, Flask and Django reach the Developer Context and open in the API client like Go and Spring routes, Project Services preselects Database Studio/Broker Studio/Docker Lab from `pyproject.toml`/`requirements*.txt`, and Security Center scans Python manifests through a new PyPI ecosystem adapter (poetry/uv lockfiles give the resolved versions), with editor lenses/markers/quick fixes on pinned requirements, a Python tab in Module dependencies and an API Docs handoff of the detected local server URL. Downloaded tool artifacts are verified: pip reports the SHA-256 of every artifact and adOmnia refuses a tools folder that does not match the manifest it recorded. Automated checks pass, including real pytest and real debugpy integration runs against a local Python 3.11 with pytest 9.1.1/debugpy 1.8.22. Open: native desktop acceptance (PY-M* in `mds/MANUAL-CHECK.md`), the macOS/Linux matrix, manual editor checks on unsaved buffers/UTF-16/stub files, an async pytest case, and startup/idle/RAM measurements (see `mds/MULTILANGUAGE-IDE.md` §9.5). Rust is no longer pending an adapter: `internal/languages/rust` is delivered, see below.
 
+### Desktop install, update and rollback - Linux verified (2026-11-03)
+
+Tested on a real Linux desktop session (Ubuntu 24.04, GTK 3 / WebKitGTK 4.1, X11 via Xvfb, normal user, no sudo) with the published release files, driving the UI with real clicks:
+
+- **Install:** the v1.0.23 tarball `install.sh` puts the binary in `~/.local/bin`, the hicolor icons and the `.desktop` entry; the app starts and shows the home screen.
+- **Update:** *Settings → About* finds v1.0.24 (the mistyped v0.1.24 marked "Latest" is ignored), downloads it, verifies the signature, and *Save & restart* replaces the binary and starts v1.0.24, which confirms its startup in about 5 s (`apply.log`). About shows 1.0.24, commit `d38250a`.
+- **Rollback:** with the display frozen right after the new version starts (it cannot open its window), the helper waits the 90 s confirm window, restores v1.0.23 byte for byte and starts it again.
+- **Fixed after the test:** the per-file `.sha256` named `dist/<file>` so `sha256sum -c` failed next to the download; the Settings footer still said "All rights reserved" after the GPL change.
+- **Still open:** uninstall check, Windows installer on a physical machine (install, update, rollback, uninstall from *Apps*), macOS DMG install and update. The update cache keeps the helper copy and the verified package (about 290 MB) until the first start after 24 hours. The Linux tarball has no top-level folder, so it extracts into the current directory.
+
 ### Rust Code Studio - supported (2026-11-01)
 
-Rust is supported like the other Code Studio languages. Static Cargo detection (packages, virtual workspaces, `target/` excluded, `build.rs` and proc-macros never executed), per-project toolchain from `rust-toolchain.toml`/`RUSTUP_TOOLCHAIN`/saved choice/PATH with explicit `rustup` install actions and no implicit download, `bin`/`example`/`bench`/`build`/`check`/`clippy` runs with features, profile and target, build diagnostics in Problems with clickable `file:line:col` and an explanation when the MSVC linker is missing, `cargo test` as a structured Test tree (integration tests, doctest, panic locations, rerun failed, debug of a test, coverage with `cargo-llvm-cov`), rust-analyzer per Cargo unit with semantic tokens, inlay hints, Code Vision and `rustfmt` on save, a Rust Environment view with "Clean analyzer cache", CodeLLDB debug (pinned, SHA-256 verified, real DAP test) with a `rust_panic` breakpoint, dependency tree from `Cargo.lock` and a crates.io/OSV adapter in the Security Center. The detectors bring axum/actix/rocket routes, `utoipa` contracts, sqlx/diesel/sea-orm databases, tonic gRPC, WebSocket/SSE, broker topics, env vars and Cargo modules to API Workspace, Mock, Database and Live Session. Automated tests pass, including real cargo, rustup, rust-analyzer and CodeLLDB runs (`ADOMNIA_TEST_CARGO`). Open: the desktop checks RS-M1…RS-M10 in `mds/MANUAL-CHECK.md`, RAM measurements with three language servers (RS-9.5), CodeLLDB attach (out of the first scope) — see `mds/MULTILANGUAGE-IDE.md` §9.6.
+Rust is supported like the other Code Studio languages. Static Cargo detection (packages, virtual workspaces, `target/` excluded, `build.rs` and proc-macros never executed), per-project toolchain from `rust-toolchain.toml`/`RUSTUP_TOOLCHAIN`/saved choice/PATH with explicit `rustup` install actions and no implicit download, `bin`/`example`/`bench`/`build`/`check`/`clippy` runs with features, profile and target, build diagnostics in Problems with clickable `file:line:col` and an explanation when the MSVC linker is missing, `cargo test` as a structured Test tree (integration tests, doctest, panic locations, rerun failed, debug of a test, coverage with `cargo-llvm-cov`), rust-analyzer per Cargo unit with semantic tokens, inlay hints, Code Vision and `rustfmt` on save, a Rust Environment view with "Clean analyzer cache", CodeLLDB debug (pinned, SHA-256 verified, real DAP test) with a `rust_panic` breakpoint, dependency tree from `Cargo.lock` and a crates.io/OSV adapter in the Security Center. The detectors bring axum/actix/rocket routes, `utoipa` contracts, sqlx/diesel/sea-orm databases, tonic gRPC, WebSocket/SSE, broker topics, env vars and Cargo modules to API Workspace, Mock, Database and Live Session. Automated tests pass, including real cargo, rustup, rust-analyzer and CodeLLDB runs (`ADOMNIA_TEST_CARGO`). Attach to a running local process (*Rust → Attach to Rust Process…*, CodeLLDB by PID, Stop detaches) is delivered with a real attach test (2026-11-03). Open: the desktop checks RS-M1…RS-M10 in `mds/MANUAL-CHECK.md` plus the in-app check of the attach, RAM measurements with three language servers (RS-9.5) — see `mds/MULTILANGUAGE-IDE.md` §9.6.
 
 ### Run configuration interface — 2026-10-21
 

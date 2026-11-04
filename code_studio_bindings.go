@@ -3,11 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"path/filepath"
+	"strings"
+	"sync/atomic"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/activity"
 	"github.com/Andrea-Cavallo/adOmnia/internal/aipolicy"
 	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
 	"github.com/Andrea-Cavallo/adOmnia/internal/codestudiowindow"
 	"github.com/Andrea-Cavallo/adOmnia/internal/copilot"
+	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
+	"github.com/Andrea-Cavallo/adOmnia/internal/flowintel"
 	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/agentreview"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/apicontract"
@@ -19,10 +26,6 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 	"github.com/Andrea-Cavallo/adOmnia/internal/resources"
-	"log"
-	"path/filepath"
-	"strings"
-	"sync/atomic"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/windowchrome"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -1256,6 +1259,50 @@ func (g *GoIDE) SelectFolder(title string) (string, error) {
 	return strings.TrimSpace(path), nil
 }
 
+// SelectFolders apre il selettore nativo di più cartelle con il titolo indicato: è il modo rapido per
+// importare in un solo gesto i plug-in sparsi sul disco. Elenco vuoto se l'utente annulla.
+func (g *GoIDE) SelectFolders(title string) ([]string, error) {
+	if g.desktop == nil {
+		return nil, fmt.Errorf("runtime desktop non inizializzato")
+	}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "Scegli le cartelle"
+	}
+	paths, err := g.desktop.Dialog.OpenFile().
+		CanChooseFiles(false).
+		CanChooseDirectories(true).
+		SetTitle(title).
+		PromptForMultipleSelection()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if trimmed := strings.TrimSpace(path); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out, nil
+}
+
+// SelectFile apre il selettore nativo di un file con il filtro indicato (es. "Target definitions", "*.target"),
+// senza leggerne il contenuto.
+func (g *GoIDE) SelectFile(title, filterLabel, pattern string) (string, error) {
+	if g.desktop == nil {
+		return "", fmt.Errorf("runtime desktop non inizializzato")
+	}
+	dialog := g.desktop.Dialog.OpenFile().CanChooseFiles(true).CanChooseDirectories(false).SetTitle(strings.TrimSpace(title))
+	if pattern = strings.TrimSpace(pattern); pattern != "" {
+		dialog = dialog.AddFilter(strings.TrimSpace(filterLabel), pattern)
+	}
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(path), nil
+}
+
 // SelectProjectParent apre il selettore nativo per la cartella che conterrà un nuovo progetto.
 func (g *GoIDE) SelectProjectParent() (string, error) {
 	if g.desktop == nil {
@@ -1636,6 +1683,174 @@ func (g *GoIDE) JavaJDKs(sessionID string) (codestudio.JavaJDKReport, error) {
 // JavaDependencyTree è l'albero delle dipendenze Maven di un modulo (mvn dependency:tree): lancia Maven.
 func (g *GoIDE) JavaDependencyTree(sessionID, module string) ([]java.TreeNode, error) {
 	return g.service.JavaDependencyTree(sessionID, module)
+}
+
+// JavaOsgiWorkspace elenca i bundle OSGi/PDE del progetto e come si risolvono sulla target platform.
+func (g *GoIDE) JavaOsgiWorkspace(sessionID string) (*eclipsepde.WorkspaceReport, error) {
+	return g.service.JavaOsgiWorkspace(sessionID)
+}
+
+// SetJavaOsgiTarget sceglie la target platform del progetto: cartella di bundle, Eclipse installato o file .target.
+func (g *GoIDE) SetJavaOsgiTarget(sessionID, path string) (*eclipsepde.WorkspaceReport, error) {
+	return g.service.SetJavaOsgiTarget(sessionID, path)
+}
+
+// ReindexJavaOsgiTarget rilegge tutti i manifest della target platform, ignorando la cache.
+func (g *GoIDE) ReindexJavaOsgiTarget(sessionID string) (*eclipsepde.WorkspaceReport, error) {
+	return g.service.ReindexJavaOsgiTarget(sessionID)
+}
+
+// ImportJavaOsgiPlugins copia i progetti plug-in scelti in plugins/ del workspace, così più
+// repository convivono nello stesso progetto e si compilano insieme.
+func (g *GoIDE) ImportJavaOsgiPlugins(sessionID string, sources []string) (codestudio.OsgiImportResult, error) {
+	return g.service.ImportJavaOsgiPlugins(sessionID, sources)
+}
+
+// JavaOsgiTychoTarget legge il target platform dichiarato dal pom.xml Tycho del progetto e, con
+// create, scrive .adomnia/tycho.target e lo rende attivo.
+func (g *GoIDE) JavaOsgiTychoTarget(sessionID string, create bool) (codestudio.OsgiTychoResult, error) {
+	return g.service.JavaOsgiTychoTarget(sessionID, create)
+}
+
+// CancelJavaOsgiImport ferma l'import in corso: quello che aveva copiato viene rimosso.
+func (g *GoIDE) CancelJavaOsgiImport(sessionID string) {
+	g.service.CancelJavaOsgiImport(sessionID)
+}
+
+// RemoveJavaOsgiPlugin rimuove un bundle importato in plugins/ del workspace, mai un progetto
+// dell'utente che sta altrove.
+func (g *GoIDE) RemoveJavaOsgiPlugin(sessionID, name string) (*eclipsepde.WorkspaceReport, error) {
+	return g.service.RemoveJavaOsgiPlugin(sessionID, name)
+}
+
+// PreviewJavaOsgiP2 elenca i repository p2 del file .target attivo, senza rete.
+func (g *GoIDE) PreviewJavaOsgiP2(sessionID string) (*eclipsepde.P2Preview, error) {
+	return g.service.PreviewJavaOsgiP2(sessionID)
+}
+
+// DownloadJavaOsgiP2 scarica i bundle delle location p2 del .target attivo, dopo conferma esplicita.
+func (g *GoIDE) DownloadJavaOsgiP2(sessionID string, confirmed bool) (*eclipsepde.P2DownloadResult, error) {
+	return g.service.DownloadJavaOsgiP2(sessionID, confirmed)
+}
+
+// CancelJavaOsgiP2 interrompe il download p2 in corso del progetto.
+func (g *GoIDE) CancelJavaOsgiP2(sessionID string) {
+	g.service.CancelJavaOsgiP2(sessionID)
+}
+
+// IsJavaOsgiProject dice se il progetto contiene bundle OSGi.
+func (g *GoIDE) IsJavaOsgiProject(sessionID string) (bool, error) {
+	return g.service.IsJavaOsgiProject(sessionID)
+}
+
+// StartJavaOsgiBuild compila i bundle con il compilatore della target platform sulla JVM del progetto.
+func (g *GoIDE) StartJavaOsgiBuild(sessionID string) (codestudio.Execution, error) {
+	return g.service.StartJavaOsgiBuild(sessionID)
+}
+
+// StartJavaOsgiRun avvia i bundle in Equinox sulla JVM del progetto.
+func (g *GoIDE) StartJavaOsgiRun(sessionID string) (codestudio.OsgiRunResult, error) {
+	return g.service.StartJavaOsgiRun(sessionID)
+}
+
+// JavaOsgiExplorer restituisce l'OSGi Control Center: bundle del workspace e della target
+// platform con Activator, start level, stato e diagnostica.
+func (g *GoIDE) JavaOsgiExplorer(sessionID string) (*eclipsepde.ExplorerReport, error) {
+	return g.service.JavaOsgiExplorer(sessionID)
+}
+
+// RefreshJavaOsgiExplorer rilegge manifest, indice del target e diagnostica.
+func (g *GoIDE) RefreshJavaOsgiExplorer(sessionID string) (*eclipsepde.ExplorerReport, error) {
+	return g.service.RefreshJavaOsgiExplorer(sessionID)
+}
+
+// JavaOsgiSearch cerca tra nome, Activator, package e testo del manifest.
+func (g *GoIDE) JavaOsgiSearch(sessionID, query string, limit int) ([]eclipsepde.SearchHit, error) {
+	return g.service.JavaOsgiSearch(sessionID, query, limit)
+}
+
+// JavaOsgiBundleDetail spiega un bundle: stato, wiring, diagnostica, impatto e grafo.
+func (g *GoIDE) JavaOsgiBundleDetail(sessionID, name string, depth int) (*eclipsepde.BundleDetail, error) {
+	return g.service.JavaOsgiBundleDetail(sessionID, name, depth)
+}
+
+// JavaOsgiImpact elenca chi dipende da un bundle e cosa verificare prima di cambiarlo.
+func (g *GoIDE) JavaOsgiImpact(sessionID, name string) (*eclipsepde.Impact, error) {
+	return g.service.JavaOsgiImpact(sessionID, name)
+}
+
+// JavaOsgiImpactForClass risolve una classe o interfaccia del workspace nel suo bundle e
+// ne restituisce l'impatto.
+func (g *GoIDE) JavaOsgiImpactForClass(sessionID, class string) (*eclipsepde.Impact, error) {
+	return g.service.JavaOsgiImpactForClass(sessionID, class)
+}
+
+// JavaOsgiFocusedGraph restituisce il sottografo attorno a un bundle (dipendenze e consumer).
+func (g *GoIDE) JavaOsgiFocusedGraph(sessionID, name string, depth int) (*eclipsepde.FocusGraph, error) {
+	return g.service.JavaOsgiFocusedGraph(sessionID, name, depth)
+}
+
+// CompareJavaOsgiTarget confronta la target platform attiva con un'altra: bundle aggiunti,
+// rimossi e cambiati di versione.
+func (g *GoIDE) CompareJavaOsgiTarget(sessionID, path string) (*eclipsepde.TargetComparison, error) {
+	return g.service.CompareJavaOsgiTarget(sessionID, path)
+}
+
+// ImportJavaOsgiJars copia JAR sciolti nella cartella della target platform attiva, dopo conferma.
+func (g *GoIDE) ImportJavaOsgiJars(sessionID string, files []string, confirmed bool) (eclipsepde.LooseJarResult, error) {
+	return g.service.ImportJavaOsgiJars(sessionID, files, confirmed)
+}
+
+// StartJavaOsgiRuntime avvia i bundle in Equinox con la console su una porta locale e
+// restituisce lo stato reale del framework (ACTIVE, servizi, start level, tempi di avvio).
+func (g *GoIDE) StartJavaOsgiRuntime(sessionID string) (*eclipsepde.RuntimeSnapshot, error) {
+	return g.service.StartJavaOsgiRuntime(sessionID)
+}
+
+// JavaOsgiRuntimeSnapshot rilegge lo stato del framework in esecuzione.
+func (g *GoIDE) JavaOsgiRuntimeSnapshot(sessionID string) (*eclipsepde.RuntimeSnapshot, error) {
+	return g.service.JavaOsgiRuntimeSnapshot(sessionID)
+}
+
+// StopJavaOsgiRuntime ferma il framework e chiude la console.
+func (g *GoIDE) StopJavaOsgiRuntime(sessionID string) error {
+	return g.service.StopJavaOsgiRuntime(sessionID)
+}
+
+// FlowOverview elenca flow e subflow del progetto (Flow Intelligence).
+func (g *GoIDE) FlowOverview(sessionID string, refresh bool) (*flowintel.Overview, error) {
+	return g.service.FlowOverview(sessionID, refresh)
+}
+
+// FlowSearch filtra i flow per testo e bundle.
+func (g *GoIDE) FlowSearch(sessionID, query, bundle string, limit int) ([]flowintel.FlowEntry, error) {
+	return g.service.FlowSearch(sessionID, query, bundle, limit)
+}
+
+// FlowTrace percorre un flow verso valle, verso monte o entrambi.
+func (g *GoIDE) FlowTrace(sessionID, id, direction string, depth int) (*flowintel.Trace, error) {
+	return g.service.FlowTrace(sessionID, id, direction, depth)
+}
+
+// FlowFindPaths trova i percorsi di esecuzione tra due nodi.
+func (g *GoIDE) FlowFindPaths(sessionID, from, to string, depth, limit int) ([]flowintel.Path, error) {
+	return g.service.FlowFindPaths(sessionID, from, to, depth, limit)
+}
+
+// FlowImpact elenca flow, bundle, servizi ed esterni che una modifica può rompere.
+func (g *GoIDE) FlowImpact(sessionID, id string, depth int) (*flowintel.Impact, error) {
+	return g.service.FlowImpact(sessionID, id, depth)
+}
+
+// FlowExplain spiega un nodo: relazioni, affidabilità e righe di sorgente.
+func (g *GoIDE) FlowExplain(sessionID, id string) (*flowintel.Explanation, error) {
+	return g.service.FlowExplain(sessionID, id)
+}
+
+// FlowRuntime correla il framework Equinox in esecuzione con il grafo dei flow (ACTIVE,
+// servizi registrati e consumer). Richiede il runtime già avviato dal Control Center.
+func (g *GoIDE) FlowRuntime(sessionID string) (*flowintel.RuntimeEvidence, error) {
+	return g.service.FlowRuntime(sessionID)
 }
 
 // PomManagedVersions: versioni ereditate da parent e BOM per le dipendenze senza <version>.

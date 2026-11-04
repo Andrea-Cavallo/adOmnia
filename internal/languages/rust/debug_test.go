@@ -1,7 +1,9 @@
 package rust
 
 import (
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -87,8 +89,8 @@ func TestDebugAdapterBuildsAndLaunches(t *testing.T) {
 	}
 }
 
-// RS-6.5: il debug Rust resta su loopback con una porta riservata nota, lancia il programma (mai
-// attach a pid o a host remoti) e la porta dell'indirizzo è quella passata a CodeLLDB. Il cleanup
+// RS-6.5: il debug Rust resta su loopback con una porta riservata nota, lancia il programma (l'attach
+// a un pid avviene solo con ProcessID esplicito, mai a host remoti) e la porta dell'indirizzo è quella passata a CodeLLDB. Il cleanup
 // del processo/adapter e il timeout di avvio endpoint sono del core DAP (debugDisconnectTimeout,
 // debugAddressTimeout, i loro test in dap/manager_test.go).
 func TestDebugAdapterIsLoopbackOnlyAndNeverAttaches(t *testing.T) {
@@ -183,5 +185,54 @@ func TestDefaultBinaryFromImplicitMain(t *testing.T) {
 	writeFile(t, root, "src/main.rs", "fn main() {}\n")
 	if got := DefaultBinary(root); got != "svc" {
 		t.Fatalf("default binary = %q", got)
+	}
+}
+
+// Attach to Rust Process: con processId nessuna build e nessuna toolchain, CodeLLDB su loopback,
+// richiesta DAP "attach" con il pid e Stop che si stacca senza terminare il programma.
+func TestDebugAdapterAttachesToProcessWithoutBuilding(t *testing.T) {
+	root := t.TempDir()
+	codelldb := writeFile(t, root, "codelldb", "")
+	originalRun := runCargoBuild
+	runCargoBuild = func(string, string, []string) ([]byte, error) {
+		t.Fatal("attach must not build")
+		return nil, nil
+	}
+	defer func() { runCargoBuild = originalRun }()
+
+	spec, err := New().DebugAdapter(dap.LaunchRequest{
+		Root: root, WorkingDirectory: root,
+		LanguageOptions: []byte(`{"processId":4242,"adapter":"` + filepath.ToSlash(codelldb) + `"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !spec.Detach || spec.Executable != filepath.ToSlash(codelldb) || !strings.HasPrefix(spec.Address, "127.0.0.1:") {
+		t.Fatalf("spec = %+v", spec)
+	}
+	method, args := spec.Launch("")
+	if method != "attach" || args["request"] != "attach" || args["pid"] != 4242 || args["program"] != nil {
+		t.Fatalf("attach = %q %+v", method, args)
+	}
+	if spec.Title != "Attach Rust 4242" || spec.PanicFunction != "rust_panic" {
+		t.Fatalf("title %q panic %q", spec.Title, spec.PanicFunction)
+	}
+}
+
+func TestDebugAdapterAttachRejectsInvalidProcess(t *testing.T) {
+	for _, options := range []string{`{"processId":-1}`, `{"processId":` + strconv.Itoa(os.Getpid()) + `}`} {
+		if _, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: []byte(options)}); err == nil {
+			t.Fatalf("%s must be refused", options)
+		}
+	}
+}
+
+func TestDebugAdapterAttachNeedsCodeLLDB(t *testing.T) {
+	originalLook := lookPath
+	lookPath = func(string) (string, error) { return "", os.ErrNotExist }
+	defer func() { lookPath = originalLook }()
+	_, err := New().DebugAdapter(dap.LaunchRequest{LanguageOptions: []byte(`{"processId":4242,"adapter":"/missing/codelldb"}`)})
+	if err == nil || !strings.Contains(err.Error(), "CodeLLDB is not installed") {
+		t.Fatalf("err = %v", err)
 	}
 }

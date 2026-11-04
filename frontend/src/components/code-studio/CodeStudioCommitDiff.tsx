@@ -14,6 +14,7 @@ import { applyCodeStudioHunkToIndex } from './codeStudioVcsHunkStage'
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   go: 'go', mod: 'go', sum: 'plaintext', md: 'markdown', json: 'json', yaml: 'yaml', yml: 'yaml', ts: 'typescript', tsx: 'typescript',
   js: 'javascript', jsx: 'javascript', css: 'css', html: 'html', xml: 'xml', sql: 'sql', sh: 'shell', proto: 'proto', toml: 'toml', dockerfile: 'dockerfile',
+  mf: 'manifest',
 }
 
 function languageOf(relativePath: string): string {

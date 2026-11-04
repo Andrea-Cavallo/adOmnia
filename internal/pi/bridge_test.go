@@ -46,6 +46,10 @@ func TestPiRPCProcess(t *testing.T) {
 			_ = enc.Encode(map[string]string{"type": "agent_settled"})
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	os.Exit(0)
 }
 

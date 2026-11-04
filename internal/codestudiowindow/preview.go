@@ -4,9 +4,10 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 	"strings"
 	"sync"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/windowfit"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"

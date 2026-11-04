@@ -7,9 +7,10 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"net/http"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 type openAIProvider struct {

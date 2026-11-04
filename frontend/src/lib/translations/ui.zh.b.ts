@@ -473,7 +473,7 @@ export const ZH_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Use theme color": "使用主题颜色",
   "Hex color": "十六进制颜色",
   "One color across the app. Shades adapt for readable text in Dark and White.": "全应用统一色彩。深色和白色主题下会自动调整色调，确保文本清晰可读。",
-  "All rights reserved · Developed by Andrea Cavallo": "保留所有权利 · 由 Andrea Cavallo 开发",
+  "GNU GPL v3 · Developed by Andrea Cavallo": "GNU GPL v3 · 由 Andrea Cavallo 开发",
   "Right-click: accent color": "右键：强调色",
   "Default colors": "默认颜色",
   "Accent and base color": "强调色与基础色",

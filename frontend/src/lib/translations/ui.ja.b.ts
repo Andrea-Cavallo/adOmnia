@@ -473,7 +473,7 @@ export const JA_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Use theme color": "テーマの色を使用",
   "Hex color": "16 進数の色",
   "One color across the app. Shades adapt for readable text in Dark and White.": "アプリ全体で 1 つの色を使用します。ダークとホワイトで読みやすいテキストになるよう濃淡が自動調整されます。",
-  "All rights reserved · Developed by Andrea Cavallo": "無断転載を禁じます · 開発: Andrea Cavallo",
+  "GNU GPL v3 · Developed by Andrea Cavallo": "GNU GPL v3 · 開発: Andrea Cavallo",
   "Right-click: accent color": "右クリック: アクセントカラー",
   "Default colors": "デフォルトの色",
   "Accent and base color": "アクセントカラーとベースカラー",

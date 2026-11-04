@@ -17,4 +17,6 @@ type Diagnostic struct {
 	Message string `json:"message"`
 	// Help è il suggerimento associato (il testo "help:" di rustc), se presente.
 	Help string `json:"help,omitempty"`
+	// Source è lo strumento che lo ha prodotto (cargo, ecj), mostrato in Problems.
+	Source string `json:"source,omitempty"`
 }

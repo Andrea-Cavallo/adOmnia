@@ -7,5 +7,8 @@ export type IdeFileIcon =
   | { kind: 'jenkins' }
   | { kind: 'java' }
   | { kind: 'maven' }
+  | { kind: 'manifest' }
+  | { kind: 'properties' }
+  | { kind: 'bpmn' }
   | { kind: 'ghost' }
   | { kind: 'generic'; icon: 'text' | 'pdf' | 'image' | 'archive' | 'lock' | 'license' | 'readme' | 'code' | 'key' | 'sql' | 'terminal' | 'schema' | 'file' }

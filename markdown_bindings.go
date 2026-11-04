@@ -2,8 +2,9 @@ package main
 
 import (
 	"errors"
-	"github.com/Andrea-Cavallo/adOmnia/internal/markdown"
 	"strings"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/markdown"
 )
 
 func (a *App) ListMarkdownFiles(root string) ([]markdown.FileEntry, error) {

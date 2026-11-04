@@ -384,7 +384,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
         {sectionDefs.length === 0 && (
           <p className="px-3 py-2 text-[12px] leading-relaxed text-text-3">No setting matches "{search.trim()}".</p>
         )}
-        <p className="mt-auto px-2.5 pt-4 text-[12px] leading-relaxed text-text-3">© {tu('All rights reserved · Developed by Andrea Cavallo')}</p>
+        <p className="mt-auto px-2.5 pt-4 text-[12px] leading-relaxed text-text-3">© {tu('GNU GPL v3 · Developed by Andrea Cavallo')}</p>
       </aside>
 
       {/* Content */}
@@ -1105,6 +1105,10 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
               <div className="py-2 px-1 flex items-center justify-between">
                 <span className="text-xs text-text-1">Developer</span>
                 <span className="text-xs text-text-2">Andrea Cavallo</span>
+              </div>
+              <div className="py-2 px-1 flex items-center justify-between">
+                <span className="text-xs text-text-1">License</span>
+                <span className="text-xs text-text-2">GNU GPL v3.0</span>
               </div>
               <UpdateCheckRow />
             </SettingsCard>

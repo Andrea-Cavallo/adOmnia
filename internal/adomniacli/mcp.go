@@ -8,11 +8,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
+	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
+	"github.com/Andrea-Cavallo/adOmnia/internal/flowintel"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/mock"
 )
@@ -21,7 +24,7 @@ import (
 // version is echoed when known, otherwise the newest is offered and the client decides.
 var mcpProtocolVersions = []string{"2025-06-18", "2025-03-26", "2024-11-05"}
 
-const mcpServerInstructions = "adOmnia exposes local API collections and Code Studio project routes: generate collections from statically detected routes; create, update and delete requests and environments; run tests with saved variables; and drive a local mock server. Source code is never executed by route scans. Secrets in requests and environments are always masked in responses."
+const mcpServerInstructions = "adOmnia exposes local API collections and Code Studio project routes: generate collections from statically detected routes; create, update and delete requests and environments; run tests with saved variables; and drive a local mock server. It also analyzes and edits Code Studio workspaces: OSGi/PDE bundles, the active target platform, dependency resolution and impact (osgi_*), plus reading and writing files inside the project (workspace_*; writes need --write). Source is parsed and never executed by route scans. Secrets in requests and environments are always masked in responses."
 
 // JSON-RPC error codes.
 const (
@@ -54,10 +57,33 @@ func invalidParams(format string, args ...any) *mcpError {
 // runs inside this process, the collection is read from disk.
 func MCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	defaultFolder := ""
-	if len(args) > 1 {
-		defaultFolder = args[1]
+	workspace := ""
+	allowWrite := os.Getenv("ADOMNIA_MCP_WRITE") == "1"
+	positional := []string{}
+	for index := 1; index < len(args); index++ {
+		argument := strings.TrimSpace(args[index])
+		switch {
+		case argument == "--write":
+			allowWrite = true
+		case argument == "--workspace" && index+1 < len(args):
+			index++
+			workspace = args[index]
+		case strings.HasPrefix(argument, "--workspace="):
+			workspace = strings.TrimPrefix(argument, "--workspace=")
+		case strings.HasPrefix(argument, "--"):
+			// Unknown flags are ignored: an old client keeps working.
+		default:
+			positional = append(positional, argument)
+		}
 	}
-	server := &mcpServer{defaultFolder: defaultFolder, mux: http.NewServeMux()}
+	if len(positional) > 0 {
+		defaultFolder = positional[0]
+	}
+	if workspace == "" {
+		workspace = defaultFolder
+	}
+	server := &mcpServer{defaultFolder: defaultFolder, workspace: workspace, allowWrite: allowWrite, mux: http.NewServeMux(), osgiReports: map[string]*eclipsepde.ExplorerReport{}, runtimes: map[string]*osgiRuntimeProcess{}, flowIndexes: map[string]*flowintel.Index{}}
+	defer server.stopAllRuntimes()
 	mock.RegisterHandlers(server.mux)
 	scanner := bufio.NewScanner(stdin)
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
@@ -108,8 +134,16 @@ func mcpErrorReply(id jsonv1.RawMessage, code int, message string) map[string]an
 
 type mcpServer struct {
 	defaultFolder string
+	workspace     string
+	allowWrite    bool
 	mux           *http.ServeMux
 	writeMu       sync.Mutex
+	workspaceMu   sync.Mutex
+	osgiReports   map[string]*eclipsepde.ExplorerReport
+	runtimeMu     sync.Mutex
+	runtimes      map[string]*osgiRuntimeProcess
+	flowMu        sync.Mutex
+	flowIndexes   map[string]*flowintel.Index
 }
 
 func (s *mcpServer) handle(request mcpRPC) (any, *mcpError) {

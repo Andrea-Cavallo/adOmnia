@@ -45,18 +45,43 @@ func (r *Resolver) BuildClasspath(proj *EclipseProject) ([]ClasspathElement, []P
 	}
 
 	seen := map[string]bool{}
-	for _, clause := range proj.Bundle.RequireBundle {
-		req := requirementOf("Require-Bundle", clause)
+	r.appendRequirements(proj.Bundle, proj.Name, seen, &elements, &problems)
+	// A fragment compiles against its host and everything the host sees.
+	if host := proj.Bundle.FragmentHost; host != nil {
+		req := requirementOf("Fragment-Host", *host)
 		match, candidates, ok := r.Index.BestMatch(req.Name, req.Range, req.RangeOK)
 		if !ok {
-			problems = append(problems, missingProblem(proj.Name, req, candidates, []string{proj.Name}, clause.IsOptional()))
+			problems = append(problems, missingProblem(proj.Name, req, candidates, []string{proj.Name}, false))
+		} else {
+			r.appendBundleElements(match, false, seen, &elements, &problems, proj.Name)
+			r.appendRequirements(match.Bundle, proj.Name, seen, &elements, &problems)
+		}
+	}
+	return elements, problems
+}
+
+// appendRequirements adds the providers of the Require-Bundle and Import-Package clauses of one bundle.
+func (r *Resolver) appendRequirements(bundle *Bundle, project string, seen map[string]bool, elements *[]ClasspathElement, problems *[]Problem) {
+	for _, clause := range bundle.RequireBundle {
+		req := requirementOf("Require-Bundle", clause)
+		lookup := req.Name
+		if lookup == systemBundleAlias {
+			lookup = equinoxFramework
+		}
+		match, candidates, ok := r.Index.BestMatch(lookup, req.Range, req.RangeOK)
+		if !ok {
+			*problems = append(*problems, missingProblem(project, req, candidates, []string{project}, clause.IsOptional()))
 			continue
 		}
-		r.appendBundleElements(match, clause.IsOptional(), seen, &elements, &problems, proj.Name)
+		r.appendBundleElements(match, clause.IsOptional(), seen, elements, problems, project)
 	}
 
-	for _, clause := range proj.Bundle.ImportPackage {
+	for _, clause := range bundle.ImportPackage {
 		req := requirementOf("Import-Package", clause)
+		// The JRE provides these packages: the compiler already sees them on its boot classpath.
+		if r.wireToJRE(req, &BundleResolution{}) {
+			continue
+		}
 		providers := r.Index.ProvidersOf(req.Name)
 		var chosen *Provider
 		for i := len(providers) - 1; i >= 0; i-- {
@@ -66,16 +91,18 @@ func (r *Resolver) BuildClasspath(proj *EclipseProject) ([]ClasspathElement, []P
 			}
 		}
 		if chosen == nil {
+			if len(providers) == 0 && providedByJRE(req.Name) {
+				continue
+			}
 			var candidates []string
 			for _, p := range providers {
 				candidates = append(candidates, p.ExportVersion.String()+" ("+p.Entry.Bundle.SymbolicName+")")
 			}
-			problems = append(problems, missingProblem(proj.Name, req, candidates, []string{proj.Name}, clause.IsOptional()))
+			*problems = append(*problems, missingProblem(project, req, candidates, []string{project}, clause.IsOptional()))
 			continue
 		}
-		r.appendBundleElements(chosen.Entry, clause.IsOptional(), seen, &elements, &problems, proj.Name)
+		r.appendBundleElements(chosen.Entry, clause.IsOptional(), seen, elements, problems, project)
 	}
-	return elements, problems
 }
 
 // appendBundleElements adds the classpath contribution of one resolved bundle:
@@ -106,6 +133,11 @@ func (r *Resolver) appendBundleElements(entry *IndexedBundle, optional bool, see
 			From:     entry.Bundle.SymbolicName,
 			Optional: optional,
 		})
+	}
+
+	// A host may hold no classes at all (org.eclipse.swt): they live in its platform fragment.
+	for _, fragment := range r.Index.CompileFragmentsOf(entry) {
+		r.appendBundleElements(fragment, optional, seen, elements, problems, fromProject)
 	}
 
 	for _, clause := range entry.Bundle.RequireBundle {

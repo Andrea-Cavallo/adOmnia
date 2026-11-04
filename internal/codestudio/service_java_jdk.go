@@ -1,6 +1,9 @@
 package codestudio
 
 import (
+	"slices"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
@@ -14,6 +17,8 @@ type JavaJDKReport struct {
 	Required int `json:"required"`
 	// Suggested è la home del JDK che soddisfa Required con meno scarto ("" = nessuno lo soddisfa).
 	Suggested string `json:"suggested"`
+	// BundleEnvironment è l'execution environment più alto dichiarato dai bundle OSGi (es. JavaSE-1.6), "" se non ce ne sono.
+	BundleEnvironment string `json:"bundleEnvironment"`
 }
 
 // projectJavaHome è il JDK scelto per il progetto, "" se non c'è una scelta valida.
@@ -37,6 +42,16 @@ func (s *Service) JavaJDKs(sessionID string) (JavaJDKReport, error) {
 			if required := java.RequiredJava(unit.Root); required > report.Required {
 				report.Required = required
 			}
+		}
+	}
+	report.BundleEnvironment = eclipsepde.RequiredEnvironment(session.Project.RealPath)
+	if level, ok := eclipsepde.EnvironmentLevel(report.BundleEnvironment); ok && level > report.Required {
+		report.Required = level
+	}
+	// Una JVM scelta con Browse… sta fuori dalle cartelle note: deve comunque comparire nella lista.
+	if report.Selected != "" && !slices.ContainsFunc(report.Installed, func(jdk java.JDK) bool { return samePath(jdk.Home, report.Selected) }) {
+		if jdk, ok := java.InspectJDK(report.Selected, "selected"); ok {
+			report.Installed = append(report.Installed, jdk)
 		}
 	}
 	if suggested, ok := java.PickJDK(report.Installed, report.Required); ok {

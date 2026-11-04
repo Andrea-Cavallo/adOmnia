@@ -22,4 +22,4 @@ Password e DSN salvati si risolvono solo in Go. Query e test usano l'ID della co
 
 Gli ID e gli altri campi delle connessioni restano compatibili; si aggiungono preferenze opzionali. Le credenziali in chiaro ancora disponibili vengono cifrate prima della riscrittura. I riferimenti Vault esistenti sono mantenuti quando il Vault è bloccato e possono migrare alla cifratura automatica quando vengono aperti, salvo protezione aggiuntiva scelta esplicitamente. Le password già scartate dalle versioni precedenti non sono recuperabili: reinserirle una volta.
 
-La matrice manuale completa dei driver remoti resta tracciata in [FIX.md](../mds/FIX.md), separata dai test automatici di cifratura, riuso del client, backoff e timeout.
+La matrice manuale completa dei driver remoti resta tracciata in `mds/FIX.md`, separata dai test automatici di cifratura, riuso del client, backoff e timeout.

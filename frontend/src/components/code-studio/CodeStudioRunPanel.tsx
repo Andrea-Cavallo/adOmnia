@@ -14,12 +14,11 @@ import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTes
 import { selectDebugState } from './codeStudioDebugCommands'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/code-studio-api'
-import { firstLocalServerURL } from '@/lib/code-studio/runServerURL'
 import { openExternal } from '@/lib/openExternal'
 import { handOffOpenApiURL } from '@/lib/moduleHandoff'
 import { useAppStore } from '@/stores/app'
 import { resolveConsolePath } from './codeStudioConsolePaths'
-import { parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLines'
+import { consoleServerURL, parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLines'
 import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './codeStudioConsoleWindow'
 import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './codeStudioLogLevels'
 import { CodeStudioProblems, type CodeStudioBuildProblem } from './CodeStudioProblems'
@@ -64,6 +63,7 @@ interface CodeStudioRunPanelProps {
 type ParsedLine = ConsoleParsedLine
 
 const EMPTY_CHUNKS: GoIDEConsoleChunk[] = []
+const EMPTY_LINES: ParsedLine[] = []
 
 function renderAnsi(raw: string) {
   const segments: Array<{ text: string; className: string }> = []
@@ -122,6 +122,12 @@ function renderConsoleLine(line: ParsedLine, level: ConsoleLogLevel | null) {
     <span key={index} className={segment.kind === 'timestamp' ? 'text-text-4' : segment.kind === 'level' ? LEVEL_TOKEN[level] : undefined}>{segment.text}</span>
   ))
 }
+
+/** Memoizzata: un aggiornamento disegna solo le righe nuove, non le mille già a schermo. */
+const ConsoleLine = memo(function ConsoleLine({ line, wrap, workingDirectory, openLocation }: Readonly<{ line: ParsedLine; wrap: boolean; workingDirectory: string; openLocation: (path: string, line: number, column?: number) => unknown }>) {
+  const level = line.stream === 'system' ? null : consoleLogLevel(line.text)
+  return <CodeStudioConsoleRow line={line} wrap={wrap} className={consoleLineClass(line, level)} onNavigate={line.path && line.line ? () => void openLocation(resolveConsolePath(line.path!, workingDirectory), line.line!, line.column) : undefined}>{renderConsoleLine(line, level)}</CodeStudioConsoleRow>
+})
 
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${milliseconds} ms`
@@ -205,6 +211,8 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const [input, setInput] = useToolView(sessionId, tool, 'stdin', '')
   const [wrapOutput, setWrapOutput] = useToolView(sessionId, tool, 'wrapOutput', true)
   const inputRef = useRef<HTMLInputElement>(null)
+  const inputToggleRef = useRef<HTMLButtonElement>(null)
+  const [inputOpen, setInputOpen] = useState(false)
   const sendingInput = useRef(false)
   const allExecutions = useCodeStudioStore((state) => state.executions)
   const executions = useMemo(() => allExecutions.filter((execution) => execution.sessionId === sessionId), [allExecutions, sessionId])
@@ -214,11 +222,15 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   const sendRunInput = useCodeStudioStore((state) => state.sendRunInput)
   const openLocation = useCodeStudioStore((state) => state.openLocation)
   const active = executions.find((execution) => execution.id === activeRunId) ?? executions[executions.length - 1] ?? null
+  useEffect(() => setInputOpen(false), [active?.id, active?.status])
+  const closeInput = () => { setInputOpen(false); inputToggleRef.current?.focus() }
   // Solo i chunk dell'esecuzione attiva: l'output di un'altra run (o di un altro progetto) non deve
   // ridisegnare questa console.
   const chunks = useCodeStudioStore((state) => (active ? state.consoleByRun[active.id] : undefined) ?? EMPTY_CHUNKS)
   // PY-7.3: l'URL locale dichiarato dal server avviato si apre solo su azione esplicita.
-  const serverURL = useMemo(() => firstLocalServerURL(chunks.map((chunk) => chunk.text).join('')), [chunks])
+  // Con la console nascosta l'analisi aspetta: riparte incrementale da dove era arrivata.
+  const consoleInUse = visible && (view === 'run' || view === 'problems')
+  const serverURL = useMemo(() => consoleInUse ? consoleServerURL(chunks) : undefined, [chunks, consoleInUse])
   // Una nuova esecuzione porta in primo piano la finestra Run; i test hanno la loro finestra.
   const seenRunId = useRef(activeRunId)
   useEffect(() => {
@@ -227,7 +239,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
     const started = executions.find((execution) => execution.id === activeRunId)
     if (started?.status === 'running' && started.kind !== 'tests' && started.kind !== 'devserver') showToolWindow('run')
   }, [activeRunId, executions, showToolWindow, standalone, fixedView])
-  const lines = useMemo(() => parseConsoleLines(chunks), [chunks])
+  const lines = useMemo(() => consoleInUse ? parseConsoleLines(chunks) : EMPTY_LINES, [chunks, consoleInUse])
   const buildSteps = useMemo(() => active?.kind === 'docker-build' ? buildKitProgress(chunks.map(chunk=>chunk.text).join('')) : [], [active?.kind, chunks])
   const buildProblems = useMemo<CodeStudioBuildProblem[]>(() => lines
     .filter((line) => line.path && line.line)
@@ -296,6 +308,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
           <button type="button" onClick={() => active && void restartRun(active.id)} disabled={!active || active.kind === 'dependency' || active.kind === 'install'} aria-label="Rerun" title="Rerun" className="code-studio-icon-button h-7 w-7 text-success"><RefreshCw size={14} /></button>
           <button type="button" onClick={() => active && void stopRun(active.id)} disabled={active?.status !== 'running'} aria-label="Stop" title="Stop process tree" className="code-studio-icon-button h-7 w-7 text-danger"><Square size={11} fill="currentColor" /></button>
           <span className="my-1 h-px w-4 bg-border-1" aria-hidden="true" />
+          {active?.status === 'running' && <button ref={inputToggleRef} type="button" aria-label="Program input" aria-expanded={inputOpen} aria-controls={`run-input-${active.id}`} title="Show or hide program input" onClick={() => setInputOpen(open => !open)} className={`code-studio-icon-button h-7 w-7 ${inputOpen ? 'bg-surface-3 text-text-1' : ''}`}><SquareTerminal size={14} /></button>}
           <CodeStudioRunLogActions execution={active} chunks={chunks} />
           <button type="button" disabled={!chunks.length} onClick={() => void WailsClipboard.SetText(chunks.map((chunk) => chunk.text).join(''))} aria-label="Copy console" title="Copy console" className="code-studio-icon-button h-7 w-7"><Copy size={13} /></button>
           {serverURL && <button type="button" onClick={() => openExternal(serverURL)} aria-label="Open in browser" title={`Open ${serverURL} in the browser`} className="code-studio-icon-button h-7 w-7"><ExternalLink size={13} /></button>}
@@ -319,7 +332,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
           <summary className="cursor-pointer text-accent">BuildKit · {buildSteps.filter(step=>step.state==='done'||step.state==='cached').length}/{buildSteps.length} steps · {buildSteps.filter(step=>step.state==='cached').length} cached</summary>
           {buildSteps.map(step=><p key={step.id} className={step.state==='error'?'text-danger':'text-text-3'}>#{step.id} · {step.state} · {step.title} {step.duration ?? ''}</p>)}
         </details>}
-        {/* Clicking the transcript focuses the stdin field, the way a terminal does; the field is already
+        {/* When input is explicitly open, clicking the transcript focuses its field; it is already
             reachable with Tab, so this div is a pointer convenience and not a control. */}
         <div data-a11y-click-exempt role="presentation" onClick={(event) => {
           if ((event.target as HTMLElement).closest('button, a') || window.getSelection()?.toString()) return
@@ -337,15 +350,10 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
               {Math.min(hiddenLines, CONSOLE_WINDOW_STEP).toLocaleString()} earlier lines not shown · show more (search and Copy console use the full output)
             </button>
           )}
-          {visibleLines.map((line, index) => {
-            const level = line.stream === 'system' ? null : consoleLogLevel(line.text)
-            return (
-            <CodeStudioConsoleRow key={`${line.sequence}-${index}`} line={line} wrap={wrapOutput} className={consoleLineClass(line, level)} onNavigate={line.path && line.line ? () => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column) : undefined}>{renderConsoleLine(line, level)}</CodeStudioConsoleRow>
-            )
-          })}
+          {visibleLines.map((line) => <ConsoleLine key={line.id} line={line} wrap={wrapOutput} workingDirectory={active?.workingDirectory ?? ''} openLocation={openLocation} />)}
         </div>
-        {active?.status === 'running' && (
-            <CodeStudioProgramInput inputRef={inputRef} value={input} onChange={setInput} onSubmit={() => void submitInput()} />
+        {active?.status === 'running' && inputOpen && (
+            <CodeStudioProgramInput id={`run-input-${active.id}`} onClose={closeInput} inputRef={inputRef} value={input} onChange={setInput} onSubmit={() => void submitInput()} />
         )}
         </div>
       </div>}

@@ -10,7 +10,7 @@ on:
 
 env:
   APP_NAME: adomnia
-  WAILS_VERSION: v3.0.0
+  WAILS_VERSION: v3.1.0
   NODE_VERSION: '22.13.0'
 
 # Least-privilege default for GITHUB_TOKEN; the publishing job raises contents: write.
@@ -42,6 +42,20 @@ jobs:
 
       - name: Wails version consistency
         run: node scripts/check-wails-version.mjs
+
+      - name: App version consistency
+        # build/config.yml, both npm manifests and both lockfiles must state the same
+        # version: a partial bump ships a binary that disagrees with its installer.
+        run: node scripts/check-version-consistency.mjs
+
+      - name: Release version guard
+        # A pushed v* tag publishes a release: refuse a tag that does not match the
+        # declared version or is not the highest one (v0.1.24 after v1.0.24).
+        if: github.ref_type == 'tag'
+        run: node scripts/check-release-version.mjs "$GITHUB_REF_NAME"
+
+      - name: Release scripts unit tests
+        run: node --test scripts/check-release-version.test.mjs scripts/check-version-consistency.test.mjs
 
       # Stessa installazione degli altri workflow (azione condivisa). Il frontend reale si compila più sotto,
       # quindi niente stub di frontend/dist. Il timeout evita che un mirror apt bloccato tenga il job per ore.
@@ -255,7 +269,7 @@ jobs:
         run: brew list create-dmg >/dev/null 2>&1 || brew install create-dmg # NOSONAR -- Homebrew has no version pinning: create-dmg only packages the artifacts this job already built, and the app zip is checksummed at release
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }} # NOSONAR -- WAILS_VERSION is the repository pin (v3.0.0), the same version go.mod builds against
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }} # NOSONAR -- WAILS_VERSION is the repository pin (v3.1.0), the same version go.mod builds against
 
       - name: Build universal app and DMG
         run: |
@@ -324,6 +338,10 @@ jobs:
           path: dist/*
           retention-days: 30
 
+      - name: Release version guard
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node scripts/check-release-version.mjs "$GITHUB_REF_NAME"
+
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
@@ -332,3 +350,4 @@ jobs:
           body_path: ${{ steps.notes.outputs.path }}
           generate_release_notes: ${{ steps.notes.outputs.path == '' }}
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+          make_latest: ${{ !(contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha')) }}

@@ -204,6 +204,8 @@ func TestLanguageForPathCoversProjectFiles(t *testing.T) {
 		// C and C++ projects (single-file C homework and Makefile C++ folders).
 		"helloworld.c": "cpp", "assignments/switch.c": "cpp", "include/stack.h": "cpp",
 		"data_structures-I/06-LList/main.cpp": "cpp", "src/stock.hpp": "cpp",
+		// JAR and OSGi bundle manifests: their own Monaco language, not plaintext.
+		"META-INF/MANIFEST.MF": "manifest", "bundle.mf": "manifest",
 	}
 	for path, want := range cases {
 		if got := languageForPath(path); got != want {

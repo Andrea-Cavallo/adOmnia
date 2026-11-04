@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -137,7 +138,9 @@ func (s *Service) vcsPaths(sessionID string) (Session, vcsPaths, error) {
 	return session, vcsPaths{projectRoot: session.Project.RealPath, repoRoot: root}, nil
 }
 
-// VCSStatus legge branch, file modificati e branch locali; non esegue mai operazioni di rete.
+// VCSStatus reads branch, changed files and local branches; it never performs network operations.
+// It does not load history: `git log --all` on every save cost seconds for data only the Git panel
+// shows (git.GetOverview).
 func (s *Service) VCSStatus(sessionID string) (VCSStatus, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
@@ -151,25 +154,25 @@ func (s *Service) VCSStatus(sessionID string) (VCSStatus, error) {
 	if root == "" {
 		return VCSStatus{Reason: "Not a Git repository", Branches: []string{}, Changes: []VCSFileChange{}}, nil
 	}
-	paths := vcsPaths{projectRoot: session.Project.RealPath, repoRoot: root}
-	overview, err := git.GetOverview(root, 0)
+	state, err := git.BranchState(root)
 	if err != nil {
 		return VCSStatus{}, err
 	}
+	paths := vcsPaths{projectRoot: session.Project.RealPath, repoRoot: root}
 	status := VCSStatus{
 		Repositories: roots,
-		Available:    true, RepoRoot: root, Branch: overview.Status.Branch, Ahead: overview.Status.AheadCount, Behind: overview.Status.BehindCount,
-		Branches: []string{}, Changes: []VCSFileChange{}, Conflicts: len(overview.Conflicts),
+		Available:    true, RepoRoot: root, Branch: state.Status.Branch, Head: state.Head,
+		Ahead: state.Status.AheadCount, Behind: state.Status.BehindCount,
+		Branches: []string{}, Changes: []VCSFileChange{},
 	}
-	if len(overview.Commits) > 0 {
-		status.Head = overview.Commits[0].FullHash
+	status.Branches = state.Branches
+	if status.Branches == nil {
+		status.Branches = []string{}
 	}
-	for _, branch := range overview.Branches {
-		if !branch.Remote {
-			status.Branches = append(status.Branches, branch.Name)
+	for _, change := range state.Changes {
+		if change.Conflicted {
+			status.Conflicts++
 		}
-	}
-	for _, change := range overview.Changes {
 		relative, inside := paths.toProject(change.Path)
 		if !inside || len(status.Changes) >= maxVCSChangedFiles {
 			continue
@@ -316,14 +319,12 @@ func (s *Service) VCSCheckout(sessionID, branch string) error {
 		return fmt.Errorf("invalid branch name")
 	}
 	// Solo branch locali esistenti: "git checkout <nome>" su un nome di file ripristinerebbe il file.
-	overview, err := git.GetOverview(paths.repoRoot, 1)
+	state, err := git.BranchState(paths.repoRoot)
 	if err != nil {
 		return err
 	}
-	for _, candidate := range overview.Branches {
-		if !candidate.Remote && candidate.Name == branch {
-			return git.CheckoutBranch(paths.repoRoot, branch)
-		}
+	if slices.Contains(state.Branches, branch) {
+		return git.CheckoutBranch(paths.repoRoot, branch)
 	}
 	return fmt.Errorf("local branch %q not found", branch)
 }

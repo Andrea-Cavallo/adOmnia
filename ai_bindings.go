@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
 	"github.com/Andrea-Cavallo/adOmnia/internal/aigateway"
 	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/mock"
-	"strings"
-	"sync"
 )
 
 type AIEngine struct {

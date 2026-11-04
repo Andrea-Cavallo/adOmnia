@@ -8,7 +8,7 @@ Create a collection in API Workspace and add a request. Choose its method, enter
 
 Press SEND. The response shows status, elapsed time and payload. Inspect response headers and add assertions in Tests. Save the request with a useful name.
 
-![Request and successful response](screenshots/api-connected.png)
+![Request and successful response](../assets/screenshots/api-workspace.png)
 
 ## 2. Reuse environments
 
@@ -28,7 +28,7 @@ Set a breakpoint in the handler. Start a Debug configuration, or choose Debug Re
 
 Send the request. At a breakpoint, inspect locals, watches, frames and goroutines in Code Studio. Continue execution to obtain the response. The HANDLER strip provides OPEN IN GO IDE when the route is recognized.
 
-![Debugger paused with variables and goroutines](screenshots/go-debug-light.png)
+![Debugger paused with variables and goroutines](../assets/screenshots/go-debugger.png)
 
 ## 5. Inspect what the request touched
 

@@ -14,7 +14,7 @@
 <p align="center">
   <a href="https://github.com/Andrea-Cavallo/adOmnia/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Andrea-Cavallo/adOmnia?color=8A2BE2"></a>
   <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/build.yml?branch=main&label=build"></a>
-  <a href="LICENSE"><img alt="Licencia: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+  <a href="LICENSE"><img alt="Licencia: GPL v3" src="https://img.shields.io/badge/License-GPLv3-blue.svg"></a>
   <a href="https://www.adomnia-dev.com"><img alt="Sitio web" src="https://img.shields.io/badge/website-adomnia--dev.com-8A2BE2"></a>
 </p>
 
@@ -50,7 +50,7 @@ La mayoría de los desarrolladores alternan entre un IDE, un cliente API, una in
 - **Multiplataforma.** Windows, macOS y Linux, distribuido como un único ejecutable.
 - **Lado a lado.** Cualquier módulo — API Workspace, Database, Broker, Mock Server, Docker Lab — se abre en su propia ventana nativa, junto al código o en otro monitor.
 
-![El Hub de adOmnia](docs/screenshots/hub-dark.png)
+![El Hub de adOmnia](assets/screenshots/hub.png)
 
 ## Descarga
 
@@ -76,7 +76,7 @@ Cada versión incluye `SHA256SUMS.txt`. Consulta la [guía de instalación](docs
 
 Code Studio es el IDE de Go integrado en adOmnia, pensado para el trabajo diario con Go en máquinas reales.
 
-![Code Studio](docs/screenshots/ide-dark.png)
+![Code Studio](assets/screenshots/code-studio-go.png)
 
 | Área | Qué obtienes |
 | --- | --- |
@@ -124,7 +124,7 @@ Inicia un servicio con Run o Debug y se convierte en una [Live Development Sessi
 
 ## Herramientas de API y runtime
 
-![API Workspace](docs/screenshots/api-light.png)
+![API Workspace](assets/screenshots/api-workspace.png)
 
 | Área | Resumen |
 | --- | --- |
@@ -186,9 +186,9 @@ Las solicitudes, aserciones o umbrales fallidos devuelven un código de salida d
 <details>
 <summary>Apariencias clara y oscura</summary>
 
-![El Hub en la apariencia clara](docs/screenshots/hub-light.png)
+![El Hub en la apariencia clara](assets/screenshots/hub.png)
 
-![API Workspace en la apariencia oscura](docs/screenshots/api-dark.png)
+![API Workspace en la apariencia oscura](assets/screenshots/api-workspace.png)
 
 </details>
 
@@ -244,4 +244,4 @@ Informa de errores y propón cambios en [GitHub Issues](https://github.com/Andre
 
 ## Licencia
 
-[MIT](LICENSE) · Copyright © 2026 Andrea Cavallo · [Avisos de terceros](NOTICE.md)
+[GNU General Public License v3.0](LICENSE) (GPL-3.0-only) · Copyright © 2026 Andrea Cavallo · [Avisos de terceros](NOTICE.md)

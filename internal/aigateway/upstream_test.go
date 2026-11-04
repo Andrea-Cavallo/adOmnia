@@ -1,8 +1,9 @@
 package aigateway
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/ai"
 )
 
 func TestGatewayUpstreamBaseURL(t *testing.T) {

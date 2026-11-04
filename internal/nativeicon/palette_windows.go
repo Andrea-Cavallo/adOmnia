@@ -4,9 +4,10 @@ package nativeicon
 
 import (
 	"fmt"
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"strings"
 	"unsafe"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var currentPalette string

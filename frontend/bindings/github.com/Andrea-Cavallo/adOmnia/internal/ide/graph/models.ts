@@ -54,6 +54,46 @@ export class DriftReport {
     }
 }
 
+export class Edge {
+    "from": string;
+    "to": string;
+    "kind": string;
+
+    /**
+     * Detail qualifica l'arco: operazione SQL, ruolo del topic…
+     */
+    "detail"?: string;
+
+    /**
+     * Confidence dice quanto è dimostrabile il collegamento (declared, derived, inferred, observed).
+     * Gli archi senza valore sono intesi "derived" per i grafi esistenti.
+     */
+    "confidence"?: string;
+
+    /** Creates a new Edge instance. */
+    constructor($$source: Partial<Edge> = {}) {
+        if (!("from" in $$source)) {
+            this["from"] = "";
+        }
+        if (!("to" in $$source)) {
+            this["to"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Edge instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Edge {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Edge($$parsedSource as Partial<Edge>);
+    }
+}
+
 /**
  * Impact è ciò che una modifica al target può rompere.
  */

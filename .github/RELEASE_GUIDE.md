@@ -75,6 +75,17 @@ Test each binary on its target platform:
 6. WebSocket connection works (wss://echo.websocket.org)
 
 ### 5. Create Git Tag
+
+Check the tag before pushing it: it must equal the version in `frontend/package.json` and
+`build/config.yml`, and be higher than every existing release. CI runs the same check and
+refuses to publish otherwise, because GitHub marks the **most recently published** release as
+"Latest" whatever its number (a mistyped `v0.1.24` pushed after `v1.0.24` became the download
+offered to everyone).
+
+```bash
+node scripts/check-release-version.mjs v1.0.0
+```
+
 ```bash
 # Create annotated tag
 git tag -a v1.0.0 -m "Release v1.0.0"
@@ -293,3 +304,14 @@ Follow hotfix procedure above, or revert to previous version.
 ---
 
 **Questions?** Open a discussion: https://github.com/Andrea-Cavallo/adOmnia/discussions
+
+## Fixing a mistyped release
+
+If a wrong tag was published anyway:
+
+1. Delete the wrong release and its tag (GitHub → Releases → Delete, then `git push origin :refs/tags/vX.Y.Z`).
+2. Open the right release and tick **Set as the latest release** (or `gh release edit vA.B.C --latest`).
+3. Check the website download cards and `releases/latest`: both read GitHub's "Latest".
+
+The in-app updater picks the highest version of the release list, so it is not misled; the
+manual "Check for updates", the install scripts and the website follow "Latest".

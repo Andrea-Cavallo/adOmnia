@@ -1,10 +1,11 @@
 package devcontext
 
 import (
-	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/plugins"
 )
 
 func TestPluginAdaptersDetectDirectDependenciesAndDisappear(t *testing.T) {

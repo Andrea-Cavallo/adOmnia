@@ -3,9 +3,10 @@ package vault
 import (
 	"encoding/base64"
 	"errors"
-	"github.com/zalando/go-keyring"
 	"strings"
 	"testing"
+
+	"github.com/zalando/go-keyring"
 )
 
 func TestSealSurvivesLockAndRejectsTampering(t *testing.T) {

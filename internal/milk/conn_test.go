@@ -5,11 +5,12 @@ import (
 	"context"
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
-	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"io"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 )
 
 // recordingHandler cattura notifiche e risponde alle richieste con un risultato fisso.
