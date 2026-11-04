@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md` (local planning note; the published status is [ISSUES.md](ISSUES.md)). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.1.0 — OSGi Control Center, Equinox runtime, Flow Intelligence and MCP tools
+
+[Release notes](releases/v1.1.0.md). Open large Java 6 / Tycho workspaces without migrating them, diagnose why a bundle does not start, run it in the real Equinox, follow its flows and let an agent read and (opt-in) write the workspace with the same engine. Native acceptance of the new panels remains manual.
+
 ## v1.0.24 — Windows installer and install-aware updates
 
 [Release notes](releases/v1.0.24.md). Windows installer verified on a physical Windows 11 machine on 4 November 2026 (clean install, in-place upgrade, uninstall, in-app update); portable build and the macOS/Linux installers remain unverified.

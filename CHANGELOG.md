@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-11-04
+
+Release notes: [docs/releases/v1.1.0.md](docs/releases/v1.1.0.md).
+
 ### Flow Intelligence: runtime evidence in the Explorer
 
 - **The running framework now backs the graph.** With Equinox started from the OSGi Control Center, *Runtime* in the Flow Explorer correlates the snapshot with the flow graph: ACTIVE bundles (marked in the flow list and in the trace), registered services with provider and the consumers the console reports, and how many edges the runtime proves. `flow_runtime` exposes the same evidence to agents; METHOD-level call paths deliberately keep their static confidence because observing them needs bytecode instrumentation.
