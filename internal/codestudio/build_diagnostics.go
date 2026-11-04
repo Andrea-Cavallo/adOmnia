@@ -61,7 +61,7 @@ func buildDiagnosticReports(session Session, workingDirectory string, diagnostic
 			}
 			converted = append(converted, EditorDiagnostic{
 				Range:    EditorRange{StartLine: item.Line, StartColumn: column, EndLine: item.Line, EndColumn: column + 1},
-				Severity: item.Severity, Message: message, Source: "cargo", Code: item.Code,
+				Severity: item.Severity, Message: message, Source: item.Source, Code: item.Code,
 			})
 		}
 		sort.Slice(converted, func(left, right int) bool { return converted[left].Range.StartLine < converted[right].Range.StartLine })

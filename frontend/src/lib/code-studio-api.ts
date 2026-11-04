@@ -928,6 +928,29 @@ export async function reindexJavaOsgiTarget(sessionId: string): Promise<Workspac
   return GoIDEBindings.ReindexJavaOsgiTarget(sessionId)
 }
 
+const osgiProjects = new Map<string, Promise<boolean>>()
+
+/** Se il progetto contiene bundle OSGi. Una volta per sessione: legge i manifest dell'intera cartella. */
+export function isJavaOsgiProject(sessionId: string): Promise<boolean> {
+  let known = osgiProjects.get(sessionId)
+  if (!known) {
+    known = GoIDEBindings.IsJavaOsgiProject(sessionId).catch(() => false)
+    osgiProjects.set(sessionId, known)
+  }
+  return known
+}
+
+/** Compila i bundle con il compilatore della target platform sulla JVM del progetto. */
+export async function startJavaOsgiBuild(sessionId: string): Promise<void> {
+  await GoIDEBindings.StartJavaOsgiBuild(sessionId)
+}
+
+/** Avvia i bundle in Equinox sulla JVM del progetto; restituisce ciò che non si risolverà a runtime. */
+export async function startJavaOsgiRun(sessionId: string): Promise<string[]> {
+  const result = await GoIDEBindings.StartJavaOsgiRun(sessionId)
+  return result.problems ?? []
+}
+
 /** Repository e unità p2 del file .target attivo (nessun accesso alla rete). */
 export async function previewJavaOsgiP2(sessionId: string): Promise<P2Preview | null> {
   return GoIDEBindings.PreviewJavaOsgiP2(sessionId)

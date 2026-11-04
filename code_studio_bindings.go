@@ -1687,6 +1687,21 @@ func (g *GoIDE) CancelJavaOsgiP2(sessionID string) {
 	g.service.CancelJavaOsgiP2(sessionID)
 }
 
+// IsJavaOsgiProject dice se il progetto contiene bundle OSGi.
+func (g *GoIDE) IsJavaOsgiProject(sessionID string) (bool, error) {
+	return g.service.IsJavaOsgiProject(sessionID)
+}
+
+// StartJavaOsgiBuild compila i bundle con il compilatore della target platform sulla JVM del progetto.
+func (g *GoIDE) StartJavaOsgiBuild(sessionID string) (codestudio.Execution, error) {
+	return g.service.StartJavaOsgiBuild(sessionID)
+}
+
+// StartJavaOsgiRun avvia i bundle in Equinox sulla JVM del progetto.
+func (g *GoIDE) StartJavaOsgiRun(sessionID string) (codestudio.OsgiRunResult, error) {
+	return g.service.StartJavaOsgiRun(sessionID)
+}
+
 // PomManagedVersions: versioni ereditate da parent e BOM per le dipendenze senza <version>.
 func (g *GoIDE) PomManagedVersions(sessionID, relativePath string) (map[string]codestudio.PomManagedVersion, error) {
 	return g.service.PomManagedVersions(sessionID, relativePath)

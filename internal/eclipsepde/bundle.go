@@ -142,6 +142,16 @@ type Bundle struct {
 	Manifest *Manifest
 }
 
+// MatchesThisPlatform applies Eclipse-PlatformFilter to this machine. A filter that
+// cannot be read does not exclude the bundle: Equinox will report it, with a real reason.
+func (b *Bundle) MatchesThisPlatform() bool {
+	if b.Manifest == nil {
+		return true
+	}
+	filter, err := parseLDAPFilter(b.Manifest.Main["Eclipse-PlatformFilter"])
+	return err != nil || filter.matches(p2Environment(false))
+}
+
 // ParseBundle builds a Bundle from manifest bytes and the location they came from.
 // Headers that are structurally invalid are reported as errors; missing optional
 // headers fall back to sane defaults (version 0.0.0, classpath ".").

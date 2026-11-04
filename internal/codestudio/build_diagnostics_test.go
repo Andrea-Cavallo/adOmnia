@@ -20,7 +20,7 @@ func TestBuildDiagnosticReportsResolveWorkspaceRelativePaths(t *testing.T) {
 	}
 	session := Session{ID: "s1", Project: Project{RealPath: root}}
 	reports := buildDiagnosticReports(session, member, []run.Diagnostic{
-		{File: "crates/api/src/main.rs", Line: 1, Column: 18, Severity: 1, Code: "E0308", Message: "mismatched types", Help: "try changing the type"},
+		{File: "crates/api/src/main.rs", Line: 1, Column: 18, Severity: 1, Code: "E0308", Message: "mismatched types", Help: "try changing the type", Source: "cargo"},
 		{File: "/home/user/.cargo/registry/src/x/lib.rs", Line: 3, Column: 1, Severity: 1, Message: "outside the project"},
 		{File: "src/missing.rs", Line: 1, Column: 1, Severity: 2, Message: "file not in the project"},
 	})

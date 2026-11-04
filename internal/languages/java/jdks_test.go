@@ -1,6 +1,8 @@
 package java
 
 import (
+	"archive/zip"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -116,6 +118,46 @@ func TestJDTSettingsCarryTheProjectJDKFirst(t *testing.T) {
 	}
 	if err := SetProjectJavaHome(root, filepath.Join(root, "missing")); err == nil {
 		t.Fatal("una cartella senza bin/java deve essere rifiutata")
+	}
+}
+
+func TestJava6HasNoReleaseFileSoItsVersionComesFromRtJar(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, "bin", sdk.ExecutableName("java"))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, nil, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runtimeJar := filepath.Join(home, "jre", "lib", "rt.jar")
+	if err := os.MkdirAll(filepath.Dir(runtimeJar), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Create(runtimeJar)
+	if err != nil {
+		t.Fatal(err)
+	}
+	archive := zip.NewWriter(file)
+	entry, err := archive.Create("META-INF/MANIFEST.MF")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := entry.Write([]byte("Manifest-Version: 1.0\r\nImplementation-Title: Java Runtime Environment\r\nImplementation-Version: 1.6.0_45\r\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	jdk, ok := InspectJDK(home, "selected")
+	if !ok || jdk.Version != "1.6.0_45" || jdk.Major != 6 {
+		t.Fatalf("jdk = %+v, ok = %v", jdk, ok)
+	}
+	if _, ok := InspectJDK(t.TempDir(), "selected"); ok {
+		t.Fatal("a folder without bin/java is not a JVM")
 	}
 }
 

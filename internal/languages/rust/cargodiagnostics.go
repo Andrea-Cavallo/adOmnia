@@ -47,7 +47,7 @@ func cargoDiagnosticFromLine(line string) (run.Diagnostic, bool) {
 	if severity == 0 {
 		return run.Diagnostic{}, false
 	}
-	diagnostic := run.Diagnostic{Severity: severity, Message: message.Message.Message}
+	diagnostic := run.Diagnostic{Severity: severity, Message: message.Message.Message, Source: "cargo"}
 	if message.Message.Code != nil {
 		diagnostic.Code = message.Message.Code.Code
 	}

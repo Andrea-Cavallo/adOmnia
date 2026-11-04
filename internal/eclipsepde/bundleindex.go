@@ -104,6 +104,24 @@ func (idx *BundleIndex) ProvidersOf(pkg string) []Provider {
 	return out
 }
 
+// PlatformFragmentsOf lists the fragments attached to host that apply to this machine.
+func (idx *BundleIndex) PlatformFragmentsOf(host *IndexedBundle) []*IndexedBundle {
+	var fragments []*IndexedBundle
+	for _, entry := range idx.all {
+		clause := entry.Bundle.FragmentHost
+		if clause == nil || clause.Name != host.Bundle.SymbolicName {
+			continue
+		}
+		if rng, ok, err := clause.VersionRangeOf("bundle-version"); err == nil && ok && !rng.Match(host.Bundle.Version) {
+			continue
+		}
+		if entry.Bundle.MatchesThisPlatform() {
+			fragments = append(fragments, entry)
+		}
+	}
+	return fragments
+}
+
 // Provider is one Export-Package match from the index.
 type Provider struct {
 	Entry         *IndexedBundle

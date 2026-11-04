@@ -893,6 +893,13 @@ func (s *Service) StartRun(request RunRequest) (Execution, error) {
 	}
 	request.Environment = s.withSharedEnvironment(request.Environment)
 	kind := strings.ToLower(strings.TrimSpace(request.Kind))
+	switch kind {
+	case osgiBuildKind:
+		return s.StartJavaOsgiBuild(string(request.SessionID))
+	case osgiRunKind:
+		result, err := s.StartJavaOsgiRun(string(request.SessionID))
+		return result.Execution, err
+	}
 	if !isToolRunKind(kind) && kind != string(RunKindCommand) && kind != "binary" {
 		if _, err := s.runAdapter(request.Language, kind); err != nil {
 			return Execution{}, err

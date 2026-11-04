@@ -152,6 +152,11 @@ export class Diagnostic {
      */
     "help"?: string;
 
+    /**
+     * Source è lo strumento che lo ha prodotto (cargo, ecj), mostrato in Problems.
+     */
+    "source"?: string;
+
     /** Creates a new Diagnostic instance. */
     constructor($$source: Partial<Diagnostic> = {}) {
         if (!("file" in $$source)) {

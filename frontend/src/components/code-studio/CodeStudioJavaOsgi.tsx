@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Boxes, FileCode2, FolderOpen, Loader2, RefreshCw, Search } from 'lucide-react'
+import { Boxes, FileCode2, FolderOpen, Hammer, Loader2, Play, RefreshCw, Search } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
-import { getJavaOsgiWorkspace, reindexJavaOsgiTarget, selectGoIDEFile, selectGoIDEFolder, setJavaOsgiTarget } from '@/lib/code-studio-api'
+import { getJavaOsgiWorkspace, reindexJavaOsgiTarget, selectGoIDEFile, selectGoIDEFolder, setJavaOsgiTarget, startJavaOsgiBuild, startJavaOsgiRun, subscribeGoIDEEvents } from '@/lib/code-studio-api'
+import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { studioToast } from '@/stores/codeStudioToast'
 import { CodeStudioJavaOsgiP2 } from './CodeStudioJavaOsgiP2'
 import type { BundleStatus, MissingDependency, WorkspaceReport } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import { withContentKeys } from '@/lib/contentKeys'
@@ -50,6 +52,17 @@ function BundleRow({ bundle }: Readonly<{ bundle: BundleStatus }>) {
   )
 }
 
+/** Payload di `osgi.build` (codestudio.OsgiBuildEvent, inviato come evento e non come modello dei binding). */
+interface OsgiBuildEvent {
+  done: number
+  total: number
+  bundle: string
+  finished: boolean
+  stopped: boolean
+  errors: number
+  problems: string[]
+}
+
 function subtitleOf(report: WorkspaceReport | null, busy: boolean): string {
   if (busy) return 'Reading manifests…'
   if (!report) return ''
@@ -58,9 +71,43 @@ function subtitleOf(report: WorkspaceReport | null, busy: boolean): string {
   return `${bundles} · ${report.targetBundles} in target · ${report.unresolved} unresolved`
 }
 
+/** Avvia una build o una Run dal pannello: l'output è nella console Run, gli errori in Problems. */
+export function runOsgiBuild(sessionId: string): void {
+  useCodeStudioLspStore.getState().showToolWindow('run')
+  startJavaOsgiBuild(sessionId).catch((reason: unknown) => studioToast(messageOf(reason), 'info'))
+}
+
+export function runOsgiFramework(sessionId: string): void {
+  useCodeStudioLspStore.getState().showToolWindow('run')
+  startJavaOsgiRun(sessionId)
+    .then((problems) => { if (problems.length > 0) studioToast(`${problems.length} bundle problem(s) at runtime: ${problems[0]}`, 'info') })
+    .catch((reason: unknown) => studioToast(messageOf(reason), 'info'))
+}
+
+/** Esito di una build: i problemi che non hanno un file e una riga (dipendenze, bytecode) stanno solo qui. */
+export function buildOutcomeMessage(outcome: Pick<OsgiBuildEvent, 'done' | 'total' | 'stopped' | 'errors' | 'problems'>): string {
+  if (outcome.stopped) return `Build stopped after ${outcome.done} of ${outcome.total} bundle(s)`
+  const base = outcome.errors > 0 ? `${outcome.errors} compile error(s) in ${outcome.total} bundle(s): see Problems` : `${outcome.total} bundle(s) compiled`
+  const first = outcome.problems?.[0]
+  if (!first) return base
+  const others = outcome.problems.length > 1 ? ` (+${outcome.problems.length - 1} more)` : ''
+  return `${base}. ${first}${others}`
+}
+
+function announceBuildOutcome(outcome: OsgiBuildEvent): void {
+  const clean = outcome.errors === 0 && !outcome.stopped && (outcome.problems?.length ?? 0) === 0
+  studioToast(buildOutcomeMessage(outcome), clean ? 'success' : 'info')
+  if (outcome.errors > 0) useCodeStudioLspStore.getState().showToolWindow('problems')
+}
+
 /** Target platform e stato dei bundle, come il Plug-in Manifest Editor di Eclipse: dice perché un bundle non si risolve. */
 export function CodeStudioJavaOsgi() {
   const [sessionId, setSessionId] = useState<string | null>(null)
+  useEffect(() => subscribeGoIDEEvents((event) => {
+    if (event.type !== 'osgi.build') return
+    const outcome = event.payload as OsgiBuildEvent
+    if (outcome.finished) announceBuildOutcome(outcome)
+  }), [])
   const [report, setReport] = useState<WorkspaceReport | null>(null)
   const [target, setTarget] = useState('')
   const [error, setError] = useState('')
@@ -126,6 +173,8 @@ export function CodeStudioJavaOsgi() {
           <label className="flex shrink-0 items-center gap-1 text-[11px] text-text-3">
             <input type="checkbox" checked={issuesOnly} onChange={(event) => setIssuesOnly(event.target.checked)} /> Missing dependencies only
           </label>
+          <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiBuild(sessionId); setSessionId(null) } }} title="Compile with the Eclipse compiler of the target, on the project JVM (Java > Select JDK)"><Hammer size={13} /> Build</button>
+          <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiFramework(sessionId); setSessionId(null) } }} title="Start the compiled bundles in Equinox, on the project JVM"><Play size={13} /> Run</button>
         </div>
         {busy && <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> A full Eclipse target has about a thousand bundles: this can take a few seconds.</p>}
         {error && <p className="whitespace-pre-wrap px-3 py-3 text-[11px] text-danger">{error}</p>}
