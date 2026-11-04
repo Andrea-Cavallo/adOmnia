@@ -77,7 +77,8 @@ package_tarball() {
     } > "$stage/README-linux.txt"
 
     tar -czf "dist/${basename}.tar.gz" -C "$stage" .
-    sha256sum "dist/${basename}.tar.gz" > "dist/${basename}.tar.gz.sha256"
+    # Bare file name, so `sha256sum -c` works next to the downloaded tarball.
+    (cd dist && sha256sum "${basename}.tar.gz" > "${basename}.tar.gz.sha256")
     rm -rf "$stage"
 }
 

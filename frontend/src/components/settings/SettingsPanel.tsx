@@ -384,7 +384,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
         {sectionDefs.length === 0 && (
           <p className="px-3 py-2 text-[12px] leading-relaxed text-text-3">No setting matches "{search.trim()}".</p>
         )}
-        <p className="mt-auto px-2.5 pt-4 text-[12px] leading-relaxed text-text-3">© {tu('All rights reserved · Developed by Andrea Cavallo')}</p>
+        <p className="mt-auto px-2.5 pt-4 text-[12px] leading-relaxed text-text-3">© {tu('GNU GPL v3 · Developed by Andrea Cavallo')}</p>
       </aside>
 
       {/* Content */}

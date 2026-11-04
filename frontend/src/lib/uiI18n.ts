@@ -1011,7 +1011,7 @@ export const ITALIAN_UI_MESSAGES = {
   'Use theme color': 'Ripristina colore del tema',
   'Hex color': 'Colore esadecimale',
   'One color across the app. Shades adapt for readable text in Dark and White.': 'Un colore per tutta l’app. Le tonalità si adattano per testi leggibili in Dark e White.',
-  'All rights reserved · Developed by Andrea Cavallo': 'Tutti i diritti riservati · Sviluppato da Andrea Cavallo',
+  'GNU GPL v3 · Developed by Andrea Cavallo': 'GNU GPL v3 · Sviluppato da Andrea Cavallo',
   'Right-click: accent color': 'Tasto destro: colore principale',
   'Default colors': 'Colori predefiniti',
   'Accent and base color': 'Colore principale e di base',

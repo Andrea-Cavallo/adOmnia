@@ -473,7 +473,7 @@ export const RU_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Use theme color": "Использовать цвет темы",
   "Hex color": "HEX-цвет",
   "One color across the app. Shades adapt for readable text in Dark and White.": "Один цвет на всё приложение. Оттенки автоматически подбираются для читаемого текста в темах Dark и White.",
-  "All rights reserved · Developed by Andrea Cavallo": "Все права защищены · Разработано Andrea Cavallo",
+  "GNU GPL v3 · Developed by Andrea Cavallo": "GNU GPL v3 · Разработано Andrea Cavallo",
   "Right-click: accent color": "Правый щелчок: акцентный цвет",
   "Default colors": "Цвета по умолчанию",
   "Accent and base color": "Акцентный и базовый цвет",
