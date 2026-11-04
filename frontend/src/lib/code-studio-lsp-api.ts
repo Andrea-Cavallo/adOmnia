@@ -18,6 +18,8 @@ import type {
   SearchMatch,
   SearchQuery,
   SearchResult,
+  SearchStreamInfo,
+  RipgrepInfo,
   SignatureResult,
   WorkspaceChange,
   WorkspaceSymbol,
@@ -53,6 +55,8 @@ export type GoIDELintResult = LintResult
 export type GoIDELinterKind = 'golangci-lint' | 'staticcheck'
 export type GoIDESearchMatch = SearchMatch
 export type GoIDESearchResult = SearchResult
+export type GoIDESearchStreamInfo = SearchStreamInfo
+export type GoIDERipgrepInfo = RipgrepInfo
 /** Payload dell'evento `lsp.diagnostics` (codeStudio.DiagnosticsReport). */
 export interface GoIDEDiagnostic {
   range: EditorRange
@@ -219,6 +223,21 @@ export function requestOrganizeImports(sessionId: string, documentId: string): C
 
 export function requestProjectSearch(query: SearchQuery): CancellablePromise<SearchResult> {
   return GoIDEBindings.SearchProject(query)
+}
+
+/** Avvia la ricerca progressiva: i risultati arrivano con gli eventi `search.matches`. */
+export function startProjectSearch(query: SearchQuery): Promise<GoIDESearchStreamInfo> {
+  return GoIDEBindings.StartProjectSearch(query)
+}
+
+/** Ferma la ricerca progressiva precedente (cambio query, chiusura del pannello). */
+export function cancelProjectSearch(id: string): Promise<void> {
+  return GoIDEBindings.CancelProjectSearch(id)
+}
+
+/** Dice se Find in Files usa ripgrep (veloce) o il motore Go di fallback. */
+export function requestRipgrepStatus(): Promise<GoIDERipgrepInfo> {
+  return GoIDEBindings.RipgrepStatus()
 }
 
 export function requestSemanticTokens(sessionId: string, documentId: string): CancellablePromise<SemanticTokensResult> {

@@ -90,6 +90,9 @@ type Service struct {
 	lint          lintRegistry
 	sonar         sonarRegistry
 	watcher       *WatchManager
+	// searches are the streaming Find in Files jobs (search_stream.go).
+	searchesMu sync.Mutex
+	searches   map[string]context.CancelFunc
 	// previews è il Live Server: server statici e dev server dei progetti web, uno per anteprima e sessione.
 	previews       *preview.Manager
 	previewConfigs previewConfigStore
