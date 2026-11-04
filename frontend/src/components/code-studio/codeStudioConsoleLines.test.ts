@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { parseConsoleLines, resetConsoleLineCache, resolveCarriageReturns, type ConsoleChunk } from './codeStudioConsoleLines'
+import { consoleServerURL, parseConsoleLines, resetConsoleLineCache, resolveCarriageReturns, type ConsoleChunk } from './codeStudioConsoleLines'
 
 function chunk(text: string, sequence = 1, stream: ConsoleChunk['stream'] = 'stdout'): ConsoleChunk {
   return { text, sequence, stream }
@@ -40,6 +40,27 @@ describe('parseConsoleLines', () => {
     parseConsoleLines([chunk('old\n', 1)])
     const trimmed = [chunk('kept\n', 2)]
     expect(parseConsoleLines(trimmed).map((line) => line.text)).toEqual(['kept'])
+  })
+
+  it('keeps parsing incrementally when the buffer drops its oldest chunks', () => {
+    const first = chunk('one\n', 1)
+    const second = chunk('two\nthr', 2)
+    const before = parseConsoleLines([first, second])
+    const third = chunk('ee\n', 3)
+    const after = parseConsoleLines([second, third])
+    expect(after.map((line) => line.text)).toEqual(['two', 'three'])
+    // Stessi oggetti e stessi id: al limite dei 4 MB React non ridisegna le righe e la regex non riparte.
+    expect(after[0]).toBe(before[1])
+    expect(after[1].id).toBe(before[2].id)
+  })
+
+  it('finds the server URL once, also after its line left the buffer', () => {
+    const banner = chunk('Listening on http://localhost:8080\n', 1)
+    const log = chunk('request\n', 2)
+    expect(consoleServerURL([banner])).toBe('http://localhost:8080')
+    expect(consoleServerURL([banner, log])).toBe('http://localhost:8080')
+    expect(consoleServerURL([log])).toBe('http://localhost:8080')
+    expect(consoleServerURL([chunk('nothing here\n', 3)])).toBeUndefined()
   })
 
   it('overwrites the line on carriage return like a terminal', () => {

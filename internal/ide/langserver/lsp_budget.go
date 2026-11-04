@@ -77,6 +77,7 @@ func (m *LSPManager) monitorMemoryBudget(b *lspMemoryBudget) {
 		default:
 		}
 		if len(snapshot.Processes) > 0 && snapshot.Processes[0].RAM > 0 {
+			b.policy.ObserveSystem(resources.AvailableMemoryPercent())
 			m.enforceMemoryBudget(b.policy, snapshot, time.Now())
 		}
 		timer.Reset(memoryBudgetSampleInterval)

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { confirm } from '@/lib/confirmDialog'
+import { createOutputBatcher } from '@/lib/code-studio/outputBatcher'
 import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 import {
   detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugGoroutines, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
@@ -12,6 +13,7 @@ import { useCodeStudioStore } from './codeStudio'
 import { useCodeStudioLspStore } from './codeStudioLsp'
 
 const MAX_CONSOLE_LINES = 2000
+const DEBUG_OUTPUT_FLUSH_MS = 120
 const MAX_DEBUGGERS_PER_SESSION = 5
 /** Suggerimento del terminale di Delve: in un IDE non serve. */
 const DELVE_NOISE = /^Type 'dlv help' for list of commands\.?\s*$/
@@ -236,6 +238,15 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
     const view = state.debuggers[debugId]
     return view ? { debuggers: { ...state.debuggers, [debugId]: { ...view, ...update(view) } } } : {}
   })
+
+  // Il debug adapter manda un evento per riga: un programma che scrive molto non deve ridisegnare il pannello a ogni riga.
+  const debugOutput = createOutputBatcher<GoIDEDebugOutput>((items) => {
+    for (const debugId of new Set(items.map((item) => item.debugId))) {
+      updateView(debugId, (view) => ({
+        console: items.filter((item) => item.debugId === debugId).reduce((lines, item) => appendLines(lines, consoleCategory(item), item.text.replace(/\n$/, '')), view.console),
+      }))
+    }
+  }, DEBUG_OUTPUT_FLUSH_MS)
 
   const isCurrentPause = (debugId: string, token: number) => pauseTokens[debugId] === token && get().debuggers[debugId]?.info.state === 'stopped'
 
@@ -715,13 +726,14 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
       if (!event.sessionId) return
       if (event.type === 'debug.state') {
         const info = event.payload as GoIDEDebugSession
+        debugOutput.flush() // lo stato (fine sessione, pausa) deve seguire l'output che lo precede
         if (info?.id) applyState(info)
         return
       }
       if (event.type === 'debug.output') {
         const output = event.payload as GoIDEDebugOutput
         if (!output?.debugId || DELVE_NOISE.test(output.text)) return
-        if (get().debuggers[output.debugId]) updateView(output.debugId, (view) => ({ console: appendLines(view.console, consoleCategory(output), output.text.replace(/\n$/, '')) }))
+        debugOutput.add(output)
         return
       }
       if (event.type === 'debug.functionBreakpoints') {

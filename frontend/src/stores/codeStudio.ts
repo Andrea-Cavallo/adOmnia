@@ -8,6 +8,7 @@ import { startSharedEnvironmentSync } from '@/lib/code-studio/sharedEnvironment'
 import { safeSetItem } from '@/lib/safeLocalStorage'
 import { markStartup, recordStudioSwitch } from '@/lib/startupPerformance'
 import { rememberedStudioSession, studioSessionMemoryKey } from '@/lib/code-studio/studioSessionMemory'
+import { createOutputBatcher, type OutputBatcher } from '@/lib/code-studio/outputBatcher'
 import {
   checkGoIDEDocument,
   chooseGoIDEProjectFolder,
@@ -350,6 +351,21 @@ function appendConsole(chunks: GoIDEConsoleChunk[], next: GoIDEConsoleChunk): Go
     result.shift()
   }
   return result
+}
+
+/** Massimo otto aggiornamenti della console al secondo: oltre non si legge e li paga l'editor. */
+const CONSOLE_FLUSH_MS = 120
+
+type ConsoleSetter = (partial: (state: { consoleByRun: Record<string, GoIDEConsoleChunk[]> }) => { consoleByRun: Record<string, GoIDEConsoleChunk[]> }) => void
+let consoleBatcher: OutputBatcher<{ runId: string; chunk: GoIDEConsoleChunk }> | null = null
+
+function consoleOutput(set: ConsoleSetter): OutputBatcher<{ runId: string; chunk: GoIDEConsoleChunk }> {
+  consoleBatcher ??= createOutputBatcher((items) => set((state) => {
+    const consoleByRun = { ...state.consoleByRun }
+    for (const { runId, chunk } of items) consoleByRun[runId] = appendConsole(consoleByRun[runId] ?? [], chunk)
+    return { consoleByRun }
+  }), CONSOLE_FLUSH_MS)
+  return consoleBatcher
 }
 
 function findSessionDocument(documents: GoIDEEditorDocument[], sessionId: string, path: string): GoIDEEditorDocument | undefined {
@@ -1292,7 +1308,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
       const known = get().executions.some((execution) => execution.id === runId && execution.sessionId === event.sessionId)
       if (!known) return
       const stream = payload.stream === 'stderr' ? 'stderr' : 'stdout'
-      set((state) => ({ consoleByRun: { ...state.consoleByRun, [runId]: appendConsole(state.consoleByRun[runId] ?? [], { sequence: event.sequence, stream, text: payload.text ?? '' }) } }))
+      consoleOutput(set).add({ runId, chunk: { sequence: event.sequence, stream, text: payload.text } })
       return
     }
     if (event.type === 'files.changed' && event.sessionId) {
@@ -1301,6 +1317,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     }
     if ((event.type === 'run.started' || event.type === 'run.finished') && isExecution(event.payload)) {
       const execution = event.payload
+      consoleOutput(set).flush() // l'esito in fondo alla console deve seguire l'ultimo output
       // Ogni esecuzione (anche Go Tools e dipendenze) mostra il comando in testa e l'esito in fondo.
       set((state) => ({
         executions: replaceExecution(state.executions, execution),

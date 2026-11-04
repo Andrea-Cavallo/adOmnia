@@ -14,12 +14,11 @@ import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTes
 import { selectDebugState } from './codeStudioDebugCommands'
 import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import type { GoIDEExecution, GoIDESession } from '@/lib/code-studio-api'
-import { firstLocalServerURL } from '@/lib/code-studio/runServerURL'
 import { openExternal } from '@/lib/openExternal'
 import { handOffOpenApiURL } from '@/lib/moduleHandoff'
 import { useAppStore } from '@/stores/app'
 import { resolveConsolePath } from './codeStudioConsolePaths'
-import { parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLines'
+import { consoleServerURL, parseConsoleLines, type ConsoleParsedLine } from './codeStudioConsoleLines'
 import { CONSOLE_WINDOW, CONSOLE_WINDOW_STEP, MAX_RENDERED_LINES, consoleVisibleStart } from './codeStudioConsoleWindow'
 import { consoleLogLevel, consoleSegments, type ConsoleLogLevel } from './codeStudioLogLevels'
 import { CodeStudioProblems, type CodeStudioBuildProblem } from './CodeStudioProblems'
@@ -64,6 +63,7 @@ interface CodeStudioRunPanelProps {
 type ParsedLine = ConsoleParsedLine
 
 const EMPTY_CHUNKS: GoIDEConsoleChunk[] = []
+const EMPTY_LINES: ParsedLine[] = []
 
 function renderAnsi(raw: string) {
   const segments: Array<{ text: string; className: string }> = []
@@ -122,6 +122,12 @@ function renderConsoleLine(line: ParsedLine, level: ConsoleLogLevel | null) {
     <span key={index} className={segment.kind === 'timestamp' ? 'text-text-4' : segment.kind === 'level' ? LEVEL_TOKEN[level] : undefined}>{segment.text}</span>
   ))
 }
+
+/** Memoizzata: un aggiornamento disegna solo le righe nuove, non le mille già a schermo. */
+const ConsoleLine = memo(function ConsoleLine({ line, wrap, workingDirectory, openLocation }: Readonly<{ line: ParsedLine; wrap: boolean; workingDirectory: string; openLocation: (path: string, line: number, column?: number) => unknown }>) {
+  const level = line.stream === 'system' ? null : consoleLogLevel(line.text)
+  return <CodeStudioConsoleRow line={line} wrap={wrap} className={consoleLineClass(line, level)} onNavigate={line.path && line.line ? () => void openLocation(resolveConsolePath(line.path!, workingDirectory), line.line!, line.column) : undefined}>{renderConsoleLine(line, level)}</CodeStudioConsoleRow>
+})
 
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${milliseconds} ms`
@@ -222,7 +228,9 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
   // ridisegnare questa console.
   const chunks = useCodeStudioStore((state) => (active ? state.consoleByRun[active.id] : undefined) ?? EMPTY_CHUNKS)
   // PY-7.3: l'URL locale dichiarato dal server avviato si apre solo su azione esplicita.
-  const serverURL = useMemo(() => firstLocalServerURL(chunks.map((chunk) => chunk.text).join('')), [chunks])
+  // Con la console nascosta l'analisi aspetta: riparte incrementale da dove era arrivata.
+  const consoleInUse = visible && (view === 'run' || view === 'problems')
+  const serverURL = useMemo(() => consoleInUse ? consoleServerURL(chunks) : undefined, [chunks, consoleInUse])
   // Una nuova esecuzione porta in primo piano la finestra Run; i test hanno la loro finestra.
   const seenRunId = useRef(activeRunId)
   useEffect(() => {
@@ -231,7 +239,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
     const started = executions.find((execution) => execution.id === activeRunId)
     if (started?.status === 'running' && started.kind !== 'tests' && started.kind !== 'devserver') showToolWindow('run')
   }, [activeRunId, executions, showToolWindow, standalone, fixedView])
-  const lines = useMemo(() => parseConsoleLines(chunks), [chunks])
+  const lines = useMemo(() => consoleInUse ? parseConsoleLines(chunks) : EMPTY_LINES, [chunks, consoleInUse])
   const buildSteps = useMemo(() => active?.kind === 'docker-build' ? buildKitProgress(chunks.map(chunk=>chunk.text).join('')) : [], [active?.kind, chunks])
   const buildProblems = useMemo<CodeStudioBuildProblem[]>(() => lines
     .filter((line) => line.path && line.line)
@@ -342,12 +350,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
               {Math.min(hiddenLines, CONSOLE_WINDOW_STEP).toLocaleString()} earlier lines not shown · show more (search and Copy console use the full output)
             </button>
           )}
-          {visibleLines.map((line, index) => {
-            const level = line.stream === 'system' ? null : consoleLogLevel(line.text)
-            return (
-            <CodeStudioConsoleRow key={`${line.sequence}-${index}`} line={line} wrap={wrapOutput} className={consoleLineClass(line, level)} onNavigate={line.path && line.line ? () => void openLocation(resolveConsolePath(line.path!, active?.workingDirectory ?? ''), line.line!, line.column) : undefined}>{renderConsoleLine(line, level)}</CodeStudioConsoleRow>
-            )
-          })}
+          {visibleLines.map((line) => <ConsoleLine key={line.id} line={line} wrap={wrapOutput} workingDirectory={active?.workingDirectory ?? ''} openLocation={openLocation} />)}
         </div>
         {active?.status === 'running' && inputOpen && (
             <CodeStudioProgramInput id={`run-input-${active.id}`} onClose={closeInput} inputRef={inputRef} value={input} onChange={setInput} onSubmit={() => void submitInput()} />

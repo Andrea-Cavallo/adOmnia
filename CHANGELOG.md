@@ -30,6 +30,18 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - Optional **Install downloaded updates when I close adOmnia**, separate from automatic downloads; the save and running-task checks still apply. Postponing turns it off.
 - Repeated checks and downloads are coalesced, and a verified download is reused after a restart (signature, version and hash are checked again).
 
+### Typing stays fluid while the app works
+
+- **Measured in the real app:** keypress-to-paint p95 is now under 25 ms while a program floods the Run console (it was 61 ms, with the main thread saturated), and about 20 ms during tests, debugging and a gopls reload. Method, numbers and limits: [input-latency-2026-11-04](docs/performance/input-latency-2026-11-04.md). `scripts/perf-typing/run.ps1` repeats the measurement on any build.
+- **Run console:** with the 4 MB buffer full it no longer parses everything again at each update and redraws only new rows. The local server URL stays available after its line leaves the buffer. Console and debug output update at most about eight times per second.
+
+### Several projects open without restarting their language servers
+
+- The memory target is now a quarter of the RAM, between 1 and 16 GiB (it was an eighth, up to 3 GiB): five Go projects no longer hibernate each other on a machine with memory to spare.
+- A project used in the last ten minutes keeps its language server, so going back and forth no longer reloads a workspace at each switch.
+- When the machine itself has under 10% of its RAM available, inactive servers are released even below the target, after 30 seconds as before, until 15% is available again.
+- `ADOMNIA_MEMORY_BUDGET_MIB` still sets the target by hand.
+
 ### OSGi bundles and target platform for legacy Eclipse PDE projects (Code Studio, first step)
 
 - New **Java → OSGi Bundles & Target Platform…**: lists the bundles of the project (Eclipse projects with `META-INF/MANIFEST.MF`, also nested such as `plugins/<name>`). Choose a target platform (a folder of bundles, an Eclipse installation such as Kepler, or a `.target` file) and each bundle shows *Resolved*, *Warning* or *Unresolved*, with the missing dependency, the required range and the versions found in the target.

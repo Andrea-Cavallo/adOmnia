@@ -8,7 +8,7 @@ import (
 func TestBudgetHysteresisAndCooldown(t *testing.T) {
 	now := time.Now()
 	b := NewMemoryBudget(1000)
-	c := []BudgetCandidate{{ID: "old", Bytes: 400, Eligible: true, InactiveSince: now.Add(-time.Minute), StartedAt: now.Add(-time.Minute)}}
+	c := []BudgetCandidate{{ID: "old", Bytes: 400, Eligible: true, InactiveSince: now.Add(-time.Hour), StartedAt: now.Add(-time.Hour)}}
 	if b.Choose(now, 999, c) != nil || b.Status().Pressure {
 		t.Fatal("pressure below target")
 	}
@@ -50,6 +50,44 @@ func TestBudgetProtectsBusyActiveAndRecentlyUsedResources(t *testing.T) {
 	}
 }
 
+// Going back and forth between projects must not reload a workspace at every switch,
+// unless the machine itself is running out of memory.
+func TestBudgetKeepsRecentlyUsedProjectsUntilTheSystemIsShortOfMemory(t *testing.T) {
+	now := time.Now()
+	b := NewMemoryBudget(1000)
+	recent := []BudgetCandidate{{ID: "recent", Bytes: 400, Eligible: true, InactiveSince: now.Add(-5 * time.Minute), StartedAt: now.Add(-time.Hour)}}
+	if b.Choose(now, 2000, recent) != nil {
+		t.Fatal("a project used five minutes ago was released with memory available")
+	}
+	if !b.Status().Pressure {
+		t.Fatal("over the target the pressure indicator must still show")
+	}
+	b.ObserveSystem(9)
+	if selected := b.Choose(now, 2000, recent); selected == nil || selected.ID != "recent" {
+		t.Fatalf("a machine short of memory must release it: %+v", selected)
+	}
+	b.ObserveSystem(12) // between the two thresholds: still low
+	b.Released(now.Add(-time.Minute))
+	if b.Choose(now, 2000, recent) == nil {
+		t.Fatal("the low state must hold until the recovery threshold")
+	}
+	b.ObserveSystem(20)
+	b.Released(now.Add(-time.Minute))
+	if b.Choose(now, 2000, recent) != nil {
+		t.Fatal("the low state must clear at the recovery threshold")
+	}
+}
+
+func TestBudgetSystemPressureWorksUnderTheTarget(t *testing.T) {
+	now := time.Now()
+	b := NewMemoryBudget(1000)
+	old := []BudgetCandidate{{ID: "old", Bytes: 400, Eligible: true, InactiveSince: now.Add(-time.Hour), StartedAt: now.Add(-time.Hour)}}
+	b.ObserveSystem(5)
+	if b.Choose(now, 500, old) == nil || !b.Status().Pressure {
+		t.Fatal("another program filling the RAM must release an inactive server")
+	}
+}
+
 func TestBudgetChoosesOldestThenLargestWithStableTieBreak(t *testing.T) {
 	now := time.Now()
 	old := now.Add(-time.Hour)
@@ -65,7 +103,7 @@ func TestBudgetChoosesOldestThenLargestWithStableTieBreak(t *testing.T) {
 }
 
 func TestAutomaticMemoryBudgetAndOverride(t *testing.T) {
-	for _, test := range []struct{ total, expected uint64 }{{4 * 1024 * MiB, 1024 * MiB}, {16 * 1024 * MiB, 2048 * MiB}, {64 * 1024 * MiB, 3072 * MiB}} {
+	for _, test := range []struct{ total, expected uint64 }{{2 * 1024 * MiB, 1024 * MiB}, {8 * 1024 * MiB, 2048 * MiB}, {16 * 1024 * MiB, 4096 * MiB}, {64 * 1024 * MiB, 16384 * MiB}, {256 * 1024 * MiB, 16384 * MiB}} {
 		if got := automaticMemoryBudget(test.total); got != test.expected {
 			t.Fatalf("target = %d", got)
 		}
