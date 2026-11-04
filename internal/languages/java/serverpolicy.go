@@ -10,7 +10,7 @@ import "github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 // OSGi engine compiles those bundles with the ECJ of the target on the project JVM.
 func (*Language) ServerBlocked(projectRoot string) string {
 	if eclipsepde.HasBundles(projectRoot) {
-		return "OSGi/PDE workspace: the Java language server cannot read the target platform or Java 6, so its errors would be wrong. Live checking is off here: use Java > Build OSGi Bundles for the real compiler errors."
+		return "PDE workspace: live Java checking is off — the Java language server has no PDE support (it cannot read the target platform) and refuses Java below 8, so it would report false errors. Use Java → Build OSGi Bundles for the real compiler errors."
 	}
 	return ""
 }
