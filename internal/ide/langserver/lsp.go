@@ -41,6 +41,9 @@ const (
 	// diagnosticsThrottle raggruppa le raffiche di publishDiagnostics di gopls in un solo aggiornamento per file.
 	diagnosticsThrottle   = 150 * time.Millisecond
 	maxDiagnosticsPerFile = 1000
+	// maxUnitServers è il numero massimo di language server avviati insieme da un linguaggio con
+	// server per unità (o per gruppo di unità): oltre, l'unità resta elencata e non parte.
+	maxUnitServers = 8
 )
 
 // LanguageServerOptions è la spec del server prodotta dal language adapter (per Go: gopls).
@@ -219,15 +222,69 @@ func unitRoots(session Session, languageID string) []string {
 	return roots
 }
 
+// serverRoots sono le radici dei server di un linguaggio: quelle raggruppate dall'adapter con
+// language.ServerRoots quando il suo server copre più unità, altrimenti una per unità. Il core non
+// conosce i linguaggi: un rust-analyzer per workspace Cargo nasce da qui.
+func (m *LSPManager) serverRoots(session Session, languageID string) []string {
+	if m.languages == nil {
+		return unitRoots(session, languageID)
+	}
+	if adapter, ok := m.languages.Get(languageID); ok {
+		if grouped, ok := adapter.(language.ServerRoots); ok {
+			if roots := cleanRoots(grouped.ServerRoots(filepath.Clean(session.Project.RealPath), unitsOf(session, languageID))); len(roots) > 0 {
+				return roots
+			}
+		}
+	}
+	return unitRoots(session, languageID)
+}
+
+// unitsOf restituisce le unità della lingua nella sessione, senza modificare lo slice condiviso.
+func unitsOf(session Session, languageID string) []project.Unit {
+	units := make([]project.Unit, 0, len(session.Project.Units))
+	for _, unit := range session.Project.Units {
+		if unit.Language == languageID && unit.Root != "" {
+			units = append(units, unit)
+		}
+	}
+	return units
+}
+
+// cleanRoots normalizza le radici dei server: percorsi puliti, senza duplicati e in ordine stabile,
+// così l'ordine di avvio non dipende dalla mappa dell'adapter.
+func cleanRoots(roots []string) []string {
+	seen := make(map[string]bool, len(roots))
+	cleaned := make([]string, 0, len(roots))
+	for _, root := range roots {
+		if root == "" {
+			continue
+		}
+		key := filepath.Clean(root)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		cleaned = append(cleaned, key)
+	}
+	sort.Strings(cleaned)
+	return cleaned
+}
+
+// serverRootForPath è la radice del server che serve il file: la più profonda tra le radici dei server
+// del linguaggio, o la radice del progetto se il file non appartiene a nessuna.
+func (m *LSPManager) serverRootForPath(session Session, languageID, path string) string {
+	return deepestRoot(session, m.serverRoots(session, languageID), path)
+}
+
 // unitRootForPath è la radice dell'unità del linguaggio che contiene il file (la più profonda), o la
 // radice del progetto se il file non appartiene a nessuna unità.
 func unitRootForPath(session Session, languageID, path string) string {
+	return deepestRoot(session, unitRoots(session, languageID), path)
+}
+
+func deepestRoot(session Session, roots []string, path string) string {
 	root := filepath.Clean(session.Project.RealPath)
-	for _, unit := range session.Project.Units {
-		if unit.Language != languageID || unit.Root == "" {
-			continue
-		}
-		candidate := filepath.Clean(unit.Root)
+	for _, candidate := range roots {
 		if len(candidate) <= len(root) || project.EnsureWithin(candidate, path) != nil {
 			continue
 		}
@@ -427,10 +484,21 @@ func (m *LSPManager) start(session Session, options LanguageServerOptions, reaso
 // è così che due unità con ambienti diversi restano isolate. Un'unità che non parte non impedisce
 // alle altre di funzionare; l'errore della prima finisce nel risultato e nel log della sua unità.
 func (m *LSPManager) startUnits(session Session, options LanguageServerOptions, reason string) (LanguageServerStatus, error) {
-	roots := unitRoots(session, options.Language)
-	started := make(map[string]bool, len(roots))
+	roots := m.serverRoots(session, options.Language)
+	launch, skipped := capServerRoots(roots)
+	for _, root := range skipped {
+		state := m.ensureUnit(session, options.Language, root)
+		stateOptions := options
+		stateOptions.PerUnitSpec = nil
+		state.mu.Lock()
+		state.options = stateOptions
+		state.mu.Unlock()
+		m.trace(state, "not started: the project already runs %d language servers for this language (limit %d)", len(launch), maxUnitServers)
+		m.setState(state, LanguageServerStopped, fmt.Sprintf("not started: language server limit reached (%d)", maxUnitServers))
+	}
+	started := make(map[string]bool, len(launch))
 	var firstErr error
-	for _, root := range roots {
+	for _, root := range launch {
 		started[root] = true
 		if err := m.startUnit(session, options, root, reason); err != nil && firstErr == nil {
 			firstErr = err
@@ -445,6 +513,17 @@ func (m *LSPManager) startUnits(session Session, options LanguageServerOptions, 
 		}
 	}
 	return m.Status(session.ID, options.Language), firstErr
+}
+
+// capServerRoots limita i server avviati insieme per un linguaggio. Un monorepo con decine di unità
+// non può avviare un processo per unità (ognuno con il proprio indice e la propria indicizzazione):
+// oltre il limite le unità restano elencate, con il motivo nel loro log, invece di saturare la
+// macchina. L'ordine delle radici è stabile, quindi la scelta è ripetibile.
+func capServerRoots(roots []string) (launch, skipped []string) {
+	if len(roots) <= maxUnitServers {
+		return roots, nil
+	}
+	return roots[:maxUnitServers], roots[maxUnitServers:]
 }
 
 // startUnit avvia il server di una unità costruendone la spec con la radice dell'unità.

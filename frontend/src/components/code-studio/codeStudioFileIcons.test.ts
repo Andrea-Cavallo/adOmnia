@@ -94,3 +94,10 @@ it('gives JAR and OSGi manifests their own emblem', () => {
  expect(resolveCodeStudioFileIcon('manifest.json')).toEqual({ kind: 'brand', slug: 'json' })
  expect(resolveCodeStudioFileIcon('bundle.mft')).toEqual({ kind: 'generic', icon: 'file' })
 })
+
+it('uses the gear for .properties and the BPMN mark for BPMN diagrams', () => {
+ for (const name of ['messages.properties', 'app.PROPERTIES']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'properties' })
+ for (const name of ['process.bpmn', 'order.BPMN2']) expect(resolveCodeStudioFileIcon(name)).toEqual({ kind: 'bpmn' })
+ // Solo l'estensione: `properties.json` resta JSON.
+ expect(resolveCodeStudioFileIcon('properties.json')).toEqual({ kind: 'brand', slug: 'json' })
+})

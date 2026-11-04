@@ -1,6 +1,7 @@
 package eclipsepde
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -24,7 +25,7 @@ func TestImportPluginsCopiesSeveralProjectsIntoOneWorkspace(t *testing.T) {
 
 	root := t.TempDir()
 	// A workspace of several repositories: the root itself is not a project.
-	result, err := ImportPlugins(root, []string{core, app})
+	result, err := ImportPlugins(context.Background(), root, []string{core, app}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +84,7 @@ func TestImportPluginsNeverOverwrites(t *testing.T) {
 	}
 	inside := writeProject(t, root, "already", bundleManifest("already"), nil)
 
-	result, err := ImportPlugins(root, []string{core, flat, inside})
+	result, err := ImportPlugins(context.Background(), root, []string{core, flat, inside}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,5 +125,54 @@ func TestInsideFolderIsNotAPrefixCheck(t *testing.T) {
 		if got := insideFolder(root, path); got != want {
 			t.Errorf("insideFolder(%q) = %v, want %v", path, got, want)
 		}
+	}
+}
+
+// TestImportPluginsCanBeCancelled keeps a stopped import out of the workspace, and proves the
+// progress callback is not the only way to know it stopped.
+func TestImportPluginsCanBeCancelled(t *testing.T) {
+	downloads := t.TempDir()
+	core := writeProject(t, downloads, "core", bundleManifest("core"), map[string]string{"src/C.java": "class C {}"})
+	root := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	result, err := ImportPlugins(ctx, root, []string{core}, nil)
+	if err == nil {
+		t.Fatal("a cancelled import must fail")
+	}
+	if len(result.Imported) != 0 {
+		t.Fatalf("imported = %v", result.Imported)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "plugins", "core")); !os.IsNotExist(statErr) {
+		t.Fatalf("a cancelled import left a folder behind: %v", statErr)
+	}
+}
+
+// TestRemoveImportedPluginStaysInsidePlugins is the guard that keeps "remove" from deleting a
+// project the user owns somewhere else.
+func TestRemoveImportedPluginStaysInsidePlugins(t *testing.T) {
+	downloads := t.TempDir()
+	core := writeProject(t, downloads, "core", bundleManifest("core"), map[string]string{"src/C.java": "class C {}"})
+	root := t.TempDir()
+	// A project of the workspace that is not an import: it must survive every attempt.
+	own := writeProject(t, root, "own", bundleManifest("own"), map[string]string{"src/O.java": "class O {}"})
+
+	if _, err := ImportPlugins(context.Background(), root, []string{core}, nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"", ".", "..", "core/../own", `..\own`, "missing"} {
+		if err := RemoveImportedPlugin(root, name); err == nil {
+			t.Fatalf("RemoveImportedPlugin(%q) must refuse", name)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(own, "src", "O.java")); err != nil {
+		t.Fatalf("the workspace project was touched: %v", err)
+	}
+	if err := RemoveImportedPlugin(root, "core"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "plugins", "core")); !os.IsNotExist(err) {
+		t.Fatalf("the imported plug-in is still there: %v", err)
 	}
 }

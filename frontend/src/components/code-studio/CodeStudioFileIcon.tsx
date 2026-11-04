@@ -8,6 +8,8 @@ import jenkinsEmblem from './assets/jenkins.png'
 import mavenIcon from './assets/maven.svg'
 import ghostIcon from './assets/ghost.png'
 import javaCup from './assets/java.svg'
+import propertiesGear from './assets/properties.svg'
+import bpmnMark from './assets/bpmn.svg'
 
 export { BrandIcon }
 
@@ -36,6 +38,8 @@ export const CodeStudioFileIcon = memo(function CodeStudioFileIcon({ name, relat
     case 'manifest': return <ManifestFileIcon size={size} />
     case 'ghost': return <img src={ghostIcon} width={size} height={size} alt="Dotfile" draggable={false} className="shrink-0 object-contain" />
     case 'java': return <img src={javaCup} width={size} height={size} alt="Java" draggable={false} className="shrink-0 object-contain" />
+    case 'properties': return <img src={propertiesGear} width={size} height={size} alt="Properties" draggable={false} className="shrink-0 object-contain" />
+    case 'bpmn': return <img src={bpmnMark} width={size} height={size} alt="BPMN" draggable={false} className="shrink-0 object-contain" />
     case 'generic': {
       const Icon = GENERIC_ICONS[resolved.icon]
       const tone = resolved.icon === 'pdf' ? 'text-danger' : resolved.icon === 'readme' ? 'text-accent' : resolved.icon === 'key' ? 'text-text-2' : 'text-text-4'

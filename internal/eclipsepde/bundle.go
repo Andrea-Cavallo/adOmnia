@@ -2,6 +2,7 @@ package eclipsepde
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -126,6 +127,17 @@ type Bundle struct {
 	Vendor       string
 	// Singleton reads the singleton:=true directive of Bundle-SymbolicName.
 	Singleton bool
+	// Activator is Bundle-Activator: the class the framework calls on start/stop
+	// ("" when the bundle has none, as fragments and libraries do).
+	Activator string
+	// ActivationPolicy is the effective policy: "lazy" when the bundle activates on
+	// first class load, "eager" when it declares activation at start. Empty when the
+	// manifest declares nothing: the framework default, eager.
+	ActivationPolicy string
+	// LazyActivation is true when the bundle uses lazy activation, from
+	// Bundle-ActivationPolicy or from the Eclipse 3.x headers still found in
+	// legacy Kepler bundles (Eclipse-LazyStart / Eclipse-AutoStart).
+	LazyActivation bool
 	// ExecutionEnvironment is Bundle-RequiredExecutionEnvironment (e.g. JavaSE-1.6).
 	ExecutionEnvironment string
 	RequireBundle        []Clause
@@ -136,10 +148,18 @@ type Bundle struct {
 	FragmentHost *Clause
 	// BundleClassPath lists the bundle-internal classpath entries (".", "lib/x.jar").
 	BundleClassPath []string
+	// ServiceComponents are the Declarative Services descriptors named by Service-Component.
+	ServiceComponents []string
 	// Location is where the bundle was read from (jar path or exploded dir).
 	Location string
 	// Manifest is the raw parsed manifest, for anything not modeled above.
 	Manifest *Manifest
+}
+
+// ActivationOnStart reports whether the framework activates this bundle at start:
+// no activation policy (eager) and not a fragment.
+func (b *Bundle) ActivationOnStart() bool {
+	return b.FragmentHost == nil && !b.LazyActivation
 }
 
 // MatchesPlatform applies Eclipse-PlatformFilter. A filter that cannot be read does
@@ -190,6 +210,9 @@ func bundleFromManifest(mf *Manifest, location string) (*Bundle, error) {
 	b.Name = mf.Main["Bundle-Name"]
 	b.Vendor = mf.Main["Bundle-Vendor"]
 	b.ExecutionEnvironment = mf.Main["Bundle-RequiredExecutionEnvironment"]
+	b.Activator = strings.TrimSpace(mf.Main["Bundle-Activator"])
+	b.ActivationPolicy, b.LazyActivation = activationPolicyOf(mf)
+	b.ServiceComponents = serviceComponentPaths(mf.Main["Service-Component"])
 
 	if raw := mf.Main["Bundle-ClassPath"]; raw != "" {
 		var entries []string
@@ -239,4 +262,38 @@ func clausesOf(mf *Manifest, header, location string) ([]Clause, error) {
 		return nil, fmt.Errorf("%s: %s: %w", location, header, err)
 	}
 	return clauses, nil
+}
+
+// activationPolicyOf reads Bundle-ActivationPolicy and the Eclipse 3.x headers that
+// legacy Kepler bundles use for the same thing. A bundle that declares nothing is
+// eager: the framework default.
+func activationPolicyOf(mf *Manifest) (policy string, lazy bool) {
+	if raw := strings.TrimSpace(mf.Main["Bundle-ActivationPolicy"]); raw != "" {
+		head := strings.ToLower(strings.TrimSpace(strings.SplitN(raw, ";", 2)[0]))
+		switch head {
+		case "lazy":
+			return "lazy", true
+		case "eager":
+			return "eager", false
+		}
+	}
+	for _, header := range []string{"Eclipse-LazyStart", "Eclipse-AutoStart"} {
+		if strings.EqualFold(strings.TrimSpace(mf.Main[header]), "true") {
+			return "lazy", true
+		}
+	}
+	return "", false
+}
+
+// serviceComponentPaths splits the Service-Component header: the DS descriptors of
+// the bundle, one per comma, with optional quotes.
+func serviceComponentPaths(raw string) []string {
+	var paths []string
+	for _, part := range splitTopLevel(raw, ',') {
+		path := strings.TrimSpace(strings.Trim(part, `"`))
+		if path != "" && !slices.Contains(paths, path) {
+			paths = append(paths, path)
+		}
+	}
+	return paths
 }

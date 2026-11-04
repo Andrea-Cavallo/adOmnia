@@ -40,9 +40,9 @@ func (*Language) LocateServer(root, toolsRoot string) lsp.ServerInfo {
 	return info
 }
 
-// ServersPerUnit implementa language.UnitServers: rust-analyzer lavora per workspace Cargo, quindi
-// un server per unità (un solo server per un cargo-workspace con tutti i membri), non per progetto
-// (RS-4.2).
+// ServersPerUnit implementa language.UnitServers: rust-analyzer lavora per workspace Cargo. Le unità
+// sono raggruppate da ServerRoots (serverroots.go), così un workspace con molti membri resta UN server
+// invece di uno per crate (RS-4.2).
 func (*Language) ServersPerUnit() bool { return true }
 
 // ServerSpec è il fallback per il server non-per-unità: usa la radice come unità.

@@ -6,6 +6,13 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### OSGi: the target comes from the pom, the manifest is checked, an import can be stopped
+
+- **Target platform from `pom.xml`.** Tycho resolves its repositories against the requirements of the bundles, so a project that declares its target in Maven no longer needs a hand-written `.target`: *pom.xml* in the OSGi panel reads the p2 repositories of the build (`${properties}` included, Maven repositories skipped, unresolved properties named), seeds them with the `Require-Bundle` ids the workspace still needs and writes `.adomnia/tycho.target`, which then becomes the active target. The existing p2 download fetches only that closure instead of a whole Eclipse release. Package imports that no seeded bundle pulls are not seeded: they still appear in the report.
+- **The manifest is checked while you type.** New markers for `.mf` / `MANIFEST.MF`: malformed lines, duplicate headers, lines longer than the 72 bytes the format wraps at, a header one letter away from a real one (`Bundle-SymbloicName` → `Bundle-SymbolicName`), an invalid `Bundle-Version`, and a bundle without `Bundle-ManifestVersion` (which Equinox then reports as a resolution failure far from the cause). A header nobody knows and no known header resembles stays quiet: custom headers are legal.
+- **An import can be stopped, and undone.** Progress arrives as `osgi.import.progress` (folder, done/total, current file) with a Cancel button; a cancelled import keeps nothing it had not finished. Bundles under `plugins/` of the workspace show a Remove action with an inline confirmation; the Go side refuses any name with a separator or a path outside `plugins/`, so a mistaken click can never delete a project the user owns elsewhere.
+- **Verified:** Go tests for the pom reader (properties, Maven repositories, seeds), the generated `.target` (read back by the same parser), cancellation and the remove guard; frontend tests for the manifest checks. The panel itself has not been opened in the desktop app yet.
+
 ### OSGi: the manifest, its emblem, and many plug-ins in one workspace
 
 - **`.mf` files have their own emblem.** `MANIFEST.MF` and every `.mf` show the red/black MF ring in the tree and in the editor tab, before the generic/extension rules. The dark half of the mark follows the theme (`currentColor`) instead of staying black: a fixed black disappears on the Code Studio background.

@@ -8,5 +8,6 @@ export {
     P2Preview,
     Problem,
     ResolutionStatus,
+    TychoRepository,
     WorkspaceReport
 } from "./models.js";

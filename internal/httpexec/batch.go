@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 )
@@ -122,7 +123,7 @@ func (b BatchRequest) expand() ([]HTTPExecRequest, error) {
 	for index, body := range b.Bodies {
 		item := *b.Request
 		item.Body = body
-		item.Headers = cloneHeaders(b.Request.Headers)
+		item.Headers = maps.Clone(b.Request.Headers)
 		if item.ID != "" {
 			// Deterministic ids let the caller cancel one variant with CancelHTTP.
 			item.ID = fmt.Sprintf("%s-%d", item.ID, index+1)
@@ -148,15 +149,4 @@ func (b BatchRequest) workerCount(total int) int {
 		workers = 1
 	}
 	return workers
-}
-
-func cloneHeaders(headers map[string]string) map[string]string {
-	if headers == nil {
-		return nil
-	}
-	cloned := make(map[string]string, len(headers))
-	for key, value := range headers {
-		cloned[key] = value
-	}
-	return cloned
 }

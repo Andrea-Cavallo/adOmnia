@@ -56,6 +56,17 @@ type UnitServers interface {
 	UnitServerSpec(projectRoot, unitRoot, toolsRoot string) (lsp.ServerSpec, error)
 }
 
+// ServerRoots è la capability di un linguaggio il cui language server copre più unità: raggruppa le
+// unità nelle radici dei server da avviare. Serve quando l'unità di build non è l'unità del server:
+// rust-analyzer serve un workspace Cargo intero, non il singolo crate, e un server per crate
+// caricherebbe N volte lo stesso grafo. Un linguaggio che non la implementa resta con un server per
+// unità (UnitServers) o per progetto.
+type ServerRoots interface {
+	// ServerRoots restituisce le radici dei server per le unità della lingua in sessione. projectRoot
+	// è la radice del progetto, dove finiscono i file fuori da ogni unità.
+	ServerRoots(projectRoot string, units []project.Unit) []string
+}
+
 // DirectDependencies elenca i pacchetti dichiarati direttamente da un'unità, nella forma che
 // l'ecosistema usa (percorso di modulo Go, nome PyPI normalizzato, coordinate Maven). Serve a chi
 // riconosce i servizi esterni del progetto (Database Studio, Docker Lab, Broker Studio) senza

@@ -251,14 +251,12 @@ func (idx *BundleIndex) indexEntries(entries []targetEntry) {
 	jobs := make(chan int)
 	var wg sync.WaitGroup
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for index := range jobs {
 				bundle, problem := parseTargetEntry(entries[index])
 				results[index] = parsed{bundle: bundle, problem: problem}
 			}
-		}()
+		})
 	}
 	for index := range entries {
 		jobs <- index

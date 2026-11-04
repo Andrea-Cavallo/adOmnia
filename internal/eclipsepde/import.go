@@ -1,12 +1,22 @@
 package eclipsepde
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// ImportProgress is the state of one import: which folder of how many, and what is being copied.
+type ImportProgress struct {
+	Folder string `json:"folder"`
+	Done   int    `json:"done"`
+	Total  int    `json:"total"`
+	File   string `json:"file,omitempty"`
+	Finish bool   `json:"finish"`
+}
 
 // ImportResult reports what ImportPlugins copied and what it left out.
 type ImportResult struct {
@@ -29,9 +39,9 @@ const maxImportDepth = 32
 
 // ImportPlugins copies each Eclipse plug-in project into <root>/plugins/<name>, so a workspace that
 // keeps a single root can hold the bundles of several repositories and resolve them against each
-// other. Nothing is overwritten: an existing destination is reported and skipped, and a failed copy
-// removes what it wrote instead of leaving half a bundle behind.
-func ImportPlugins(root string, sources []string) (ImportResult, error) {
+// other. Nothing is overwritten: an existing destination is reported and skipped, and a failed or
+// cancelled copy removes what it wrote instead of leaving half a bundle behind.
+func ImportPlugins(ctx context.Context, root string, sources []string, progress func(ImportProgress)) (ImportResult, error) {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		return ImportResult{}, err
@@ -39,8 +49,14 @@ func ImportPlugins(root string, sources []string) (ImportResult, error) {
 	if info, err := os.Stat(absRoot); err != nil || !info.IsDir() {
 		return ImportResult{}, fmt.Errorf("%s: not a directory", absRoot)
 	}
+	if progress == nil {
+		progress = func(ImportProgress) {}
+	}
 	result := ImportResult{Imported: []string{}, Skipped: []string{}}
-	for _, source := range sources {
+	for index, source := range sources {
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
 		source = strings.TrimSpace(source)
 		if source == "" {
 			continue
@@ -63,17 +79,48 @@ func ImportPlugins(root string, sources []string) (ImportResult, error) {
 		if err := os.MkdirAll(filepath.Join(absRoot, "plugins"), 0o755); err != nil {
 			return result, fmt.Errorf("create plugins folder: %w", err)
 		}
-		if err := copyPluginTree(absSource, destination); err != nil {
+		progress(ImportProgress{Folder: name, Done: index, Total: len(sources)})
+		if err := copyPluginTree(ctx, absSource, destination, progress); err != nil {
 			_ = os.RemoveAll(destination)
+			if ctx.Err() != nil {
+				return result, ctx.Err()
+			}
 			return result, fmt.Errorf("copy %s: %w", absSource, err)
 		}
 		relative, err := filepath.Rel(absRoot, destination)
 		if err != nil {
 			relative = destination
 		}
+		progress(ImportProgress{Folder: name, Done: index + 1, Total: len(sources), Finish: true})
 		result.Imported = append(result.Imported, filepath.ToSlash(relative))
 	}
 	return result, nil
+}
+
+// RemoveImportedPlugin deletes one bundle that ImportPlugins copied into plugins/ of the workspace.
+// Only that folder is reachable: a name with a separator or a path outside plugins/ is refused, so a
+// mistaken call can never delete a project the user owns elsewhere.
+func RemoveImportedPlugin(root, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\:`) {
+		return fmt.Errorf("%q is not the name of an imported plug-in", name)
+	}
+	destination := filepath.Join(root, "plugins", name)
+	absolute, err := filepath.Abs(destination)
+	if err != nil {
+		return err
+	}
+	plugins, err := filepath.Abs(filepath.Join(root, "plugins"))
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(strings.ToLower(absolute)+string(filepath.Separator), strings.ToLower(plugins)+string(filepath.Separator)) {
+		return fmt.Errorf("%q is outside plugins/", name)
+	}
+	if info, err := os.Stat(absolute); err != nil || !info.IsDir() {
+		return fmt.Errorf("%s is not an imported plug-in", name)
+	}
+	return os.RemoveAll(absolute)
 }
 
 // importablePlugin says whether source can be copied into the workspace, and under which name.
@@ -104,9 +151,14 @@ func insideFolder(folder, path string) bool {
 	return path == folder || strings.HasPrefix(strings.ToLower(path)+string(filepath.Separator), folder+string(filepath.Separator))
 }
 
-func copyPluginTree(source, destination string) error {
+func copyPluginTree(ctx context.Context, source, destination string, progress func(ImportProgress)) error {
+	folder := filepath.Base(source)
+	copied := 0
 	return filepath.WalkDir(source, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		relative, err := filepath.Rel(source, path)
@@ -132,6 +184,12 @@ func copyPluginTree(source, destination string) error {
 		// Links are not followed and not recreated: an import must copy files, not a graph.
 		if !info.Mode().IsRegular() {
 			return nil
+		}
+		copied++
+		// One event every few files: a progress line per file would redraw the panel thousands of
+		// times for a large plug-in.
+		if copied%50 == 0 {
+			progress(ImportProgress{Folder: folder, File: filepath.ToSlash(relative)})
 		}
 		return copyPluginFile(path, filepath.Join(destination, relative), info.Mode())
 	})

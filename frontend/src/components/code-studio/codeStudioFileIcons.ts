@@ -38,6 +38,12 @@ const GENERIC_EXTENSIONS: Record<string, Extract<CodeStudioFileIconKind, { kind:
   lock: 'lock', pem: 'key', key: 'key', p12: 'key', pfx: 'key', jks: 'key', s: 'code', proto: 'schema', sql: 'sql', ps1: 'terminal', psm1: 'terminal', bat: 'terminal', cmd: 'terminal', mod: 'code', tmpl: 'code', gotmpl: 'code',
 }
 
+/** Estensioni con un emblema proprio disegnato fra gli asset di Code Studio. */
+const EMBLEM_EXTENSIONS: Record<string, CodeStudioFileIconKind> = {
+  properties: { kind: 'properties' },
+  bpmn: { kind: 'bpmn' }, bpmn2: { kind: 'bpmn' },
+}
+
 const KUBERNETES_KINDS = /^(deployment|service|ingress|configmap|secret|statefulset|daemonset|cronjob|job|pod|namespace|serviceaccount|role|rolebinding|clusterrole|clusterrolebinding|hpa|pvc|networkpolicy|kustomization)s?([.-][\w.-]+)?\.ya?ml$/
 const KUBERNETES_DIRS = /(^|\/)(k8s|kubernetes|manifests|kustomize|deploy\/k8s)\//
 
@@ -78,6 +84,8 @@ export function resolveCodeStudioFileIcon(name: string, relativePath = ''): Code
   const extension = dot > 0 ? lower.slice(dot + 1) : ''
   const byExtension = EXTENSIONS[extension]
   if (byExtension) return { kind: 'brand', slug: byExtension }
+  const emblem = EMBLEM_EXTENSIONS[extension]
+  if (emblem) return emblem
   return { kind: 'generic', icon: GENERIC_EXTENSIONS[extension] ?? 'file' }
 }
 

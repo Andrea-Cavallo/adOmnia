@@ -27,6 +27,9 @@ const (
 // osgiBuilds marks the sessions with a bundle build in progress.
 var osgiBuilds sync.Map
 
+// osgiImports holds the cancel function of the running plug-in import of each session.
+var osgiImports sync.Map
+
 // OsgiBuildEvent is the payload of `osgi.build`: progress of a build and, with Finished, its outcome.
 type OsgiBuildEvent struct {
 	Done     int      `json:"done"`
@@ -302,6 +305,7 @@ type OsgiImportResult struct {
 // ImportJavaOsgiPlugins copies Eclipse plug-in projects chosen on the machine into plugins/ of the
 // workspace. It is the fast path for a PDE workspace made of several repositories: the bundles land
 // in the project root, so they compile against each other instead of against the target alone.
+// Progress arrives as `osgi.import.progress`; a cancelled import keeps nothing it had not finished.
 func (s *Service) ImportJavaOsgiPlugins(sessionID string, sources []string) (OsgiImportResult, error) {
 	root, err := s.trustedOsgiRoot(sessionID)
 	if err != nil {
@@ -310,7 +314,18 @@ func (s *Service) ImportJavaOsgiPlugins(sessionID string, sources []string) (Osg
 	if len(sources) == 0 {
 		return OsgiImportResult{}, errors.New("choose at least one plug-in folder")
 	}
-	copied, err := eclipsepde.ImportPlugins(root, sources)
+	ctx, cancel := context.WithCancel(context.Background())
+	if _, running := osgiImports.LoadOrStore(sessionID, cancel); running {
+		cancel()
+		return OsgiImportResult{}, errors.New("an import of this project is already running")
+	}
+	defer func() {
+		osgiImports.Delete(sessionID)
+		cancel()
+	}()
+	copied, err := eclipsepde.ImportPlugins(ctx, root, sources, func(progress eclipsepde.ImportProgress) {
+		s.emit("osgi.import.progress", SessionID(sessionID), sessionID, progress)
+	})
 	result := OsgiImportResult{Imported: copied.Imported, Skipped: copied.Skipped}
 	if err != nil {
 		return result, err
@@ -322,6 +337,70 @@ func (s *Service) ImportJavaOsgiPlugins(sessionID string, sources []string) (Osg
 	report, err := eclipsepde.BuildReport(root)
 	if err != nil {
 		return result, nil // the copy is done: the panel reports the read error on reload
+	}
+	result.Report = report
+	return result, nil
+}
+
+// CancelJavaOsgiImport stops the running import of the session, removing what it had copied.
+func (s *Service) CancelJavaOsgiImport(sessionID string) {
+	if cancel, ok := osgiImports.Load(sessionID); ok {
+		cancel.(context.CancelFunc)()
+	}
+}
+
+// RemoveJavaOsgiPlugin deletes a bundle that was imported into plugins/ of the workspace and returns
+// the report of the remaining bundles. Nothing outside that folder can be removed from here.
+func (s *Service) RemoveJavaOsgiPlugin(sessionID, name string) (*eclipsepde.WorkspaceReport, error) {
+	root, err := s.trustedOsgiRoot(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if err := eclipsepde.RemoveImportedPlugin(root, name); err != nil {
+		return nil, err
+	}
+	return eclipsepde.BuildReport(root)
+}
+
+// OsgiTychoResult is the target platform a pom.xml implies: its p2 repositories, the units the
+// workspace still needs, and, once written, the definition adOmnia downloads from.
+type OsgiTychoResult struct {
+	Repositories []eclipsepde.TychoRepository `json:"repositories"`
+	Units        []string                     `json:"units"`
+	TargetPath   string                       `json:"targetPath,omitempty"`
+	Problems     []string                     `json:"problems,omitempty"`
+	Report       *eclipsepde.WorkspaceReport  `json:"report,omitempty"`
+}
+
+// JavaOsgiTychoTarget reads the target platform a Tycho build declares in its pom.xml. Tycho
+// resolves the repositories against the requirements of the bundles, so the generated definition
+// seeds those units and lets the existing p2 download fetch only the closure: no full Eclipse
+// release is downloaded. With create it writes .adomnia/tycho.target and makes it active.
+func (s *Service) JavaOsgiTychoTarget(sessionID string, create bool) (OsgiTychoResult, error) {
+	root, err := s.trustedOsgiRoot(sessionID)
+	if err != nil {
+		return OsgiTychoResult{}, err
+	}
+	target, err := eclipsepde.ReadTychoTarget(root)
+	if err != nil {
+		return OsgiTychoResult{}, err
+	}
+	result := OsgiTychoResult{
+		Repositories: target.Repositories,
+		Units:        eclipsepde.RequiredUnits(root),
+		Problems:     target.Unresolved,
+	}
+	if !create {
+		return result, nil
+	}
+	path, err := eclipsepde.WriteTychoTarget(root, target, result.Units)
+	if err != nil {
+		return result, err
+	}
+	result.TargetPath = path
+	report, err := eclipsepde.SetTarget(root, path)
+	if err != nil {
+		return result, err
 	}
 	result.Report = report
 	return result, nil

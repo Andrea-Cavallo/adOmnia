@@ -90,6 +90,10 @@ Everything specific goes in `internal/languages/<lang>`; the core never learns i
   one line in `internal/codestudio/languages.go`.
 - The language server is an `lsp.ServerSpec` built by the adapter and run by `internal/ide/langserver`: no
   second language-server manager, no per-language process code.
+- A server that spans several build units is grouped by `language.ServerRoots`: Rust declares one
+  rust-analyzer per Cargo workspace, never one per crate. Whatever the language, the host starts at most
+  `maxUnitServers` (8) unit servers per language and session; the others stay listed and are not started,
+  with the reason in their log.
 - Install of a server or debugger goes through `lsp.ServerProvider.InstallPlan` and the frontend
   `codeStudioToolInstall` store (one visible command, pinned version).
 - Run, test and debug reuse `internal/ide/run`, `internal/ide/testing` and `internal/ide/dap`.

@@ -273,6 +273,32 @@ export enum ResolutionStatus {
 };
 
 /**
+ * TychoRepository is one p2 repository declared by a Tycho build.
+ */
+export class TychoRepository {
+    "id"?: string;
+    "url": string;
+    "layout"?: string;
+
+    /** Creates a new TychoRepository instance. */
+    constructor($$source: Partial<TychoRepository> = {}) {
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TychoRepository instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TychoRepository {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TychoRepository($$parsedSource as Partial<TychoRepository>);
+    }
+}
+
+/**
  * WorkspaceReport is what the OSGi panel shows: the bundles of the opened folder,
  * the active target platform and why each bundle does or does not resolve.
  */

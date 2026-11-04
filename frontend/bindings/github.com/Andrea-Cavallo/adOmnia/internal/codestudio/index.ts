@@ -124,6 +124,7 @@ export {
     OpenDocument,
     OsgiImportResult,
     OsgiRunResult,
+    OsgiTychoResult,
     PackageHeatmap,
     PathComparison,
     PathDifference,

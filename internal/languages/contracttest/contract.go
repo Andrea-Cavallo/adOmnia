@@ -92,6 +92,13 @@ func runDetection(t *testing.T, test Case) {
 	if err != nil {
 		t.Fatalf("detect: %v", err)
 	}
+	if grouped, ok := test.Language.(language.ServerRoots); ok {
+		for _, serverRoot := range grouped.ServerRoots(root, units) {
+			if serverRoot == "" || !inside(root, serverRoot) {
+				t.Fatalf("%s declares a language server root %q outside the project", test.Language.ID(), serverRoot)
+			}
+		}
+	}
 	var unit *project.Unit
 	for index := range units {
 		candidate := units[index]

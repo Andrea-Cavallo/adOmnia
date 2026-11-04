@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Boxes, FileCode2, FolderOpen, FolderPlus, Hammer, Loader2, Play, RefreshCw, Search } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Boxes, FileCode2, FolderOpen, FolderPlus, Hammer, Loader2, Package, Play, RefreshCw, Search, Trash2, X } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
-import { getJavaOsgiWorkspace, importJavaOsgiPlugins, reindexJavaOsgiTarget, selectGoIDEFile, selectGoIDEFolder, selectGoIDEFolders, setJavaOsgiTarget, startJavaOsgiBuild, startJavaOsgiRun, subscribeGoIDEEvents } from '@/lib/code-studio-api'
+import { cancelJavaOsgiImport, getJavaOsgiWorkspace, importJavaOsgiPlugins, javaOsgiTychoTarget, reindexJavaOsgiTarget, removeJavaOsgiPlugin, selectGoIDEFile, selectGoIDEFolder, selectGoIDEFolders, setJavaOsgiTarget, startJavaOsgiBuild, startJavaOsgiRun, subscribeGoIDEEvents } from '@/lib/code-studio-api'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { studioToast } from '@/stores/codeStudioToast'
 import { CodeStudioJavaOsgiP2 } from './CodeStudioJavaOsgiP2'
@@ -23,6 +23,23 @@ const STATUS_CLASS: Record<string, string> = {
   Unresolved: 'text-danger',
 }
 
+/**
+ * Un bundle importato sta in `plugins/` del workspace: la cartella è ciò che la rimozione cancella.
+ * `location` è il percorso assoluto del progetto, quindi serve `root`; senza, resta la forma relativa
+ * `plugins/<nome>` che arriva dai test e dalle definizioni scritte a mano.
+ */
+export function importedPluginName(bundle: Pick<BundleStatus, 'location'>, root?: string | null): string | null {
+  const location = (bundle.location ?? '').replace(/\\/g, '/')
+  if (!root) {
+    const parts = location.split('/').filter(Boolean)
+    return parts[0] === 'plugins' && parts.length >= 2 ? parts[1] : null
+  }
+  const prefix = `${root.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()}/plugins/`
+  if (!location.toLowerCase().startsWith(prefix)) return null
+  const name = location.slice(prefix.length).split('/')[0]
+  return name && name !== '.' && name !== '..' && !name.includes(':') ? name : null
+}
+
 function MissingRow({ missing }: Readonly<{ missing: MissingDependency }>) {
   const available = missing.available ?? []
   return (
@@ -35,8 +52,9 @@ function MissingRow({ missing }: Readonly<{ missing: MissingDependency }>) {
   )
 }
 
-function BundleRow({ bundle }: Readonly<{ bundle: BundleStatus }>) {
+function BundleRow({ bundle, imported, onRemove }: Readonly<{ bundle: BundleStatus; imported: boolean; onRemove: () => void }>) {
   const missing = bundle.missing ?? []
+  const [confirming, setConfirming] = useState(false)
   return (
     <div className="border-b border-border-1 px-3 py-1.5">
       <div className="flex items-center gap-2">
@@ -45,6 +63,16 @@ function BundleRow({ bundle }: Readonly<{ bundle: BundleStatus }>) {
         </span>
         {bundle.executionEnvironment && <span className="gs-badge shrink-0">{bundle.executionEnvironment}</span>}
         {bundle.status && <span className={`shrink-0 text-[10.5px] ${STATUS_CLASS[bundle.status] ?? 'text-text-3'}`}>{bundle.status}</span>}
+        {imported && (confirming ? (
+          <span className="flex shrink-0 items-center gap-1">
+            <button type="button" className="gs-btn" onClick={() => { setConfirming(false); onRemove() }} title="Delete this imported plug-in from plugins/ of the workspace">Remove</button>
+            <button type="button" className="gs-btn gs-btn-icon" onClick={() => setConfirming(false)} aria-label="Keep this plug-in"><X size={11} /></button>
+          </span>
+        ) : (
+          <button type="button" className="gs-btn gs-btn-icon shrink-0" onClick={() => setConfirming(true)} title="This plug-in was imported: remove it from plugins/ of the workspace" aria-label={`Remove imported plug-in ${bundle.symbolicName}`}>
+            <Trash2 size={11} />
+          </button>
+        ))}
       </div>
       {withContentKeys(missing, (item) => `${item.kind}:${item.name}`).map(({ key, item }) => <MissingRow key={key} missing={item} />)}
       {(bundle.notes ?? []).filter((note) => note.startsWith('via ')).map((note) => <p key={note} className="pl-5 text-[11px] text-warning">{note}</p>)}
@@ -63,8 +91,17 @@ interface OsgiBuildEvent {
   problems: string[]
 }
 
-function subtitleOf(report: WorkspaceReport | null, busy: boolean): string {
-  if (busy) return 'Reading manifests…'
+/** Payload di `osgi.import.progress` (eclipsepde.ImportProgress). */
+interface OsgiImportProgress {
+  folder: string
+  done: number
+  total: number
+  file?: string
+  finish: boolean
+}
+
+function subtitleOf(report: WorkspaceReport | null, busy: boolean, importing = false): string {
+  if (busy) return importing ? 'Importing plug-in projects…' : 'Reading manifests…'
   if (!report) return ''
   const bundles = `${report.bundles?.length ?? 0} workspace bundle(s)`
   if (!report.hasTarget) return `${bundles} · choose a target platform to resolve them`
@@ -103,17 +140,26 @@ function announceBuildOutcome(outcome: OsgiBuildEvent): void {
 /** Target platform e stato dei bundle, come il Plug-in Manifest Editor di Eclipse: dice perché un bundle non si risolve. */
 export function CodeStudioJavaOsgi() {
   const [sessionId, setSessionId] = useState<string | null>(null)
-  useEffect(() => subscribeGoIDEEvents((event) => {
-    if (event.type !== 'osgi.build') return
-    const outcome = event.payload as OsgiBuildEvent
-    if (outcome.finished) announceBuildOutcome(outcome)
-  }), [])
   const [report, setReport] = useState<WorkspaceReport | null>(null)
   const [target, setTarget] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
   const [issuesOnly, setIssuesOnly] = useState(false)
+  const [importProgress, setImportProgress] = useState<OsgiImportProgress | null>(null)
+  /** La sessione con un import in corso, o null: Cancel ferma proprio quello. */
+  const [importing, setImporting] = useState<string | null>(null)
+  const cancelled = useRef(false)
+  useEffect(() => subscribeGoIDEEvents((event) => {
+    if (event.type === 'osgi.import.progress') {
+      const progress = event.payload as OsgiImportProgress
+      setImportProgress(progress.finish ? null : progress)
+      return
+    }
+    if (event.type !== 'osgi.build') return
+    const outcome = event.payload as OsgiBuildEvent
+    if (outcome.finished) announceBuildOutcome(outcome)
+  }), [])
 
   const load = (request: Promise<WorkspaceReport | null>): void => {
     setBusy(true)
@@ -131,6 +177,7 @@ export function CodeStudioJavaOsgi() {
       setTarget('')
       setQuery('')
       setIssuesOnly(false)
+      setImportProgress(null)
       load(getJavaOsgiWorkspace(next))
     }
     return () => { openRequest = null }
@@ -151,6 +198,8 @@ export function CodeStudioJavaOsgi() {
     if (!sessionId) return
     const folders = await selectGoIDEFolders('Import plug-in projects into this workspace (they are copied under plugins/)')
     if (folders.length === 0) return
+    cancelled.current = false
+    setImporting(sessionId)
     setBusy(true)
     setError('')
     try {
@@ -163,6 +212,31 @@ export function CodeStudioJavaOsgi() {
       if (imported === 0 && skipped > 0) setError(`Nothing imported.\n${result.skipped.join('\n')}`)
       else if (skipped > 0) studioToast(`${imported} plug-in(s) imported. ${skipped} skipped: ${first}`, 'info')
       else studioToast(`${imported} plug-in(s) imported`, 'success')
+    } catch (reason) {
+      // An import the user stopped is not an error: the Go side has already removed what it had not finished.
+      if (cancelled.current) studioToast('Import stopped', 'info')
+      else setError(messageOf(reason))
+    } finally {
+      setImporting(null)
+      setImportProgress(null)
+      setBusy(false)
+    }
+  }
+
+  // The pom of a Tycho build is its target platform: write the definition from it, then the
+  // existing p2 download fetches only what the bundles require.
+  const fromPom = async (): Promise<void> => {
+    if (!sessionId) return
+    setBusy(true)
+    setError('')
+    try {
+      const result = await javaOsgiTychoTarget(sessionId, true)
+      if (result.report) setReport(result.report)
+      setTarget(result.targetPath ?? '')
+      const repositories = result.repositories?.length ?? 0
+      const units = result.units?.length ?? 0
+      studioToast(`Target written from ${repositories} p2 repository(ies), ${units} required unit(s). Use Download p2 bundles to fetch them.`, 'info')
+      if ((result.problems ?? []).length > 0) setError(`Unresolved properties:\n${(result.problems ?? []).join('\n')}`)
     } catch (reason) {
       setError(messageOf(reason))
     } finally {
@@ -178,7 +252,7 @@ export function CodeStudioJavaOsgi() {
   const empty = report && (report.bundles?.length ?? 0) === 0
 
   return (
-    <CodeStudioModal open={!!sessionId} onClose={() => setSessionId(null)} title="OSGi bundles & target platform" subtitle={subtitleOf(report, busy)} icon={Boxes} size="lg" tall divided flush top>
+    <CodeStudioModal open={!!sessionId} onClose={() => setSessionId(null)} title="OSGi bundles & target platform" subtitle={subtitleOf(report, busy, importing !== null)} icon={Boxes} size="lg" tall divided flush top>
       <div className="flex min-h-0 flex-1 flex-col">
         <form
           className="flex items-center gap-2 border-b border-border-1 px-3 py-2"
@@ -187,6 +261,7 @@ export function CodeStudioJavaOsgi() {
           <input value={target} onChange={(event) => setTarget(event.target.value)} placeholder="Target platform: bundles folder, Eclipse install or .target file" className="gs-input flex-1 font-mono" aria-label="Target platform path" />
           <button type="button" className="gs-btn shrink-0" onClick={() => { void browseFolder() }} disabled={busy} title="A folder of bundles or an Eclipse installation"><FolderOpen size={13} /> Folder…</button>
           <button type="button" className="gs-btn shrink-0" onClick={() => { void browseTargetFile() }} disabled={busy} title="An Eclipse .target definition"><FileCode2 size={13} /> .target…</button>
+          <button type="button" className="gs-btn shrink-0" onClick={() => { void fromPom() }} disabled={busy} title="Use the target platform a Tycho pom.xml declares: its p2 repositories, seeded with the bundles this workspace requires"><Package size={13} /> pom.xml</button>
           <button type="submit" className="gs-btn shrink-0" disabled={busy || !target.trim()}>Apply</button>
           <button type="button" className="gs-btn gs-btn-icon shrink-0" onClick={() => { if (sessionId) load(reindexJavaOsgiTarget(sessionId)) }} disabled={busy || !report?.hasTarget} title="Reindex: read every manifest of the target again" aria-label="Reindex target platform"><RefreshCw size={13} /></button>
         </form>
@@ -201,10 +276,25 @@ export function CodeStudioJavaOsgi() {
           <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiFramework(sessionId); setSessionId(null) } }} title="Start the compiled bundles in Equinox, on the project JVM"><Play size={13} /> Run</button>
           <button type="button" className="gs-btn shrink-0" disabled={busy} onClick={() => { void importPlugins() }} title="Import plug-in projects from this machine: they are copied under plugins/ so several repositories compile together"><FolderPlus size={13} /> Import…</button>
         </div>
-        {busy && <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> A full Eclipse target has about a thousand bundles: this can take a few seconds.</p>}
+        {importing !== null ? (
+          <div className="flex items-center gap-2 border-b border-border-1 px-3 py-1.5 text-[11px] text-text-3">
+            <Loader2 size={11} className="shrink-0 animate-spin" />
+            <span className="min-w-0 flex-1 truncate">
+              {importProgress
+                ? <>Importing {importProgress.folder}{importProgress.total > 0 ? ` ${importProgress.done}/${importProgress.total}` : ''}{importProgress.file ? ` · ${importProgress.file}` : ''}</>
+                : 'Copying the plug-in projects…'}
+            </span>
+            <button type="button" className="gs-btn shrink-0" onClick={() => { cancelled.current = true; void cancelJavaOsgiImport(importing) }}>Cancel</button>
+          </div>
+        ) : busy && (
+          <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> A full Eclipse target has about a thousand bundles: this can take a few seconds.</p>
+        )}
         {error && <p className="whitespace-pre-wrap px-3 py-3 text-[11px] text-danger">{error}</p>}
         <div className="min-h-0 flex-1 overflow-auto">
-          {withContentKeys(visible, (bundle) => `${bundle.symbolicName}:${bundle.version}:${bundle.location}`).map(({ key, item }) => <BundleRow key={key} bundle={item} />)}
+          {withContentKeys(visible, (bundle) => `${bundle.symbolicName}:${bundle.version}:${bundle.location}`).map(({ key, item }) => {
+            const name = importedPluginName(item, report?.root)
+            return <BundleRow key={key} bundle={item} imported={name !== null} onRemove={() => { if (sessionId && name) load(removeJavaOsgiPlugin(sessionId, name)) }} />
+          })}
           {empty && (
             <p className="px-3 py-3 text-[11px] text-text-3">
               No OSGi bundles here: a bundle is an Eclipse project (.project) with META-INF/MANIFEST.MF.

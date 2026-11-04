@@ -41,6 +41,7 @@ import type {
   TerminalRequest,
   TerminalProfile,
   OsgiImportResult,
+  OsgiTychoResult,
 } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/codestudio/models'
 import type { FieldSchema, RunTarget, Suggestion as RunSuggestion } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/run/models'
 
@@ -937,6 +938,21 @@ export async function reindexJavaOsgiTarget(sessionId: string): Promise<Workspac
 /** Copia i progetti plug-in scelti in `plugins/` del workspace e torna il report aggiornato. */
 export async function importJavaOsgiPlugins(sessionId: string, sources: string[]): Promise<OsgiImportResult> {
   return GoIDEBindings.ImportJavaOsgiPlugins(sessionId, sources)
+}
+
+/** Target platform dichiarato dal pom.xml Tycho; con create scrive `.adomnia/tycho.target` e lo attiva. */
+export async function javaOsgiTychoTarget(sessionId: string, create: boolean): Promise<OsgiTychoResult> {
+  return GoIDEBindings.JavaOsgiTychoTarget(sessionId, create)
+}
+
+/** Ferma l'import dei plug-in in corso; quello che aveva copiato viene rimosso. */
+export async function cancelJavaOsgiImport(sessionId: string): Promise<void> {
+  await GoIDEBindings.CancelJavaOsgiImport(sessionId)
+}
+
+/** Rimuove un bundle importato in `plugins/` del workspace e torna il report aggiornato. */
+export async function removeJavaOsgiPlugin(sessionId: string, name: string): Promise<WorkspaceReport | null> {
+  return GoIDEBindings.RemoveJavaOsgiPlugin(sessionId, name)
 }
 
 const osgiProjects = new Map<string, Promise<boolean>>()

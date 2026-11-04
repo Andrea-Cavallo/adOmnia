@@ -1705,6 +1705,23 @@ func (g *GoIDE) ImportJavaOsgiPlugins(sessionID string, sources []string) (codes
 	return g.service.ImportJavaOsgiPlugins(sessionID, sources)
 }
 
+// JavaOsgiTychoTarget legge il target platform dichiarato dal pom.xml Tycho del progetto e, con
+// create, scrive .adomnia/tycho.target e lo rende attivo.
+func (g *GoIDE) JavaOsgiTychoTarget(sessionID string, create bool) (codestudio.OsgiTychoResult, error) {
+	return g.service.JavaOsgiTychoTarget(sessionID, create)
+}
+
+// CancelJavaOsgiImport ferma l'import in corso: quello che aveva copiato viene rimosso.
+func (g *GoIDE) CancelJavaOsgiImport(sessionID string) {
+	g.service.CancelJavaOsgiImport(sessionID)
+}
+
+// RemoveJavaOsgiPlugin rimuove un bundle importato in plugins/ del workspace, mai un progetto
+// dell'utente che sta altrove.
+func (g *GoIDE) RemoveJavaOsgiPlugin(sessionID, name string) (*eclipsepde.WorkspaceReport, error) {
+	return g.service.RemoveJavaOsgiPlugin(sessionID, name)
+}
+
 // PreviewJavaOsgiP2 elenca i repository p2 del file .target attivo, senza rete.
 func (g *GoIDE) PreviewJavaOsgiP2(sessionID string) (*eclipsepde.P2Preview, error) {
 	return g.service.PreviewJavaOsgiP2(sessionID)

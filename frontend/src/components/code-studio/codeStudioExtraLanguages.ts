@@ -1,6 +1,7 @@
 import { monaco, type Monaco } from '@/lib/monacoRef'
 import { TOML_LANGUAGE } from './codeStudioTomlLanguage'
 import { MANIFEST_LANGUAGE } from './codeStudioManifestLanguage'
+import { manifestIssues } from '@/lib/code-studio/manifestDiagnostics'
 import { tomlOutline } from '@/lib/code-studio/tomlOutline'
 
 let registered = false
@@ -124,6 +125,22 @@ export function registerCodeStudioExtraLanguages(): void {
   monaco.languages.register({ id: 'manifest', filenames: ['MANIFEST.MF'], extensions: ['.mf'] })
   monaco.languages.setMonarchTokensProvider('manifest', MANIFEST_LANGUAGE)
   monaco.languages.setLanguageConfiguration('manifest', {})
+  monaco.editor.onDidCreateModel((model) => {
+    if (model.getLanguageId() !== 'manifest') return
+    const validate = () => {
+      if (model.isDisposed() || model.getLanguageId() !== 'manifest') return
+      monaco.editor.setModelMarkers(model, 'manifest', manifestIssues(model.getValue()).map((issue) => ({
+        severity: issue.severity === 'error' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+        message: issue.message,
+        startLineNumber: issue.line,
+        startColumn: issue.column,
+        endLineNumber: issue.line,
+        endColumn: model.getLineMaxColumn(Math.min(issue.line, model.getLineCount())),
+      })))
+    }
+    validate()
+    model.onDidChangeContent(validate)
+  })
   // Declared languages without a Monaco grammar: colours come from the language server's semantic tokens.
   monaco.languages.register({ id: 'nix', extensions: ['.nix'] })
   monaco.languages.setLanguageConfiguration('nix', { comments: { lineComment: '#', blockComment: ['/*', '*/'] }, brackets: [['{', '}'], ['[', ']'], ['(', ')']] })
