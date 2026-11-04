@@ -69,6 +69,15 @@ func (s *mcpServer) callFlowTool(name string, raw jsonv1.RawMessage) (string, er
 			return "", err
 		}
 		return jsonText(explanation)
+	case "flow_runtime":
+		if runtime := s.runtimeLocked(root); runtime != nil {
+			snapshot, err := s.captureRuntime(runtime)
+			if err != nil {
+				return "", err
+			}
+			return jsonText(index.ObserveRuntime(snapshot))
+		}
+		return "", fmt.Errorf("the OSGi runtime is not running for %s: call osgi_runtime_start first", root)
 	}
 	return "", fmt.Errorf("unknown flow tool %q", name)
 }
@@ -171,6 +180,7 @@ func mcpFlowTools() []mcpTool {
 		{"flow_find_paths", "Find execution paths", "Shortest downstream paths between two nodes of the flow graph, with the edges traversed and the weakest confidence of the path.", object(map[string]any{"workspace": workspace, "from": str("Start flow/method/class id or name."), "to": str("Destination node id or name."), "depth": integer("Maximum path length (default 8, max 16)."), "limit": integer("Maximum paths (default 3, max 10).")}, "from", "to"), readOnly},
 		{"flow_impact", "Flow impact", "What reaches this flow/method/class: direct and transitive callers, the flows that would break, the bundles and services involved and the external systems (SOAP/REST/DB/queue) on the way.", object(map[string]any{"workspace": workspace, "id": str("Node id or name."), "depth": integer("Upstream depth (default 6, max 10).")}, "id"), readOnly},
 		{"flow_explain", "Explain a step", "Why a node is in the graph: incoming and outgoing relations with the exact requirement/annotation and confidence, plus the source snippet around its line.", object(map[string]any{"workspace": workspace, "id": str("Node id or name.")}, "id"), readOnly},
+		{"flow_runtime", "Correlate with the runtime", "Correlate the running Equinox framework (osgi_runtime_start) with the flow graph: ACTIVE bundles, registered services with provider and consumers, and how many edges the runtime proves. Method-level call paths still need instrumentation and keep their static confidence.", object(map[string]any{"workspace": workspace}), readOnly},
 	}
 }
 

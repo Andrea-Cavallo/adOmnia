@@ -8,6 +8,8 @@ export {
     Impact,
     Overview,
     Path,
+    RuntimeEvidence,
+    RuntimeServiceEvidence,
     SourceSnippet,
     Step,
     Trace

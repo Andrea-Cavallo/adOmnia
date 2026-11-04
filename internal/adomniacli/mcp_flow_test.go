@@ -114,6 +114,10 @@ func TestMCPFlowTools(t *testing.T) {
 		t.Fatalf("explain = %s", text)
 	}
 
+	if _, err := server.callFlowTool("flow_runtime", jsonv1.RawMessage(`{}`)); err == nil || !strings.Contains(err.Error(), "not running") {
+		t.Fatalf("flow_runtime without a runtime = %v", err)
+	}
+
 	if _, err := server.callFlowTool("flow_trace", jsonv1.RawMessage(`{"id":"NoSuchFlow"}`)); err == nil {
 		t.Fatal("an unknown node must fail")
 	}

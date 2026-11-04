@@ -94,3 +94,17 @@ func (s *Service) FlowExplain(sessionID, id string) (*flowintel.Explanation, err
 	}
 	return index.Explain(id)
 }
+
+// FlowRuntime correlates the running Equinox framework with the flow graph: ACTIVE bundles,
+// registered services and consumers. The runtime must already be started from the OSGi panel.
+func (s *Service) FlowRuntime(sessionID string) (*flowintel.RuntimeEvidence, error) {
+	index, err := s.flowIndex(sessionID, false)
+	if err != nil {
+		return nil, err
+	}
+	snapshot, err := s.JavaOsgiRuntimeSnapshot(sessionID)
+	if err != nil {
+		return nil, errors.New(err.Error() + ": start the runtime from the OSGi Control Center › Runtime first")
+	}
+	return index.ObserveRuntime(snapshot), nil
+}

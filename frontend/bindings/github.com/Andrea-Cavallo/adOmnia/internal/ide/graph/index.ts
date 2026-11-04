@@ -3,6 +3,7 @@
 
 export {
     DriftReport,
+    Edge,
     Impact,
     Node,
     PackageMetric,

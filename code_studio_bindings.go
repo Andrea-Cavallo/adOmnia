@@ -1847,6 +1847,12 @@ func (g *GoIDE) FlowExplain(sessionID, id string) (*flowintel.Explanation, error
 	return g.service.FlowExplain(sessionID, id)
 }
 
+// FlowRuntime correla il framework Equinox in esecuzione con il grafo dei flow (ACTIVE,
+// servizi registrati e consumer). Richiede il runtime già avviato dal Control Center.
+func (g *GoIDE) FlowRuntime(sessionID string) (*flowintel.RuntimeEvidence, error) {
+	return g.service.FlowRuntime(sessionID)
+}
+
 // PomManagedVersions: versioni ereditate da parent e BOM per le dipendenze senza <version>.
 func (g *GoIDE) PomManagedVersions(sessionID, relativePath string) (map[string]codestudio.PomManagedVersion, error) {
 	return g.service.PomManagedVersions(sessionID, relativePath)

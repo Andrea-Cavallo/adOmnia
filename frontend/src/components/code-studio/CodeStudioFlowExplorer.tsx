@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle, ArrowDown, ArrowLeftRight, ArrowUp, CircleDot, FileCode2, Info,
-  Loader2, RefreshCw, Search, Workflow,
+  Loader2, RefreshCw, Search, Workflow, Activity,
 } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import {
-  explainFlow, getFlowImpact, getFlowOverview, traceFlow,
+  explainFlow, getFlowImpact, getFlowOverview, getFlowRuntimeEvidence, traceFlow,
 } from '@/lib/code-studio-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import type {
-  Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Step as FlowStep, Trace as FlowTrace,
+  Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, RuntimeEvidence as FlowRuntimeEvidence, Step as FlowStep, Trace as FlowTrace,
 } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
 
 let openRequest: ((sessionId: string) => void) | null = null
@@ -57,7 +57,7 @@ function sourceLocation(file?: string, line?: number): string {
   return line ? `${file}:${line}` : file
 }
 
-function FlowRow({ flow, selected, onSelect }: Readonly<{ flow: FlowEntry; selected: boolean; onSelect: () => void }>) {
+function FlowRow({ flow, selected, active, onSelect }: Readonly<{ flow: FlowEntry; selected: boolean; active?: boolean; onSelect: () => void }>) {
   return (
     <button
       type="button"
@@ -66,6 +66,7 @@ function FlowRow({ flow, selected, onSelect }: Readonly<{ flow: FlowEntry; selec
     >
       <div className="flex items-baseline gap-1.5">
         <KindDot kind={flow.kind} />
+        {active && <CircleDot size={9} className="shrink-0 text-success" aria-label="Active in the running framework" />}
         <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-1">{flow.label}</span>
         {flow.bundle && <span className="shrink-0 rounded bg-surface-3 px-1 text-[9.5px] text-text-3" title={`Bundle ${flow.bundle}`}>{flow.bundle}</span>}
       </div>
@@ -95,7 +96,7 @@ function traceLevels(trace: FlowTrace): Array<{ depth: number; bundles: Array<{ 
   }))
 }
 
-function TraceView({ trace, depth, direction, onOpen }: Readonly<{ trace: FlowTrace | null; depth: number; direction: Direction; onOpen: (file: string, line: number) => void }>) {
+function TraceView({ trace, depth, direction, activeBundles, onOpen }: Readonly<{ trace: FlowTrace | null; depth: number; direction: Direction; activeBundles: Set<string>; onOpen: (file: string, line: number) => void }>) {
   if (!trace) return <p className="px-3 py-3 text-[11px] text-text-3">Select a flow to see its execution path.</p>
   const levels = traceLevels(trace)
   const total = trace.steps?.length ?? 0
@@ -110,7 +111,7 @@ function TraceView({ trace, depth, direction, onOpen }: Readonly<{ trace: FlowTr
           <h4 className="sticky top-0 z-10 bg-surface-1 px-3 py-1 text-[10px] uppercase tracking-wide text-text-4">Level {level.depth}</h4>
           {level.bundles.map((group) => (
             <div key={`${level.depth}:${group.bundle}`} className="px-3 pb-1">
-              <p className="pt-1 text-[10px] text-warning" title="OSGi bundle containing these steps">{group.bundle}</p>
+              <p className="pt-1 text-[10px] text-warning" title="OSGi bundle containing these steps">{group.bundle}{activeBundles.has(group.bundle) && <span className="ml-1 text-success">● active</span>}</p>
               {group.steps.map((step) => (
                 <div key={`${step.edge?.from}:${step.edge?.to}:${step.edge?.kind}`} className="flex items-baseline gap-1.5 border-b border-border-1/40 py-0.5">
                   <KindDot kind={step.node?.kind} />
@@ -223,7 +224,9 @@ export function CodeStudioFlowExplorer() {
   const [depth, setDepth] = useState(4)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [runtime, setRuntime] = useState<FlowRuntimeEvidence | null>(null)
   const detailEpoch = useRef(0)
+  const activeBundles = useMemo(() => new Set(runtime?.activeBundles ?? []), [runtime])
 
   const openLocation = (file: string, line: number): void => {
     void useCodeStudioStore.getState().openLocation(file, line || 1, 1)
@@ -250,6 +253,7 @@ export function CodeStudioFlowExplorer() {
       setBundle('')
       setKind('')
       setTab('trace')
+      setRuntime(null)
       load(next)
     }
     return () => { openRequest = null }
@@ -274,6 +278,15 @@ export function CodeStudioFlowExplorer() {
       .catch((reason: unknown) => { if (current) setError(messageOf(reason)) })
     return () => { current = false }
   }, [sessionId, selected, direction, depth])
+
+  /** Correla il runtime Equinox già avviato con il grafo dei flow. */
+  const correlate = (): void => {
+    if (!sessionId) return
+    setError('')
+    getFlowRuntimeEvidence(sessionId)
+      .then((next) => setRuntime(next))
+      .catch((reason: unknown) => setError(messageOf(reason)))
+  }
 
   const flows = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -307,13 +320,22 @@ export function CodeStudioFlowExplorer() {
           <button type="button" className="gs-btn gs-btn-icon shrink-0" disabled={busy || !sessionId} onClick={() => { if (sessionId) load(sessionId, true) }} title="Re-index the sources" aria-label="Refresh flow index">
             {busy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
           </button>
+          <button type="button" className="gs-btn shrink-0" disabled={!sessionId} onClick={correlate} title="Correlate with the running Equinox framework (start it from the OSGi Control Center)"><Activity size={13} /> Runtime</button>
         </div>
+        {runtime && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-border-1 bg-surface-2 px-3 py-1.5 text-[10.5px] text-text-3">
+            <CircleDot size={9} className="text-success" />
+            <span><span className="text-success">{runtime.activeBundles.length}</span> active bundle(s) · <span className="text-success">{runtime.services.length}</span> service(s) · {runtime.observedEdges} observed edge(s)</span>
+            {(runtime.unmatched?.length ?? 0) > 0 && <span className="text-warning">{runtime.unmatched?.length} active bundle(s) are only in the target</span>}
+            <span className="text-text-4">bundle/service state is observed; method-level paths keep their static confidence (no instrumentation)</span>
+          </div>
+        )}
         {error && <p className="whitespace-pre-wrap px-3 py-2 text-[11px] text-danger">{error}</p>}
         <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
           <div className="min-h-0 overflow-auto border-r border-border-1">
             <p className="px-2.5 pt-2 text-[10px] uppercase tracking-wide text-text-4">{flows.length} entr{flows.length === 1 ? 'y' : 'ies'}</p>
             {flows.slice(0, 400).map((flow) => (
-              <FlowRow key={flow.id} flow={flow} selected={selected === flow.id} onSelect={() => setSelected(flow.id)} />
+              <FlowRow key={flow.id} flow={flow} selected={selected === flow.id} active={flow.bundle ? activeBundles.has(flow.bundle) : false} onSelect={() => setSelected(flow.id)} />
             ))}
             {flows.length === 0 && !busy && (
               <div className="px-3 py-3 text-[11px] text-text-3">
@@ -345,7 +367,7 @@ export function CodeStudioFlowExplorer() {
               )}
             </div>
             {busy && !overview && <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> Indexing the workspace…</p>}
-            {tab === 'trace' && <TraceView trace={trace} depth={depth} direction={direction} onOpen={openLocation} />}
+            {tab === 'trace' && <TraceView trace={trace} depth={depth} direction={direction} activeBundles={activeBundles} onOpen={openLocation} />}
             {tab === 'impact' && <ImpactView impact={impact} onOpen={openLocation} />}
             {tab === 'evidence' && <EvidenceView explanation={explanation} onOpen={openLocation} />}
           </div>

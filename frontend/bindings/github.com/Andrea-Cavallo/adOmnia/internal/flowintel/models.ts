@@ -338,6 +338,100 @@ export class Path {
 }
 
 /**
+ * RuntimeEvidence is what the running framework proves about the flow graph. OSGi gives
+ * real bundle/service state; method-level call paths still need bytecode instrumentation,
+ * so those edges keep their static confidence.
+ */
+export class RuntimeEvidence {
+    "capturedAt": string;
+    "startupMs": number;
+    "activeBundles": string[];
+    "services": RuntimeServiceEvidence[];
+    "observedEdges": number;
+
+    /**
+     * Unmatched lists ACTIVE bundles that are not in the workspace flow graph (target
+     * platform only), so the panel does not pretend to know where they fit.
+     */
+    "unmatched"?: string[];
+
+    /** Creates a new RuntimeEvidence instance. */
+    constructor($$source: Partial<RuntimeEvidence> = {}) {
+        if (!("capturedAt" in $$source)) {
+            this["capturedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("startupMs" in $$source)) {
+            this["startupMs"] = 0;
+        }
+        if (!("activeBundles" in $$source)) {
+            this["activeBundles"] = [];
+        }
+        if (!("services" in $$source)) {
+            this["services"] = [];
+        }
+        if (!("observedEdges" in $$source)) {
+            this["observedEdges"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeEvidence instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeEvidence {
+        const $$createField2_0 = $$createType6;
+        const $$createField3_0 = $$createType15;
+        const $$createField5_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("activeBundles" in $$parsedSource) {
+            $$parsedSource["activeBundles"] = $$createField2_0($$parsedSource["activeBundles"]);
+        }
+        if ("services" in $$parsedSource) {
+            $$parsedSource["services"] = $$createField3_0($$parsedSource["services"]);
+        }
+        if ("unmatched" in $$parsedSource) {
+            $$parsedSource["unmatched"] = $$createField5_0($$parsedSource["unmatched"]);
+        }
+        return new RuntimeEvidence($$parsedSource as Partial<RuntimeEvidence>);
+    }
+}
+
+/**
+ * RuntimeServiceEvidence is one service the framework really registered.
+ */
+export class RuntimeServiceEvidence {
+    "interface": string;
+    "provider"?: string;
+    "consumers"?: string[];
+    "active": boolean;
+
+    /** Creates a new RuntimeServiceEvidence instance. */
+    constructor($$source: Partial<RuntimeServiceEvidence> = {}) {
+        if (!("interface" in $$source)) {
+            this["interface"] = "";
+        }
+        if (!("active" in $$source)) {
+            this["active"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeServiceEvidence instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeServiceEvidence {
+        const $$createField2_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("consumers" in $$parsedSource) {
+            $$parsedSource["consumers"] = $$createField2_0($$parsedSource["consumers"]);
+        }
+        return new RuntimeServiceEvidence($$parsedSource as Partial<RuntimeServiceEvidence>);
+    }
+}
+
+/**
  * SourceSnippet is the code around a node.
  */
 export class SourceSnippet {
@@ -481,3 +575,5 @@ const $$createType10 = $Create.Map($Create.Any, $Create.Any);
 const $$createType11 = FlowEntry.createFrom;
 const $$createType12 = $Create.Array($$createType11);
 const $$createType13 = $Create.Array($$createType0);
+const $$createType14 = RuntimeServiceEvidence.createFrom;
+const $$createType15 = $Create.Array($$createType14);

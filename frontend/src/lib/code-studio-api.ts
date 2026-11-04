@@ -4,7 +4,7 @@ import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDepende
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
 import type { BundleDetail, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
-import type { Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Path as FlowPath, Trace as FlowTrace } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
+import type { Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Path as FlowPath, RuntimeEvidence as FlowRuntimeEvidence, Trace as FlowTrace } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -1067,6 +1067,11 @@ export async function getFlowImpact(sessionId: string, id: string, depth = 6): P
 /** Spiega un nodo: relazioni, affidabilità e sorgente. */
 export async function explainFlow(sessionId: string, id: string): Promise<FlowExplanation | null> {
   return GoIDEBindings.FlowExplain(sessionId, id)
+}
+
+/** Correla il runtime Equinox in esecuzione con il grafo dei flow (ACTIVE, servizi, consumer). */
+export async function getFlowRuntimeEvidence(sessionId: string): Promise<FlowRuntimeEvidence | null> {
+  return GoIDEBindings.FlowRuntime(sessionId)
 }
 
 /** Repository e unità p2 del file .target attivo (nessun accesso alla rete). */
