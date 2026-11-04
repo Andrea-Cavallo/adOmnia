@@ -253,3 +253,32 @@ func TestPrepareLaunchRefusesAJVMTheFrameworkCannotUse(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestCopyResourcesStaysInsideTheOutputFolder(t *testing.T) {
+	source, output, outside := t.TempDir(), t.TempDir(), t.TempDir()
+	writeText(t, filepath.Join(source, "pkg", "app.properties"), "a=1")
+	if err := os.Symlink(outside, filepath.Join(output, "pkg")); err != nil {
+		t.Skipf("symlinks are not available: %v", err)
+	}
+	if err := copyResources(source, output); err == nil {
+		t.Fatal("a link in the output folder must stop the copy")
+	}
+	if fileExists(filepath.Join(outside, "app.properties")) {
+		t.Fatal("the copy followed a link out of the output folder")
+	}
+}
+
+func TestCopyResourcesSkipsLinksAmongTheSources(t *testing.T) {
+	source, output := t.TempDir(), t.TempDir()
+	secret := filepath.Join(t.TempDir(), "secret.txt")
+	writeText(t, secret, "secret")
+	if err := os.Symlink(secret, filepath.Join(source, "linked.txt")); err != nil {
+		t.Skipf("symlinks are not available: %v", err)
+	}
+	if err := copyResources(source, output); err != nil {
+		t.Fatal(err)
+	}
+	if fileExists(filepath.Join(output, "linked.txt")) {
+		t.Fatal("a file from outside the project reached the output folder")
+	}
+}

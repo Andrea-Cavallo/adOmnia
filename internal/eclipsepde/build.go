@@ -314,7 +314,15 @@ func (step CompileStep) Prepare() error {
 	return nil
 }
 
+// copyResources writes through os.Root: a link inside the output folder must not lead the
+// build outside it, and a link among the sources is not copied, so it cannot bring in files
+// from elsewhere.
 func copyResources(source, output string) error {
+	root, err := os.OpenRoot(output)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }() // only directory handles: every write already reported its error
 	return filepath.WalkDir(source, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -325,22 +333,21 @@ func copyResources(source, output string) error {
 			}
 			return nil
 		}
-		if strings.EqualFold(filepath.Ext(path), ".java") || strings.HasPrefix(entry.Name(), ".") {
+		if !entry.Type().IsRegular() || strings.EqualFold(filepath.Ext(path), ".java") || strings.HasPrefix(entry.Name(), ".") {
 			return nil
 		}
 		relative, err := filepath.Rel(source, path)
 		if err != nil {
 			return err
 		}
-		destination := filepath.Join(output, relative)
-		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		if err := root.MkdirAll(filepath.Dir(relative), 0o755); err != nil {
 			return err
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(destination, data, 0o644)
+		return root.WriteFile(relative, data, 0o644)
 	})
 }
 
