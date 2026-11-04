@@ -9,9 +9,9 @@
 // repository declares (frontend/package.json, build/config.yml) and be higher
 // than every release tag already on the remote.
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { declaredVersions as repositoryVersions, versionConsistencyProblems } from './check-version-consistency.mjs'
 
 const TAG_PATTERN = /^v(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/
 
@@ -71,10 +71,8 @@ export function releaseVersionProblems({ tag, declared, existingTags }) {
   return problems
 }
 
-function declaredVersions(root) {
-  const packageVersion = JSON.parse(readFileSync(join(root, 'frontend/package.json'), 'utf8')).version
-  const config = readFileSync(join(root, 'build/config.yml'), 'utf8').match(/^\s+version:\s*['"]?([^'"\s]+)/m)
-  return { 'frontend/package.json': packageVersion, 'build/config.yml': config ? config[1] : '(missing)' }
+export function declaredVersions(root) {
+  return repositoryVersions(root)
 }
 
 function remoteTags(root) {
@@ -89,7 +87,12 @@ function main() {
     process.exit(2)
   }
   const root = dirname(dirname(fileURLToPath(import.meta.url)))
-  const problems = releaseVersionProblems({ tag, declared: declaredVersions(root), existingTags: remoteTags(root) })
+  const declared = declaredVersions(root)
+  // A tag that matches one source while another one drifted must still be refused.
+  const problems = [
+    ...versionConsistencyProblems(declared),
+    ...releaseVersionProblems({ tag, declared, existingTags: remoteTags(root) }),
+  ]
   if (problems.length) {
     console.error(`check-release-version: ${tag} must not be released`)
     for (const problem of problems) console.error(`  - ${problem}`)

@@ -7,7 +7,9 @@
     "frontend:test": "npm --prefix frontend run test",
     "go:test": "go test ./...",
     "check:wails": "node scripts/check-wails-version.mjs",
-    "check": "npm run check:wails && npm --prefix frontend run build && go test ./..."
+    "check:version": "node scripts/check-version-consistency.mjs",
+    "check:docs": "node scripts/check-doc-links.mjs",
+    "check": "npm run check:wails && npm run check:version && npm run check:docs && npm --prefix frontend run build && go test ./..."
   },
   "dependencies": {
     "headroom-ai": "^0.42.0"

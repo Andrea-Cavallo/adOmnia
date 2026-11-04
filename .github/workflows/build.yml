@@ -43,6 +43,11 @@ jobs:
       - name: Wails version consistency
         run: node scripts/check-wails-version.mjs
 
+      - name: App version consistency
+        # build/config.yml, both npm manifests and both lockfiles must state the same
+        # version: a partial bump ships a binary that disagrees with its installer.
+        run: node scripts/check-version-consistency.mjs
+
       - name: Release version guard
         # A pushed v* tag publishes a release: refuse a tag that does not match the
         # declared version or is not the highest one (v0.1.24 after v1.0.24).
@@ -50,7 +55,7 @@ jobs:
         run: node scripts/check-release-version.mjs "$GITHUB_REF_NAME"
 
       - name: Release scripts unit tests
-        run: node --test scripts/check-release-version.test.mjs
+        run: node --test scripts/check-release-version.test.mjs scripts/check-version-consistency.test.mjs
 
       # Stessa installazione degli altri workflow (azione condivisa). Il frontend reale si compila più sotto,
       # quindi niente stub di frontend/dist. Il timeout evita che un mirror apt bloccato tenga il job per ore.
