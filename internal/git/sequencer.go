@@ -44,6 +44,7 @@ func runFullWithEnv(dir string, extraEnv []string, args ...string) (stdout, stde
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	err = cmd.Run()
+	noteGitCommand(dir, args)
 	if err != nil && timedOut(ctx) {
 		err = gitTimeoutError(args)
 	}

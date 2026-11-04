@@ -48,8 +48,10 @@ func TestInitAndStatus_FreshRepo(t *testing.T) {
 		t.Fatalf("fresh empty repo should not be dirty")
 	}
 
-	// Create an untracked file and confirm it surfaces.
+	// Create an untracked file and confirm it surfaces. The write does not go through git, so the
+	// status cache is reset the way the project watcher does it in the app.
 	writeFile(t, filepath.Join(dir, "note.txt"), "hello")
+	resetRepositoryCache()
 
 	st, err = GetStatus(dir)
 	if err != nil {

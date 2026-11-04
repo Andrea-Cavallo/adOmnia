@@ -174,7 +174,9 @@ func runRaw(dir string, extraEnv []string, args ...string) (string, error) {
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	noteGitCommand(dir, args)
+	if err != nil {
 		if timedOut(ctx) {
 			return "", gitTimeoutError(args)
 		}

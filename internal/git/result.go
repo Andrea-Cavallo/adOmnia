@@ -74,6 +74,7 @@ func runFull(dir string, args ...string) (stdout, stderr, command string, err er
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	err = cmd.Run()
+	noteGitCommand(dir, args)
 	if err != nil && timedOut(ctx) {
 		err = gitTimeoutError(args)
 	}

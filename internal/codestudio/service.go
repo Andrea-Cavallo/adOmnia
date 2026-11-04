@@ -23,6 +23,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/terminal"
 	"github.com/Andrea-Cavallo/adOmnia/internal/startupperf"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/sdk"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/golang"
@@ -101,6 +102,10 @@ type Service struct {
 	graphState *workspaceGraphs
 	// depGraph è la cache del grafo dipendenze (dependencygraph_cache.go).
 	depGraph *dependencyGraphCache
+	// analysis caches architecture and documentation per session (analysis_cache.go).
+	analysis analysisCaches
+	// vcsRoots caches repository discovery per session (vcs_repositories.go).
+	vcsRoots repositoryRootsCache
 	// depFlights unifica i calcoli concorrenti dello stesso grafo (più pannelli che lo chiedono insieme).
 	depFlights flight.Group[DependencyGraphReport]
 }
@@ -444,6 +449,8 @@ func (s *Service) CloseSession(id string) error {
 	}
 	s.warmer.stop(sessionID)
 	s.depGraph.invalidateSession(sessionID)
+	s.analysis.forget(id)
+	s.vcsRoots.forget(sessionID)
 	graphs := s.graphs()
 	graphs.mu.Lock()
 	delete(graphs.cached, id)
@@ -1250,8 +1257,12 @@ func (s *Service) watchSession(session Session) {
 func (s *Service) filesChanged(sessionID SessionID, batch FilesChanged) {
 	// I cambiamenti ai sorgenti alterano anche l'analisi -deps del grafo dipendenze.
 	s.depGraph.invalidateSession(sessionID)
-	if session, err := s.workspace.GetSession(sessionID); err == nil && changesFileList(batch) {
-		s.documents.ApplyFileChanges(session.Project.RealPath, batch)
+	if session, err := s.workspace.GetSession(sessionID); err == nil {
+		if changesFileList(batch) {
+			s.documents.ApplyFileChanges(session.Project.RealPath, batch)
+		}
+		// The VCS bar caches the Git status for a second: a save must show up now.
+		git.InvalidateRepository(session.Project.RealPath)
 	}
 	s.noteGraphChanges(sessionID, batch)
 	s.lsp.NotifyWatchedFiles(sessionID, batch.Changes)
