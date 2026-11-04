@@ -56,6 +56,14 @@ type Store struct {
 
 func NewStore(dir string) *Store { return &Store{dir: dir} }
 
+// Dir is the folder the store writes to; empty when no store is configured.
+func (s *Store) Dir() string {
+	if s == nil {
+		return ""
+	}
+	return s.dir
+}
+
 func (s *Store) path(root, language string) string {
 	sum := sha256.Sum256([]byte(language + "\x00" + filepath.Clean(root)))
 	return filepath.Join(s.dir, hex.EncodeToString(sum[:12])+".json")

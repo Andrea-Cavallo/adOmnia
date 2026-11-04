@@ -26,14 +26,32 @@ func (s *Service) flowIndex(sessionID string, refresh bool) (*flowintel.Index, e
 				return index, nil
 			}
 		}
+		if dir := s.graphDir(); dir != "" {
+			if discovery, ok := flowintel.LoadCached(dir, session.Project.RealPath); ok {
+				index := flowintel.NewIndex(discovery)
+				flowIndexes.Store(session.ID, index)
+				return index, nil
+			}
+		}
 	}
 	discovery, err := flowintel.Discover(session.Project.RealPath)
 	if err != nil {
 		return nil, err
 	}
+	if dir := s.graphDir(); dir != "" {
+		_ = flowintel.SaveCached(dir, discovery)
+	}
 	index := flowintel.NewIndex(discovery)
 	flowIndexes.Store(session.ID, index)
 	return index, nil
+}
+
+// graphDir is the app data folder of the graph store ("" when not configured).
+func (s *Service) graphDir() string {
+	graphs := s.graphs()
+	graphs.mu.Lock()
+	defer graphs.mu.Unlock()
+	return graphs.store.Dir()
 }
 
 // invalidateFlow drops the cached flow graph of a session.
