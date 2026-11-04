@@ -57,6 +57,10 @@ func mcpWorkspaceTools() []mcpTool {
 		{"osgi_diagnose", "OSGi diagnostics", "Every static diagnostic with cause, evidence (manifest headers), available versions and suggested fixes, plus Equinox runtime diagnostics when a runtime snapshot exists in the IDE. Filter by bundle or severity.", object(map[string]any{"workspace": workspace, "symbolicName": str("Only diagnostics of this bundle."), "severity": str("error, warning or info.")}), readOnly},
 		{"osgi_resolve", "Resolve a manifest", "Resolve an arbitrary MANIFEST.MF (text) or an existing bundle (path) against the workspace and the active target platform: status, chosen wires, missing requirements with versions available and actions. This is the same resolver the IDE uses.", object(map[string]any{"workspace": workspace, "manifest": str("MANIFEST.MF content to resolve."), "bundle": str("Path of a bundle directory, MANIFEST.MF file or jar inside the workspace.")}), readOnly},
 		{"osgi_target", "Target platform", "The active target platform (kind, path, indexed bundles, execution environment) and, with compare, the diff against another target: added, removed and version-changed bundles.", object(map[string]any{"workspace": workspace, "compare": str("Folder of bundles, Eclipse installation or .target file to compare with the active target.")}), readOnly},
+		{"osgi_runtime", "OSGi runtime status", "Whether the workspace is running in Equinox for this MCP session, with the console address and start time.", object(map[string]any{"workspace": workspace}), readOnly},
+		{"osgi_runtime_start", "Start the OSGi runtime", "Start the compiled bundles in Equinox on the project JVM with the console on an ephemeral loopback port, then return the real state: ACTIVE bundles with the first activation time, start level, service registry and the Equinox `diag` text of what did not resolve. The process belongs to this MCP server and is stopped when it exits. Requires --write.", object(map[string]any{"workspace": workspace}), write},
+		{"osgi_runtime_snapshot", "Refresh the OSGi runtime", "Read the running framework again (states, activation order, services, diagnostics) and update the explorer cache.", object(map[string]any{"workspace": workspace}), readOnly},
+		{"osgi_runtime_stop", "Stop the OSGi runtime", "Stop the framework and close its console; the ACTIVE overlay is removed. Requires --write.", object(map[string]any{"workspace": workspace}), write},
 		{"osgi_set_target", "Set the target platform", "Make a folder of bundles, an Eclipse installation or a .target file the active target of the workspace (writes .adomnia/eclipse-target.json) and return the new overview. Requires --write.", object(map[string]any{"workspace": workspace, "path": str("Absolute path, or a path relative to the workspace, of the target platform.")}, "path"), write},
 		{"osgi_manifest_set", "Set a manifest header", "Set or remove one MANIFEST.MF header of a bundle, preserving every other line, the header order and the line endings; the result is parsed before writing. Example: set Require-Bundle to a comma-separated list. Requires --write.", object(map[string]any{"workspace": workspace, "bundle": str("Bundle directory, MANIFEST.MF path or jar inside the workspace."), "header": str("Header name, e.g. Import-Package."), "value": str("Header value; an empty string removes the header."), "expectedSha256": str("Optional SHA-256 of the current manifest: the write fails when the file changed meanwhile.")}, "bundle", "header", "value"), write},
 		{"osgi_manifest_requirement", "Add a bundle requirement", "Append one clause to Import-Package or Require-Bundle unless it is already there, with an optional version range. This is the safe way to fix an unresolved import. Returns the new header value. Requires --write.", object(map[string]any{"workspace": workspace, "bundle": str("Bundle directory or MANIFEST.MF path."), "kind": str("import-package or require-bundle."), "name": str("Package name or bundle symbolic name."), "versionRange": str("OSGi version range, e.g. [1.0.0,2.0.0).")}, "bundle", "kind", "name"), write},
@@ -65,6 +69,8 @@ func mcpWorkspaceTools() []mcpTool {
 		{"workspace_read_file", "Read a workspace file", "Read a UTF-8 file inside the workspace (text only, 4 MiB limit) and return its content with SHA-256 and size. Paths outside the workspace are refused.", object(map[string]any{"workspace": workspace, "path": str("File path relative to the workspace (or absolute inside it).")}, "path"), readOnly},
 		{"workspace_write_file", "Write a workspace file", "Create or replace a UTF-8 file inside the workspace atomically, optionally only when its current SHA-256 matches. Requires --write.", object(map[string]any{"workspace": workspace, "path": str("File path relative to the workspace."), "content": str("New content."), "expectedSha256": str("Optional SHA-256 of the current content; the write fails when the file changed meanwhile."), "createDirs": boolean("Create missing parent folders (default true).")}, "path", "content"), write},
 		{"workspace_list_files", "List workspace files", "List files and folders under a workspace folder (bounded depth and entries), excluding VCS, build output and hidden folders, for navigation of large projects.", object(map[string]any{"workspace": workspace, "path": str("Folder relative to the workspace (default the root)."), "depth": integer("Depth to descend (default 2, max 6)."), "limit": integer("Maximum entries (default 200, max 1000).")}), readOnly},
+		{"workspace_overview", "Workspace overview", "What this project is before asking OSGi questions: detected languages/build markers, file and folder counts, the most common extensions, the top-level entries, the project JVM, and - for a PDE workspace - the bundle counts, issues, Activators, target and runtime state. Bounded walk, no file is executed.", object(map[string]any{"workspace": workspace}), readOnly},
+		{"workspace_find_files", "Find workspace files", "Find files by a path substring (query) or a glob on the name/relative path (pattern, e.g. *.java or plugins/*/META-INF/MANIFEST.MF). Bounded and ignores VCS/build folders: the way to locate files in a huge workspace.", object(map[string]any{"workspace": workspace, "path": str("Folder to search under (default the workspace root)."), "query": str("Case-insensitive substring of the relative path."), "pattern": str("Glob matched against the file name, then the relative path."), "limit": integer("Maximum matches (default 100, max 500).")}), readOnly},
 	}
 }
 
@@ -104,6 +110,7 @@ type mcpWorkspaceArgs struct {
 	Files          []string `json:"files"`
 	Content        string   `json:"content"`
 	CreateDirs     *bool    `json:"createDirs"`
+	Pattern        string   `json:"pattern"`
 }
 
 // callWorkspaceTool dispatches the workspace/OSGi tools.
@@ -131,6 +138,8 @@ func (s *mcpServer) callWorkspaceTool(name string, raw jsonv1.RawMessage) (strin
 		return s.osgiResolve(args)
 	case "osgi_target":
 		return s.osgiTarget(args)
+	case "osgi_runtime", "osgi_runtime_start", "osgi_runtime_snapshot", "osgi_runtime_stop":
+		return s.callRuntimeTool(name, raw)
 	case "osgi_set_target":
 		return s.osgiSetTarget(args)
 	case "osgi_manifest_set":
@@ -147,6 +156,10 @@ func (s *mcpServer) callWorkspaceTool(name string, raw jsonv1.RawMessage) (strin
 		return s.workspaceWriteFile(args)
 	case "workspace_list_files":
 		return s.workspaceListFiles(args)
+	case "workspace_overview":
+		return s.workspaceOverview(args)
+	case "workspace_find_files":
+		return s.workspaceFindFiles(args)
 	}
 	return "", fmt.Errorf("unknown workspace tool %q", name)
 }

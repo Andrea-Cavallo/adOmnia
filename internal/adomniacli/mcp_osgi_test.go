@@ -82,7 +82,7 @@ func TestMCPWorkspaceToolsAreRegistered(t *testing.T) {
 	for _, tool := range mcpTools() {
 		names[tool.Name] = true
 	}
-	for _, expected := range []string{"osgi_workspace", "osgi_bundles", "osgi_bundle", "osgi_search", "osgi_impact", "osgi_diagnose", "osgi_resolve", "osgi_target", "osgi_set_target", "osgi_manifest_set", "osgi_manifest_requirement", "osgi_import_plugins", "osgi_add_target_jars", "workspace_read_file", "workspace_write_file", "workspace_list_files"} {
+	for _, expected := range []string{"osgi_workspace", "osgi_bundles", "osgi_bundle", "osgi_search", "osgi_impact", "osgi_diagnose", "osgi_resolve", "osgi_target", "osgi_set_target", "osgi_manifest_set", "osgi_manifest_requirement", "osgi_import_plugins", "osgi_add_target_jars", "workspace_read_file", "workspace_write_file", "workspace_list_files", "workspace_overview", "workspace_find_files", "osgi_runtime", "osgi_runtime_start", "osgi_runtime_snapshot", "osgi_runtime_stop"} {
 		if !names[expected] {
 			t.Fatalf("tool %s is not registered", expected)
 		}
@@ -292,6 +292,63 @@ func TestMCPWorkspaceListFiles(t *testing.T) {
 	}
 	if !strings.Contains(text, `"truncated": false`) && !strings.Contains(text, `"truncated":false`) {
 		t.Fatalf("truncation flag = %s", text)
+	}
+}
+
+func TestMCPWorkspaceOverviewAndFindFiles(t *testing.T) {
+	root := mcpOsgiWorkspace(t)
+	server := osgiMCPServer(t, root, false)
+	text, err := server.callWorkspaceTool("workspace_overview", jsonv1.RawMessage(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var overview struct {
+		Languages []string       `json:"languages"`
+		Files     int            `json:"files"`
+		OSGi      map[string]any `json:"osgi"`
+		Write     bool           `json:"writeEnabled"`
+	}
+	if err := json.Unmarshal([]byte(text), &overview); err != nil {
+		t.Fatal(err)
+	}
+	if overview.Files == 0 || len(overview.Languages) == 0 || overview.OSGi == nil || overview.Write {
+		t.Fatalf("overview = %s", text)
+	}
+	if overview.OSGi["bundles"].(float64) != 3 {
+		t.Fatalf("osgi overview = %s", text)
+	}
+
+	text, err = server.callWorkspaceTool("workspace_find_files", jsonv1.RawMessage(`{"pattern":"MANIFEST.MF"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found struct {
+		Total int `json:"total"`
+	}
+	if err := json.Unmarshal([]byte(text), &found); err != nil || found.Total != 3 {
+		t.Fatalf("find = %s (%v)", text, err)
+	}
+	text, err = server.callWorkspaceTool("workspace_find_files", jsonv1.RawMessage(`{"query":"com.acme.ui"}`))
+	if err != nil || !strings.Contains(text, "com.acme.ui/META-INF/MANIFEST.MF") {
+		t.Fatalf("find by query = %s (%v)", text, err)
+	}
+}
+
+func TestMCPRuntimeStatusAndOptIn(t *testing.T) {
+	root := mcpOsgiWorkspace(t)
+	server := osgiMCPServer(t, root, false)
+	text, err := server.callWorkspaceTool("osgi_runtime", jsonv1.RawMessage(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(text, `"running": false`) && !strings.Contains(text, `"running":false`) {
+		t.Fatalf("status = %s", text)
+	}
+	if _, err := server.callWorkspaceTool("osgi_runtime_start", jsonv1.RawMessage(`{}`)); err == nil || !strings.Contains(err.Error(), "--write") {
+		t.Fatalf("runtime start without opt-in = %v", err)
+	}
+	if _, err := server.callWorkspaceTool("osgi_runtime_stop", jsonv1.RawMessage(`{}`)); err == nil || !strings.Contains(err.Error(), "--write") {
+		t.Fatalf("runtime stop without opt-in = %v", err)
 	}
 }
 

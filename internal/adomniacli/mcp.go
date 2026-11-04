@@ -81,7 +81,8 @@ func MCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if workspace == "" {
 		workspace = defaultFolder
 	}
-	server := &mcpServer{defaultFolder: defaultFolder, workspace: workspace, allowWrite: allowWrite, mux: http.NewServeMux(), osgiReports: map[string]*eclipsepde.ExplorerReport{}}
+	server := &mcpServer{defaultFolder: defaultFolder, workspace: workspace, allowWrite: allowWrite, mux: http.NewServeMux(), osgiReports: map[string]*eclipsepde.ExplorerReport{}, runtimes: map[string]*osgiRuntimeProcess{}}
+	defer server.stopAllRuntimes()
 	mock.RegisterHandlers(server.mux)
 	scanner := bufio.NewScanner(stdin)
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
@@ -138,6 +139,8 @@ type mcpServer struct {
 	writeMu       sync.Mutex
 	workspaceMu   sync.Mutex
 	osgiReports   map[string]*eclipsepde.ExplorerReport
+	runtimeMu     sync.Mutex
+	runtimes      map[string]*osgiRuntimeProcess
 }
 
 func (s *mcpServer) handle(request mcpRPC) (any, *mcpError) {
