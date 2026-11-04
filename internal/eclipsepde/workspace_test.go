@@ -242,3 +242,43 @@ func mustRange(t *testing.T, s string) VersionRange {
 	}
 	return r
 }
+
+// A Tycho repository keeps an aggregator .project at the root, with the bundles beside it.
+func TestImportWorkspaceFindsBundlesUnderAggregatorProject(t *testing.T) {
+	root := t.TempDir()
+	aggregator := "<projectDescription><name>parent</name></projectDescription>"
+	if err := os.WriteFile(filepath.Join(root, ".project"), []byte(aggregator), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeProject(t, root, "org.example.a", "Bundle-ManifestVersion: 2\nBundle-SymbolicName: org.example.a\nBundle-Version: 1.0.0\n", nil)
+
+	ws, err := ImportWorkspace(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundles := ws.Bundles()
+	if len(bundles) != 1 || bundles[0].Name != "org.example.a" {
+		t.Fatalf("bundles = %+v", bundles)
+	}
+}
+
+func TestIndexTargetDirectorySkipsInstalledFeatures(t *testing.T) {
+	root := t.TempDir()
+	feature := filepath.Join(root, "features", "org.example.feature_1.0.0")
+	if err := os.MkdirAll(filepath.Join(feature, "META-INF"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range map[string]string{"feature.xml": "<feature/>", "META-INF/MANIFEST.MF": "Manifest-Version: 1.0\n"} {
+		if err := os.WriteFile(filepath.Join(feature, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	idx := NewBundleIndex()
+	if err := idx.IndexTargetDirectory(root); err != nil {
+		t.Fatal(err)
+	}
+	if len(idx.Problems) != 0 || len(idx.All()) != 0 {
+		t.Fatalf("problems = %+v, bundles = %d", idx.Problems, len(idx.All()))
+	}
+}

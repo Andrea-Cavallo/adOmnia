@@ -161,6 +161,10 @@ func (idx *BundleIndex) IndexTargetDirectory(root string) error {
 			return nil
 		}
 		if d.IsDir() {
+			// An installed Eclipse feature also has a manifest, but it is not a bundle.
+			if fileExists(filepath.Join(path, "feature.xml")) {
+				return filepath.SkipDir
+			}
 			if fileExists(filepath.Join(path, "META-INF", "MANIFEST.MF")) {
 				idx.indexExplodedBundle(path)
 				return filepath.SkipDir // nested bundles are separate entries

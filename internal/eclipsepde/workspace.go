@@ -75,7 +75,7 @@ func ImportWorkspace(root string) (*Workspace, error) {
 
 // projectDirectories finds the folders holding a `.project`: the opened folder
 // itself, or projects nested in it (legacy repositories often use plugins/<name>).
-// It does not descend into a project, build output or hidden folders such as
+// It does not descend into a bundle, build output or hidden folders such as
 // Eclipse's `.metadata`. Unreadable folders are skipped.
 func projectDirectories(root string) []string {
 	var out []string
@@ -91,7 +91,10 @@ func projectDirectories(root string) []string {
 		}
 		if fileExists(filepath.Join(path, ".project")) {
 			out = append(out, path)
-			return filepath.SkipDir
+			// A project without a manifest may be a Tycho aggregator with its bundles inside.
+			if fileExists(filepath.Join(path, "META-INF", "MANIFEST.MF")) {
+				return filepath.SkipDir
+			}
 		}
 		if rel, relErr := filepath.Rel(root, path); relErr == nil && strings.Count(rel, string(filepath.Separator)) >= maxProjectDepth {
 			return filepath.SkipDir
