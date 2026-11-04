@@ -425,6 +425,7 @@ func applyOSGi(builder *graph.Builder, root string, discovery *Discovery) {
 		for _, node := range typeNodes {
 			if strings.HasPrefix(node.File, prefix) {
 				builder.EdgeWithConfidence(bundleID, node.ID, graph.EdgeContains, "", graph.ConfidenceDerived)
+				builder.Annotate(node.ID, "bundle", bundle.SymbolicName)
 			}
 		}
 		if bundle.Activator != "" {
@@ -447,6 +448,37 @@ func applyOSGi(builder *graph.Builder, root string, discovery *Discovery) {
 				serviceID := "service:" + referenced
 				builder.Node(graph.Node{ID: serviceID, Kind: graph.KindService, Label: referenced})
 				builder.EdgeWithConfidence(bundleID, serviceID, graph.EdgeRefers, component.File, graph.ConfidenceDeclared)
+			}
+		}
+	}
+	// Propagate the bundle of a type to its methods and to the flows around them, so the UI can
+	// group a trace by bundle without walking the contains edges again.
+	bundleOfType := map[string]string{}
+	for _, node := range builderNodes(builder) {
+		if node.Kind == graph.KindType && node.Attrs["bundle"] != "" {
+			bundleOfType[node.ID] = node.Attrs["bundle"]
+		}
+	}
+	for _, node := range builderNodes(builder) {
+		if node.Kind == graph.KindMethod {
+			if bundle := bundleOfType["type:"+node.Attrs["class"]]; bundle != "" {
+				builder.Annotate(node.ID, "bundle", bundle)
+			}
+		}
+	}
+	for _, node := range builderNodes(builder) {
+		if node.Kind != graph.KindFlow && node.Kind != graph.KindSubflow {
+			continue
+		}
+		if bundle := node.Attrs["bundle"]; bundle != "" {
+			continue
+		}
+		if method := node.Attrs["method"]; method != "" {
+			for _, candidate := range builderNodes(builder) {
+				if candidate.ID == method && candidate.Attrs["bundle"] != "" {
+					builder.Annotate(node.ID, "bundle", candidate.Attrs["bundle"])
+					break
+				}
 			}
 		}
 	}

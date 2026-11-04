@@ -10,6 +10,7 @@ import { runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 import { openJavaJdkDialog } from './CodeStudioJavaJdk'
 import { openJavaDependencyTree } from './CodeStudioJavaTree'
 import { openJavaOsgi, runOsgiBuild, runOsgiFramework } from './CodeStudioJavaOsgi'
+import { openFlowExplorer } from './CodeStudioFlowExplorer'
 import { openJavaJvmMonitor } from './CodeStudioJavaJvm'
 import { openSpringBeanGraph } from './CodeStudioSpringGraph'
 import { openSpringEndpoints } from './CodeStudioSpringEndpoints'
@@ -80,6 +81,7 @@ export function runJavaCommand(
     case 'java.selectJdk': openJavaJdkDialog(sessionId); return true
     case 'java.jvmMonitor': openJavaJvmMonitor(sessionId); return true
     case 'java.osgi': openJavaOsgi(sessionId); return true
+    case 'java.flowExplorer': openFlowExplorer(sessionId); return true
     case 'java.osgiBuild': runOsgiBuild(sessionId); return true
     case 'java.osgiRun': runOsgiFramework(sessionId); return true
     case 'java.springEndpoints': openSpringEndpoints(sessionId); void useSpringStore.getState().refresh(sessionId); return true

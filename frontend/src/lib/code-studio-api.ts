@@ -4,6 +4,7 @@ import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDepende
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
 import type { BundleDetail, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
+import type { Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Path as FlowPath, Trace as FlowTrace } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -1036,6 +1037,36 @@ export async function refreshJavaOsgiRuntime(sessionId: string): Promise<Runtime
 /** Ferma il framework e chiude la console. */
 export async function stopJavaOsgiRuntime(sessionId: string): Promise<void> {
   await GoIDEBindings.StopJavaOsgiRuntime(sessionId)
+}
+
+/** Flow Intelligence: flow/subflow del progetto, adapter e conteggi. */
+export async function getFlowOverview(sessionId: string, refresh = false): Promise<FlowOverview | null> {
+  return GoIDEBindings.FlowOverview(sessionId, refresh)
+}
+
+/** Filtra i flow per testo e bundle. */
+export async function searchFlows(sessionId: string, query: string, bundle = '', limit = 200): Promise<FlowEntry[]> {
+  return (await GoIDEBindings.FlowSearch(sessionId, query, bundle, limit)) ?? []
+}
+
+/** Percorso di esecuzione a valle, a monte o entrambi. */
+export async function traceFlow(sessionId: string, id: string, direction: 'downstream' | 'upstream' | 'both', depth: number): Promise<FlowTrace | null> {
+  return GoIDEBindings.FlowTrace(sessionId, id, direction, depth)
+}
+
+/** Percorsi di esecuzione tra due nodi. */
+export async function findFlowPaths(sessionId: string, from: string, to: string, depth = 8, limit = 3): Promise<FlowPath[]> {
+  return (await GoIDEBindings.FlowFindPaths(sessionId, from, to, depth, limit)) ?? []
+}
+
+/** Flow, bundle, servizi ed esterni che una modifica può rompere. */
+export async function getFlowImpact(sessionId: string, id: string, depth = 6): Promise<FlowImpact | null> {
+  return GoIDEBindings.FlowImpact(sessionId, id, depth)
+}
+
+/** Spiega un nodo: relazioni, affidabilità e sorgente. */
+export async function explainFlow(sessionId: string, id: string): Promise<FlowExplanation | null> {
+  return GoIDEBindings.FlowExplain(sessionId, id)
 }
 
 /** Repository e unità p2 del file .target attivo (nessun accesso alla rete). */

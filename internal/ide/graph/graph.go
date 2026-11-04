@@ -150,6 +150,20 @@ func (b *Builder) EdgeWithConfidence(from, to, kind, detail, confidence string) 
 	b.edges[Edge{From: from, To: to, Kind: kind, Detail: detail, Confidence: confidence}] = true
 }
 
+// Annotate aggiunge un attributo a un nodo esistente (es. il bundle che contiene una classe),
+// senza sostituire gli attributi già presenti.
+func (b *Builder) Annotate(id, key, value string) {
+	node, ok := b.nodes[id]
+	if !ok || key == "" || value == "" {
+		return
+	}
+	if node.Attrs == nil {
+		node.Attrs = map[string]string{}
+	}
+	node.Attrs[key] = value
+	b.nodes[id] = node
+}
+
 // Graph restituisce il grafo ordinato (stabile, quindi confrontabile e salvabile).
 func (b *Builder) Graph() Graph {
 	graph := Graph{Nodes: make([]Node, 0, len(b.nodes)), Edges: make([]Edge, 0, len(b.edges))}

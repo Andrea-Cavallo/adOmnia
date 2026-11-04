@@ -451,6 +451,7 @@ func (s *Service) CloseSession(id string) error {
 	s.depGraph.invalidateSession(sessionID)
 	s.analysis.forget(id)
 	s.invalidateOsgiExplorer(sessionID)
+	s.invalidateFlow(sessionID)
 	s.vcsRoots.forget(sessionID)
 	graphs := s.graphs()
 	graphs.mu.Lock()

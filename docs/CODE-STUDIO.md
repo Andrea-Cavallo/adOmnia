@@ -285,6 +285,7 @@ The Semantic Workspace Graph (`internal/ide/graph`) gains an execution layer for
 - **Bounded and cached**: discovery walks at most 20k relevant files (1 MiB each), skips `target/`, `bin/`, `build/`, `node_modules`, `vendor` and `.adomnia`; the graph is cached per workspace and rebuilt on `refresh` or after a write. Queries return bounded subtrees, never the whole graph.
 - **Queries**: `Trace` (downstream/upstream/both, depth), `FindPaths` (shortest routes with the weakest confidence), `Impact` (flows, bundles, services, externals that reach a node) and `Explain` (incoming/outgoing edges with the reason and the source snippet).
 - **MCP**: `flow_discover`, `flow_trace`, `flow_find_paths`, `flow_impact`, `flow_explain`, all read-only and rooted at the project folder. The Flow Explorer UI and the live tracing (ACTIVE call paths, `observed` edges) are the next phases.
+- **Flow Explorer panel** (*Java → Flow Explorer…*): search over flows/subflows/methods with bundle and kind filters, the execution path rendered by depth and grouped by OSGi bundle (Down / Up / Both, depth 1–8), the impact of a change (direct callers, flows that can break, bundles, services, external systems) and the evidence for each node (relations with declared/derived/inferred confidence plus the source snippet, one click to the line). The bindings (`FlowOverview`, `FlowSearch`, `FlowTrace`, `FlowFindPaths`, `FlowImpact`, `FlowExplain`) call the same engine as the MCP tools; the index is cached per session and dropped after a write or a refresh.
 
 ## Makefiles and Dockerfiles
 

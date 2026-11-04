@@ -6,6 +6,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Flow Explorer: the execution path in the IDE
+
+- **A real panel, same engine as MCP.** *Java → Flow Explorer…* opens the Flow Intelligence graph: search over flows/subflows/methods with a bundle filter and a kind filter, and the execution path rendered by depth and grouped by OSGi bundle (Down / Up / Both, depth 1–8). Selecting a flow shows what it calls, who calls it, the impact of a change and the evidence behind every link.
+- **Impact and evidence.** The Impact tab lists direct callers, the flows that can break, the bundles, the DS services and the external systems (SOAP/REST/DB/queue) on the way; Evidence shows each incoming/outgoing relation with its confidence (declared, derived, inferred) and the source snippet, with one click to the exact line.
+- **Bindings on the same Go code as the MCP tools:** `FlowOverview`, `FlowSearch`, `FlowTrace`, `FlowFindPaths`, `FlowImpact`, `FlowExplain` on the Code Studio service; the index is cached per session and invalidated by a write or an explicit refresh. OSGi types/methods/flows now carry their bundle as an attribute, so the panel groups a trace without extra round trips.
+- **Tested:** Go service test end to end (overview, search, trace from a flow, upstream impact, explanation with source, path finding, refresh sees a new file) on a trusted project; `tsc --noEmit`, the frontend build and `go test ./internal/codestudio` are green.
 ### Flow Intelligence: flows, execution paths and confidence, over MCP
 
 - **The graph gains an execution layer.** `internal/flowintel` fills the existing Semantic Workspace Graph (no second engine) with flows, subflows, Java types/methods/calls, OSGi bundles, Activators, Declarative Services and external systems. Every edge carries its confidence: `declared` (config/XML/annotation), `derived` (target resolved in the workspace), `inferred` (name/import heuristic) or `observed` (runtime, reserved for live tracing).

@@ -14,6 +14,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/codestudiowindow"
 	"github.com/Andrea-Cavallo/adOmnia/internal/copilot"
 	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
+	"github.com/Andrea-Cavallo/adOmnia/internal/flowintel"
 	"github.com/Andrea-Cavallo/adOmnia/internal/git"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/agentreview"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/apicontract"
@@ -1814,6 +1815,36 @@ func (g *GoIDE) JavaOsgiRuntimeSnapshot(sessionID string) (*eclipsepde.RuntimeSn
 // StopJavaOsgiRuntime ferma il framework e chiude la console.
 func (g *GoIDE) StopJavaOsgiRuntime(sessionID string) error {
 	return g.service.StopJavaOsgiRuntime(sessionID)
+}
+
+// FlowOverview elenca flow e subflow del progetto (Flow Intelligence).
+func (g *GoIDE) FlowOverview(sessionID string, refresh bool) (*flowintel.Overview, error) {
+	return g.service.FlowOverview(sessionID, refresh)
+}
+
+// FlowSearch filtra i flow per testo e bundle.
+func (g *GoIDE) FlowSearch(sessionID, query, bundle string, limit int) ([]flowintel.FlowEntry, error) {
+	return g.service.FlowSearch(sessionID, query, bundle, limit)
+}
+
+// FlowTrace percorre un flow verso valle, verso monte o entrambi.
+func (g *GoIDE) FlowTrace(sessionID, id, direction string, depth int) (*flowintel.Trace, error) {
+	return g.service.FlowTrace(sessionID, id, direction, depth)
+}
+
+// FlowFindPaths trova i percorsi di esecuzione tra due nodi.
+func (g *GoIDE) FlowFindPaths(sessionID, from, to string, depth, limit int) ([]flowintel.Path, error) {
+	return g.service.FlowFindPaths(sessionID, from, to, depth, limit)
+}
+
+// FlowImpact elenca flow, bundle, servizi ed esterni che una modifica può rompere.
+func (g *GoIDE) FlowImpact(sessionID, id string, depth int) (*flowintel.Impact, error) {
+	return g.service.FlowImpact(sessionID, id, depth)
+}
+
+// FlowExplain spiega un nodo: relazioni, affidabilità e righe di sorgente.
+func (g *GoIDE) FlowExplain(sessionID, id string) (*flowintel.Explanation, error) {
+	return g.service.FlowExplain(sessionID, id)
 }
 
 // PomManagedVersions: versioni ereditate da parent e BOM per le dipendenze senza <version>.
