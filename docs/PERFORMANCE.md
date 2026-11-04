@@ -194,22 +194,32 @@ address; non-loopback is refused) for heap/goroutine/CPU profiles of the Go
 backend itself.
 
 While a recording is active, the renderer also measures keypress-to-paint input
-latency (double `requestAnimationFrame`) and merges p50/p95/max per window into
-the same samples through `main.App.PerfPushFrontendMetrics`. Without a recording
-the module stays inert and adds no timers or listeners.
+latency (double `requestAnimationFrame`) and merges p50/p95/p99/max per window into
+the same samples through `main.App.PerfPushFrontendMetrics`, together with the
+renderer long tasks reported by `PerformanceObserver` (`longtask`): count, total
+duration and the single worst task. A long task is a main-thread task of 50 ms or
+more, so it explains an input p95 with no matching backend cost. Without a
+recording the module stays inert and adds no timers, listeners or observer.
 
 **Aggregation.** From the repository root:
 
 ```powershell
 node scripts/perf-scenario-report.mjs <perf-dir> --out baseline-report.json
+node scripts/perf-scenario-report.mjs <perf-dir> --max-input-p95 50   # opt-in gate
 node --test scripts/perf-scenario-report.test.mjs
 ```
 
 The report (`kind: native-scenario-baseline`) groups every sample by component —
 `backend-go`, `webview2`, `gopls`, `debug-adapter`, `other-children` — with
 RAM/CPU average, max and median per component, observed process counts, runtime
-aggregates and the input-latency window, plus a Markdown table for this file.
-Comparisons require the same hardware/conditions as the microbenchmark runner.
+aggregates and the input-latency window (p50/p95/p99/max plus long tasks), plus a
+Markdown table for this file. Comparisons require the same hardware/conditions as
+the microbenchmark runner.
+
+`--max-input-p95` is the regression gate: it exits non-zero when a scenario's input
+p95 exceeds the given budget, **and** when a scenario has no measurement at all, so
+a gate can never pass on an empty recording. It stays opt-in because only the
+declared test machine produces comparable numbers; no workflow runs it today.
 
 **Scenario suite.** One recording per row; record cold and warm samples
 separately and state dataset sizes in `--conditions`.
@@ -220,25 +230,29 @@ separately and state dataset sizes in `--conditions`.
 | `hub-empty` | Leave the Hub open with no workspace | 5 min | idle CPU per component |
 | `gostudio-small` / `gostudio-large` | Open a small / large Go project in Code Studio, let gopls settle | 5 min each | gopls RAM/CPU, backend-go heap |
 | `workspaces-3-5` | Keep 3–5 workspaces open across tabs/windows | 10 min | per-component RAM growth |
-| `typing-continuous` | Type continuously in a large file with completion and diagnostics on | 10 min | input p95, gopls CPU, heap |
+| `typing-continuous` | Type continuously in a large file with completion and diagnostics on | 10 min | input p95/p99, long tasks, gopls CPU, heap |
 | `hover-browse` | Open a method in a package not loaded yet, hover in synopsis and in full mode | 2 min each | gopls RSS/CPU per hover kind, hover latency |
 | `large-files-json` | Open very large files / complex JSON payloads, scroll and edit | 10 min | heap max, webview2 RAM |
-| `rapid-tabs` | Switch rapidly between modules/tabs and panels | 5 min | CPU spikes, input p95 |
+| `rapid-tabs` | Switch rapidly between modules/tabs and panels | 5 min | CPU spikes, input p95, long tasks |
 | `open-close-10x` | Ten open/close cycles of the same project | one run | no resource growth (RAM/goroutine first vs last) |
 | `idle-5m` / `idle-15m` / `idle-30m` | Leave the app idle in the foreground, then hidden | one run each | CPU near zero, zero child processes left |
 
 Frame drops and full input-to-render traces need the plan's profiling tools on
 top of the recording: React Profiler and Chrome/WebView2 DevTools Performance
 for the renderer, `pprof`/runtime trace for the Go backend, Windows Performance
-Counters for OS-level CPU. Record their findings (P50/P95, sample counts)
-alongside `baseline-report.json`; never mark a missing measurement as zero.
+Counters for OS-level CPU. Long tasks are recorded, but a dropped frame without a
+long task (compositor or GPU stall) still needs DevTools. Record their findings
+(P50/P95/P99, sample counts) alongside `baseline-report.json`; never mark a
+missing measurement as zero.
 
-**Status (2026-10-15).** Recording, classification and reporting are implemented
+**Status (2026-11-04).** Recording, classification and reporting are implemented
 and covered by unit tests (`internal/perf`, `scripts/perf-scenario-report.test.mjs`,
 `frontend/src/lib/inputLatency.test.ts`), including a real child-process
-recording. The native numbers themselves are collected by running the suite
-above on the target machine; until then the per-component table stays empty and
-the proposed budgets remain unvalidated.
+recording. The renderer window now reports p99 and long-task counters as well as
+p50/p95/max, and the report keeps older recordings (without those fields)
+readable instead of turning them into zeros. The native numbers themselves are
+collected by running the suite above on the target machine; until then the
+per-component table stays empty and the proposed budgets remain unvalidated.
 
 ## Proposed native budgets — awaiting controlled release baseline
 
@@ -247,7 +261,7 @@ the proposed budgets remain unvalidated.
 | Total idle CPU | Below 2% on the declared test machine | Pending |
 | Idle RAM | Reduce 20% where measured waste exists | Pending; no absolute workspace cap |
 | Startup | Lower P95 without restore/navigation regressions | Pending native cold/warm runs |
-| Typing | P95 input-to-render below 50 ms | Pending React/WebView capture |
+| Typing | P95 input-to-render below 50 ms | Instrumentation and report ready (p50/p95/p99, long tasks); native capture pending |
 | File open | Lower P95 vs baseline | Backend fixture available; native pending |
 | Open/close cycles | No persistent resource growth | Dedicated tests pass; native workflows pending |
 | Children | No orphan after close | Job owner-crash test passes; full lifecycle pending |

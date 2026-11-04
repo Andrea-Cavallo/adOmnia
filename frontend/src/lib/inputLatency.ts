@@ -10,7 +10,11 @@ export interface InputLatencyMetrics {
   inputKeypresses: number
   inputP50Ms: number
   inputP95Ms: number
+  inputP99Ms: number
   inputMaxMs: number
+  longTasks: number
+  longTaskTotalMs: number
+  longTaskMaxMs: number
 }
 
 interface RecordingStatus {
@@ -25,6 +29,10 @@ const MAX_PLAUSIBLE_MS = 60_000
 
 let samples: number[] = []
 let keypresses = 0
+let longTasks = 0
+let longTaskTotalMs = 0
+let longTaskMaxMs = 0
+let longTaskObserver: PerformanceObserver | null = null
 let stopCapture: (() => void) | null = null
 
 async function recordingStatus(): Promise<RecordingStatus> {
@@ -46,6 +54,30 @@ export async function maybeStartInputLatencyCapture(): Promise<boolean> {
   return true
 }
 
+/**
+ * Counts renderer long tasks (a task holding the main thread for 50 ms or more).
+ * They explain an input p95 without a matching backend cost, and are the closest
+ * local signal for dropped frames: a browser that supports neither the entry type
+ * nor PerformanceObserver records nothing instead of failing.
+ */
+function startLongTaskCapture(): void {
+  if (longTaskObserver || typeof PerformanceObserver === 'undefined') return
+  try {
+    longTaskObserver = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        const duration = entry.duration
+        if (!Number.isFinite(duration) || duration <= 0 || duration >= MAX_PLAUSIBLE_MS) continue
+        longTasks++
+        longTaskTotalMs += duration
+        if (duration > longTaskMaxMs) longTaskMaxMs = duration
+      }
+    })
+    longTaskObserver.observe({ entryTypes: ['longtask'] })
+  } catch {
+    longTaskObserver = null
+  }
+}
+
 /** Measures keypress → paint with a double requestAnimationFrame. */
 export function startInputLatencyCapture(): () => void {
   if (stopCapture) return stopCapture
@@ -65,9 +97,12 @@ export function startInputLatencyCapture(): () => void {
   }
   const report = window.setInterval(() => { void pushInputLatencyMetrics() }, REPORT_INTERVAL_MS)
   document.addEventListener('keydown', onKeydown, { passive: true })
+  startLongTaskCapture()
   stopCapture = () => {
     document.removeEventListener('keydown', onKeydown)
     window.clearInterval(report)
+    longTaskObserver?.disconnect()
+    longTaskObserver = null
     stopCapture = null
     void pushInputLatencyMetrics()
   }
@@ -89,17 +124,24 @@ function round(value: number): number {
 
 /** Pushes the current window into the active recording; a no-op otherwise. */
 export async function pushInputLatencyMetrics(): Promise<void> {
-  if (samples.length === 0 && keypresses === 0) return
+  if (samples.length === 0 && keypresses === 0 && longTasks === 0) return
   const sorted = [...samples].sort((a, b) => a - b)
   const metrics: InputLatencyMetrics = {
     inputSamples: sorted.length,
     inputKeypresses: keypresses,
     inputP50Ms: round(percentile(sorted, 50)),
     inputP95Ms: round(percentile(sorted, 95)),
+    inputP99Ms: round(percentile(sorted, 99)),
     inputMaxMs: round(sorted.length ? sorted[sorted.length - 1] : 0),
+    longTasks,
+    longTaskTotalMs: round(longTaskTotalMs),
+    longTaskMaxMs: round(longTaskMaxMs),
   }
   samples = []
   keypresses = 0
+  longTasks = 0
+  longTaskTotalMs = 0
+  longTaskMaxMs = 0
   try {
     await Call.ByName('main.App.PerfPushFrontendMetrics', JSON.stringify(metrics))
   } catch {
