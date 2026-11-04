@@ -145,6 +145,16 @@ Section "${APP_NAME}" SecApp
   Call WaitForAppClosed
   SetOverwrite on
   File "/oname=${APP_EXE_NAME}" "${APP_EXE}"
+!ifdef RG_EXE
+  ; Find in Files uses the bundled ripgrep; without it the app falls back to its Go engine.
+  CreateDirectory "$INSTDIR\bin"
+  File "/oname=bin\rg.exe" "${RG_EXE}"
+!endif
+!ifdef RG_LICENSE_DIR
+  CreateDirectory "$INSTDIR\licenses"
+  File "/oname=licenses\ripgrep-LICENSE-MIT" "${RG_LICENSE_DIR}\LICENSE-MIT"
+  File "/oname=licenses\ripgrep-UNLICENSE" "${RG_LICENSE_DIR}\UNLICENSE"
+!endif
   Delete "$INSTDIR\${UPDATER_STAGED}"
   WriteUninstaller "$INSTDIR\uninstall.exe"
 

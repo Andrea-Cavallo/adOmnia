@@ -16,6 +16,12 @@ adOmnia includes or depends on the following third-party software:
 - **Copyright**: Copyright (c) Meta Platforms, Inc. and affiliates
 - **Repository**: https://github.com/facebook/react
 
+### ripgrep
+- **License**: dual MIT / Unlicense (the binary is distributed under the Unlicense; the source is offered under either)
+- **Copyright**: Copyright (c) 2016 Andrew Gallant
+- **Repository**: https://github.com/BurntSushi/ripgrep
+- Bundled: release packages include a pinned `rg` binary (14.1.1) for Windows, Linux and macOS, staged by `scripts/fetch-ripgrep.mjs` with SHA-256 verification. Its `LICENSE-MIT` and `UNLICENSE` files ship next to the app (`bin/`, `Contents/Resources/licenses/`, `licenses/`). Both licenses are GPL-3.0-compatible; the app works without it, falling back to its own Go search engine.
+
 ### Babel Standalone
 - **License**: MIT License
 - **Copyright**: Copyright (c) 2014-present Sebastian McKenzie and other contributors

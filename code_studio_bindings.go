@@ -1205,6 +1205,21 @@ func (g *GoIDE) SearchProject(ctx context.Context, query codestudio.SearchQuery)
 	return settleCancelled(ctx, value, err)
 }
 
+// StartProjectSearch avvia la ricerca progressiva (eventi search.matches / search.done).
+func (g *GoIDE) StartProjectSearch(query codestudio.SearchQuery) (codestudio.SearchStreamInfo, error) {
+	return g.service.StartProjectSearch(query)
+}
+
+// CancelProjectSearch ferma la ricerca progressiva precedente.
+func (g *GoIDE) CancelProjectSearch(id string) {
+	g.service.CancelProjectSearch(id)
+}
+
+// RipgrepStatus dice se Find in Files usa ripgrep o il motore Go di fallback.
+func (g *GoIDE) RipgrepStatus() codestudio.RipgrepInfo {
+	return g.service.RipgrepStatus()
+}
+
 // SetDirtyDocumentCount sincronizza il solo conteggio dei buffer dirty per la chiusura sicura.
 func (g *GoIDE) SetDirtyDocumentCount(count int) {
 	if count < 0 {

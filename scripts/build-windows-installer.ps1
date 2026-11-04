@@ -32,6 +32,16 @@ if (-not $makensis) {
 if (-not $makensis) { throw 'NSIS is not installed: run "winget install NSIS.NSIS" or "choco install nsis".' }
 
 $script = Join-Path $PSScriptRoot '..\build\windows\installer\adomnia.nsi'
-& $makensis -V2 -WX "-DVERSION=$normalized" "-DVI_VERSION=$viVersion" "-DAPP_EXE=$exe" "-DOUTFILE=$outFile" $script
+$rgDir = Join-Path $PSScriptRoot '..\build\rg\windows'
+$rgExe = Join-Path $rgDir 'rg.exe'
+if (-not (Test-Path -LiteralPath $rgExe)) {
+    try { & node (Join-Path $PSScriptRoot 'fetch-ripgrep.mjs') } catch { Write-Warning "ripgrep not staged: $_" }
+}
+$defines = @("-DVERSION=$normalized", "-DVI_VERSION=$viVersion", "-DAPP_EXE=$exe", "-DOUTFILE=$outFile")
+if (Test-Path -LiteralPath $rgExe) {
+    $defines += "-DRG_EXE=$((Resolve-Path -LiteralPath $rgExe).Path)"
+    $defines += "-DRG_LICENSE_DIR=$((Resolve-Path -LiteralPath $rgDir).Path)"
+}
+& $makensis -V2 -WX @defines $script
 if ($LASTEXITCODE -ne 0) { throw "makensis failed with exit code $LASTEXITCODE" }
 Write-Host "Installer: $outFile"

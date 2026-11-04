@@ -52,6 +52,8 @@ type SearchResult struct {
 const searchWorkers = 8
 
 // SearchProject cerca testo nei file del progetto rispettando cancellazione, limiti ed esclusioni.
+// Usa ripgrep quando è disponibile e ricade sul motore Go quando manca: il risultato ha la stessa
+// forma, ordinato per file/riga/colonna.
 func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchResult, error) {
 	session, err := s.session(string(query.SessionID))
 	if err != nil {
@@ -61,6 +63,16 @@ func (s *Service) SearchProject(ctx context.Context, query SearchQuery) (SearchR
 	if err != nil {
 		return SearchResult{}, err
 	}
+	if err := ctx.Err(); err != nil {
+		return SearchResult{}, err
+	}
+	if binary, ok := RipgrepBinary(s.toolsRoot); ok {
+		return s.searchWithRipgrep(ctx, binary, session.Project.RealPath, query)
+	}
+	return s.searchProjectWalk(ctx, session, query, matcher)
+}
+
+func (s *Service) searchProjectWalk(ctx context.Context, session Session, query SearchQuery, matcher *regexp.Regexp) (SearchResult, error) {
 	result := SearchResult{Matches: []SearchMatch{}}
 	candidates := []searchCandidate{}
 	root := session.Project.RealPath

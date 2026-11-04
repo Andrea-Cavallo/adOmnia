@@ -20,6 +20,14 @@ echo "==> Installazione binary in $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR"
 cp "$SCRIPT_DIR/adomnia" "$INSTALL_DIR/adomnia"
 chmod +x "$INSTALL_DIR/adomnia"
+if [[ -f "$SCRIPT_DIR/rg" ]]; then
+    cp "$SCRIPT_DIR/rg" "$INSTALL_DIR/rg"
+    chmod +x "$INSTALL_DIR/rg"
+fi
+if [[ -d "$SCRIPT_DIR/licenses" ]]; then
+    mkdir -p "$DATA_DIR/adomnia/licenses"
+    cp "$SCRIPT_DIR"/licenses/* "$DATA_DIR/adomnia/licenses/" 2>/dev/null || true
+fi
 
 echo "==> Installazione icone hicolor ..."
 ICON_SIZES=(16 24 32 48 64 128 256 512)

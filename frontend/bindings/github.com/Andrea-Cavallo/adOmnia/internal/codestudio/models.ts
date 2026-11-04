@@ -4358,6 +4358,32 @@ export const RenameTarget = langserver$0.RenameTarget;
  */
 export type RenameTarget = langserver$0.RenameTarget;
 
+/**
+ * RipgrepInfo dice alla UI quale motore sta usando la ricerca.
+ */
+export class RipgrepInfo {
+    "available": boolean;
+    "path"?: string;
+    "version"?: string;
+
+    /** Creates a new RipgrepInfo instance. */
+    constructor($$source: Partial<RipgrepInfo> = {}) {
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RipgrepInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RipgrepInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RipgrepInfo($$parsedSource as Partial<RipgrepInfo>);
+    }
+}
+
 export class RunConfiguration {
     "language"?: string;
     "languageOptions"?: json$0.RawMessage;
@@ -5043,6 +5069,34 @@ export class SearchResult {
             $$parsedSource["matches"] = $$createField0_0($$parsedSource["matches"]);
         }
         return new SearchResult($$parsedSource as Partial<SearchResult>);
+    }
+}
+
+/**
+ * SearchStreamInfo is the handle the UI keeps to cancel the job and to ignore stale events.
+ */
+export class SearchStreamInfo {
+    "id": string;
+    "engine": string;
+
+    /** Creates a new SearchStreamInfo instance. */
+    constructor($$source: Partial<SearchStreamInfo> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("engine" in $$source)) {
+            this["engine"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SearchStreamInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SearchStreamInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SearchStreamInfo($$parsedSource as Partial<SearchStreamInfo>);
     }
 }
 
