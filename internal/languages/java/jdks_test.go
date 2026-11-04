@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -158,6 +159,35 @@ func TestJava6HasNoReleaseFileSoItsVersionComesFromRtJar(t *testing.T) {
 	}
 	if _, ok := InspectJDK(t.TempDir(), "selected"); ok {
 		t.Fatal("a folder without bin/java is not a JVM")
+	}
+}
+
+func TestAFolderUnzippedWithTheJDKOneLevelDownIsAccepted(t *testing.T) {
+	outer := writeFixture(t, map[string]string{"jdk6/bin/" + sdk.ExecutableName("java"): "", "readme/x.txt": ""})
+	root := t.TempDir()
+	if err := SetProjectJavaHome(root, outer); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := ProjectJavaHome(root), filepath.Join(outer, "jdk6"); got != want {
+		t.Fatalf("home = %q, want %q", got, want)
+	}
+	two := writeFixture(t, map[string]string{"a/bin/" + sdk.ExecutableName("java"): "", "b/bin/" + sdk.ExecutableName("java"): ""})
+	if err := SetProjectJavaHome(root, two); err == nil {
+		t.Fatal("two JDKs in one folder: the choice is up to the user")
+	}
+}
+
+func TestExecutableArchReadsTheHeaderWithoutRunningIt(t *testing.T) {
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"amd64": "x86_64", "arm64": "aarch64", "386": "x86"}[runtime.GOARCH]
+	if got := executableArch(binary); got != want {
+		t.Fatalf("arch = %q, want %q", got, want)
+	}
+	if got := executableArch(filepath.Join(t.TempDir(), "missing")); got != "" {
+		t.Fatalf("arch of a missing file = %q", got)
 	}
 }
 

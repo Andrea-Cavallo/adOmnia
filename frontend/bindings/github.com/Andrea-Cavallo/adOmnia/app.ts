@@ -161,6 +161,15 @@ export function ExecuteHTTP(reqJSON: string): $CancellablePromise<string> {
 }
 
 /**
+ * ExecuteHTTPBatch sends many requests in parallel: either a list of requests
+ * (each with its own body) or one request expanded over several bodies. Items
+ * keep their input order and one failing request never aborts the others.
+ */
+export function ExecuteHTTPBatch(batchJSON: string): $CancellablePromise<string> {
+    return $Call.ByID(2550229112, batchJSON);
+}
+
+/**
  * FocusMainWindow brings the main adOmnia window to the front, for actions sent from a detached window.
  */
 export function FocusMainWindow(): $CancellablePromise<void> {

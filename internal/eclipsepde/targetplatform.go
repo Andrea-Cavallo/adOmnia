@@ -162,13 +162,17 @@ func indexP2Bundles(idx *BundleIndex, targetPath string, definition *TargetDefin
 		})
 		return
 	}
+	// The cached p2 bundles are read like a target directory: in parallel, then
+	// added in lock order, so hundreds of jars do not cost a minute on Windows.
+	var entries []targetEntry
 	for _, jar := range lock.Bundles {
 		if !fileExists(jar) {
 			idx.Problems = append(idx.Problems, Problem{Severity: "warning", File: jar, Message: "downloaded p2 bundle is missing from the cache: download the p2 bundles again"})
 			continue
 		}
-		idx.indexJarBundle(jar)
+		entries = append(entries, targetEntry{path: jar})
 	}
+	idx.indexEntries(entries)
 	for _, problem := range lock.Problems {
 		idx.Problems = append(idx.Problems, Problem{Severity: "warning", File: targetPath, Message: "p2: " + problem})
 	}

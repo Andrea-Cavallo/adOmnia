@@ -175,19 +175,19 @@ export class ArchitectureDiff {
 }
 
 /**
- * ArchitectureReport è il modello dell'architettura del progetto (package, chiamate, moduli,
- * interfacce, entry point e servizi), calcolato dall'adapter Go.
+ * ArchitectureReport is the project architecture model (packages, calls, modules, interfaces,
+ * entry points and services), computed by the Go adapter.
  */
 export const ArchitectureReport = golang$0.ArchitectureReport;
 
 /**
- * ArchitectureReport è il modello dell'architettura del progetto (package, chiamate, moduli,
- * interfacce, entry point e servizi), calcolato dall'adapter Go.
+ * ArchitectureReport is the project architecture model (packages, calls, modules, interfaces,
+ * entry points and services), computed by the Go adapter.
  */
 export type ArchitectureReport = golang$0.ArchitectureReport;
 
 /**
- * ArchitectureResult accompagna il report con i problemi di caricamento dei moduli.
+ * ArchitectureResult pairs the report with the module loading problems.
  */
 export class ArchitectureResult {
     "report": ArchitectureReport;
@@ -1518,8 +1518,8 @@ export const DocumentSymbolsResult = langserver$0.DocumentSymbolsResult;
 export type DocumentSymbolsResult = langserver$0.DocumentSymbolsResult;
 
 /**
- * DocumentationReport è la documentazione del progetto: package Go (go/doc), simboli esportati
- * senza documentazione (con lo stub da inserire) e file .proto. Solo lettura e parsing: nessun processo.
+ * DocumentationReport is the project documentation: Go packages (go/doc), exported symbols without
+ * a doc comment (with the stub to insert) and .proto files. Read and parse only: no process.
  */
 export class DocumentationReport {
     "packages": golang$0.PackageDoc[];

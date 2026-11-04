@@ -42,7 +42,7 @@ public class Activator implements org.osgi.framework.BundleActivator {
 	if output, err := compile.CombinedOutput(); err != nil {
 		t.Fatalf("javac: %v\n%s", err, output)
 	}
-	launch, err := PrepareLaunch(root, 0)
+	launch, err := PrepareLaunch(root, LaunchJVM{})
 	if err != nil {
 		t.Fatal(err)
 	}

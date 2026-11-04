@@ -46,6 +46,14 @@ export function useKeyboardShortcuts({ setCommandPaletteOpen }: KeyboardShortcut
         setTimeout(() => document.dispatchEvent(new CustomEvent('adomnia:focus-search')), 0)
         return
       }
+      // Hidden fan-out: no visible entry point, only this chord in the API workspace.
+      if (mod && e.shiftKey && e.key === 'Enter') {
+        e.preventDefault()
+        if (useAppStore.getState().activeRail === 'collections') {
+          document.dispatchEvent(new CustomEvent('adomnia:parallel-send', { detail: { handled: false } }))
+        }
+        return
+      }
       // Ctrl/Cmd+F: search the collection tree when on it, otherwise open the global palette.
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()

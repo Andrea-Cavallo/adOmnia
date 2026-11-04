@@ -35,11 +35,18 @@ type Launch struct {
 	Problems  []Problem
 }
 
+// LaunchJVM is what the launch needs to know about the JVM: its version picks the execution
+// environment, its architecture the native fragments. Arch is empty when it cannot be read.
+type LaunchJVM struct {
+	Major int
+	Arch  string
+}
+
 // PrepareLaunch writes the Equinox configuration of the workspace bundles and everything they
 // need from the target, the same files PDE generates, and returns the command that starts them.
-func PrepareLaunch(root string, jvmMajor int) (*Launch, error) {
-	if jvmMajor > maxCompilerJVM {
-		return nil, fmt.Errorf("Equinox 3.9 does not start on Java %d (\"The System Bundle could not be resolved\"): choose a JVM up to Java %d in Java > Select JDK", jvmMajor, maxCompilerJVM)
+func PrepareLaunch(root string, jvm LaunchJVM) (*Launch, error) {
+	if jvm.Major > maxCompilerJVM {
+		return nil, fmt.Errorf("Equinox 3.9 does not start on Java %d (\"The System Bundle could not be resolved\"): choose a JVM up to Java %d in Java > Select JDK", jvm.Major, maxCompilerJVM)
 	}
 	ws, target, err := openWorkspaceTarget(root)
 	if err != nil {
@@ -56,7 +63,7 @@ func PrepareLaunch(root string, jvmMajor int) (*Launch, error) {
 	if err != nil {
 		return nil, err
 	}
-	bundles, problems := launchBundles(ws, target, jvmMajor)
+	bundles, problems := launchBundles(ws, target, jvm)
 
 	folder := filepath.Join(ws.Root, filepath.FromSlash(launchFolder))
 	configuration := filepath.Join(folder, "configuration")
@@ -111,11 +118,15 @@ func devClasspath(ws *Workspace) (string, error) {
 
 // launchBundles is the closure of the workspace bundles: what they reach, the fragments for this
 // platform and the optional services. The framework is excluded: it is the jar that gets launched.
-func launchBundles(ws *Workspace, target *BundleIndex, jvmMajor int) ([]*IndexedBundle, []Problem) {
+func launchBundles(ws *Workspace, target *BundleIndex, jvm LaunchJVM) ([]*IndexedBundle, []Problem) {
 	merged := withWorkspace(target, ws)
 	resolver := NewResolver(merged)
-	if jvmMajor >= 1 && jvmMajor <= maxCompilerJVM {
-		resolver.ExecutionEnvironment = "JavaSE-1." + strconv.Itoa(jvmMajor)
+	if jvm.Major >= 1 && jvm.Major <= maxCompilerJVM {
+		resolver.ExecutionEnvironment = "JavaSE-1." + strconv.Itoa(jvm.Major)
+	}
+	platform := p2Environment(false)
+	if jvm.Arch != "" {
+		platform["osgi.arch"] = jvm.Arch
 	}
 	selected := map[string]*IndexedBundle{}
 	reported := map[string]bool{}
@@ -136,14 +147,18 @@ func launchBundles(ws *Workspace, target *BundleIndex, jvmMajor int) ([]*Indexed
 					problems = append(problems, Problem{Severity: "warning", Project: result.Bundle.Bundle.SymbolicName, Message: "will not resolve at runtime: " + message})
 				}
 			}
-			for _, fragment := range merged.PlatformFragmentsOf(result.Bundle) {
+			fragments, otherPlatforms := merged.RuntimeFragmentsOf(result.Bundle, platform)
+			if otherPlatforms {
+				problems = append(problems, Problem{Severity: "warning", Project: result.Bundle.Bundle.SymbolicName, Message: fmt.Sprintf("the target has no fragment of it for %s/%s: use a JVM and a target with the same architecture", platform["osgi.os"], platform["osgi.arch"])})
+			}
+			for _, fragment := range fragments {
 				add(fragment)
 			}
 		}
 	}
 	needsServices := false
 	for _, project := range ws.Bundles() {
-		if project.Bundle.MatchesThisPlatform() {
+		if project.Bundle.MatchesPlatform(platform) {
 			add(&IndexedBundle{Bundle: project.Bundle, Source: SourceWorkspace, Exploded: true})
 			needsServices = needsServices || project.Bundle.Manifest.Main["Service-Component"] != ""
 		}

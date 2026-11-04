@@ -41,6 +41,8 @@ type CompileStep struct {
 type BuildPlan struct {
 	Steps    []CompileStep
 	Problems []Problem
+	// Skipped are the bundles left out because they cannot compile.
+	Skipped []Problem
 }
 
 // openWorkspaceTarget reads the workspace and the index of its active target.
@@ -119,9 +121,15 @@ func PlanBuild(root string, jvmMajor int) (*BuildPlan, error) {
 	}
 	dependencies := map[string][]string{}
 	classpaths := map[string][]string{}
+	blocked := map[string]string{} // project name -> what it misses
 	for _, project := range ws.Bundles() {
 		elements, problems := resolver.BuildClasspath(project)
 		plan.Problems = append(plan.Problems, problems...)
+		for _, problem := range problems {
+			if problem.Severity == "error" {
+				blocked[project.Name] = "its required dependencies are missing from the target"
+			}
+		}
 		classpath, depends, err := compileClasspath(project, elements, byName)
 		if err != nil {
 			return nil, err
@@ -129,9 +137,19 @@ func PlanBuild(root string, jvmMajor int) (*BuildPlan, error) {
 		classpaths[project.Name], dependencies[project.Name] = classpath, depends
 	}
 	for _, project := range dependencyOrder(ws.Bundles(), dependencies, plan) {
+		// Compiling without its dependencies gives thousands of errors that all say the same thing.
+		for _, dependency := range dependencies[project.Name] {
+			if _, missing := blocked[dependency]; missing && blocked[project.Name] == "" {
+				blocked[project.Name] = "it depends on " + dependency + ", which is not compiled"
+			}
+		}
 		sources := project.sourceFolders()
 		if len(sources) == 0 {
 			continue // a binary bundle: nothing to compile
+		}
+		if reason := blocked[project.Name]; reason != "" {
+			plan.Skipped = append(plan.Skipped, Problem{Severity: "error", Project: project.Name, Message: "not compiled: " + reason})
+			continue
 		}
 		output, err := project.outputFolder()
 		if err != nil {

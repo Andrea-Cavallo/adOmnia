@@ -23,6 +23,11 @@ export class JDK {
      * Major è la versione maggiore (8, 17, 21…); 0 se non leggibile.
      */
     "major"?: number;
+
+    /**
+     * Arch è l'architettura dell'eseguibile nei termini di OSGi (x86, x86_64, aarch64); vuota se non leggibile.
+     */
+    "arch"?: string;
     "problem"?: string;
     "remedies"?: string[];
 
@@ -39,10 +44,10 @@ export class JDK {
      * Creates a new JDK instance from a string or object.
      */
     static createFrom($$source: any = {}): JDK {
-        const $$createField7_0 = $$createType0;
+        const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("remedies" in $$parsedSource) {
-            $$parsedSource["remedies"] = $$createField7_0($$parsedSource["remedies"]);
+            $$parsedSource["remedies"] = $$createField8_0($$parsedSource["remedies"]);
         }
         return new JDK($$parsedSource as Partial<JDK>);
     }

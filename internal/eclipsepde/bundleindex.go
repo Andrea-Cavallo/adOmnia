@@ -6,9 +6,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // BundleSource says where an indexed bundle comes from.
@@ -104,20 +106,40 @@ func (idx *BundleIndex) ProvidersOf(pkg string) []Provider {
 	return out
 }
 
-// PlatformFragmentsOf lists the fragments attached to host that apply to this machine.
-func (idx *BundleIndex) PlatformFragmentsOf(host *IndexedBundle) []*IndexedBundle {
+// fragmentsOf lists the fragments attached to host, for every platform.
+func (idx *BundleIndex) fragmentsOf(host *IndexedBundle) []*IndexedBundle {
 	var fragments []*IndexedBundle
 	for _, entry := range idx.all {
 		clause := entry.Bundle.FragmentHost
 		if clause == nil || clause.Name != host.Bundle.SymbolicName {
 			continue
 		}
-		if rng, ok, err := clause.VersionRangeOf("bundle-version"); err == nil && ok && !rng.Match(host.Bundle.Version) {
-			continue
-		}
-		if entry.Bundle.MatchesThisPlatform() {
+		if rng, ok, err := clause.VersionRangeOf("bundle-version"); err != nil || !ok || rng.Match(host.Bundle.Version) {
 			fragments = append(fragments, entry)
 		}
+	}
+	return fragments
+}
+
+// RuntimeFragmentsOf lists the fragments of host that can load on this platform.
+// otherPlatforms is true when host has fragments but none for this platform: a host such
+// as org.eclipse.swt then has no classes at all (a 32-bit Eclipse with a 64-bit JVM).
+func (idx *BundleIndex) RuntimeFragmentsOf(host *IndexedBundle, platform map[string]string) (fragments []*IndexedBundle, otherPlatforms bool) {
+	all := idx.fragmentsOf(host)
+	for _, entry := range all {
+		if entry.Bundle.MatchesPlatform(platform) {
+			fragments = append(fragments, entry)
+		}
+	}
+	return fragments, len(fragments) == 0 && len(all) > 0
+}
+
+// CompileFragmentsOf lists the fragments to compile against. Without one for this machine any
+// platform will do: the classes have the same API, and a target is often for another architecture.
+func (idx *BundleIndex) CompileFragmentsOf(host *IndexedBundle) []*IndexedBundle {
+	fragments, otherPlatforms := idx.RuntimeFragmentsOf(host, p2Environment(false))
+	if otherPlatforms {
+		return idx.fragmentsOf(host)[:1]
 	}
 	return fragments
 }
@@ -155,9 +177,21 @@ func (idx *BundleIndex) Duplicates() (exact map[string][]string, multiVersion ma
 	return exact, multiVersion
 }
 
+// targetEntry is one bundle of a target platform directory, before its manifest
+// is parsed: either a jar or an exploded folder.
+type targetEntry struct {
+	path     string
+	exploded bool
+}
+
 // IndexTargetDirectory indexes a Custom Target Platform given as a local
 // directory (spec section 7, source #1: the confirmed use case). Both JARs and
 // exploded bundle directories are indexed. Nothing is copied or modified.
+//
+// The walk stays serial (it decides what is a bundle), then the manifests are
+// read in parallel and added in the original order: a real Eclipse install is
+// about a thousand jars, and opening them one by one is what made the first
+// index of a target look like a freeze.
 func (idx *BundleIndex) IndexTargetDirectory(root string) error {
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -170,7 +204,8 @@ func (idx *BundleIndex) IndexTargetDirectory(root string) error {
 	if !info.IsDir() {
 		return fmt.Errorf("target platform %s: not a directory", abs)
 	}
-	return filepath.WalkDir(abs, func(path string, d os.DirEntry, err error) error {
+	var entries []targetEntry
+	if err := filepath.WalkDir(abs, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			idx.Problems = append(idx.Problems, Problem{
 				Severity: "warning", File: path,
@@ -184,56 +219,102 @@ func (idx *BundleIndex) IndexTargetDirectory(root string) error {
 				return filepath.SkipDir
 			}
 			if fileExists(filepath.Join(path, "META-INF", "MANIFEST.MF")) {
-				idx.indexExplodedBundle(path)
+				entries = append(entries, targetEntry{path: path, exploded: true})
 				return filepath.SkipDir // nested bundles are separate entries
 			}
 			return nil
 		}
 		if strings.EqualFold(filepath.Ext(path), ".jar") {
-			idx.indexJarBundle(path)
+			entries = append(entries, targetEntry{path: path})
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	idx.indexEntries(entries)
+	return nil
+}
+
+// indexEntries parses the manifests of entries in parallel and adds them in the
+// same order the walk produced them, so the index and its problems do not depend
+// on which worker finished first.
+func (idx *BundleIndex) indexEntries(entries []targetEntry) {
+	if len(entries) == 0 {
+		return
+	}
+	workers := min(runtime.GOMAXPROCS(0), maxIndexWorkers, len(entries))
+	type parsed struct {
+		bundle  *IndexedBundle
+		problem *Problem
+	}
+	results := make([]parsed, len(entries))
+	jobs := make(chan int)
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for index := range jobs {
+				bundle, problem := parseTargetEntry(entries[index])
+				results[index] = parsed{bundle: bundle, problem: problem}
+			}
+		}()
+	}
+	for index := range entries {
+		jobs <- index
+	}
+	close(jobs)
+	wg.Wait()
+	for _, result := range results {
+		idx.addParsed(result.bundle, result.problem)
+	}
+}
+
+func (idx *BundleIndex) addParsed(bundle *IndexedBundle, problem *Problem) {
+	if problem != nil {
+		idx.Problems = append(idx.Problems, *problem)
+		return
+	}
+	if bundle != nil {
+		idx.Add(bundle)
+	}
+}
+
+// maxIndexWorkers bounds the parallel manifest reads: enough to hide the disk and
+// antivirus latency, small enough not to fight the rest of the app for I/O.
+const maxIndexWorkers = 8
+
+// parseTargetEntry reads one entry without touching the index, so it is safe to
+// call from several goroutines at once.
+func parseTargetEntry(entry targetEntry) (*IndexedBundle, *Problem) {
+	if entry.exploded {
+		raw, err := os.ReadFile(filepath.Join(entry.path, "META-INF", "MANIFEST.MF"))
+		if err != nil {
+			return nil, &Problem{Severity: "warning", File: entry.path, Message: "exploded bundle manifest is not readable: " + err.Error()}
+		}
+		bundle, err := ParseBundle(raw, entry.path)
+		if err != nil {
+			return nil, &Problem{Severity: "warning", File: entry.path, Message: "exploded bundle manifest is not a valid bundle: " + err.Error()}
+		}
+		return &IndexedBundle{Bundle: bundle, Source: SourceTarget, Exploded: true}, nil
+	}
+	raw, err := readJarManifest(entry.path)
+	if err != nil {
+		return nil, &Problem{Severity: "warning", File: entry.path, Message: "jar has no readable manifest: " + err.Error()}
+	}
+	bundle, err := ParseBundle(raw, entry.path)
+	if err != nil {
+		return nil, &Problem{Severity: "warning", File: entry.path, Message: "jar manifest is not a valid bundle: " + err.Error()}
+	}
+	return &IndexedBundle{Bundle: bundle, Source: SourceTarget}, nil
 }
 
 func (idx *BundleIndex) indexJarBundle(jarPath string) {
-	raw, err := readJarManifest(jarPath)
-	if err != nil {
-		idx.Problems = append(idx.Problems, Problem{
-			Severity: "warning", File: jarPath,
-			Message: "jar has no readable manifest: " + err.Error(),
-		})
-		return
-	}
-	bundle, err := ParseBundle(raw, jarPath)
-	if err != nil {
-		idx.Problems = append(idx.Problems, Problem{
-			Severity: "warning", File: jarPath,
-			Message: "jar manifest is not a valid bundle: " + err.Error(),
-		})
-		return
-	}
-	idx.Add(&IndexedBundle{Bundle: bundle, Source: SourceTarget})
+	idx.addParsed(parseTargetEntry(targetEntry{path: jarPath}))
 }
 
 func (idx *BundleIndex) indexExplodedBundle(dir string) {
-	raw, err := os.ReadFile(filepath.Join(dir, "META-INF", "MANIFEST.MF"))
-	if err != nil {
-		idx.Problems = append(idx.Problems, Problem{
-			Severity: "warning", File: dir,
-			Message: "exploded bundle manifest is not readable: " + err.Error(),
-		})
-		return
-	}
-	bundle, err := ParseBundle(raw, dir)
-	if err != nil {
-		idx.Problems = append(idx.Problems, Problem{
-			Severity: "warning", File: dir,
-			Message: "exploded bundle manifest is not a valid bundle: " + err.Error(),
-		})
-		return
-	}
-	idx.Add(&IndexedBundle{Bundle: bundle, Source: SourceTarget, Exploded: true})
+	idx.addParsed(parseTargetEntry(targetEntry{path: dir, exploded: true}))
 }
 
 // readJarManifest extracts META-INF/MANIFEST.MF from a jar without unpacking it.

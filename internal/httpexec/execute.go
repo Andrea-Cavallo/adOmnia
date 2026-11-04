@@ -97,6 +97,10 @@ type HTTPExecError struct {
 	Message string `json:"message"`
 }
 
+// hookTransform applies a plugin transformation to the JSON of a request or of
+// a response before it is parsed or returned.
+type hookTransform func(eventType, payloadJSON string) (string, error)
+
 // Execute executes an HTTP request via Go's net/http, bypassing browser
 // CORS/header/redirect/TLS restrictions.
 func Execute(reqJSON string) string {
@@ -104,26 +108,73 @@ func Execute(reqJSON string) string {
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
 		return mustJSON(HTTPExecResponse{Error: &HTTPExecError{Code: "PARSE_ERR", Message: err.Error()}})
 	}
-	return mustJSON(executeHTTPRequest(req))
+	return mustJSON(executeHTTPRequest(context.Background(), req))
 }
 
 // ExecuteWithHooks applies plugin transformations immediately before the
 // request and immediately after the response. Hook failures are surfaced as a
 // normal execution error instead of silently bypassing an enabled plugin.
 func ExecuteWithHooks(reqJSON string, transform func(eventType, payloadJSON string) (string, error)) string {
-	var err error
+	var req HTTPExecRequest
+	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+		return mustJSON(HTTPExecResponse{Error: &HTTPExecError{Code: "PARSE_ERR", Message: err.Error()}})
+	}
+	return mustJSON(executeWithTransform(context.Background(), req, transform))
+}
+
+// executeWithTransform runs one request through the plugin hooks, if any. The
+// batch executor uses it too, so a plugin sees every request of a batch.
+func executeWithTransform(ctx context.Context, req HTTPExecRequest, transform hookTransform) HTTPExecResponse {
+	if transform == nil {
+		return executeHTTPRequest(ctx, req)
+	}
 	for _, eventType := range []string{"onSend", "onRequest"} {
-		reqJSON, err = transform(eventType, reqJSON)
+		transformed, err := transformValue(transform, eventType, req)
 		if err != nil {
-			return mustJSON(HTTPExecResponse{Error: &HTTPExecError{Code: "PLUGIN_HOOK_ERR", Message: err.Error()}})
+			return HTTPExecResponse{Error: &HTTPExecError{Code: "PLUGIN_HOOK_ERR", Message: err.Error()}}
 		}
+		next, ok := transformed.(HTTPExecRequest)
+		if !ok {
+			return HTTPExecResponse{Error: &HTTPExecError{Code: "PLUGIN_HOOK_ERR", Message: "plugin returned an invalid request"}}
+		}
+		req = next
 	}
-	responseJSON := Execute(reqJSON)
-	responseJSON, err = transform("onResponse", responseJSON)
+	response := executeHTTPRequest(ctx, req)
+	transformed, err := transformValue(transform, "onResponse", response)
 	if err != nil {
-		return mustJSON(HTTPExecResponse{Error: &HTTPExecError{Code: "PLUGIN_HOOK_ERR", Message: err.Error()}})
+		return HTTPExecResponse{Error: &HTTPExecError{Code: "PLUGIN_HOOK_ERR", Message: err.Error()}}
 	}
-	return responseJSON
+	next, ok := transformed.(HTTPExecResponse)
+	if !ok {
+		return HTTPExecResponse{Error: &HTTPExecError{Code: "PLUGIN_HOOK_ERR", Message: "plugin returned an invalid response"}}
+	}
+	return next
+}
+
+// transformValue round-trips one value through a hook: hooks speak JSON text.
+func transformValue(transform hookTransform, eventType string, value any) (any, error) {
+	raw, err := jsonutil.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	out, err := transform(eventType, string(raw))
+	if err != nil {
+		return nil, err
+	}
+	switch value.(type) {
+	case HTTPExecRequest:
+		var next HTTPExecRequest
+		if err := json.Unmarshal([]byte(out), &next); err != nil {
+			return nil, err
+		}
+		return next, nil
+	default:
+		var next HTTPExecResponse
+		if err := json.Unmarshal([]byte(out), &next); err != nil {
+			return nil, err
+		}
+		return next, nil
+	}
 }
 
 func mustJSON(v any) string {
@@ -131,7 +182,7 @@ func mustJSON(v any) string {
 	return string(b)
 }
 
-func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
+func executeHTTPRequest(parent context.Context, req HTTPExecRequest) HTTPExecResponse {
 	tlsCfg := &tls.Config{InsecureSkipVerify: req.SkipTLSVerify} //nolint:gosec
 	if err := preparePSD2(&req, tlsCfg); err != nil {
 		return HTTPExecResponse{Error: &HTTPExecError{Code: "PSD2_ERR", Message: err.Error()}}
@@ -150,6 +201,9 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 		TLSClientConfig: tlsCfg,
 		DialContext:     buildDialerWithHosts(req.HostsMap),
 	}
+	// Each call owns its transport (TLS, hosts map and PSD2 differ per request),
+	// so the idle sockets must be released here instead of waiting for the GC.
+	defer transport.CloseIdleConnections()
 	// Proxy e CA aziendali di adOmnia; le richieste dell'utente non sono bloccate dal modo offline.
 	if err := netpolicy.Apply(transport); err != nil {
 		return HTTPExecResponse{Error: &HTTPExecError{Code: "NETWORK_SETTINGS", Message: err.Error()}}
@@ -183,7 +237,7 @@ func executeHTTPRequest(req HTTPExecRequest) HTTPExecResponse {
 		timeoutMs = 30000
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
+	ctx, cancel := context.WithTimeout(parent, time.Duration(timeoutMs)*time.Millisecond)
 	defer cancel()
 
 	// Register for external cancellation (Cancel button) while the request runs.

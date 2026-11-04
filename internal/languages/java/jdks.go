@@ -2,6 +2,9 @@ package java
 
 import (
 	"archive/zip"
+	"debug/elf"
+	"debug/macho"
+	"debug/pe"
 	"io"
 	"os"
 	"path/filepath"
@@ -71,7 +74,48 @@ func InspectJDK(home, source string) (JDK, bool) {
 		return JDK{}, false
 	}
 	version := releaseVersion(home)
-	return JDK{Available: true, Binary: binary, Home: home, Source: source, Version: version, Major: Major(version)}, true
+	return JDK{Available: true, Binary: binary, Home: home, Source: source, Version: version, Major: Major(version), Arch: executableArch(binary)}, true
+}
+
+// executableArch legge l'architettura dall'intestazione dell'eseguibile, senza eseguirlo:
+// su Windows una JVM a 32 bit gira su un sistema a 64, e i fragment nativi devono seguire la JVM.
+func executableArch(path string) string {
+	if file, err := pe.Open(path); err == nil {
+		defer func() { _ = file.Close() }() // sola lettura
+		return map[uint16]string{pe.IMAGE_FILE_MACHINE_I386: "x86", pe.IMAGE_FILE_MACHINE_AMD64: "x86_64", pe.IMAGE_FILE_MACHINE_ARM64: "aarch64"}[file.Machine]
+	}
+	if file, err := elf.Open(path); err == nil {
+		defer func() { _ = file.Close() }() // sola lettura
+		return map[elf.Machine]string{elf.EM_386: "x86", elf.EM_X86_64: "x86_64", elf.EM_AARCH64: "aarch64"}[file.Machine]
+	}
+	if file, err := macho.Open(path); err == nil {
+		defer func() { _ = file.Close() }() // sola lettura
+		return map[macho.Cpu]string{macho.Cpu386: "x86", macho.CpuAmd64: "x86_64", macho.CpuArm64: "aarch64"}[file.Cpu]
+	}
+	return ""
+}
+
+// ResolveJavaHome accetta anche la cartella di uno zip scompattato, con la JDK un livello più sotto.
+func ResolveJavaHome(folder string) string {
+	if ValidJavaHome(folder) {
+		return folder
+	}
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return folder
+	}
+	found := folder
+	matches := 0
+	for _, entry := range entries {
+		if nested := filepath.Join(folder, entry.Name()); entry.IsDir() && ValidJavaHome(nested) {
+			found = nested
+			matches++
+		}
+	}
+	if matches != 1 {
+		return folder
+	}
+	return found
 }
 
 // jdkRoots sono le cartelle che contengono un JDK per sottocartella.

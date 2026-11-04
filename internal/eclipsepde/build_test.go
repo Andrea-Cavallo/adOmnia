@@ -183,7 +183,7 @@ func TestEcjDiagnosticsReadTheRealOutput(t *testing.T) {
 
 func TestPrepareLaunchRefusesBundlesNotCompiled(t *testing.T) {
 	root, _ := keplerWorkspace(t)
-	if _, err := PrepareLaunch(root, 6); err == nil || !strings.Contains(err.Error(), "build the bundles first") {
+	if _, err := PrepareLaunch(root, LaunchJVM{Major: 6}); err == nil || !strings.Contains(err.Error(), "build the bundles first") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -195,7 +195,7 @@ func TestPrepareLaunchWritesTheEquinoxConfiguration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	launch, err := PrepareLaunch(root, 6)
+	launch, err := PrepareLaunch(root, LaunchJVM{Major: 6})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestRequiredEnvironmentIsTheHighestCompileLevel(t *testing.T) {
 
 func TestPrepareLaunchRefusesAJVMTheFrameworkCannotUse(t *testing.T) {
 	root, _ := keplerWorkspace(t)
-	if _, err := PrepareLaunch(root, 17); err == nil || !strings.Contains(err.Error(), "Select JDK") {
+	if _, err := PrepareLaunch(root, LaunchJVM{Major: 17}); err == nil || !strings.Contains(err.Error(), "Select JDK") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -280,5 +280,75 @@ func TestCopyResourcesSkipsLinksAmongTheSources(t *testing.T) {
 	}
 	if fileExists(filepath.Join(output, "linked.txt")) {
 		t.Fatal("a file from outside the project reached the output folder")
+	}
+}
+
+// A real case: Eclipse for 32 bits with a 64-bit JVM. The code compiles against the only SWT there
+// is, but at runtime that fragment cannot load, and the user must be told.
+func TestFragmentsOfAnotherArchitecture(t *testing.T) {
+	root, target := keplerWorkspace(t)
+	here := p2Environment(false)
+	if err := os.Remove(filepath.Join(target, "plugins", "swt.here.jar")); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := PlanBuild(root, 6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	classpath := filepath.SplitList(argumentAfter(t, plan.Steps[1].Arguments, "-classpath"))
+	if !slices.Contains(classpath, filepath.Join(target, "plugins", "swt.other.jar")) {
+		t.Fatalf("without a fragment for this machine the compiler needs another one: %v", classpath)
+	}
+	for _, bundle := range []string{"app", "core"} {
+		if err := os.MkdirAll(filepath.Join(root, bundle, "bin"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	launch, err := PrepareLaunch(root, LaunchJVM{Major: 6, Arch: here["osgi.arch"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(launch.Problems, func(problem Problem) bool {
+		return problem.Project == "org.eclipse.swt" && strings.Contains(problem.Message, "same architecture")
+	}) {
+		t.Fatalf("problems = %v", launch.Problems)
+	}
+}
+
+func TestRuntimeFragmentsFollowTheJVMNotTheMachine(t *testing.T) {
+	host := &IndexedBundle{Bundle: &Bundle{SymbolicName: "swt"}}
+	index := NewBundleIndex()
+	for name, arch := range map[string]string{"swt.x86": "x86", "swt.x64": "x86_64"} {
+		bundle, err := ParseBundle([]byte(bundleManifest(name, "Fragment-Host: swt", "Eclipse-PlatformFilter: (osgi.arch="+arch+")")), name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		index.Add(&IndexedBundle{Bundle: bundle})
+	}
+	fragments, other := index.RuntimeFragmentsOf(host, map[string]string{"osgi.arch": "x86"})
+	if other || len(fragments) != 1 || fragments[0].Bundle.SymbolicName != "swt.x86" {
+		t.Fatalf("fragments = %v, other = %v", fragments, other)
+	}
+}
+
+func TestBuildSkipsBundlesThatCannotCompile(t *testing.T) {
+	root, _ := keplerWorkspace(t)
+	writeProject(t, root, "broken", bundleManifest("broken", "Require-Bundle: not.in.target"), map[string]string{".classpath": sourcesClasspath, "src/B.java": "class B {}"})
+	writeProject(t, root, "above", bundleManifest("above", "Require-Bundle: broken"), map[string]string{".classpath": sourcesClasspath, "src/A.java": "class A {}"})
+	plan, err := PlanBuild(root, 6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var compiled, skipped []string
+	for _, step := range plan.Steps {
+		compiled = append(compiled, step.Bundle)
+	}
+	for _, problem := range plan.Skipped {
+		skipped = append(skipped, problem.Project)
+	}
+	slices.Sort(compiled)
+	slices.Sort(skipped)
+	if !slices.Equal(compiled, []string{"app", "core"}) || !slices.Equal(skipped, []string{"above", "broken"}) {
+		t.Fatalf("compiled %v, skipped %v", compiled, skipped)
 	}
 }

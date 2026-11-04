@@ -86,6 +86,9 @@ func (s *Service) StartJavaOsgiBuild(sessionID string) (Execution, error) {
 		return Execution{}, err
 	}
 	if len(plan.Steps) == 0 {
+		if len(plan.Skipped) > 0 {
+			return Execution{}, fmt.Errorf("no bundle can compile. %s", firstOsgiError(plan))
+		}
 		return Execution{}, errors.New("no bundle of this project has source folders to compile")
 	}
 	if _, running := osgiBuilds.LoadOrStore(session.ID, true); running {
@@ -121,6 +124,16 @@ func (s *Service) startOsgiStep(session Session, jvm java.JDK, plan *eclipsepde.
 	})
 }
 
+// firstOsgiError is the most useful reason to show first: the dependency that is really missing.
+func firstOsgiError(plan *eclipsepde.BuildPlan) string {
+	for _, problem := range plan.Problems {
+		if problem.Severity == "error" {
+			return problem.String()
+		}
+	}
+	return plan.Skipped[0].String()
+}
+
 func (s *Service) afterOsgiStep(session Session, jvm java.JDK, plan *eclipsepde.BuildPlan, index int, done Execution) {
 	stopped := done.Status == "stopped"
 	var failure string
@@ -146,6 +159,9 @@ func (s *Service) afterOsgiStep(session Session, jvm java.JDK, plan *eclipsepde.
 			event.Problems = append(event.Problems, problem.String())
 		}
 	}
+	for _, skipped := range plan.Skipped {
+		event.Problems = append(event.Problems, skipped.String())
+	}
 	for _, step := range plan.Steps {
 		event.Problems = append(event.Problems, step.BytecodeProblems()...)
 	}
@@ -166,7 +182,7 @@ func (s *Service) StartJavaOsgiRun(sessionID string) (OsgiRunResult, error) {
 	if err != nil {
 		return OsgiRunResult{}, err
 	}
-	launch, err := eclipsepde.PrepareLaunch(root, jvm.Major)
+	launch, err := eclipsepde.PrepareLaunch(root, eclipsepde.LaunchJVM{Major: jvm.Major, Arch: jvm.Arch})
 	if err != nil {
 		return OsgiRunResult{}, err
 	}

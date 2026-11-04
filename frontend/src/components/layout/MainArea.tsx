@@ -23,6 +23,7 @@ import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RequestValidationDialog } from '@/components/composer/RequestValidationDialog'
+import { ParallelSendPanel } from '@/components/collections/ParallelSendPanel'
 import { validateRequestParams, type RequestParamIssue } from '@/lib/requestParamValidation'
 import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEndpointStore'
 import { DropToast } from '@/components/layout/DropToast'
@@ -570,6 +571,8 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   const takeRecording = useFlowRecorderStore((s) => s.take)
 
   const [showLoadTest, setShowLoadTest] = useState(false)
+  // Hidden fan-out: opened only by Ctrl+Shift+Enter, never by a visible control.
+  const [parallelOpen, setParallelOpen] = useState(false)
   const [recordName, setRecordName] = useState('')
   const [recordSaveOpen, setRecordSaveOpen] = useState(false)
   const [recordSaving, setRecordSaving] = useState(false)
@@ -846,6 +849,17 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     return () => document.removeEventListener('adomnia:debug-active-request', onDebugActiveRequest)
   })
 
+  useEffect(() => {
+    const onParallelSend = (event: Event) => {
+      if (!panelActive.current) return
+      const command = event as CustomEvent<{ handled: boolean }>
+      command.detail.handled = true
+      setParallelOpen(true)
+    }
+    document.addEventListener('adomnia:parallel-send', onParallelSend)
+    return () => document.removeEventListener('adomnia:parallel-send', onParallelSend)
+  })
+
   const saveTab = useCallback((tabId: string) => {
     const tab = tabs.find((t) => t.id === tabId)
     if (!tab || !tab.collectionId) return
@@ -985,6 +999,14 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   return (
     <div data-request-workspace className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
       {mockFeedback && <DropToast feedback={mockFeedback} />}
+      {parallelOpen && activeTab && !activeTab.tool && (
+        <ParallelSendPanel
+          request={activeTab.request}
+          vars={liveVars(getResolvedVars())}
+          onClose={() => setParallelOpen(false)}
+          onOpenResponse={(response) => setResponse(activeTab.id, response)}
+        />
+      )}
       {!standaloneTabId && <TabBar
         tabs={tabs}
         activeTabId={activeTabId}

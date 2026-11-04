@@ -136,7 +136,7 @@ func (r *Resolver) appendBundleElements(entry *IndexedBundle, optional bool, see
 	}
 
 	// A host may hold no classes at all (org.eclipse.swt): they live in its platform fragment.
-	for _, fragment := range r.Index.PlatformFragmentsOf(entry) {
+	for _, fragment := range r.Index.CompileFragmentsOf(entry) {
 		r.appendBundleElements(fragment, optional, seen, elements, problems, fromProject)
 	}
 

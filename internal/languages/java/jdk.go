@@ -25,7 +25,9 @@ type JDK struct {
 	Source  string `json:"source,omitempty"`
 	Version string `json:"version,omitempty"`
 	// Major è la versione maggiore (8, 17, 21…); 0 se non leggibile.
-	Major    int      `json:"major,omitzero"`
+	Major int `json:"major,omitzero"`
+	// Arch è l'architettura dell'eseguibile nei termini di OSGi (x86, x86_64, aarch64); vuota se non leggibile.
+	Arch     string   `json:"arch,omitempty"`
 	Problem  string   `json:"problem,omitempty"`
 	Remedies []string `json:"remedies,omitempty"`
 }

@@ -442,6 +442,16 @@ func (a *App) CancelHTTP(id string) {
 	httpexec.Cancel(id)
 }
 
+// ExecuteHTTPBatch sends many requests in parallel: either a list of requests
+// (each with its own body) or one request expanded over several bodies. Items
+// keep their input order and one failing request never aborts the others.
+func (a *App) ExecuteHTTPBatch(batchJSON string) string {
+	if globalPluginManager != nil {
+		return httpexec.ExecuteBatchWithHooks(batchJSON, globalPluginManager.ApplyEventJSON)
+	}
+	return httpexec.ExecuteBatch(batchJSON)
+}
+
 func (a *App) GetStartupWindowChrome() string {
 	return startupWindowChrome
 }

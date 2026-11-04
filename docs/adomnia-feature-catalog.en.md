@@ -105,6 +105,7 @@ All features are offline-first: no account, no telemetry, and no data sent outsi
 | A4.9 | **Final Summary** | Total passed/failed, total duration, average duration per request. |
 | A4.10 | **Export Report** | Export results as Markdown, HTML, JSON, JUnit XML. |
 | A4.11 | **Assertions in Runner** | Assertions defined on requests are evaluated on each iteration; pass/fail counters are included in the report. |
+| A4.12 | **Parallel Send** | The HTTP core sends a batch concurrently (`ExecuteHTTPBatch`): either unrelated requests, each with its own method, headers and body, or one base request expanded over a list of bodies. Bounded worker pool (default 4, max 64 in flight, 500 items), responses returned in input order with their index, one failing request never aborts the others, an optional batch-level deadline caps the whole call, plugin hooks run per request, and each body variant gets a cancellable id. The API workspace exposes it as a hidden fan-out panel (copies, in-flight limit, one body per copy, results openable in the Response panel) reachable only with `Ctrl/Cmd+Shift+Enter`: no button, menu or palette entry advertises it. Preparation (vault, auth, cookies, TLS) runs once, so every copy shares the same credentials and differs only by its body. |
 
 ---
 

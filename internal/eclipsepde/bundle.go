@@ -142,14 +142,14 @@ type Bundle struct {
 	Manifest *Manifest
 }
 
-// MatchesThisPlatform applies Eclipse-PlatformFilter to this machine. A filter that
-// cannot be read does not exclude the bundle: Equinox will report it, with a real reason.
-func (b *Bundle) MatchesThisPlatform() bool {
+// MatchesPlatform applies Eclipse-PlatformFilter. A filter that cannot be read does
+// not exclude the bundle: Equinox will report it, with a real reason.
+func (b *Bundle) MatchesPlatform(platform map[string]string) bool {
 	if b.Manifest == nil {
 		return true
 	}
 	filter, err := parseLDAPFilter(b.Manifest.Main["Eclipse-PlatformFilter"])
-	return err != nil || filter.matches(p2Environment(false))
+	return err != nil || filter.matches(platform)
 }
 
 // ParseBundle builds a Bundle from manifest bytes and the location they came from.
