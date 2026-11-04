@@ -77,9 +77,7 @@ func ResolveManifest(root string, manifest []byte, jvmMajor int) (*ManifestResol
 	for _, missing := range outcome.Root.Missing {
 		resolution.Missing = append(resolution.Missing, missingDependency(missing))
 	}
-	for _, problem := range index.Problems {
-		resolution.Problems = append(resolution.Problems, problem)
-	}
+	resolution.Problems = append(resolution.Problems, index.Problems...)
 	return resolution, nil
 }
 

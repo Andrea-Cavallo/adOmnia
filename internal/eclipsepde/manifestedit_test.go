@@ -25,7 +25,7 @@ func TestSetManifestHeaderReplacesAndFolds(t *testing.T) {
 		t.Fatal("the header changed")
 	}
 	text := string(edited)
-	for _, line := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
 		if len(line) > maxManifestLineBytes {
 			t.Fatalf("line longer than the manifest limit: %q", line)
 		}

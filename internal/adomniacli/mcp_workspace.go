@@ -177,10 +177,7 @@ func (s *mcpServer) workspaceFindFiles(args mcpWorkspaceArgs) (string, error) {
 			return nil
 		}
 		slashed := filepath.ToSlash(relative)
-		matched := false
-		if query != "" && strings.Contains(strings.ToLower(slashed), query) {
-			matched = true
-		}
+		matched := query != "" && strings.Contains(strings.ToLower(slashed), query)
 		if !matched && pattern != "" {
 			matched, _ = filepath.Match(pattern, filepath.Base(path))
 			if !matched {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -72,8 +73,8 @@ func ReadTychoTarget(root string) (*TychoTarget, error) {
 	}
 	properties := map[string]string{}
 	// Maven properties are inherited: the parent is read first, so the child overrides it.
-	for index := len(chain) - 1; index >= 0; index-- {
-		for _, entry := range chain[index].pom.Properties.Entries {
+	for _, document := range slices.Backward(chain) {
+		for _, entry := range document.pom.Properties.Entries {
 			properties[entry.XMLName.Local] = strings.TrimSpace(entry.Value)
 		}
 	}
@@ -180,10 +181,8 @@ func parentPomPath(current string, pom tychoPom) (string, bool) {
 }
 
 func appendUnique(values []string, value string) []string {
-	for _, existing := range values {
-		if existing == value {
-			return values
-		}
+	if slices.Contains(values, value) {
+		return values
 	}
 	return append(values, value)
 }

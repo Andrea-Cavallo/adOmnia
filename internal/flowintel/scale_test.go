@@ -19,12 +19,12 @@ func TestFlowScaleLargeWorkspace(t *testing.T) {
 	root := t.TempDir()
 	const bundleCount = 300
 	const classesPerBundle = 2
-	for bundle := 0; bundle < bundleCount; bundle++ {
+	for bundle := range bundleCount {
 		name := fmt.Sprintf("com.acme.bundle%03d", bundle)
 		dir := filepath.Join(root, "plugins", name)
 		writeFlowFile(t, dir, ".project", `<projectDescription><name>`+name+`</name></projectDescription>`)
 		writeFlowFile(t, dir, "META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nBundle-SymbolicName: "+name+"\nBundle-Version: 1.0.0\n")
-		for class := 0; class < classesPerBundle; class++ {
+		for class := range classesPerBundle {
 			next := (class + 1) % classesPerBundle
 			source := fmt.Sprintf(`package com.acme.bundle%03d;
 

@@ -49,7 +49,7 @@ func ReadStartLevelPlan(root string) StartLevelPlan {
 			plan.Default = level
 		}
 	}
-	for _, entry := range strings.Split(properties["osgi.bundles"], ",") {
+	for entry := range strings.SplitSeq(properties["osgi.bundles"], ",") {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
 			continue

@@ -136,9 +136,7 @@ func BuildExplorer(root string, jvmMajor int) (*ExplorerReport, error) {
 		}
 		report.index = index
 		report.TargetBundles = len(index.All())
-		for _, problem := range relativeProblems(index.Problems, ws.Root) {
-			report.Problems = append(report.Problems, problem)
-		}
+		report.Problems = append(report.Problems, relativeProblems(index.Problems, ws.Root)...)
 		report.executionEnvironment = profile.ExecutionEnvironment
 	}
 	report.merged = withWorkspace(report.index, ws)
