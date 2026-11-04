@@ -560,6 +560,10 @@ missing one of them is not published.
 
 ## Pre-Release Checklist
 
+The reproducible desktop steps, with the current state of each, are in
+[ACCEPTANCE-DESKTOP.md](ACCEPTANCE-DESKTOP.md). Automated checks do not close a row
+there.
+
 - [ ] `frontend/npm run build` passes.
 - [ ] `go test ./...` passes.
 - [ ] App launches on at least the primary development platform.

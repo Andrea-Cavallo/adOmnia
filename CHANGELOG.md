@@ -6,6 +6,13 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Performance measurement and acceptance records
+
+- **Input-to-paint, completed for the baseline protocol:** the renderer window now reports **p99** and the renderer **long tasks** (count, total, worst) next to p50/p95/max, captured through `PerformanceObserver('longtask')` only while a scenario recording is active. `scripts/perf-scenario-report.mjs` aggregates them and keeps recordings made before these fields readable instead of turning them into zeros.
+- **Opt-in regression gate:** `node scripts/perf-scenario-report.mjs <dir> --max-input-p95 50` exits non-zero when a scenario exceeds the budget **or has no measurement at all**, so the gate cannot pass on an empty recording. No workflow runs it: only the declared test machine produces comparable numbers.
+- **Language capability matrix:** new [docs/LANGUAGE-CAPABILITY-MATRIX.md](docs/LANGUAGE-CAPABILITY-MATRIX.md) separates implemented capabilities from verification state, and is **generated from the language registry** — `TestCapabilityMatrixDocumentMatchesRegistry` fails when an adapter or the page drifts (regenerate with `ADOMNIA_UPDATE_MATRIX=1 go test ./internal/codestudio -run TestCapabilityMatrixDocumentMatchesRegistry`).
+- **Desktop acceptance checklist:** new [docs/ACCEPTANCE-DESKTOP.md](docs/ACCEPTANCE-DESKTOP.md) with the reproducible steps for installer, WebView2 missing, portable build, update policies, rollback, crash recovery, macOS/Linux smoke and process cleanup, and the current state of each. Automated checks never close a row there.
+
 ### Release gates and documentation
 
 - **One app version everywhere:** `node scripts/check-version-consistency.mjs` compares `build/config.yml`, both npm manifests and both lockfiles, and runs on every build. A partial version bump is refused before it can ship a binary that disagrees with its installer. The release tag guard now reuses the same declarations and refuses a tag when any source drifted.
