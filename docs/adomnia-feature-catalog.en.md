@@ -998,7 +998,7 @@ The standalone MCP client and its session transports have been removed. Existing
 | # | Feature | Description |
 |---|-------------|-------------|
 | I4.1 | **Context Servers for Agents** | One list of MCP servers (stdio or HTTP) in the milk settings, passed to Claude Code and milk (v0.7+) at every new chat session. The project AI policy gates the list: `off` sends none, `local-only` sends only stdio servers. |
-| I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). Per-agent switch to turn it off. |
+| I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). The same server reads and edits the project folder as a Code Studio workspace — `osgi_workspace`, `osgi_bundles`, `osgi_bundle`, `osgi_search`, `osgi_impact`, `osgi_diagnose`, `osgi_resolve`, `osgi_target`, plus `osgi_set_target`, `osgi_manifest_set`, `osgi_manifest_requirement`, `osgi_import_plugins`, `osgi_add_target_jars` and `workspace_read_file` / `workspace_write_file` / `workspace_list_files` with `--write` — against the same target platform the IDE uses. Writes are off by default and confined to the workspace. Per-agent switch to turn it off. |
 | I4.3 | **Review Agent Changes** | After a milk or Claude Code turn, the files the agent created, modified or deleted are listed above the chat and in *Tools → Review Agent Changes…*; accept or reject each change, each file or the whole turn. Rejections never overwrite a file changed after the review was shown. |
 
 ---
