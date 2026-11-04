@@ -450,6 +450,7 @@ func (s *Service) CloseSession(id string) error {
 	s.warmer.stop(sessionID)
 	s.depGraph.invalidateSession(sessionID)
 	s.analysis.forget(id)
+	s.invalidateOsgiExplorer(sessionID)
 	s.vcsRoots.forget(sessionID)
 	graphs := s.graphs()
 	graphs.mu.Lock()

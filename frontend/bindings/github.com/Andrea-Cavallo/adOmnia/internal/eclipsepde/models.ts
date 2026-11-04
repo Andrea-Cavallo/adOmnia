@@ -6,6 +6,335 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * ActivatorInfo is one Bundle-Activator of the workspace, with the Java source
+ * location of its start/stop methods: the Activator Inspector opens them and sets
+ * breakpoints there. A bundle without Bundle-Activator is not an error (fragments and
+ * plain libraries have none) and is simply absent from the list.
+ */
+export class ActivatorInfo {
+    "bundle": string;
+    "version": string;
+    "class": string;
+    "policy": string;
+    "lazy": boolean;
+    "startLine"?: number;
+    "stopLine"?: number;
+
+    /**
+     * File is the activator source relative to the project root when it is inside it,
+     * else absolute. Empty when the class is inside a Bundle-ClassPath jar.
+     */
+    "file"?: string;
+
+    /**
+     * FileExists is false when the class is declared but its source is not in the
+     * bundle source folders (generated activator, classes in a jar, wrong package).
+     */
+    "fileExists": boolean;
+
+    /**
+     * Location is the bundle directory (relative when inside the project).
+     */
+    "location": string;
+
+    /** Creates a new ActivatorInfo instance. */
+    constructor($$source: Partial<ActivatorInfo> = {}) {
+        if (!("bundle" in $$source)) {
+            this["bundle"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("class" in $$source)) {
+            this["class"] = "";
+        }
+        if (!("policy" in $$source)) {
+            this["policy"] = "";
+        }
+        if (!("lazy" in $$source)) {
+            this["lazy"] = false;
+        }
+        if (!("fileExists" in $$source)) {
+            this["fileExists"] = false;
+        }
+        if (!("location" in $$source)) {
+            this["location"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ActivatorInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ActivatorInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ActivatorInfo($$parsedSource as Partial<ActivatorInfo>);
+    }
+}
+
+/**
+ * BundleChange is a bundle present in both targets at different versions.
+ */
+export class BundleChange {
+    "symbolicName": string;
+    "left": string;
+    "right": string;
+
+    /** Creates a new BundleChange instance. */
+    constructor($$source: Partial<BundleChange> = {}) {
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("left" in $$source)) {
+            this["left"] = "";
+        }
+        if (!("right" in $$source)) {
+            this["right"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BundleChange instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BundleChange {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new BundleChange($$parsedSource as Partial<BundleChange>);
+    }
+}
+
+/**
+ * BundleDetail is the right-hand panel of the OSGi Control Center: why this bundle is in
+ * the state it is, what uses it and what to check before changing it. It is one call so
+ * the panel never shows data from two different reads.
+ */
+export class BundleDetail {
+    "row": BundleRow;
+    "manifestFile"?: string;
+    "wires": Wire[];
+    "missing": MissingDependency[];
+    "notes": string[];
+    "diagnostics": Diagnostic[];
+    "activator"?: ActivatorInfo | null;
+    "serviceComponents": ServiceComponent[];
+    "impact"?: Impact | null;
+    "graph"?: FocusGraph | null;
+
+    /**
+     * Manifest is the main section of the manifest, for the "raw" view.
+     */
+    "manifest": { [_ in string]?: string };
+
+    /** Creates a new BundleDetail instance. */
+    constructor($$source: Partial<BundleDetail> = {}) {
+        if (!("row" in $$source)) {
+            this["row"] = (new BundleRow());
+        }
+        if (!("wires" in $$source)) {
+            this["wires"] = [];
+        }
+        if (!("missing" in $$source)) {
+            this["missing"] = [];
+        }
+        if (!("notes" in $$source)) {
+            this["notes"] = [];
+        }
+        if (!("diagnostics" in $$source)) {
+            this["diagnostics"] = [];
+        }
+        if (!("serviceComponents" in $$source)) {
+            this["serviceComponents"] = [];
+        }
+        if (!("manifest" in $$source)) {
+            this["manifest"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BundleDetail instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BundleDetail {
+        const $$createField0_0 = $$createType0;
+        const $$createField2_0 = $$createType2;
+        const $$createField3_0 = $$createType4;
+        const $$createField4_0 = $$createType5;
+        const $$createField5_0 = $$createType7;
+        const $$createField6_0 = $$createType9;
+        const $$createField7_0 = $$createType11;
+        const $$createField8_0 = $$createType13;
+        const $$createField9_0 = $$createType15;
+        const $$createField10_0 = $$createType16;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("row" in $$parsedSource) {
+            $$parsedSource["row"] = $$createField0_0($$parsedSource["row"]);
+        }
+        if ("wires" in $$parsedSource) {
+            $$parsedSource["wires"] = $$createField2_0($$parsedSource["wires"]);
+        }
+        if ("missing" in $$parsedSource) {
+            $$parsedSource["missing"] = $$createField3_0($$parsedSource["missing"]);
+        }
+        if ("notes" in $$parsedSource) {
+            $$parsedSource["notes"] = $$createField4_0($$parsedSource["notes"]);
+        }
+        if ("diagnostics" in $$parsedSource) {
+            $$parsedSource["diagnostics"] = $$createField5_0($$parsedSource["diagnostics"]);
+        }
+        if ("activator" in $$parsedSource) {
+            $$parsedSource["activator"] = $$createField6_0($$parsedSource["activator"]);
+        }
+        if ("serviceComponents" in $$parsedSource) {
+            $$parsedSource["serviceComponents"] = $$createField7_0($$parsedSource["serviceComponents"]);
+        }
+        if ("impact" in $$parsedSource) {
+            $$parsedSource["impact"] = $$createField8_0($$parsedSource["impact"]);
+        }
+        if ("graph" in $$parsedSource) {
+            $$parsedSource["graph"] = $$createField9_0($$parsedSource["graph"]);
+        }
+        if ("manifest" in $$parsedSource) {
+            $$parsedSource["manifest"] = $$createField10_0($$parsedSource["manifest"]);
+        }
+        return new BundleDetail($$parsedSource as Partial<BundleDetail>);
+    }
+}
+
+/**
+ * BundleRow is one line of the OSGi Plugin Explorer: identity, state, activator and
+ * start level at a glance, for workspace and target bundles alike.
+ */
+export class BundleRow {
+    "symbolicName": string;
+    "version": string;
+    "name"?: string;
+    "vendor"?: string;
+    "location": string;
+    "source": string;
+    "activator"?: string;
+    "activationPolicy": string;
+    "lazy": boolean;
+    "startLevel": number;
+    "startOnLaunch": boolean;
+    "startLevelConfigured": boolean;
+
+    /**
+     * State is the honest static state: INSTALLED when a requirement is missing,
+     * RESOLVED otherwise. ACTIVE only exists in a running framework (R2).
+     */
+    "state": string;
+    "status": ResolutionStatus;
+
+    /**
+     * RuntimeState is the state the running framework reports (INSTALLED/RESOLVED/ACTIVE),
+     * empty until the Runtime tab starts it.
+     */
+    "runtimeState"?: string;
+
+    /**
+     * ActiveAtMs is when the profiler first observed it ACTIVE, relative to the launch.
+     */
+    "activeAtMs"?: number;
+    "fragment": boolean;
+    "fragmentHost"?: string;
+    "executionEnvironment"?: string;
+    "exportedPackages"?: string[];
+    "requiredBundles"?: string[];
+    "importedPackages"?: string[];
+    "dependencies": number;
+    "exports": number;
+    "imports": number;
+    "issues": number;
+    "missing"?: MissingDependency[];
+    "notes"?: string[];
+
+    /** Creates a new BundleRow instance. */
+    constructor($$source: Partial<BundleRow> = {}) {
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("location" in $$source)) {
+            this["location"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("activationPolicy" in $$source)) {
+            this["activationPolicy"] = "";
+        }
+        if (!("lazy" in $$source)) {
+            this["lazy"] = false;
+        }
+        if (!("startLevel" in $$source)) {
+            this["startLevel"] = 0;
+        }
+        if (!("startOnLaunch" in $$source)) {
+            this["startOnLaunch"] = false;
+        }
+        if (!("startLevelConfigured" in $$source)) {
+            this["startLevelConfigured"] = false;
+        }
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = ResolutionStatus.$zero;
+        }
+        if (!("fragment" in $$source)) {
+            this["fragment"] = false;
+        }
+        if (!("dependencies" in $$source)) {
+            this["dependencies"] = 0;
+        }
+        if (!("exports" in $$source)) {
+            this["exports"] = 0;
+        }
+        if (!("imports" in $$source)) {
+            this["imports"] = 0;
+        }
+        if (!("issues" in $$source)) {
+            this["issues"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BundleRow instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BundleRow {
+        const $$createField19_0 = $$createType5;
+        const $$createField20_0 = $$createType5;
+        const $$createField21_0 = $$createType5;
+        const $$createField26_0 = $$createType4;
+        const $$createField27_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("exportedPackages" in $$parsedSource) {
+            $$parsedSource["exportedPackages"] = $$createField19_0($$parsedSource["exportedPackages"]);
+        }
+        if ("requiredBundles" in $$parsedSource) {
+            $$parsedSource["requiredBundles"] = $$createField20_0($$parsedSource["requiredBundles"]);
+        }
+        if ("importedPackages" in $$parsedSource) {
+            $$parsedSource["importedPackages"] = $$createField21_0($$parsedSource["importedPackages"]);
+        }
+        if ("missing" in $$parsedSource) {
+            $$parsedSource["missing"] = $$createField26_0($$parsedSource["missing"]);
+        }
+        if ("notes" in $$parsedSource) {
+            $$parsedSource["notes"] = $$createField27_0($$parsedSource["notes"]);
+        }
+        return new BundleRow($$parsedSource as Partial<BundleRow>);
+    }
+}
+
+/**
  * BundleStatus is one workspace bundle. Status is empty until a target is set.
  */
 export class BundleStatus {
@@ -48,8 +377,8 @@ export class BundleStatus {
      * Creates a new BundleStatus instance from a string or object.
      */
     static createFrom($$source: any = {}): BundleStatus {
-        const $$createField5_0 = $$createType1;
-        const $$createField6_0 = $$createType2;
+        const $$createField5_0 = $$createType4;
+        const $$createField6_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("missing" in $$parsedSource) {
             $$parsedSource["missing"] = $$createField5_0($$parsedSource["missing"]);
@@ -58,6 +387,720 @@ export class BundleStatus {
             $$parsedSource["notes"] = $$createField6_0($$parsedSource["notes"]);
         }
         return new BundleStatus($$parsedSource as Partial<BundleStatus>);
+    }
+}
+
+/**
+ * BundleVersion is one bundle of a target platform: its symbolic name, the highest
+ * version found and every version/location the target contains (the same bundle can
+ * appear twice in a badly built target).
+ */
+export class BundleVersion {
+    "symbolicName": string;
+    "version": string;
+    "versions": string[];
+    "locations": string[];
+
+    /** Creates a new BundleVersion instance. */
+    constructor($$source: Partial<BundleVersion> = {}) {
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("versions" in $$source)) {
+            this["versions"] = [];
+        }
+        if (!("locations" in $$source)) {
+            this["locations"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BundleVersion instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BundleVersion {
+        const $$createField2_0 = $$createType5;
+        const $$createField3_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("versions" in $$parsedSource) {
+            $$parsedSource["versions"] = $$createField2_0($$parsedSource["versions"]);
+        }
+        if ("locations" in $$parsedSource) {
+            $$parsedSource["locations"] = $$createField3_0($$parsedSource["locations"]);
+        }
+        return new BundleVersion($$parsedSource as Partial<BundleVersion>);
+    }
+}
+
+/**
+ * Consumer is one bundle that depends on the analyzed bundle, directly or transitively.
+ * It answers "what breaks if I change this bundle?" with the requirement that would
+ * break, not just a name.
+ */
+export class Consumer {
+    "symbolicName": string;
+    "version": string;
+    "source": string;
+
+    /**
+     * Kind is Require-Bundle, Import-Package or Fragment-Host.
+     */
+    "kind": string;
+
+    /**
+     * Requirement is the rendered clause (name + version range).
+     */
+    "requirement": string;
+
+    /**
+     * Optional marks resolution:=optional: it would degrade, not fail.
+     */
+    "optional"?: boolean;
+
+    /**
+     * Package is the imported package, for Import-Package edges.
+     */
+    "package"?: string;
+
+    /**
+     * Distance is 1 for a direct consumer, 2+ for transitive ones.
+     */
+    "distance": number;
+
+    /**
+     * Services are the service interfaces of the analyzed bundle this consumer uses,
+     * when its Declarative Services descriptor references one of them.
+     */
+    "services"?: string[];
+
+    /**
+     * Test marks the consumer as a test bundle.
+     */
+    "test"?: boolean;
+
+    /** Creates a new Consumer instance. */
+    constructor($$source: Partial<Consumer> = {}) {
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("requirement" in $$source)) {
+            this["requirement"] = "";
+        }
+        if (!("distance" in $$source)) {
+            this["distance"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Consumer instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Consumer {
+        const $$createField8_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("services" in $$parsedSource) {
+            $$parsedSource["services"] = $$createField8_0($$parsedSource["services"]);
+        }
+        return new Consumer($$parsedSource as Partial<Consumer>);
+    }
+}
+
+/**
+ * Diagnostic is one answer to "why won't my plugin start?". Cause, Evidence and
+ * Actions are separate because the panel must show the user a reason, the manifest
+ * header that proves it, and what to do next — not just a red row.
+ */
+export class Diagnostic {
+    /**
+     * ID is stable across reloads (bundle + kind + requirement), so the UI can keep
+     * the expanded row.
+     */
+    "id": string;
+    "bundle": string;
+    "version": string;
+
+    /**
+     * error | warning | info
+     */
+    "severity": string;
+
+    /**
+     * Kind is the machine-readable rule: missing-requirement, version-conflict, bree,
+     * singleton-duplicate, orphan-fragment, platform-filter, duplicate-bundle,
+     * transitive-requirement, resolved-lazy, not-started.
+     */
+    "kind": string;
+    "title": string;
+    "cause": string;
+    "evidence": string[];
+    "actions": string[];
+    "requirement"?: string;
+    "available"?: string[];
+    "file"?: string;
+    "line"?: number;
+    "relatedBundles"?: string[];
+
+    /** Creates a new Diagnostic instance. */
+    constructor($$source: Partial<Diagnostic> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("bundle" in $$source)) {
+            this["bundle"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("severity" in $$source)) {
+            this["severity"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("title" in $$source)) {
+            this["title"] = "";
+        }
+        if (!("cause" in $$source)) {
+            this["cause"] = "";
+        }
+        if (!("evidence" in $$source)) {
+            this["evidence"] = [];
+        }
+        if (!("actions" in $$source)) {
+            this["actions"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Diagnostic instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Diagnostic {
+        const $$createField7_0 = $$createType5;
+        const $$createField8_0 = $$createType5;
+        const $$createField10_0 = $$createType5;
+        const $$createField13_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("evidence" in $$parsedSource) {
+            $$parsedSource["evidence"] = $$createField7_0($$parsedSource["evidence"]);
+        }
+        if ("actions" in $$parsedSource) {
+            $$parsedSource["actions"] = $$createField8_0($$parsedSource["actions"]);
+        }
+        if ("available" in $$parsedSource) {
+            $$parsedSource["available"] = $$createField10_0($$parsedSource["available"]);
+        }
+        if ("relatedBundles" in $$parsedSource) {
+            $$parsedSource["relatedBundles"] = $$createField13_0($$parsedSource["relatedBundles"]);
+        }
+        return new Diagnostic($$parsedSource as Partial<Diagnostic>);
+    }
+}
+
+/**
+ * ExplorerReport is the whole OSGi Plugin Explorer: the enriched bundles of the
+ * workspace and of the target, the activators, the diagnostics and the summary cards.
+ */
+export class ExplorerReport {
+    "root": string;
+    "hasTarget": boolean;
+    "targetPath": string;
+    "targetBundles": number;
+    "otherProjects": number;
+
+    /**
+     * JVM is the major version of the JVM chosen for the project (0 when none is chosen):
+     * the BREE diagnostics are relative to it.
+     */
+    "jvm"?: number;
+    "summary": ExplorerSummary;
+    "bundles": BundleRow[];
+    "activators": ActivatorInfo[];
+    "diagnostics": Diagnostic[];
+    "problems": Problem[];
+
+    /**
+     * Runtime is the last snapshot of the running framework, nil until it is started.
+     */
+    "runtime"?: RuntimeSnapshot | null;
+
+    /**
+     * RuntimeDiagnostics are the problems only the running framework reports.
+     */
+    "runtimeDiagnostics"?: Diagnostic[];
+
+    /** Creates a new ExplorerReport instance. */
+    constructor($$source: Partial<ExplorerReport> = {}) {
+        if (!("root" in $$source)) {
+            this["root"] = "";
+        }
+        if (!("hasTarget" in $$source)) {
+            this["hasTarget"] = false;
+        }
+        if (!("targetPath" in $$source)) {
+            this["targetPath"] = "";
+        }
+        if (!("targetBundles" in $$source)) {
+            this["targetBundles"] = 0;
+        }
+        if (!("otherProjects" in $$source)) {
+            this["otherProjects"] = 0;
+        }
+        if (!("summary" in $$source)) {
+            this["summary"] = (new ExplorerSummary());
+        }
+        if (!("bundles" in $$source)) {
+            this["bundles"] = [];
+        }
+        if (!("activators" in $$source)) {
+            this["activators"] = [];
+        }
+        if (!("diagnostics" in $$source)) {
+            this["diagnostics"] = [];
+        }
+        if (!("problems" in $$source)) {
+            this["problems"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ExplorerReport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ExplorerReport {
+        const $$createField6_0 = $$createType17;
+        const $$createField7_0 = $$createType18;
+        const $$createField8_0 = $$createType19;
+        const $$createField9_0 = $$createType7;
+        const $$createField10_0 = $$createType21;
+        const $$createField11_0 = $$createType23;
+        const $$createField12_0 = $$createType7;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("summary" in $$parsedSource) {
+            $$parsedSource["summary"] = $$createField6_0($$parsedSource["summary"]);
+        }
+        if ("bundles" in $$parsedSource) {
+            $$parsedSource["bundles"] = $$createField7_0($$parsedSource["bundles"]);
+        }
+        if ("activators" in $$parsedSource) {
+            $$parsedSource["activators"] = $$createField8_0($$parsedSource["activators"]);
+        }
+        if ("diagnostics" in $$parsedSource) {
+            $$parsedSource["diagnostics"] = $$createField9_0($$parsedSource["diagnostics"]);
+        }
+        if ("problems" in $$parsedSource) {
+            $$parsedSource["problems"] = $$createField10_0($$parsedSource["problems"]);
+        }
+        if ("runtime" in $$parsedSource) {
+            $$parsedSource["runtime"] = $$createField11_0($$parsedSource["runtime"]);
+        }
+        if ("runtimeDiagnostics" in $$parsedSource) {
+            $$parsedSource["runtimeDiagnostics"] = $$createField12_0($$parsedSource["runtimeDiagnostics"]);
+        }
+        return new ExplorerReport($$parsedSource as Partial<ExplorerReport>);
+    }
+}
+
+/**
+ * ExplorerSummary are the clickable cards of the OSGi Control Center. They count the
+ * workspace bundles only: the target platform is reported separately because a bundle
+ * of the target is not "resolved" by adOmnia, it is simply available.
+ */
+export class ExplorerSummary {
+    "bundles": number;
+
+    /**
+     * Resolved counts the workspace bundles whose requirements the target satisfies.
+     */
+    "resolved": number;
+
+    /**
+     * Lazy counts the resolved bundles that activate on first class load.
+     */
+    "lazy": number;
+    "issues": number;
+
+    /**
+     * Fragments counts the workspace bundles that are fragments.
+     */
+    "fragments": number;
+
+    /**
+     * Active counts the workspace bundles the running framework reports ACTIVE (0 until the
+     * runtime is started: the static analysis never claims it).
+     */
+    "active": number;
+
+    /**
+     * Services is the size of the service registry of the running framework.
+     */
+    "services": number;
+
+    /**
+     * RuntimeIssues are the problems only the runtime can see (not resolved, never activated).
+     */
+    "runtimeIssues": number;
+
+    /** Creates a new ExplorerSummary instance. */
+    constructor($$source: Partial<ExplorerSummary> = {}) {
+        if (!("bundles" in $$source)) {
+            this["bundles"] = 0;
+        }
+        if (!("resolved" in $$source)) {
+            this["resolved"] = 0;
+        }
+        if (!("lazy" in $$source)) {
+            this["lazy"] = 0;
+        }
+        if (!("issues" in $$source)) {
+            this["issues"] = 0;
+        }
+        if (!("fragments" in $$source)) {
+            this["fragments"] = 0;
+        }
+        if (!("active" in $$source)) {
+            this["active"] = 0;
+        }
+        if (!("services" in $$source)) {
+            this["services"] = 0;
+        }
+        if (!("runtimeIssues" in $$source)) {
+            this["runtimeIssues"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ExplorerSummary instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ExplorerSummary {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ExplorerSummary($$parsedSource as Partial<ExplorerSummary>);
+    }
+}
+
+/**
+ * FocusEdge is one requirement between two nodes of the focused graph.
+ */
+export class FocusEdge {
+    "from": string;
+    "to": string;
+    "kind": string;
+    "requirement": string;
+    "optional"?: boolean;
+    "satisfied": boolean;
+    "direction": string;
+
+    /** Creates a new FocusEdge instance. */
+    constructor($$source: Partial<FocusEdge> = {}) {
+        if (!("from" in $$source)) {
+            this["from"] = "";
+        }
+        if (!("to" in $$source)) {
+            this["to"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("requirement" in $$source)) {
+            this["requirement"] = "";
+        }
+        if (!("satisfied" in $$source)) {
+            this["satisfied"] = false;
+        }
+        if (!("direction" in $$source)) {
+            this["direction"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FocusEdge instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FocusEdge {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FocusEdge($$parsedSource as Partial<FocusEdge>);
+    }
+}
+
+/**
+ * FocusGraph is the subgraph of §3: never the whole workspace, only what surrounds the
+ * selected bundle, expandable one level at a time. depth is 1 or 2.
+ */
+export class FocusGraph {
+    "root": string;
+    "depth": number;
+    "nodes": FocusNode[];
+    "edges": FocusEdge[];
+    "dependencies": number;
+    "consumers": number;
+    "missing": number;
+
+    /**
+     * Truncated is true when the graph hit maxFocusNodes: the panel says so instead of
+     * freezing on a workspace with thousands of bundles.
+     */
+    "truncated"?: boolean;
+
+    /** Creates a new FocusGraph instance. */
+    constructor($$source: Partial<FocusGraph> = {}) {
+        if (!("root" in $$source)) {
+            this["root"] = "";
+        }
+        if (!("depth" in $$source)) {
+            this["depth"] = 0;
+        }
+        if (!("nodes" in $$source)) {
+            this["nodes"] = [];
+        }
+        if (!("edges" in $$source)) {
+            this["edges"] = [];
+        }
+        if (!("dependencies" in $$source)) {
+            this["dependencies"] = 0;
+        }
+        if (!("consumers" in $$source)) {
+            this["consumers"] = 0;
+        }
+        if (!("missing" in $$source)) {
+            this["missing"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FocusGraph instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FocusGraph {
+        const $$createField2_0 = $$createType25;
+        const $$createField3_0 = $$createType27;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("nodes" in $$parsedSource) {
+            $$parsedSource["nodes"] = $$createField2_0($$parsedSource["nodes"]);
+        }
+        if ("edges" in $$parsedSource) {
+            $$parsedSource["edges"] = $$createField3_0($$parsedSource["edges"]);
+        }
+        return new FocusGraph($$parsedSource as Partial<FocusGraph>);
+    }
+}
+
+/**
+ * FocusNode is one bundle of the focused dependency graph. Direction says how it
+ * relates to the selected bundle: its dependencies (what it needs) or its consumers
+ * (what breaks when it changes).
+ */
+export class FocusNode {
+    "id": string;
+    "name": string;
+    "version": string;
+    "source": string;
+    "status": string;
+    "fragment"?: boolean;
+    "distance": number;
+    "direction": string;
+
+    /** Creates a new FocusNode instance. */
+    constructor($$source: Partial<FocusNode> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("status" in $$source)) {
+            this["status"] = "";
+        }
+        if (!("distance" in $$source)) {
+            this["distance"] = 0;
+        }
+        if (!("direction" in $$source)) {
+            this["direction"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FocusNode instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FocusNode {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new FocusNode($$parsedSource as Partial<FocusNode>);
+    }
+}
+
+/**
+ * Impact is the Dependency Impact Analyzer output of one bundle: §4.2 "What breaks if I
+ * change this bundle?". It is computed from the same index as the resolver, so it never
+ * invents a consumer the manifest does not declare.
+ */
+export class Impact {
+    "symbolicName": string;
+    "version": string;
+    "source": string;
+
+    /**
+     * MatchedClass is set when the analysis started from a class or interface.
+     */
+    "matchedClass"?: string;
+    "exportedPackages"?: string[];
+    "importedPackages"?: string[];
+    "providedServices"?: string[];
+    "consumedServices"?: string[];
+    "directConsumers": Consumer[];
+    "transitiveConsumers": Consumer[];
+    "tests": TestImpact[];
+    "checks": string[];
+
+    /**
+     * Unresolved lists edges that currently do not match (distance 0): a consumer whose
+     * version range is already incompatible, or a missing fragment host.
+     */
+    "unresolved"?: string[];
+
+    /**
+     * TotalConsumers is direct + transitive, so the UI states the size of the blast radius.
+     */
+    "totalConsumers": number;
+
+    /** Creates a new Impact instance. */
+    constructor($$source: Partial<Impact> = {}) {
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("directConsumers" in $$source)) {
+            this["directConsumers"] = [];
+        }
+        if (!("transitiveConsumers" in $$source)) {
+            this["transitiveConsumers"] = [];
+        }
+        if (!("tests" in $$source)) {
+            this["tests"] = [];
+        }
+        if (!("checks" in $$source)) {
+            this["checks"] = [];
+        }
+        if (!("totalConsumers" in $$source)) {
+            this["totalConsumers"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Impact instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Impact {
+        const $$createField4_0 = $$createType5;
+        const $$createField5_0 = $$createType5;
+        const $$createField6_0 = $$createType5;
+        const $$createField7_0 = $$createType5;
+        const $$createField8_0 = $$createType29;
+        const $$createField9_0 = $$createType29;
+        const $$createField10_0 = $$createType31;
+        const $$createField11_0 = $$createType5;
+        const $$createField12_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("exportedPackages" in $$parsedSource) {
+            $$parsedSource["exportedPackages"] = $$createField4_0($$parsedSource["exportedPackages"]);
+        }
+        if ("importedPackages" in $$parsedSource) {
+            $$parsedSource["importedPackages"] = $$createField5_0($$parsedSource["importedPackages"]);
+        }
+        if ("providedServices" in $$parsedSource) {
+            $$parsedSource["providedServices"] = $$createField6_0($$parsedSource["providedServices"]);
+        }
+        if ("consumedServices" in $$parsedSource) {
+            $$parsedSource["consumedServices"] = $$createField7_0($$parsedSource["consumedServices"]);
+        }
+        if ("directConsumers" in $$parsedSource) {
+            $$parsedSource["directConsumers"] = $$createField8_0($$parsedSource["directConsumers"]);
+        }
+        if ("transitiveConsumers" in $$parsedSource) {
+            $$parsedSource["transitiveConsumers"] = $$createField9_0($$parsedSource["transitiveConsumers"]);
+        }
+        if ("tests" in $$parsedSource) {
+            $$parsedSource["tests"] = $$createField10_0($$parsedSource["tests"]);
+        }
+        if ("checks" in $$parsedSource) {
+            $$parsedSource["checks"] = $$createField11_0($$parsedSource["checks"]);
+        }
+        if ("unresolved" in $$parsedSource) {
+            $$parsedSource["unresolved"] = $$createField12_0($$parsedSource["unresolved"]);
+        }
+        return new Impact($$parsedSource as Partial<Impact>);
+    }
+}
+
+/**
+ * LooseJarResult is the outcome of importing single JARs into the active target folder.
+ */
+export class LooseJarResult {
+    "targetPath": string;
+    "imported": string[];
+    "skipped": string[];
+
+    /** Creates a new LooseJarResult instance. */
+    constructor($$source: Partial<LooseJarResult> = {}) {
+        if (!("targetPath" in $$source)) {
+            this["targetPath"] = "";
+        }
+        if (!("imported" in $$source)) {
+            this["imported"] = [];
+        }
+        if (!("skipped" in $$source)) {
+            this["skipped"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LooseJarResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LooseJarResult {
+        const $$createField1_0 = $$createType5;
+        const $$createField2_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("imported" in $$parsedSource) {
+            $$parsedSource["imported"] = $$createField1_0($$parsedSource["imported"]);
+        }
+        if ("skipped" in $$parsedSource) {
+            $$parsedSource["skipped"] = $$createField2_0($$parsedSource["skipped"]);
+        }
+        return new LooseJarResult($$parsedSource as Partial<LooseJarResult>);
     }
 }
 
@@ -100,8 +1143,8 @@ export class MissingDependency {
      * Creates a new MissingDependency instance from a string or object.
      */
     static createFrom($$source: any = {}): MissingDependency {
-        const $$createField4_0 = $$createType2;
-        const $$createField5_0 = $$createType2;
+        const $$createField4_0 = $$createType5;
+        const $$createField5_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("available" in $$parsedSource) {
             $$parsedSource["available"] = $$createField4_0($$parsedSource["available"]);
@@ -144,7 +1187,7 @@ export class P2DownloadResult {
      * Creates a new P2DownloadResult instance from a string or object.
      */
     static createFrom($$source: any = {}): P2DownloadResult {
-        const $$createField3_0 = $$createType2;
+        const $$createField3_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("problems" in $$parsedSource) {
             $$parsedSource["problems"] = $$createField3_0($$parsedSource["problems"]);
@@ -196,7 +1239,7 @@ export class P2Preview {
      * Creates a new P2Preview instance from a string or object.
      */
     static createFrom($$source: any = {}): P2Preview {
-        const $$createField3_0 = $$createType2;
+        const $$createField3_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("repositories" in $$parsedSource) {
             $$parsedSource["repositories"] = $$createField3_0($$parsedSource["repositories"]);
@@ -273,6 +1316,390 @@ export enum ResolutionStatus {
 };
 
 /**
+ * RuntimeBundle is one bundle as the running framework reports it.
+ */
+export class RuntimeBundle {
+    "id": number;
+    "state": string;
+    "symbolicName": string;
+    "version": string;
+
+    /**
+     * ActiveAtMs is when the profiler first saw the bundle ACTIVE, relative to the launch.
+     */
+    "activeAtMs"?: number;
+    "fragment"?: boolean;
+
+    /** Creates a new RuntimeBundle instance. */
+    constructor($$source: Partial<RuntimeBundle> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeBundle instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeBundle {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RuntimeBundle($$parsedSource as Partial<RuntimeBundle>);
+    }
+}
+
+/**
+ * RuntimeService is one service in the framework registry.
+ */
+export class RuntimeService {
+    "interface": string;
+    "serviceId": string;
+    "provider"?: string;
+    "bundleId"?: string;
+    "properties"?: { [_ in string]?: string };
+    "consumers"?: string[];
+
+    /** Creates a new RuntimeService instance. */
+    constructor($$source: Partial<RuntimeService> = {}) {
+        if (!("interface" in $$source)) {
+            this["interface"] = "";
+        }
+        if (!("serviceId" in $$source)) {
+            this["serviceId"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeService instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeService {
+        const $$createField4_0 = $$createType16;
+        const $$createField5_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("properties" in $$parsedSource) {
+            $$parsedSource["properties"] = $$createField4_0($$parsedSource["properties"]);
+        }
+        if ("consumers" in $$parsedSource) {
+            $$parsedSource["consumers"] = $$createField5_0($$parsedSource["consumers"]);
+        }
+        return new RuntimeService($$parsedSource as Partial<RuntimeService>);
+    }
+}
+
+/**
+ * RuntimeSnapshot is the real state of the framework, captured without guessing.
+ */
+export class RuntimeSnapshot {
+    "address": string;
+    "port": number;
+
+    /**
+     * StartupMs is how long the framework took to publish a usable state.
+     */
+    "startupMs": number;
+    "frameworkStartLevel": number;
+    "settled": boolean;
+    "bundles": RuntimeBundle[];
+    "services": RuntimeService[];
+
+    /**
+     * Diagnoses are the Equinox `diag` lines of the bundles that did not resolve.
+     */
+    "diagnoses"?: { [_ in `${number}`]?: string[] };
+
+    /**
+     * Problems are the console commands that failed, not a reason to fail the snapshot.
+     */
+    "problems"?: string[];
+    "capturedAt": string;
+
+    /** Creates a new RuntimeSnapshot instance. */
+    constructor($$source: Partial<RuntimeSnapshot> = {}) {
+        if (!("address" in $$source)) {
+            this["address"] = "";
+        }
+        if (!("port" in $$source)) {
+            this["port"] = 0;
+        }
+        if (!("startupMs" in $$source)) {
+            this["startupMs"] = 0;
+        }
+        if (!("frameworkStartLevel" in $$source)) {
+            this["frameworkStartLevel"] = 0;
+        }
+        if (!("settled" in $$source)) {
+            this["settled"] = false;
+        }
+        if (!("bundles" in $$source)) {
+            this["bundles"] = [];
+        }
+        if (!("services" in $$source)) {
+            this["services"] = [];
+        }
+        if (!("capturedAt" in $$source)) {
+            this["capturedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RuntimeSnapshot instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RuntimeSnapshot {
+        const $$createField5_0 = $$createType33;
+        const $$createField6_0 = $$createType35;
+        const $$createField7_0 = $$createType36;
+        const $$createField8_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("bundles" in $$parsedSource) {
+            $$parsedSource["bundles"] = $$createField5_0($$parsedSource["bundles"]);
+        }
+        if ("services" in $$parsedSource) {
+            $$parsedSource["services"] = $$createField6_0($$parsedSource["services"]);
+        }
+        if ("diagnoses" in $$parsedSource) {
+            $$parsedSource["diagnoses"] = $$createField7_0($$parsedSource["diagnoses"]);
+        }
+        if ("problems" in $$parsedSource) {
+            $$parsedSource["problems"] = $$createField8_0($$parsedSource["problems"]);
+        }
+        return new RuntimeSnapshot($$parsedSource as Partial<RuntimeSnapshot>);
+    }
+}
+
+/**
+ * SearchHit is one result of the instant search, with the field that matched so the
+ * UI can explain the hit.
+ */
+export class SearchHit {
+    "symbolicName": string;
+    "version": string;
+    "source": string;
+    "state": string;
+    "field": string;
+    "match": string;
+    "rank": number;
+
+    /** Creates a new SearchHit instance. */
+    constructor($$source: Partial<SearchHit> = {}) {
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("field" in $$source)) {
+            this["field"] = "";
+        }
+        if (!("match" in $$source)) {
+            this["match"] = "";
+        }
+        if (!("rank" in $$source)) {
+            this["rank"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SearchHit instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SearchHit {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SearchHit($$parsedSource as Partial<SearchHit>);
+    }
+}
+
+/**
+ * ServiceComponent is one Declarative Services descriptor of a bundle: the services it
+ * registers and the ones it references. It is read from the XML (OSGI-INF/*.xml), never
+ * inferred from Java sources, so it works the same for an exploded workspace bundle and
+ * for a jar of the target platform.
+ */
+export class ServiceComponent {
+    /**
+     * Name is the component name attribute (or its class when absent).
+     */
+    "name": string;
+
+    /**
+     * Implementation is the Java class of the component.
+     */
+    "implementation"?: string;
+
+    /**
+     * Services are the interfaces the component registers.
+     */
+    "services"?: string[];
+
+    /**
+     * References are the interfaces the component uses.
+     */
+    "references"?: string[];
+
+    /**
+     * File is the descriptor inside the bundle.
+     */
+    "file": string;
+
+    /** Creates a new ServiceComponent instance. */
+    constructor($$source: Partial<ServiceComponent> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("file" in $$source)) {
+            this["file"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ServiceComponent instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ServiceComponent {
+        const $$createField2_0 = $$createType5;
+        const $$createField3_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("services" in $$parsedSource) {
+            $$parsedSource["services"] = $$createField2_0($$parsedSource["services"]);
+        }
+        if ("references" in $$parsedSource) {
+            $$parsedSource["references"] = $$createField3_0($$parsedSource["references"]);
+        }
+        return new ServiceComponent($$parsedSource as Partial<ServiceComponent>);
+    }
+}
+
+/**
+ * TargetComparison is the diff of two target platforms: what a migration adds, removes
+ * and bumps. This is the Target Platform Manager answer to "will this new target still
+ * compile my workspace?".
+ */
+export class TargetComparison {
+    "left": string;
+    "right": string;
+    "leftBundles": number;
+    "rightBundles": number;
+    "common": number;
+    "added": BundleVersion[];
+    "removed": BundleVersion[];
+    "changed": BundleChange[];
+    "problems": Problem[];
+
+    /** Creates a new TargetComparison instance. */
+    constructor($$source: Partial<TargetComparison> = {}) {
+        if (!("left" in $$source)) {
+            this["left"] = "";
+        }
+        if (!("right" in $$source)) {
+            this["right"] = "";
+        }
+        if (!("leftBundles" in $$source)) {
+            this["leftBundles"] = 0;
+        }
+        if (!("rightBundles" in $$source)) {
+            this["rightBundles"] = 0;
+        }
+        if (!("common" in $$source)) {
+            this["common"] = 0;
+        }
+        if (!("added" in $$source)) {
+            this["added"] = [];
+        }
+        if (!("removed" in $$source)) {
+            this["removed"] = [];
+        }
+        if (!("changed" in $$source)) {
+            this["changed"] = [];
+        }
+        if (!("problems" in $$source)) {
+            this["problems"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TargetComparison instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TargetComparison {
+        const $$createField5_0 = $$createType38;
+        const $$createField6_0 = $$createType38;
+        const $$createField7_0 = $$createType40;
+        const $$createField8_0 = $$createType21;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("added" in $$parsedSource) {
+            $$parsedSource["added"] = $$createField5_0($$parsedSource["added"]);
+        }
+        if ("removed" in $$parsedSource) {
+            $$parsedSource["removed"] = $$createField6_0($$parsedSource["removed"]);
+        }
+        if ("changed" in $$parsedSource) {
+            $$parsedSource["changed"] = $$createField7_0($$parsedSource["changed"]);
+        }
+        if ("problems" in $$parsedSource) {
+            $$parsedSource["problems"] = $$createField8_0($$parsedSource["problems"]);
+        }
+        return new TargetComparison($$parsedSource as Partial<TargetComparison>);
+    }
+}
+
+/**
+ * TestImpact is a test project affected by a change.
+ */
+export class TestImpact {
+    "symbolicName": string;
+    "version": string;
+    "location": string;
+    "reason": string;
+
+    /** Creates a new TestImpact instance. */
+    constructor($$source: Partial<TestImpact> = {}) {
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("location" in $$source)) {
+            this["location"] = "";
+        }
+        if (!("reason" in $$source)) {
+            this["reason"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TestImpact instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TestImpact {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TestImpact($$parsedSource as Partial<TestImpact>);
+    }
+}
+
+/**
  * TychoRepository is one p2 repository declared by a Tycho build.
  */
 export class TychoRepository {
@@ -295,6 +1722,50 @@ export class TychoRepository {
     static createFrom($$source: any = {}): TychoRepository {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new TychoRepository($$parsedSource as Partial<TychoRepository>);
+    }
+}
+
+/**
+ * Wire is one resolved dependency edge as PDE computed it.
+ */
+export class Wire {
+    "kind": string;
+    "name": string;
+
+    /**
+     * Provider is the symbolic name of the bundle actually providing it.
+     */
+    "provider": string;
+
+    /**
+     * ProviderVersion is the version of the provider.
+     */
+    "providerVersion": string;
+
+    /** Creates a new Wire instance. */
+    constructor($$source: Partial<Wire> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("provider" in $$source)) {
+            this["provider"] = "";
+        }
+        if (!("providerVersion" in $$source)) {
+            this["providerVersion"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Wire instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Wire {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Wire($$parsedSource as Partial<Wire>);
     }
 }
 
@@ -350,8 +1821,8 @@ export class WorkspaceReport {
      * Creates a new WorkspaceReport instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceReport {
-        const $$createField6_0 = $$createType4;
-        const $$createField7_0 = $$createType6;
+        const $$createField6_0 = $$createType42;
+        const $$createField7_0 = $$createType21;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("bundles" in $$parsedSource) {
             $$parsedSource["bundles"] = $$createField6_0($$parsedSource["bundles"]);
@@ -364,10 +1835,46 @@ export class WorkspaceReport {
 }
 
 // Private type creation functions
-const $$createType0 = MissingDependency.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = BundleStatus.createFrom;
+const $$createType0 = BundleRow.createFrom;
+const $$createType1 = Wire.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = MissingDependency.createFrom;
 const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = Problem.createFrom;
-const $$createType6 = $Create.Array($$createType5);
+const $$createType5 = $Create.Array($Create.Any);
+const $$createType6 = Diagnostic.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = ActivatorInfo.createFrom;
+const $$createType9 = $Create.Nullable($$createType8);
+const $$createType10 = ServiceComponent.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = Impact.createFrom;
+const $$createType13 = $Create.Nullable($$createType12);
+const $$createType14 = FocusGraph.createFrom;
+const $$createType15 = $Create.Nullable($$createType14);
+const $$createType16 = $Create.Map($Create.Any, $Create.Any);
+const $$createType17 = ExplorerSummary.createFrom;
+const $$createType18 = $Create.Array($$createType0);
+const $$createType19 = $Create.Array($$createType8);
+const $$createType20 = Problem.createFrom;
+const $$createType21 = $Create.Array($$createType20);
+const $$createType22 = RuntimeSnapshot.createFrom;
+const $$createType23 = $Create.Nullable($$createType22);
+const $$createType24 = FocusNode.createFrom;
+const $$createType25 = $Create.Array($$createType24);
+const $$createType26 = FocusEdge.createFrom;
+const $$createType27 = $Create.Array($$createType26);
+const $$createType28 = Consumer.createFrom;
+const $$createType29 = $Create.Array($$createType28);
+const $$createType30 = TestImpact.createFrom;
+const $$createType31 = $Create.Array($$createType30);
+const $$createType32 = RuntimeBundle.createFrom;
+const $$createType33 = $Create.Array($$createType32);
+const $$createType34 = RuntimeService.createFrom;
+const $$createType35 = $Create.Array($$createType34);
+const $$createType36 = $Create.Map($Create.Any, $$createType5);
+const $$createType37 = BundleVersion.createFrom;
+const $$createType38 = $Create.Array($$createType37);
+const $$createType39 = BundleChange.createFrom;
+const $$createType40 = $Create.Array($$createType39);
+const $$createType41 = BundleStatus.createFrom;
+const $$createType42 = $Create.Array($$createType41);

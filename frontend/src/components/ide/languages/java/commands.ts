@@ -27,7 +27,7 @@ export const JAVA_LANGUAGE_COMMANDS: ReadonlyArray<CodeStudioCommand> = ([
   { id: 'java.goToTest', menu: 'java', label: 'Go to Test / Source' },
   { id: 'java.selectJdk', menu: 'java', label: 'Select JDK…', separatorBefore: true },
   { id: 'java.dependencyTree', menu: 'java', label: 'Maven Dependency Tree…' },
-  { id: 'java.osgi', menu: 'java', label: 'OSGi Bundles & Target Platform…' },
+  { id: 'java.osgi', menu: 'java', label: 'OSGi Control Center…' },
   { id: 'java.osgiBuild', menu: 'java', label: 'Build OSGi Bundles' },
   { id: 'java.osgiRun', menu: 'java', label: 'Run OSGi Bundles in Equinox' },
   { id: 'java.jvmMonitor', menu: 'java', label: 'JVM Monitor (heap, GC, JFR)…' },

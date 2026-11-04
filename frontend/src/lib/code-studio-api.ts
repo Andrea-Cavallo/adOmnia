@@ -3,7 +3,7 @@ import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/a
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
-import type { P2DownloadResult, P2Preview, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
+import type { BundleDetail, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -976,6 +976,66 @@ export async function startJavaOsgiBuild(sessionId: string): Promise<void> {
 export async function startJavaOsgiRun(sessionId: string): Promise<string[]> {
   const result = await GoIDEBindings.StartJavaOsgiRun(sessionId)
   return result.problems ?? []
+}
+
+/** OSGi Control Center: bundle del workspace e della target platform, Activator, start level, diagnostica. */
+export async function getJavaOsgiExplorer(sessionId: string): Promise<ExplorerReport | null> {
+  return GoIDEBindings.JavaOsgiExplorer(sessionId)
+}
+
+/** Rilegge manifest, indice del target e diagnostica: butta la cache dell'explorer. */
+export async function refreshJavaOsgiExplorer(sessionId: string): Promise<ExplorerReport | null> {
+  return GoIDEBindings.RefreshJavaOsgiExplorer(sessionId)
+}
+
+/** Ricerca istantanea tra nome, Activator, package esportati/importati e testo del manifest. */
+export async function searchJavaOsgiBundles(sessionId: string, query: string, limit = 60): Promise<SearchHit[]> {
+  return (await GoIDEBindings.JavaOsgiSearch(sessionId, query, limit)) ?? []
+}
+
+/** Dettaglio di un bundle: stato, wiring, diagnostica, impatto e sottografo. */
+export async function getJavaOsgiBundleDetail(sessionId: string, name: string, depth = 1): Promise<BundleDetail | null> {
+  return GoIDEBindings.JavaOsgiBundleDetail(sessionId, name, depth)
+}
+
+/** Dependency Impact Analyzer: chi dipende da un bundle e cosa verificare prima di cambiarlo. */
+export async function getJavaOsgiImpact(sessionId: string, name: string): Promise<Impact | null> {
+  return GoIDEBindings.JavaOsgiImpact(sessionId, name)
+}
+
+/** Impatto di una classe o interfaccia del workspace (risolta nel suo bundle). */
+export async function getJavaOsgiClassImpact(sessionId: string, className: string): Promise<Impact | null> {
+  return GoIDEBindings.JavaOsgiImpactForClass(sessionId, className)
+}
+
+/** Sottografo attorno a un bundle: dipendenze e consumer, con gli archi irrisolti. */
+export async function getJavaOsgiFocusedGraph(sessionId: string, name: string, depth = 1): Promise<FocusGraph | null> {
+  return GoIDEBindings.JavaOsgiFocusedGraph(sessionId, name, depth)
+}
+
+/** Confronta la target platform attiva con un'altra: bundle aggiunti, rimossi e cambiati di versione. */
+export async function compareJavaOsgiTarget(sessionId: string, path: string): Promise<TargetComparison | null> {
+  return GoIDEBindings.CompareJavaOsgiTarget(sessionId, path)
+}
+
+/** Copia JAR sciolti nella cartella della target platform attiva (conferma esplicita). */
+export async function importJavaOsgiJars(sessionId: string, files: string[]): Promise<LooseJarResult> {
+  return GoIDEBindings.ImportJavaOsgiJars(sessionId, files, true)
+}
+
+/** Avvia i bundle in Equinox con la console locale e legge lo stato reale del framework. */
+export async function startJavaOsgiRuntime(sessionId: string): Promise<RuntimeSnapshot | null> {
+  return GoIDEBindings.StartJavaOsgiRuntime(sessionId)
+}
+
+/** Rilegge lo stato del framework in esecuzione (ACTIVE, servizi, start level, tempi). */
+export async function refreshJavaOsgiRuntime(sessionId: string): Promise<RuntimeSnapshot | null> {
+  return GoIDEBindings.JavaOsgiRuntimeSnapshot(sessionId)
+}
+
+/** Ferma il framework e chiude la console. */
+export async function stopJavaOsgiRuntime(sessionId: string): Promise<void> {
+  await GoIDEBindings.StopJavaOsgiRuntime(sessionId)
 }
 
 /** Repository e unità p2 del file .target attivo (nessun accesso alla rete). */

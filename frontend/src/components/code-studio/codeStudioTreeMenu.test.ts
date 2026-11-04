@@ -48,8 +48,18 @@ describe('buildTreeMenu', () => {
     expect(menu).not.toContain('findInFolder')
   })
 
-  it('offers Repair IDE on File (rebuild index) on files and folders', () => {
-    const onFile = ids(buildTreeMenu(file('main.go'), context))
+  it('offers the OSGi menu only on an OSGi project root and folders', () => {
+    const osgiContext = { ...context, osgi: true }
+    expect(ids(buildTreeMenu(null, osgiContext))).toEqual(expect.arrayContaining(['osgi', 'osgiImportPlugins', 'osgiControlCenter', 'osgiBuild', 'osgiRun']))
+    expect(ids(buildTreeMenu(folder('plugins'), osgiContext))).toContain('osgiImportPlugins')
+    // A file has no project-level OSGi actions, and a non-OSGi project shows no menu at all.
+    expect(ids(buildTreeMenu(file('plugins/com.acme.core/META-INF/MANIFEST.MF'), osgiContext))).not.toContain('osgiImportPlugins')
+    expect(ids(buildTreeMenu(null, context))).not.toContain('osgi')
+    // A Java workspace without bundles yet still gets the import, which is how it becomes OSGi.
+    expect(ids(buildTreeMenu(null, { ...context, hasJava: true }))).toContain('osgiImportPlugins')
+  })
+
+  it('offers Repair IDE on File (rebuild index) on files and folders', () => {    const onFile = ids(buildTreeMenu(file('main.go'), context))
     const onFolder = ids(buildTreeMenu(folder('internal'), context))
     expect(onFile).toContain('repairIde')
     expect(onFolder).toContain('repairIde')

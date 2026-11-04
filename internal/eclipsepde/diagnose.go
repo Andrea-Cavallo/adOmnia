@@ -74,16 +74,16 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 			resolution = resolver.Resolve(entry)
 		}
 
-		// A platform filter excludes the bundle on this machine: it never resolves
-		// even when every requirement is present.
+		// A platform filter selects the bundle for one OS/architecture. A project that ships a
+		// fragment per platform (earth.sci, WorldWind, JOGL) therefore has bundles that are not
+		// installed here by design: that is healthy, not a warning, and nothing has to be fixed.
 		if filter := strings.TrimSpace(bundle.Manifest.Main["Eclipse-PlatformFilter"]); filter != "" && !bundle.MatchesPlatform(platform) {
 			out = append(out, Diagnostic{
 				ID: base + "|platform-filter", Bundle: bundle.SymbolicName, Version: bundle.Version.String(),
-				Severity: "warning", Kind: "platform-filter",
-				Title: "Not installed on this platform",
-				Cause: fmt.Sprintf("Eclipse-PlatformFilter %s does not match this machine, so the bundle is left out of the target instead of resolving.", filter),
+				Severity: "info", Kind: "platform-filter",
+				Title:    "Bundle for another platform",
+				Cause:    fmt.Sprintf("Eclipse-PlatformFilter %s selects another OS or architecture: this bundle belongs to the project, but it is not installed on this machine. The variant for this platform is a different bundle.", filter),
 				Evidence: []string{"Eclipse-PlatformFilter: " + filter, platformString(platform)},
-				Actions:  []string{"install the variant of this bundle for this OS/architecture", "remove Eclipse-PlatformFilter if the bundle is platform independent"},
 				File:     manifestPath(root, proj), RelatedBundles: nil,
 			})
 		}
@@ -96,8 +96,8 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 					out = append(out, Diagnostic{
 						ID: base + "|bree", Bundle: bundle.SymbolicName, Version: bundle.Version.String(),
 						Severity: "error", Kind: "bree",
-						Title: fmt.Sprintf("Requires Java %d, the project runs Java %d", level, input.JVM),
-						Cause: "Bundle-RequiredExecutionEnvironment is newer than the JVM selected for this project: Equinox cannot resolve the system bundle for it and the bundle stays INSTALLED.",
+						Title:    fmt.Sprintf("Requires Java %d, the project runs Java %d", level, input.JVM),
+						Cause:    "Bundle-RequiredExecutionEnvironment is newer than the JVM selected for this project: Equinox cannot resolve the system bundle for it and the bundle stays INSTALLED.",
 						Evidence: []string{"Bundle-RequiredExecutionEnvironment: " + required, fmt.Sprintf("project JVM: Java %d", input.JVM)},
 						Actions:  []string{"select a newer JVM in Java › Select JDK", "lower the execution environment of the bundle if the code allows it"},
 						File:     manifestPath(root, proj),
@@ -106,14 +106,16 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 			}
 		}
 
-		if bundle.FragmentHost != nil {
+		// Without a target the host may be an Eclipse bundle that is simply not chosen yet: the
+		// row already says "choose a target platform", and a red error here is not actionable.
+		if bundle.FragmentHost != nil && input.HasTarget {
 			host := bundle.FragmentHost.Name
 			if matches := index.ByName(host); len(matches) == 0 {
 				out = append(out, Diagnostic{
 					ID: base + "|orphan-fragment", Bundle: bundle.SymbolicName, Version: bundle.Version.String(),
 					Severity: "error", Kind: "orphan-fragment",
-					Title: "Fragment without its host",
-					Cause: fmt.Sprintf("This is a fragment of %s, which is not in the target platform or in the workspace: a fragment cannot resolve alone.", host),
+					Title:    "Fragment without its host",
+					Cause:    fmt.Sprintf("This is a fragment of %s, which is not in the target platform or in the workspace: a fragment cannot resolve alone.", host),
 					Evidence: []string{"Fragment-Host: " + host},
 					Actions:  []string{"add " + host + " to the target platform", "import the host plug-in into the workspace"},
 					File:     manifestPath(root, proj), RelatedBundles: []string{host},
@@ -123,6 +125,10 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 
 		if resolution != nil {
 			for _, missing := range resolution.Root.Missing {
+				// The explicit BREE rule above already explains it with the project JVM.
+				if input.JVM > 0 && missing.Requirement.Kind == "Bundle-RequiredExecutionEnvironment" {
+					continue
+				}
 				out = append(out, diagnosticForMissing(base, root, proj, bundle, missing))
 			}
 			// Failures two or more hops away: this bundle resolves itself but will
@@ -131,9 +137,12 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 				if len(missing.Chain) <= 2 {
 					continue
 				}
+				if input.JVM > 0 && missing.Requirement.Kind == "Bundle-RequiredExecutionEnvironment" {
+					continue
+				}
 				related := missing.Chain[len(missing.Chain)-2]
 				out = append(out, Diagnostic{
-					ID: base + "|transitive|" + missing.Requirement.Kind + "|" + missing.Requirement.Name + "|" + related,
+					ID:     base + "|transitive|" + missing.Requirement.Kind + "|" + missing.Requirement.Name + "|" + related,
 					Bundle: bundle.SymbolicName, Version: bundle.Version.String(),
 					Severity: "warning", Kind: "transitive-requirement",
 					Title:       "A bundle it requires cannot resolve",
@@ -153,8 +162,8 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 					out = append(out, Diagnostic{
 						ID: base + "|resolved-lazy", Bundle: bundle.SymbolicName, Version: bundle.Version.String(),
 						Severity: "info", Kind: "resolved-lazy",
-						Title:   "Ready, not active yet (lazy)",
-						Cause:   "The bundle is RESOLVED and activates on the first class load: this is normal for Bundle-ActivationPolicy: lazy, not a failure.",
+						Title: "Ready, not active yet (lazy)",
+						Cause: "The bundle is RESOLVED and activates on the first class load: this is normal for Bundle-ActivationPolicy: lazy, not a failure.",
 						Evidence: []string{"Bundle-ActivationPolicy: " + activationEvidence(bundle), "state: RESOLVED",
 							"the framework activates it when one of its classes is loaded"},
 						Actions: []string{"nothing to fix", "use Start in the framework console to activate it eagerly for a test"},
@@ -165,8 +174,8 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 						out = append(out, Diagnostic{
 							ID: base + "|not-started", Bundle: bundle.SymbolicName, Version: bundle.Version.String(),
 							Severity: "warning", Kind: "not-started",
-							Title:   "Resolved but not started by the launch configuration",
-							Cause:   fmt.Sprintf("The bundle resolves but osgi.bundles does not start it: it stays RESOLVED at start level %d.", level),
+							Title: "Resolved but not started by the launch configuration",
+							Cause: fmt.Sprintf("The bundle resolves but osgi.bundles does not start it: it stays RESOLVED at start level %d.", level),
 							Evidence: []string{"osgi.bundles: no start instruction for this bundle",
 								fmt.Sprintf("declared start level: %d", level), "activation policy: eager"},
 							Actions: []string{"start it from the launch configuration", "add @start to its osgi.bundles entry"},
@@ -184,8 +193,8 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 	for name, locations := range exact {
 		out = append(out, Diagnostic{
 			ID: "duplicate-bundle|" + name, Bundle: strings.Split(name, "_")[0], Severity: "warning", Kind: "duplicate-bundle",
-			Title: "The same bundle is present more than once",
-			Cause: "Two copies of the same symbolic name and version are in the target or the workspace: PDE picks one, and the class loader keeps only that one.",
+			Title:    "The same bundle is present more than once",
+			Cause:    "Two copies of the same symbolic name and version are in the target or the workspace: PDE picks one, and the class loader keeps only that one.",
 			Evidence: append([]string{"symbolic name and version: " + name}, locations...),
 			Actions:  []string{"remove the duplicate from the target platform", "reindex the target after removing it"},
 		})
@@ -218,11 +227,11 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 		sort.Strings(labels)
 		out = append(out, Diagnostic{
 			ID: "singleton-duplicate|" + name, Bundle: name, Severity: "warning", Kind: "singleton-duplicate",
-			Title:       "Singleton present at several versions",
-			Cause:       "Equinox keeps only the newest version of a singleton; bundles wired to an older one fail at runtime even if they compile.",
-			Evidence:    append([]string{"singleton:=true", "versions in the index:"}, labels...),
-			Actions:     []string{"keep one version in the target platform", "align the Require-Bundle ranges of the workspace bundles"},
-			Available:   labels,
+			Title:          "Singleton present at several versions",
+			Cause:          "Equinox keeps only the newest version of a singleton; bundles wired to an older one fail at runtime even if they compile.",
+			Evidence:       append([]string{"singleton:=true", "versions in the index:"}, labels...),
+			Actions:        []string{"keep one version in the target platform", "align the Require-Bundle ranges of the workspace bundles"},
+			Available:      labels,
 			RelatedBundles: []string{name},
 		})
 	}

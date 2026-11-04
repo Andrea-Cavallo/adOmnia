@@ -45,8 +45,24 @@ type LaunchJVM struct {
 // PrepareLaunch writes the Equinox configuration of the workspace bundles and everything they
 // need from the target, the same files PDE generates, and returns the command that starts them.
 func PrepareLaunch(root string, jvm LaunchJVM) (*Launch, error) {
+	return prepareLaunch(root, jvm, 0)
+}
+
+// PrepareRuntime is the same launch with the Equinox console on a TCP port: adOmnia asks the
+// running framework for its real state (ss, services, diag, startlevel) instead of guessing.
+// The console bundles must be in the target: without them there is nothing to talk to.
+func PrepareRuntime(root string, jvm LaunchJVM, port int) (*Launch, error) {
+	if port <= 0 {
+		return nil, errors.New("the runtime console needs a port")
+	}
+	return prepareLaunch(root, jvm, port)
+}
+
+// prepareLaunch writes the configuration and builds the command. A port above zero puts the
+// console on TCP; zero keeps it on stdin, as the Run action does.
+func prepareLaunch(root string, jvm LaunchJVM, port int) (*Launch, error) {
 	if jvm.Major > maxCompilerJVM {
-		return nil, fmt.Errorf("Equinox 3.9 does not start on Java %d (\"The System Bundle could not be resolved\"): choose a JVM up to Java %d in Java > Select JDK", jvm.Major, maxCompilerJVM)
+		return nil, fmt.Errorf("this Equinox generation does not start on Java %d (\"The System Bundle could not be resolved\"): choose a JVM up to Java %d in Java > Select JDK", jvm.Major, maxCompilerJVM)
 	}
 	ws, target, err := openWorkspaceTarget(root)
 	if err != nil {
@@ -58,6 +74,10 @@ func PrepareLaunch(root string, jvm LaunchJVM) (*Launch, error) {
 	}
 	if len(ws.Bundles()) == 0 {
 		return nil, errors.New("this project has no OSGi bundles to run")
+	}
+	hasConsole := len(target.ByName(consoleBundles[0])) > 0
+	if port > 0 && !hasConsole {
+		return nil, fmt.Errorf("the target platform has no %s bundle: the runtime console needs an Eclipse installation target", consoleBundles[0])
 	}
 	devEntries, err := devClasspath(ws)
 	if err != nil {
@@ -83,12 +103,21 @@ func PrepareLaunch(root string, jvm LaunchJVM) (*Launch, error) {
 	}
 	arguments := []string{
 		"-Declipse.ignoreApp=true", "-Dosgi.noShutdown=true",
+	}
+	if port > 0 {
+		// A JVM property must precede -jar; unknown properties are ignored by older Equinox.
+		arguments = append(arguments, "-Dosgi.console.host=127.0.0.1")
+	}
+	arguments = append(arguments,
 		"-jar", framework.Bundle.Location,
 		"-configuration", configuration,
 		"-dev", fileURL(devFile),
 		"-clean", "-consoleLog",
-	}
-	if len(target.ByName(consoleBundles[0])) > 0 {
+	)
+	switch {
+	case port > 0:
+		arguments = append(arguments, "-console", strconv.Itoa(port))
+	case hasConsole:
 		arguments = append(arguments, "-console")
 	}
 	return &Launch{Arguments: arguments, Directory: ws.Root, Problems: problems}, nil

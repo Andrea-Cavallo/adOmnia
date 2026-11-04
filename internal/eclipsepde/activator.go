@@ -30,8 +30,8 @@ type ActivatorInfo struct {
 }
 
 var (
-	activatorStartMethod = regexp.MustCompile(`\bvoid\s+start\s*\(\s*(?:final\s+)?BundleContext\b`)
-	activatorStopMethod  = regexp.MustCompile(`\bvoid\s+stop\s*\(\s*(?:final\s+)?BundleContext\b`)
+	activatorStartMethod = regexp.MustCompile(`\bvoid\s+start\s*\(\s*(?:final\s+)?(?:[\w.]+\.)?BundleContext\b`)
+	activatorStopMethod  = regexp.MustCompile(`\bvoid\s+stop\s*\(\s*(?:final\s+)?(?:[\w.]+\.)?BundleContext\b`)
 )
 
 // Activators lists the Bundles-Activator of the workspace bundles, in bundle order.
@@ -44,12 +44,12 @@ func Activators(ws *Workspace) []ActivatorInfo {
 			continue
 		}
 		info := ActivatorInfo{
-			Bundle:    bundle.SymbolicName,
-			Version:   bundle.Version.String(),
-			Class:     bundle.Activator,
-			Policy:    bundle.ActivationPolicy,
-			Lazy:      bundle.LazyActivation,
-			Location:  relativeOrAbsolute(ws.Root, proj.Dir),
+			Bundle:   bundle.SymbolicName,
+			Version:  bundle.Version.String(),
+			Class:    bundle.Activator,
+			Policy:   bundle.ActivationPolicy,
+			Lazy:     bundle.LazyActivation,
+			Location: relativeOrAbsolute(ws.Root, proj.Dir),
 		}
 		if info.Policy == "" {
 			info.Policy = "eager"
@@ -69,20 +69,31 @@ func Activators(ws *Workspace) []ActivatorInfo {
 // inside a Bundle-ClassPath jar has no source here.
 func activatorSource(proj *EclipseProject, class string) string {
 	relative := filepath.FromSlash(strings.ReplaceAll(class, ".", "/")) + ".java"
-	candidates := append([]string{}, proj.sourceFolders()...)
-	candidates = append(candidates, filepath.Join(proj.Dir, "src"), proj.Dir)
-	seen := map[string]bool{}
-	for _, folder := range candidates {
-		if folder == "" || seen[folder] {
-			continue
-		}
-		seen[folder] = true
+	for _, folder := range sourceRootsOf(proj) {
 		path := filepath.Join(folder, relative)
 		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
 			return path
 		}
 	}
 	return ""
+}
+
+// sourceRootsOf is every folder that may hold the sources of a bundle: the .classpath
+// source entries, build.properties source.., and the PDE conventions (src, the bundle
+// root). A project without .classpath still has its sources in src/.
+func sourceRootsOf(proj *EclipseProject) []string {
+	candidates := append([]string{}, proj.sourceFolders()...)
+	candidates = append(candidates, filepath.Join(proj.Dir, "src"), proj.Dir)
+	seen := map[string]bool{}
+	roots := make([]string, 0, len(candidates))
+	for _, folder := range candidates {
+		if folder == "" || seen[folder] {
+			continue
+		}
+		seen[folder] = true
+		roots = append(roots, folder)
+	}
+	return roots
 }
 
 // activatorLines finds the declaration lines of start(BundleContext) and

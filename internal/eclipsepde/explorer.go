@@ -18,27 +18,39 @@ type ExplorerSummary struct {
 	Issues int `json:"issues"`
 	// Fragments counts the workspace bundles that are fragments.
 	Fragments int `json:"fragments"`
+	// Active counts the workspace bundles the running framework reports ACTIVE (0 until the
+	// runtime is started: the static analysis never claims it).
+	Active int `json:"active"`
+	// Services is the size of the service registry of the running framework.
+	Services int `json:"services"`
+	// RuntimeIssues are the problems only the runtime can see (not resolved, never activated).
+	RuntimeIssues int `json:"runtimeIssues"`
 }
 
 // BundleRow is one line of the OSGi Plugin Explorer: identity, state, activator and
 // start level at a glance, for workspace and target bundles alike.
 type BundleRow struct {
-	SymbolicName         string           `json:"symbolicName"`
-	Version              string           `json:"version"`
-	Name                 string           `json:"name,omitempty"`
-	Vendor               string           `json:"vendor,omitempty"`
-	Location             string           `json:"location"`
-	Source               string           `json:"source"`
-	Activator            string           `json:"activator,omitempty"`
-	ActivationPolicy     string           `json:"activationPolicy"`
-	Lazy                 bool             `json:"lazy"`
-	StartLevel           int              `json:"startLevel"`
-	StartOnLaunch        bool             `json:"startOnLaunch"`
-	StartLevelConfigured bool             `json:"startLevelConfigured"`
+	SymbolicName         string `json:"symbolicName"`
+	Version              string `json:"version"`
+	Name                 string `json:"name,omitempty"`
+	Vendor               string `json:"vendor,omitempty"`
+	Location             string `json:"location"`
+	Source               string `json:"source"`
+	Activator            string `json:"activator,omitempty"`
+	ActivationPolicy     string `json:"activationPolicy"`
+	Lazy                 bool   `json:"lazy"`
+	StartLevel           int    `json:"startLevel"`
+	StartOnLaunch        bool   `json:"startOnLaunch"`
+	StartLevelConfigured bool   `json:"startLevelConfigured"`
 	// State is the honest static state: INSTALLED when a requirement is missing,
 	// RESOLVED otherwise. ACTIVE only exists in a running framework (R2).
-	State                string              `json:"state"`
-	Status               ResolutionStatus    `json:"status"`
+	State  string           `json:"state"`
+	Status ResolutionStatus `json:"status"`
+	// RuntimeState is the state the running framework reports (INSTALLED/RESOLVED/ACTIVE),
+	// empty until the Runtime tab starts it.
+	RuntimeState string `json:"runtimeState,omitempty"`
+	// ActiveAtMs is when the profiler first observed it ACTIVE, relative to the launch.
+	ActiveAtMs           int64               `json:"activeAtMs,omitempty"`
 	Fragment             bool                `json:"fragment"`
 	FragmentHost         string              `json:"fragmentHost,omitempty"`
 	ExecutionEnvironment string              `json:"executionEnvironment,omitempty"`
@@ -63,18 +75,23 @@ type BundleRow struct {
 // ExplorerReport is the whole OSGi Plugin Explorer: the enriched bundles of the
 // workspace and of the target, the activators, the diagnostics and the summary cards.
 type ExplorerReport struct {
-	Root          string          `json:"root"`
-	HasTarget     bool            `json:"hasTarget"`
-	TargetPath    string          `json:"targetPath"`
-	TargetBundles int             `json:"targetBundles"`
-	OtherProjects int             `json:"otherProjects"`
-	Summary       ExplorerSummary `json:"summary"`
-	Bundles       []BundleRow     `json:"bundles"`
-	Activators    []ActivatorInfo `json:"activators"`
-	Diagnostics   []Diagnostic    `json:"diagnostics"`
-	Problems      []Problem       `json:"problems"`
-	// ManifestHeaders are the headers shown in the detail panel, per workspace bundle.
-	ManifestHeaders map[string]map[string]string `json:"manifestHeaders"`
+	Root          string `json:"root"`
+	HasTarget     bool   `json:"hasTarget"`
+	TargetPath    string `json:"targetPath"`
+	TargetBundles int    `json:"targetBundles"`
+	OtherProjects int    `json:"otherProjects"`
+	// JVM is the major version of the JVM chosen for the project (0 when none is chosen):
+	// the BREE diagnostics are relative to it.
+	JVM         int             `json:"jvm,omitzero"`
+	Summary     ExplorerSummary `json:"summary"`
+	Bundles     []BundleRow     `json:"bundles"`
+	Activators  []ActivatorInfo `json:"activators"`
+	Diagnostics []Diagnostic    `json:"diagnostics"`
+	Problems    []Problem       `json:"problems"`
+	// Runtime is the last snapshot of the running framework, nil until it is started.
+	Runtime *RuntimeSnapshot `json:"runtime,omitempty"`
+	// RuntimeDiagnostics are the problems only the running framework reports.
+	RuntimeDiagnostics []Diagnostic `json:"runtimeDiagnostics,omitempty"`
 
 	// The parsed model is kept for the follow-up calls (search, detail, impact, graph)
 	// so the service does not read the workspace and the target again per request.
@@ -83,6 +100,7 @@ type ExplorerReport struct {
 	merged               *BundleIndex
 	plan                 StartLevelPlan
 	executionEnvironment string
+	resolverEE           string
 }
 
 // BuildExplorer reads the workspace and the target platform and builds the Plugin
@@ -100,15 +118,15 @@ func BuildExplorer(root string, jvmMajor int) (*ExplorerReport, error) {
 	platform := NewTargetPlatform()
 	platform.LoadFromSettings(absoluteProfiles(settings, ws.Root))
 	report := &ExplorerReport{
-		Root:            ws.Root,
-		OtherProjects:   len(ws.Projects) - len(ws.Bundles()),
-		Bundles:         []BundleRow{},
-		Activators:      Activators(ws),
-		Problems:        relativeProblems(ws.AllProblems(), ws.Root),
-		ManifestHeaders: map[string]map[string]string{},
-		workspace:       ws,
-		index:           NewBundleIndex(),
-		plan:            ReadStartLevelPlan(ws.Root),
+		Root:          ws.Root,
+		JVM:           jvmMajor,
+		OtherProjects: len(ws.Projects) - len(ws.Bundles()),
+		Bundles:       []BundleRow{},
+		Activators:    Activators(ws),
+		Problems:      relativeProblems(ws.AllProblems(), ws.Root),
+		workspace:     ws,
+		index:         NewBundleIndex(),
+		plan:          ReadStartLevelPlan(ws.Root),
 	}
 	if profile, ok := platform.ActiveProfile(); ok {
 		report.HasTarget, report.TargetPath = true, profile.Path
@@ -131,6 +149,7 @@ func BuildExplorer(root string, jvmMajor int) (*ExplorerReport, error) {
 	} else {
 		resolver.ExecutionEnvironment = report.executionEnvironment
 	}
+	report.resolverEE = resolver.ExecutionEnvironment
 
 	activatorByBundle := map[string]ActivatorInfo{}
 	for _, activator := range report.Activators {
@@ -164,14 +183,13 @@ func BuildExplorer(root string, jvmMajor int) (*ExplorerReport, error) {
 			}
 			if resolution.Status == StatusUnresolved {
 				row.State = "INSTALLED"
+			} else {
+				row.State = "RESOLVED"
 			}
 		}
 		row.Missing = dedupeMissing(row.Missing)
 		if activator, ok := activatorByBundle[bundle.SymbolicName]; ok {
 			row.Activator = activator.Class
-		}
-		if headers := bundle.Manifest.Main; headers != nil {
-			report.ManifestHeaders[bundle.SymbolicName] = headers
 		}
 		report.Bundles = append(report.Bundles, row)
 	}
@@ -214,16 +232,18 @@ func (r *ExplorerReport) resolutionOf(resolver *Resolver, bundle *Bundle) (*Bund
 // rowForBundle is the common part of a workspace and a target row.
 func rowForBundle(bundle *Bundle, source BundleSource, root string, plan StartLevelPlan) BundleRow {
 	row := BundleRow{
-		SymbolicName:         bundle.SymbolicName,
-		Version:              bundle.Version.String(),
-		Name:                 bundle.Name,
-		Vendor:               bundle.Vendor,
-		Location:             relativeOrAbsolute(root, bundle.Location),
-		Source:               string(source),
-		Activator:            bundle.Activator,
-		ActivationPolicy:     bundle.ActivationPolicy,
-		Lazy:                 bundle.LazyActivation,
-		State:                "RESOLVED",
+		SymbolicName:     bundle.SymbolicName,
+		Version:          bundle.Version.String(),
+		Name:             bundle.Name,
+		Vendor:           bundle.Vendor,
+		Location:         relativeOrAbsolute(root, bundle.Location),
+		Source:           string(source),
+		Activator:        bundle.Activator,
+		ActivationPolicy: bundle.ActivationPolicy,
+		Lazy:             bundle.LazyActivation,
+		// The state is decided by the resolution below (or by the target pass): a bundle
+		// is never shown as RESOLVED before the target has been checked.
+		State:                "",
 		Fragment:             bundle.FragmentHost != nil,
 		ExecutionEnvironment: bundle.ExecutionEnvironment,
 		Dependencies:         len(bundle.RequireBundle) + len(bundle.ImportPackage),
@@ -305,18 +325,18 @@ func summarise(rows []BundleRow) ExplorerSummary {
 			continue
 		}
 		summary.Bundles++
-		if row.State == "INSTALLED" {
-			continue
-		}
-		summary.Resolved++
 		if row.Fragment {
 			summary.Fragments++
 		}
-		if row.Lazy {
-			summary.Lazy++
-		}
 		if row.Issues > 0 {
 			summary.Issues++
+		}
+		if row.State != "RESOLVED" {
+			continue
+		}
+		summary.Resolved++
+		if row.Lazy {
+			summary.Lazy++
 		}
 	}
 	return summary

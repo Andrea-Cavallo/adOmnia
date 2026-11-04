@@ -1752,6 +1752,70 @@ func (g *GoIDE) StartJavaOsgiRun(sessionID string) (codestudio.OsgiRunResult, er
 	return g.service.StartJavaOsgiRun(sessionID)
 }
 
+// JavaOsgiExplorer restituisce l'OSGi Control Center: bundle del workspace e della target
+// platform con Activator, start level, stato e diagnostica.
+func (g *GoIDE) JavaOsgiExplorer(sessionID string) (*eclipsepde.ExplorerReport, error) {
+	return g.service.JavaOsgiExplorer(sessionID)
+}
+
+// RefreshJavaOsgiExplorer rilegge manifest, indice del target e diagnostica.
+func (g *GoIDE) RefreshJavaOsgiExplorer(sessionID string) (*eclipsepde.ExplorerReport, error) {
+	return g.service.RefreshJavaOsgiExplorer(sessionID)
+}
+
+// JavaOsgiSearch cerca tra nome, Activator, package e testo del manifest.
+func (g *GoIDE) JavaOsgiSearch(sessionID, query string, limit int) ([]eclipsepde.SearchHit, error) {
+	return g.service.JavaOsgiSearch(sessionID, query, limit)
+}
+
+// JavaOsgiBundleDetail spiega un bundle: stato, wiring, diagnostica, impatto e grafo.
+func (g *GoIDE) JavaOsgiBundleDetail(sessionID, name string, depth int) (*eclipsepde.BundleDetail, error) {
+	return g.service.JavaOsgiBundleDetail(sessionID, name, depth)
+}
+
+// JavaOsgiImpact elenca chi dipende da un bundle e cosa verificare prima di cambiarlo.
+func (g *GoIDE) JavaOsgiImpact(sessionID, name string) (*eclipsepde.Impact, error) {
+	return g.service.JavaOsgiImpact(sessionID, name)
+}
+
+// JavaOsgiImpactForClass risolve una classe o interfaccia del workspace nel suo bundle e
+// ne restituisce l'impatto.
+func (g *GoIDE) JavaOsgiImpactForClass(sessionID, class string) (*eclipsepde.Impact, error) {
+	return g.service.JavaOsgiImpactForClass(sessionID, class)
+}
+
+// JavaOsgiFocusedGraph restituisce il sottografo attorno a un bundle (dipendenze e consumer).
+func (g *GoIDE) JavaOsgiFocusedGraph(sessionID, name string, depth int) (*eclipsepde.FocusGraph, error) {
+	return g.service.JavaOsgiFocusedGraph(sessionID, name, depth)
+}
+
+// CompareJavaOsgiTarget confronta la target platform attiva con un'altra: bundle aggiunti,
+// rimossi e cambiati di versione.
+func (g *GoIDE) CompareJavaOsgiTarget(sessionID, path string) (*eclipsepde.TargetComparison, error) {
+	return g.service.CompareJavaOsgiTarget(sessionID, path)
+}
+
+// ImportJavaOsgiJars copia JAR sciolti nella cartella della target platform attiva, dopo conferma.
+func (g *GoIDE) ImportJavaOsgiJars(sessionID string, files []string, confirmed bool) (eclipsepde.LooseJarResult, error) {
+	return g.service.ImportJavaOsgiJars(sessionID, files, confirmed)
+}
+
+// StartJavaOsgiRuntime avvia i bundle in Equinox con la console su una porta locale e
+// restituisce lo stato reale del framework (ACTIVE, servizi, start level, tempi di avvio).
+func (g *GoIDE) StartJavaOsgiRuntime(sessionID string) (*eclipsepde.RuntimeSnapshot, error) {
+	return g.service.StartJavaOsgiRuntime(sessionID)
+}
+
+// JavaOsgiRuntimeSnapshot rilegge lo stato del framework in esecuzione.
+func (g *GoIDE) JavaOsgiRuntimeSnapshot(sessionID string) (*eclipsepde.RuntimeSnapshot, error) {
+	return g.service.JavaOsgiRuntimeSnapshot(sessionID)
+}
+
+// StopJavaOsgiRuntime ferma il framework e chiude la console.
+func (g *GoIDE) StopJavaOsgiRuntime(sessionID string) error {
+	return g.service.StopJavaOsgiRuntime(sessionID)
+}
+
 // PomManagedVersions: versioni ereditate da parent e BOM per le dipendenze senza <version>.
 func (g *GoIDE) PomManagedVersions(sessionID, relativePath string) (map[string]codestudio.PomManagedVersion, error) {
 	return g.service.PomManagedVersions(sessionID, relativePath)

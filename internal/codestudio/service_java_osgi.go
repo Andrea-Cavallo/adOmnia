@@ -241,6 +241,7 @@ func (s *Service) ReindexJavaOsgiTarget(sessionID string) (*eclipsepde.Workspace
 	if err != nil {
 		return nil, err
 	}
+	s.invalidateOsgiExplorer(SessionID(sessionID))
 	return eclipsepde.ReindexReport(root)
 }
 
@@ -291,6 +292,7 @@ func (s *Service) SetJavaOsgiTarget(sessionID, path string) (*eclipsepde.Workspa
 	if session.Project.Authorization != AuthorizationPermitted {
 		return nil, errors.New("explicitly authorize the tools for this project")
 	}
+	s.invalidateOsgiExplorer(session.ID)
 	return eclipsepde.SetTarget(session.Project.RealPath, path)
 }
 
@@ -334,6 +336,7 @@ func (s *Service) ImportJavaOsgiPlugins(sessionID string, sources []string) (Osg
 		// Nothing changed: no report to read, and the reasons are already in Skipped.
 		return result, nil
 	}
+	s.invalidateOsgiExplorer(SessionID(sessionID))
 	report, err := eclipsepde.BuildReport(root)
 	if err != nil {
 		return result, nil // the copy is done: the panel reports the read error on reload
@@ -359,6 +362,7 @@ func (s *Service) RemoveJavaOsgiPlugin(sessionID, name string) (*eclipsepde.Work
 	if err := eclipsepde.RemoveImportedPlugin(root, name); err != nil {
 		return nil, err
 	}
+	s.invalidateOsgiExplorer(SessionID(sessionID))
 	return eclipsepde.BuildReport(root)
 }
 
@@ -398,6 +402,7 @@ func (s *Service) JavaOsgiTychoTarget(sessionID string, create bool) (OsgiTychoR
 		return result, err
 	}
 	result.TargetPath = path
+	s.invalidateOsgiExplorer(SessionID(sessionID))
 	report, err := eclipsepde.SetTarget(root, path)
 	if err != nil {
 		return result, err
