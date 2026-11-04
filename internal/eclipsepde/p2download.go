@@ -326,7 +326,10 @@ func checksumOf(properties map[string]string) (hash.Hash, string) {
 		return sha256.New(), strings.ToLower(value)
 	}
 	if value := properties["download.md5"]; value != "" {
-		return md5.New(), strings.ToLower(value) // #nosec G401 -- integrity check against the repository's own MD5
+		// MD5 qui è solo integrità contro il checksum pubblicato dal repository p2, mai una firma:
+		// i repository di era Kepler non ne pubblicano altri. I marker restano sulla riga del
+		// costruttore, dove li cercano gosec (#nosec) e semgrep (nosemgrep).
+		return md5.New(), strings.ToLower(value) // #nosec G401 // nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-md5
 	}
 	return nil, ""
 }
