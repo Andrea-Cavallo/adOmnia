@@ -3,6 +3,12 @@ import { writeFileSync } from 'node:fs'
 
 export const PORT = Number(process.env.CDP_PORT ?? 19402)
 
+// Values below end up inside a Runtime.evaluate expression. JSON is the encoding, and the two
+// line separators are escaped so a value can never close the literal early.
+function jsLiteral(value) {
+  return JSON.stringify(value).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
+}
+
 export async function connect() {
   const targets = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()
   const page = targets.find((t) => t.type === 'page' && !/devtools/i.test(t.url))
@@ -39,16 +45,22 @@ export async function connect() {
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 })
   }
   const clickText = async (text, selector = 'button, [role=treeitem], [role=tab], a, span, div') => {
-    const box = await evaluate(`(() => { const t=${JSON.stringify(text)}; const all=[...document.querySelectorAll(${JSON.stringify(selector)})].filter(e=>e.textContent.trim()===t && e.getClientRects().length); const e=all.at(-1); if(!e) return null; const r=e.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2} })()`)
+    // codeql[js/bad-code-sanitization] -- both values are JSON-encoded by jsLiteral.
+    const box = await evaluate(`(() => { const t=${jsLiteral(text)}; const all=[...document.querySelectorAll(${jsLiteral(selector)})].filter(e=>e.textContent.trim()===t && e.getClientRects().length); const e=all.at(-1); if(!e) return null; const r=e.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2} })()`)
     if (!box) throw new Error('not found: ' + text)
     await click(box.x, box.y)
   }
-  const callBinding = (methodID, ...args) => evaluate(`(async () => {
+  const callBinding = (methodID, ...args) => {
+    const id = Number(methodID)
+    if (!Number.isInteger(id)) throw new Error('methodID must be an integer')
+    // codeql[js/bad-code-sanitization] -- id is an integer and args is JSON-encoded by jsLiteral.
+    return evaluate(`(async () => {
     const url = new URL(location.origin + '/wails/runtime');
     const r = await fetch(url, { method: 'POST', headers: { 'x-wails-client-id': 'perf-driver', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ object: 0, method: 0, args: { call-id: 'x', methodID: ${methodID}, args: ${JSON.stringify(args)} } }) });
+      body: JSON.stringify({ object: 0, method: 0, args: { call-id: 'x', methodID: ${id}, args: ${jsLiteral(args)} } }) });
     return { status: r.status, body: (await r.text()).slice(0, 400) };
   })()`.replace('call-id', '"call-id"'))
+  }
   return { send, evaluate, screenshot, click, clickText, callBinding, close: () => ws.close() }
 }
 

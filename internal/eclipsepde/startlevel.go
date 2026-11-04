@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // startLevelConfigFile is the Equinox configuration adOmnia writes under the project
@@ -151,7 +152,7 @@ func unescapeProperty(value string) string {
 		switch escaped := value[index]; escaped {
 		case 'u':
 			if index+4 < len(value) {
-				if code, err := strconv.ParseUint(value[index+1:index+5], 16, 32); err == nil {
+				if code, err := strconv.ParseUint(value[index+1:index+5], 16, 32); err == nil && code <= utf8.MaxRune {
 					out.WriteRune(rune(code))
 					index += 4
 					continue
