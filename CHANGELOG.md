@@ -6,6 +6,16 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Find in Files: ripgrep, streaming and a virtualized list
+
+- **The engine is ripgrep.** *Find in Files* now runs `rg --json` (bundled in the Windows, Linux and macOS packages, `ADOMNIA_RG` overrides the path) and keeps the existing `SearchProject` contract, so Replace in Files, the tree menu and the MCP/IDE callers are unchanged. The Go engine stays as the fallback when the binary is missing: search never stops working.
+- **Typing is the search.** 200 ms after the last keystroke the query runs; every change cancels the previous job (the backend kills `rg`), so a slow scan can never overwrite newer results.
+- **Results stream in.** The new `StartProjectSearch` / `CancelProjectSearch` bindings emit `search.matches` batches while ripgrep scans, followed by `search.done` (counts, elapsed, engine) or `search.error`. The panel fills progressively instead of freezing on a spinner.
+- **Only visible rows are rendered.** The result list is virtualized with a fixed row height: file headers and matches become a flat list and React draws the viewport plus eight rows of overscan, so 10,000 hits scroll smoothly.
+- **Errors are distinguished from empty results.** Exit code 1 is a successful empty search; exit code 2 (invalid pattern/glob, unreadable root) is reported as an error with ripgrep's message. `.gitignore` is honoured outside a Git checkout too, and the same directories (`vendor`, `node_modules`, build output) stay excluded.
+- **Measured** (12,000 files / 720,000 lines, warm cache, Windows): the Go engine needs ~25–97 ms and ~85–90 MB of allocations per search; ripgrep needs ~45 ms streaming (~80 ms with `--sort path` for the synchronous preview) and ~2.5 MB. `BenchmarkSearchEngines` keeps the comparison runnable.
+- **Distribution and licenses:** `scripts/fetch-ripgrep.mjs` downloads the pinned 14.1.1 asset, verifies its published SHA-256, stages it under `build/rg/`, and the NSIS installer, the macOS app and the Linux tarball ship the binary with `LICENSE-MIT` and `UNLICENSE`; `NOTICE.md` records the dual MIT/Unlicense.
+
 ### Flow Intelligence: runtime evidence in the Explorer
 
 - **The running framework now backs the graph.** With Equinox started from the OSGi Control Center, *Runtime* in the Flow Explorer correlates the snapshot with the flow graph: ACTIVE bundles (marked in the flow list and in the trace), registered services with provider and the consumers the console reports, and how many edges the runtime proves. `flow_runtime` exposes the same evidence to agents; METHOD-level call paths deliberately keep their static confidence because observing them needs bytecode instrumentation.

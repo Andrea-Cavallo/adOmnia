@@ -46,6 +46,18 @@ lipo -create -output "$APP_PATH/Contents/MacOS/$APP_NAME" \
 rm -f "/tmp/${APP_NAME}-arm64" "/tmp/${APP_NAME}-amd64"
 chmod +x "$APP_PATH/Contents/MacOS/$APP_NAME"
 
+# Find in Files: bundle ripgrep when the release fetch staged it (the app falls back to Go).
+if command -v node >/dev/null 2>&1; then
+    node scripts/fetch-ripgrep.mjs || true
+fi
+if [[ -f build/rg/macos/rg ]]; then
+    mkdir -p "$APP_PATH/Contents/Resources/bin" "$APP_PATH/Contents/Resources/licenses"
+    cp build/rg/macos/rg "$APP_PATH/Contents/Resources/bin/rg"
+    chmod +x "$APP_PATH/Contents/Resources/bin/rg"
+    [[ -f build/rg/macos/LICENSE-MIT ]] && cp build/rg/macos/LICENSE-MIT "$APP_PATH/Contents/Resources/licenses/ripgrep-LICENSE-MIT"
+    [[ -f build/rg/macos/UNLICENSE ]] && cp build/rg/macos/UNLICENSE "$APP_PATH/Contents/Resources/licenses/ripgrep-UNLICENSE"
+fi
+
 cp build/darwin/Info.plist "$APP_PATH/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$VERSION" "$APP_PATH/Contents/Info.plist"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP_PATH/Contents/Info.plist"
