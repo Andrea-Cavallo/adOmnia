@@ -64,9 +64,9 @@ func ReadStartLevelPlan(root string) StartLevelPlan {
 func parseBundlesEntry(entry string, defaultLevel int) StartLevelEntry {
 	parsed := StartLevelEntry{Level: defaultLevel}
 	location := entry
-	if at := strings.LastIndex(entry, "@"); at >= 0 {
-		location = entry[:at]
-		instruction := entry[at+1:]
+	if before, after, found := strings.CutLast(entry, "@"); found {
+		location = before
+		instruction := after
 		for part := range strings.SplitSeq(instruction, ":") {
 			switch {
 			case strings.EqualFold(part, "start"):

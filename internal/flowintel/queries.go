@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -220,15 +221,6 @@ func (x *Index) Trace(id, direction string, depth int) (*Trace, error) {
 	return trace, nil
 }
 
-func containsEdge(edges []graph.Edge, edge graph.Edge) bool {
-	for _, candidate := range edges {
-		if candidate == edge {
-			return true
-		}
-	}
-	return false
-}
-
 // Path is one route between two nodes.
 type Path struct {
 	Nodes      []graph.Node `json:"nodes"`
@@ -300,8 +292,7 @@ func buildPath(x *Index, parents map[string]graph.Edge, start, end graph.Node) P
 		reversedEdges = append(reversedEdges, edge)
 		current = edge.From
 	}
-	for index := len(reversedEdges) - 1; index >= 0; index-- {
-		edge := reversedEdges[index]
+	for _, edge := range slices.Backward(reversedEdges) {
 		path.Edges = append(path.Edges, edge)
 		path.Confidence = weakerConfidence(path.Confidence, edge.Confidence)
 	}

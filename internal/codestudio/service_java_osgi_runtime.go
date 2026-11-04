@@ -104,7 +104,7 @@ func (s *Service) StartJavaOsgiRuntime(sessionID string) (*eclipsepde.RuntimeSna
 	osgiRuntimes.Store(session.ID, runtime)
 	snapshot, err := s.captureJavaOsgiRuntime(session, runtime)
 	if err != nil {
-		s.StopJavaOsgiRuntime(sessionID)
+		_ = s.StopJavaOsgiRuntime(sessionID)
 		return nil, err
 	}
 	if len(launch.Problems) > 0 {

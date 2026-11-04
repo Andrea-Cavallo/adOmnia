@@ -182,7 +182,7 @@ type RuntimeSnapshot struct {
 // "id State Bundle" layout and the bracket layout of older consoles are accepted.
 func ParseBundleStates(output string) []RuntimeBundle {
 	var bundles []RuntimeBundle
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		bundle, ok := parseBundleStateLine(line)
 		if ok {
 			bundles = append(bundles, bundle)
@@ -296,14 +296,14 @@ func ParseServices(output string) []RuntimeService {
 	var services []RuntimeService
 	var current *RuntimeService
 	usedBy := false
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
 			usedBy = false
 			continue
 		}
-		if strings.HasPrefix(trimmed, "{") {
-			iface, rest, ok := strings.Cut(strings.TrimPrefix(trimmed, "{"), "}")
+		if body, isService := strings.CutPrefix(trimmed, "{"); isService {
+			iface, rest, ok := strings.Cut(body, "}")
 			if !ok || iface == "" {
 				continue
 			}
@@ -311,7 +311,7 @@ func ParseServices(output string) []RuntimeService {
 			rest = strings.TrimPrefix(rest, "=")
 			rest = strings.TrimPrefix(rest, "{")
 			rest = strings.TrimSuffix(rest, "}")
-			for _, entry := range strings.Split(rest, ",") {
+			for entry := range strings.SplitSeq(rest, ",") {
 				key, value, found := strings.Cut(entry, "=")
 				if !found {
 					continue
@@ -365,7 +365,7 @@ func ParseStartLevel(output string) int {
 // ParseDiagnosis is the `diag <id>` output: the Equinox reason a bundle is not resolved.
 func ParseDiagnosis(output string) []string {
 	var lines []string
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" || strings.HasPrefix(trimmed, "osgi>") {
 			continue

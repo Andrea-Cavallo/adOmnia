@@ -76,83 +76,11 @@ func Discover(root string) (*Discovery, error) {
 	})
 
 	// Java adapter: types, methods, annotations, external calls.
-	for _, path := range javaFiles {
-		stat, err := os.Stat(path)
-		if err != nil || stat.Size() > maxFlowFileLen {
-			continue
-		}
-		rel, _ := filepath.Rel(absolute, path)
-		parsed, err := readJavaFile(path, filepath.ToSlash(rel))
-		if err != nil {
-			discovery.Problems = append(discovery.Problems, "java: "+filepath.ToSlash(rel)+": "+err.Error())
-			continue
-		}
-		for _, typ := range parsed.Types {
-			id := "type:" + typ.FQN
-			builder.Node(graph.Node{ID: id, Kind: typ.Kind, Label: typ.Name, Package: typ.Package, File: typ.File, Line: typ.Line})
-			typesBySimple[typ.Name] = append(typesBySimple[typ.Name], typ)
-		}
-		for _, method := range parsed.Methods {
-			methods[method.ID] = method
-			methodsByName[method.Name] = append(methodsByName[method.Name], method.ID)
-			owner := "type:" + method.Class
-			if !builder.Has(owner) {
-				// A method outside a parsed type (unlikely): give it an owner anyway.
-				builder.Node(graph.Node{ID: owner, Kind: graph.KindType, Label: method.Class, File: method.File, Line: method.Line})
-			}
-			builder.Node(graph.Node{ID: method.ID, Kind: graph.KindMethod, Label: simpleName(method.Class) + "." + method.Name, Package: packageOf(method.Class), File: method.File, Line: method.Line, Attrs: map[string]string{"class": method.Class}})
-			builder.Edge(owner, method.ID, graph.EdgeContains, "")
-			for _, annotation := range method.Annotations {
-				kind := flowKindOfAnnotation(annotation)
-				if kind == "" {
-					continue
-				}
-				flowID := "flow:" + method.ID
-				builder.Node(graph.Node{ID: flowID, Kind: kind, Label: flowLabel(kind, method), File: method.File, Line: method.Line, Attrs: map[string]string{"method": method.ID, "class": method.Class}})
-				builder.EdgeWithConfidence(flowID, method.ID, graph.EdgeInvokes, "annotation @"+annotation, graph.ConfidenceDeclared)
-			}
-			for _, external := range method.Externals {
-				externalID := "external:" + external.Kind + ":" + external.Name
-				builder.Node(graph.Node{ID: externalID, Kind: graph.KindExternal, Label: external.Name, Attrs: map[string]string{"type": external.Kind, "detail": external.Detail}})
-				builder.EdgeWithConfidence(method.ID, externalID, graph.EdgeCallsExt, external.Detail, graph.ConfidenceInferred)
-			}
-		}
-	}
+	applyJavaSources(builder, absolute, javaFiles, methods, typesBySimple, methodsByName, discovery)
 
 	// Resolve calls: same class first (derived), a known receiver type (derived),
 	// otherwise a unique method name (inferred) or a guess (inferred).
-	for _, method := range methods {
-		for _, call := range method.Calls {
-			target := ""
-			confidence := graph.ConfidenceInferred
-			candidate := "method:" + method.Class + "." + call.Name
-			if _, ok := methods[candidate]; ok {
-				target = candidate
-				confidence = graph.ConfidenceDerived
-			} else if call.Receiver != "" && call.Receiver != "this" {
-				if types := typesBySimple[call.Receiver]; len(types) == 1 {
-					candidate = "method:" + types[0].FQN + "." + call.Name
-					if _, ok := methods[candidate]; ok {
-						target, confidence = candidate, graph.ConfidenceDerived
-					}
-				}
-			}
-			if target == "" {
-				if candidates := methodsByName[call.Name]; len(candidates) == 1 {
-					target = candidates[0]
-				} else if len(candidates) > 1 {
-					target = candidates[0]
-				}
-			}
-			if target == "" {
-				continue
-			}
-			if _, ok := methods[target]; !ok {
-				continue
-			}
-			builder.EdgeWithConfidence(method.ID, target, graph.EdgeCalls, "", confidence)
-		}
-	}
+	applyJavaCalls(builder, methods, typesBySimple, methodsByName)
 
 	// Declared adapter (.adomnia/flows.json).
 	config, hasConfig, err := LoadConfig(absolute)
@@ -203,6 +131,85 @@ func Discover(root string) (*Discovery, error) {
 		discovery.Graph.Fingerprint = fingerprint
 	}
 	return discovery, nil
+}
+
+// applyJavaSources parses the Java files into the graph: types, methods, flow annotations
+// and the external systems each method touches.
+func applyJavaSources(builder *graph.Builder, root string, files []string, methods map[string]javaMethod, typesBySimple map[string][]javaType, methodsByName map[string][]string, discovery *Discovery) {
+	for _, path := range files {
+		stat, err := os.Stat(path)
+		if err != nil || stat.Size() > maxFlowFileLen {
+			continue
+		}
+		rel, _ := filepath.Rel(root, path)
+		parsed, err := readJavaFile(path, filepath.ToSlash(rel))
+		if err != nil {
+			discovery.Problems = append(discovery.Problems, "java: "+filepath.ToSlash(rel)+": "+err.Error())
+			continue
+		}
+		for _, typ := range parsed.Types {
+			id := "type:" + typ.FQN
+			builder.Node(graph.Node{ID: id, Kind: typ.Kind, Label: typ.Name, Package: typ.Package, File: typ.File, Line: typ.Line})
+			typesBySimple[typ.Name] = append(typesBySimple[typ.Name], typ)
+		}
+		for _, method := range parsed.Methods {
+			methods[method.ID] = method
+			methodsByName[method.Name] = append(methodsByName[method.Name], method.ID)
+			owner := "type:" + method.Class
+			if !builder.Has(owner) {
+				// A method outside a parsed type (unlikely): give it an owner anyway.
+				builder.Node(graph.Node{ID: owner, Kind: graph.KindType, Label: method.Class, File: method.File, Line: method.Line})
+			}
+			builder.Node(graph.Node{ID: method.ID, Kind: graph.KindMethod, Label: simpleName(method.Class) + "." + method.Name, Package: packageOf(method.Class), File: method.File, Line: method.Line, Attrs: map[string]string{"class": method.Class}})
+			builder.Edge(owner, method.ID, graph.EdgeContains, "")
+			for _, annotation := range method.Annotations {
+				kind := flowKindOfAnnotation(annotation)
+				if kind == "" {
+					continue
+				}
+				flowID := "flow:" + method.ID
+				builder.Node(graph.Node{ID: flowID, Kind: kind, Label: flowLabel(kind, method), File: method.File, Line: method.Line, Attrs: map[string]string{"method": method.ID, "class": method.Class}})
+				builder.EdgeWithConfidence(flowID, method.ID, graph.EdgeInvokes, "annotation @"+annotation, graph.ConfidenceDeclared)
+			}
+			for _, external := range method.Externals {
+				externalID := "external:" + external.Kind + ":" + external.Name
+				builder.Node(graph.Node{ID: externalID, Kind: graph.KindExternal, Label: external.Name, Attrs: map[string]string{"type": external.Kind, "detail": external.Detail}})
+				builder.EdgeWithConfidence(method.ID, externalID, graph.EdgeCallsExt, external.Detail, graph.ConfidenceInferred)
+			}
+		}
+	}
+}
+
+// applyJavaCalls resolves the calls collected per method.
+func applyJavaCalls(builder *graph.Builder, methods map[string]javaMethod, typesBySimple map[string][]javaType, methodsByName map[string][]string) {
+	for _, method := range methods {
+		for _, call := range method.Calls {
+			target, confidence := resolveJavaCall(method, call, methods, typesBySimple, methodsByName)
+			if target == "" {
+				continue
+			}
+			builder.EdgeWithConfidence(method.ID, target, graph.EdgeCalls, "", confidence)
+		}
+	}
+}
+
+// resolveJavaCall returns the target method and how the link is known.
+func resolveJavaCall(method javaMethod, call javaCall, methods map[string]javaMethod, typesBySimple map[string][]javaType, methodsByName map[string][]string) (string, string) {
+	if candidate := "method:" + method.Class + "." + call.Name; methods[candidate].ID != "" {
+		return candidate, graph.ConfidenceDerived
+	}
+	if call.Receiver != "" && call.Receiver != "this" {
+		if types := typesBySimple[call.Receiver]; len(types) == 1 {
+			candidate := "method:" + types[0].FQN + "." + call.Name
+			if methods[candidate].ID != "" {
+				return candidate, graph.ConfidenceDerived
+			}
+		}
+	}
+	if candidates := methodsByName[call.Name]; len(candidates) > 0 {
+		return candidates[0], graph.ConfidenceInferred
+	}
+	return "", ""
 }
 
 // filterZeroNodes drops empty nodes the builder may have created.
@@ -507,15 +514,15 @@ func flowLabel(kind string, method javaMethod) string {
 }
 
 func simpleName(fqn string) string {
-	if index := strings.LastIndex(fqn, "."); index >= 0 {
-		return fqn[index+1:]
+	if _, name, ok := strings.CutLast(fqn, "."); ok {
+		return name
 	}
 	return fqn
 }
 
 func packageOf(fqn string) string {
-	if index := strings.LastIndex(fqn, "."); index >= 0 {
-		return fqn[:index]
+	if pkg, _, ok := strings.CutLast(fqn, "."); ok {
+		return pkg
 	}
 	return ""
 }

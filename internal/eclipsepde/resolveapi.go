@@ -47,22 +47,20 @@ func ResolveManifest(root string, manifest []byte, jvmMajor int) (*ManifestResol
 	}
 	platform := NewTargetPlatform()
 	platform.LoadFromSettings(absoluteProfiles(settings, ws.Root))
-	index := NewBundleIndex()
 	executionEnvironment := ""
-	if profile, ok := platform.ActiveProfile(); ok {
-		resolution.HasTarget, resolution.TargetPath = true, profile.Path
-		executionEnvironment = profile.ExecutionEnvironment
-		loaded, err := platform.Index()
-		if err != nil {
-			return nil, err
-		}
-		index = loaded
-	} else {
+	profile, hasTarget := platform.ActiveProfile()
+	if !hasTarget {
 		resolution.Problems = append(resolution.Problems, Problem{
 			Severity: "warning",
 			Message:  "no target platform is set: only the workspace bundles are considered, and the manifest is not resolved",
 		})
 		return resolution, nil
+	}
+	resolution.HasTarget, resolution.TargetPath = true, profile.Path
+	executionEnvironment = profile.ExecutionEnvironment
+	index, err := platform.Index()
+	if err != nil {
+		return nil, err
 	}
 	merged := withWorkspace(index, ws)
 	resolver := NewResolver(merged)

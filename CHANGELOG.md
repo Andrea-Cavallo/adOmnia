@@ -6,6 +6,11 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Flow Intelligence: runtime evidence in the Explorer
+
+- **The running framework now backs the graph.** With Equinox started from the OSGi Control Center, *Runtime* in the Flow Explorer correlates the snapshot with the flow graph: ACTIVE bundles (marked in the flow list and in the trace), registered services with provider and the consumers the console reports, and how many edges the runtime proves. `flow_runtime` exposes the same evidence to agents; METHOD-level call paths deliberately keep their static confidence because observing them needs bytecode instrumentation.
+- **Same engine, one cache.** `FlowRuntime` on the Code Studio service reuses the cached Flow index and the runtime snapshot; the MCP tool `flow_runtime` uses the MCP-owned runtime (`osgi_runtime_start`). No second graph, no duplicated analysis.
+- **Tested:** a Go test builds a small flow graph and a synthetic runtime snapshot (ACTIVE/RESOLVED bundles, provider, consumer `com.acme.ui_1.0.0 [2]`) and checks active/unmatched lists, cleaned consumer names and the observed edge count; the MCP test asserts the clear error when no runtime is running. go test ./internal/flowintel ./internal/codestudio ./internal/adomniacli and tsc are green.
 ### Flow Explorer: the execution path in the IDE
 
 - **A real panel, same engine as MCP.** *Java → Flow Explorer…* opens the Flow Intelligence graph: search over flows/subflows/methods with a bundle filter and a kind filter, and the execution path rendered by depth and grouped by OSGi bundle (Down / Up / Both, depth 1–8). Selecting a flow shows what it calls, who calls it, the impact of a change and the evidence behind every link.

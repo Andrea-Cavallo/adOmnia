@@ -2,6 +2,7 @@ package eclipsepde
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -203,8 +204,7 @@ func (r *ExplorerReport) forwardEdges(entry *IndexedBundle) []edgeTarget {
 // clause matches the import attributes.
 func (r *ExplorerReport) packageProvider(requirement Requirement, clause Clause) (string, *IndexedBundle) {
 	providers := r.merged.ProvidersOf(requirement.Name)
-	for index := len(providers) - 1; index >= 0; index-- {
-		provider := providers[index]
+	for _, provider := range slices.Backward(providers) {
 		if requirement.RangeOK && !requirement.Range.Match(provider.ExportVersion) {
 			continue
 		}

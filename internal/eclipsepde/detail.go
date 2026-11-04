@@ -2,6 +2,7 @@ package eclipsepde
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 )
 
@@ -62,9 +63,7 @@ func (r *ExplorerReport) Detail(name string, depth int) (*BundleDetail, error) {
 		}
 	}
 	if entry.Bundle.Manifest != nil {
-		for header, value := range entry.Bundle.Manifest.Main {
-			detail.Manifest[header] = value
-		}
+		maps.Copy(detail.Manifest, entry.Bundle.Manifest.Main)
 	}
 	detail.ServiceComponents = ServiceComponents(entry.Bundle)
 

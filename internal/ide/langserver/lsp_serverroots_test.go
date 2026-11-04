@@ -134,7 +134,7 @@ func TestStartUnitsNeverExceedsTheServerLimit(t *testing.T) {
 
 	root := t.TempDir()
 	units := make([]project.Unit, 0, maxUnitServers+4)
-	for index := 0; index < maxUnitServers+4; index++ {
+	for index := range maxUnitServers + 4 {
 		directory := filepath.Join(root, "service"+string(rune('a'+index)))
 		if err := os.MkdirAll(directory, 0o755); err != nil {
 			t.Fatal(err)
