@@ -19,6 +19,7 @@ Release notes: [docs/releases/v1.1.0.md](docs/releases/v1.1.0.md).
 - **Errors are distinguished from empty results.** Exit code 1 is a successful empty search; exit code 2 (invalid pattern/glob, unreadable root) is reported as an error with ripgrep's message. `.gitignore` is honoured outside a Git checkout too, and the same directories (`vendor`, `node_modules`, build output) stay excluded.
 - **Measured** (12,000 files / 720,000 lines, warm cache, Windows): the Go engine needs ~25–97 ms and ~85–90 MB of allocations per search; ripgrep needs ~45 ms streaming (~80 ms with `--sort path` for the synchronous preview) and ~2.5 MB. `BenchmarkSearchEngines` keeps the comparison runnable.
 - **Distribution and licenses:** `scripts/fetch-ripgrep.mjs` downloads the pinned 14.1.1 asset, verifies its published SHA-256, stages it under `build/rg/`, and the NSIS installer, the macOS app and the Linux tarball ship the binary with `LICENSE-MIT` and `UNLICENSE`; `NOTICE.md` records the dual MIT/Unlicense.
+- **Installable from the Installer too.** *Code Studio → Installer → Go tools → ripgrep* shows whether the fast engine is in use and, on a build without a bundled binary, downloads the pinned release into the managed tools folder with the same SHA-256 verification (Windows, Linux and macOS).
 
 ### Flow Intelligence: runtime evidence in the Explorer
 

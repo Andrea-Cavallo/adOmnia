@@ -1220,6 +1220,12 @@ func (g *GoIDE) RipgrepStatus() codestudio.RipgrepInfo {
 	return g.service.RipgrepStatus()
 }
 
+// InstallRipgrep scarica il ripgrep pinnato nella cartella tools gestita (SHA-256 verificata).
+func (g *GoIDE) InstallRipgrep(ctx context.Context) (codestudio.RipgrepInfo, error) {
+	value, err := g.service.InstallRipgrep(ctx)
+	return settleCancelled(ctx, value, err)
+}
+
 // SetDirtyDocumentCount sincronizza il solo conteggio dei buffer dirty per la chiusura sicura.
 func (g *GoIDE) SetDirtyDocumentCount(count int) {
 	if count < 0 {
