@@ -10,6 +10,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { CATEGORY_ICONS, FEATURE_ICONS } from './Rail'
 import { loadHubPhrase } from './hubPhrases'
+import { HubLaser } from './HubLaser'
 import '@fontsource/doto/latin-800.css'
 import '@fontsource/geist-mono/latin-400.css'
 import './WelcomePanel.css'
@@ -142,6 +143,7 @@ export function WelcomePanel() {
   return (
     <div data-hub-page>
       <HubSidebar />
+      <HubLaser />
       <main className="hub-main">
         <header className="hub-hero">
           <div className="hub-greeting">
