@@ -16,8 +16,9 @@ import * as coinEffect from 'pixelfx/fx/pickups/coin-spin'
 import * as collectEffect from 'pixelfx/fx/pickups/collect-burst'
 import * as poofEffect from 'pixelfx/fx/spawn/poof'
 import {
-  CHARGE_MAX, MAX_WOUNDS, clearHubTargets, clickHubGame, comboMultiplier, isDead, moveIndexForCombo, newHubGame, specialReady, startHubRound, stepHubGame,
-  type HubGamePhase, type HubGameState, type HubTarget, type HubTargetKind,
+  CHARGE_MAX, FRENZY_FACTOR, MAX_WOUNDS, accuracy, clearHubTargets, clickHubGame, comboMultiplier, isDead, isFrenzy, medalFor, moveIndexForCombo, newHubGame,
+  specialReady, startHubRound, stepHubGame, strikePosition,
+  type HubGamePhase, type HubGameState, type HubMedal, type HubStats, type HubTarget, type HubTargetKind, type HubWaveKind,
 } from './hubGameRules'
 
 const PIXEL_SCALE = 2
@@ -34,11 +35,16 @@ const BLAST_SHAKE = 4
 const POPUP_SECONDS = 0.8
 const POPUP_RISE = 26
 const GROUND_MARGIN = 3
+/** Topmost row a label may start on: higher and the big font is cut off. */
+const LABEL_TOP = 2
 const WHITE = 0xffffffff
 const GOLD = 0xff30c0f0
 const RED = 0xff3030ff
 const OUTLINE = 0xff140c0e
 const GOLD_RAMP = ['#3a2200', '#7a4a00', '#c88a10', '#f0c030', '#ffe070', '#fff2b0', '#ffffff']
+const WAVE_TITLES: Record<HubWaveKind, string> = { swarm: 'SWARM!', coins: 'COIN RAIN!' }
+const MULTI_TITLES = ['', '', 'DOUBLE', 'TRIPLE', 'QUAD']
+const MEDAL_TITLES: Record<HubMedal, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' }
 const MOVES: readonly PixelFxModule[] = [swordSlash, thrust, doubleSlash, uppercut, spinSlash, heavyCleave]
 const EFFECTS: Partial<Record<HubTargetKind, PixelFxModule>> = { bat: batEffect, bird: birdEffect, butterfly: butterflyEffect, coin: coinEffect }
 
@@ -87,6 +93,8 @@ interface HudState {
   wounds: number
   charge: number
   died: boolean
+  frenzy: boolean
+  stats: HubStats
 }
 interface Popup { text: string; x: number; y: number; age: number; color: number }
 
@@ -97,8 +105,10 @@ interface Popup { text: string; x: number; y: number; age: number; color: number
 export function HubGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const startRef = useRef<(() => void) | null>(null)
-  const [hud, setHud] = useState<HudState>({ phase: 'idle', score: 0, combo: 0, seconds: 30, wounds: 0, charge: 0, died: false })
+  const [hud, setHud] = useState<HudState>({ phase: 'idle', score: 0, combo: 0, seconds: 30, wounds: 0, charge: 0, died: false, frenzy: false, stats: newHubGame().stats })
   const [best, setBest] = useState(loadBest)
+  /** The record this round beat, shown on the results; null (or 0, the first round) when there was none to beat. */
+  const [beaten, setBeaten] = useState<number | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -187,8 +197,12 @@ export function HubGame() {
       }
       if (hitStop > 0) { hitStop -= dt; return }
       const wounds = game.wounds
+      const waves = game.waves
+      const frenzy = isFrenzy(game)
       game = stepHubGame(game, dt, frame.w, frame.h)
       if (game.wounds !== wounds) wound()
+      if (game.waves !== waves && game.lastWave) popup(WAVE_TITLES[game.lastWave], frame.w / 2, 14, GOLD)
+      if (!frenzy && isFrenzy(game)) popup(`FRENZY ×${FRENZY_FACTOR}`, frame.w / 2, 14, RED)
       syncEffects()
       const landed = strikes.filter((strike) => strike.left - dt <= 0)
       for (const strike of landed) land(strike.target)
@@ -198,9 +212,13 @@ export function HubGame() {
     }
     const paintLabels = () => {
       const painter = painterFor(frame)
-      // An attacker is announced, so losing a heart is never a surprise.
+      // An attacker stops and flashes before it dives, then keeps its mark: a heart is never lost by surprise.
       for (const target of game.targets) {
-        if (target.attacker && Math.sin(clock * 12) > -0.3) painter.text('!', target.x, target.y - 24, RED, { font: 'big', align: 'center', outline: OUTLINE })
+        const warning = target.attack === 'warn' && Math.sin(clock * 30) > -0.2
+        // Above the critter, but never off the top of the strip, where the high fliers are.
+        // Twice the size while it warns: it is the one thing the player must not miss.
+        if (warning) painter.text('!!', target.x, Math.max(LABEL_TOP, target.y - 30), RED, { font: 'big', scale: 2, align: 'center', outline: OUTLINE })
+        else if (target.attack === 'dive') painter.text('!', target.x, Math.max(LABEL_TOP, target.y - 24), RED, { font: 'big', align: 'center', outline: OUTLINE })
       }
       if (specialReady(game) && game.phase === 'playing' && Math.sin(clock * 8) > -0.4) {
         painter.text('CLICK ME', Math.max(24, Math.min(frame.w - 24, game.knightX)), groundY() - 50, GOLD, { font: 'mini', align: 'center', outline: OUTLINE })
@@ -231,9 +249,10 @@ export function HubGame() {
     }
     const publish = () => {
       const seconds = Math.ceil(game.timeLeft)
-      setHud((current) => (current.phase === game.phase && current.score === game.score && current.combo === game.combo && current.seconds === seconds && current.wounds === game.wounds && current.charge === game.charge
+      const frenzy = isFrenzy(game)
+      setHud((current) => (current.phase === game.phase && current.score === game.score && current.combo === game.combo && current.seconds === seconds && current.wounds === game.wounds && current.charge === game.charge && current.frenzy === frenzy
         ? current
-        : { phase: game.phase, score: game.score, combo: game.combo, seconds, wounds: game.wounds, charge: game.charge, died: isDead(game) }))
+        : { phase: game.phase, score: game.score, combo: game.combo, seconds, wounds: game.wounds, charge: game.charge, died: isDead(game), frenzy, stats: game.stats }))
     }
     const finish = () => {
       live.clear()
@@ -242,10 +261,12 @@ export function HubGame() {
       popups = []
       standKnight()
       paint()
+      const score = game.score
       setBest((current) => {
-        const next = Math.max(current, game.score)
-        if (next !== current) saveBest(next)
-        return next
+        if (score <= current) return current
+        saveBest(score)
+        setBeaten(current)
+        return score
       })
     }
     const tick = (now: number) => {
@@ -277,17 +298,16 @@ export function HubGame() {
       last = 0
       if ((game.phase === 'playing' || dying > 0) && !raf) raf = requestAnimationFrame(tick)
     }
-    const strike = (target: HubTarget) => {
+    const strike = (hits: HubTarget[], knightBefore: number) => {
+      const [target] = hits
       const move = MOVES[moveIndexForCombo(game.combo, MOVES.length)]
-      const flip = target.x < game.knightX
-      const reach = moveReach(move)
-      const knightX = Math.round(Math.max(14, Math.min(frame.w - 14, target.x + (flip ? reach : -reach))))
+      const { x: knightX, flip } = strikePosition(target.x, knightBefore, moveReach(move), frame.w)
       game = { ...game, knightX }
       knight = createAct(move, { x: knightX, y: groundY(), flip, seed: target.id })
       acting = true
       const windup = actTiming(move)?.windup ?? 0
       if (windup > STRIKE_SECONDS) knight.update(windup - STRIKE_SECONDS)
-      strikes = [...strikes, { target, left: STRIKE_SECONDS }]
+      strikes = [...strikes, ...hits.map((hit) => ({ target: hit, left: STRIKE_SECONDS }))]
     }
     const fireSpecial = () => {
       knight = createAct(lightningCall, { x: Math.round(game.knightX), y: groundY(), seed: Math.round(clock * 100) })
@@ -298,6 +318,7 @@ export function HubGame() {
     const onPointerDown = (event: PointerEvent) => {
       if (game.phase !== 'playing' || dying > 0 || specialLeft > 0) return
       const box = canvas.getBoundingClientRect()
+      const knightBefore = game.knightX
       const result = clickHubGame(game, (event.clientX - box.left) / PIXEL_SCALE, (event.clientY - box.top) / PIXEL_SCALE, frame.h)
       game = result.state
       if (result.special) {
@@ -310,13 +331,17 @@ export function HubGame() {
           return
         }
       } else if (result.hit) {
-        strike(result.hit)
-        const golden = result.hit.golden || result.hit.kind === 'coin'
-        popup(`+${result.points ?? 0}`, result.hit.x, result.hit.y - 14, golden ? GOLD : WHITE)
+        const hits = result.hits ?? [result.hit]
+        strike(hits, knightBefore)
+        const golden = hits.some((hit) => hit.golden || hit.kind === 'coin')
+        const multi = MULTI_TITLES[Math.min(hits.length, MULTI_TITLES.length - 1)]
+        popup(multi ? `${multi} +${result.points ?? 0}` : `+${result.points ?? 0}`, result.hit.x, result.hit.y - 14, golden || multi ? GOLD : WHITE)
+        if (result.bonusSeconds) popup(`+${result.bonusSeconds}s`, Math.min(frame.w - 30, result.hit.x + 34), result.hit.y - 2, GOLD)
       }
       publish()
     }
     startRef.current = () => {
+      setBeaten(null)
       game = startHubRound(game.knightX)
       live.clear()
       bursts = []
@@ -357,10 +382,11 @@ export function HubGame() {
   const playing = hud.phase === 'playing'
   const multiplier = comboMultiplier(hud.combo)
   const ready = hud.charge >= CHARGE_MAX
+  const medal = medalFor(hud.score)
   return (
-    <div className="hub-game" data-phase={hud.phase}>
+    <div className="hub-game" data-phase={hud.phase} data-frenzy={hud.frenzy}>
       <canvas ref={canvasRef} className="hub-game-canvas" role="img" aria-label="Mini game: a knight fights the critters you click. Do not click the bombs." />
-      {playing && hud.combo > 1 && <p className="hub-game-combo" aria-hidden="true" style={{ fontSize: 16 + multiplier * 3 }}>×{multiplier}</p>}
+      {playing && multiplier > 1 && <p className="hub-game-combo" aria-hidden="true" style={{ fontSize: 16 + multiplier * 3 }}>×{multiplier}</p>}
       {playing && (
         <p className="hub-game-score" aria-hidden="true">
           <span className="hub-game-lives">{'♥'.repeat(Math.max(0, MAX_WOUNDS - hud.wounds))}<i>{'♥'.repeat(Math.min(MAX_WOUNDS, hud.wounds))}</i></span>
@@ -375,11 +401,31 @@ export function HubGame() {
       )}
       {!playing && (
         <div className="hub-game-menu">
-          {hud.phase === 'over' && <p>{hud.died && <b>You died · </b>}<span>{hud.score}</span> points · best {best}</p>}
-          {hud.phase === 'idle' && best > 0 && <p>best {best}</p>}
+          {hud.phase === 'over' && <HubGameResults hud={hud} best={best} beaten={beaten} medal={medal} />}
+          {hud.phase === 'idle' && best > 0 && <p>best {best}{medalFor(best) && <> · {MEDAL_TITLES[medalFor(best)!]}</>}</p>}
           <button type="button" onClick={() => startRef.current?.()}>{hud.phase === 'over' ? 'Play again' : 'Play'}</button>
         </div>
       )}
+    </div>
+  )
+}
+
+/** The end of a round: what happened, the medal it earned and whether it beat the record. */
+function HubGameResults({ hud, best, beaten, medal }: Readonly<{ hud: HudState; best: number; beaten: number | null; medal: HubMedal | null }>) {
+  const { stats } = hud
+  return (
+    <div className="hub-game-results">
+      <p>
+        {hud.died && <b>You died · </b>}
+        <span>{hud.score}</span> points
+        {medal && <em className="hub-game-medal" data-medal={medal}>{MEDAL_TITLES[medal]}</em>}
+        {beaten ? <strong className="hub-game-record">New best!</strong> : <> · best {best}</>}
+      </p>
+      <p className="hub-game-stats">
+        {stats.kills} down · {Math.round(accuracy(stats) * 100)}% accuracy · chain {stats.maxCombo}
+        {stats.bestMulti > 1 && <> · {MULTI_TITLES[Math.min(stats.bestMulti, MULTI_TITLES.length - 1)].toLowerCase()} kill</>}
+        {stats.bonusSeconds > 0 && <> · +{stats.bonusSeconds}s won</>}
+      </p>
     </div>
   )
 }

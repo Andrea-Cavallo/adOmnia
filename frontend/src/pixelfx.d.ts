@@ -28,7 +28,7 @@ declare module 'pixelfx' {
     done(): boolean
   }
   export interface PixelPainter {
-    text(text: string, x: number, y: number, color: number, options?: { font?: 'mini' | 'big'; align?: 'center' | 'right'; outline?: number; a?: number }): void
+    text(text: string, x: number, y: number, color: number, options?: { font?: 'mini' | 'big'; scale?: number; align?: 'center' | 'right'; outline?: number; a?: number }): void
   }
   export type PixelFxModule = Record<string, unknown>
   export function createFrame(width: number, height: number): PixelFrame
