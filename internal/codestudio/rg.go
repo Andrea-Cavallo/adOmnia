@@ -46,7 +46,7 @@ func RipgrepBinary(toolsRoot string) (string, bool) {
 		names = []string{"rg.exe", "rg"}
 	}
 	try := func(candidate string) (string, bool) {
-		info, err := os.Stat(candidate)
+		info, err := os.Stat(candidate) // #nosec G703 -- probe of candidate executable paths (ADOMNIA_RG, app folder, tools, PATH)
 		if err != nil || info.IsDir() {
 			return "", false
 		}
