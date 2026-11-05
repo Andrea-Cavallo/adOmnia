@@ -38,8 +38,13 @@ declare module 'pixelfx' {
   export function painterFor(frame: PixelFrame): PixelPainter
   export function actTiming(effect: PixelFxModule): { windup: number; recovery: number; hits: Array<{ t: number }> } | null
   export function composite(frame: PixelFrame, out: Uint8ClampedArray): Uint8ClampedArray
+  /** The stance moves start from: a pose, in px from the feet, y negative up. */
+  export const READY: Record<string, number>
+  /** The pixels of a pose with the feet at (0, 0). */
+  export function posed(pose: Record<string, unknown>): { n: number; xs: Int16Array | number[]; ys: Int16Array | number[]; color: Uint32Array | number[] }
 }
 
 declare module 'pixelfx/fx/*' {
   export const meta: Record<string, unknown>
+  export const act: Record<string, unknown> | undefined
 }

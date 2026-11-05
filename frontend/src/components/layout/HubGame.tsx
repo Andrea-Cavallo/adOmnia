@@ -1,52 +1,51 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { actTiming, clearFrame, composite, createAct, createFrame, createFx, painterFor, type PixelAct, type PixelFrame, type PixelFx, type PixelFxModule } from 'pixelfx'
 import * as batEffect from 'pixelfx/fx/critters/bat'
 import * as birdEffect from 'pixelfx/fx/critters/bird'
-import * as butterflyEffect from 'pixelfx/fx/critters/butterfly'
+import * as frogEffect from 'pixelfx/fx/critters/frog'
+import * as slimeEffect from 'pixelfx/fx/critters/slime'
 import * as powEffect from 'pixelfx/fx/explosions/cartoon-pow'
 import * as hitSpark from 'pixelfx/fx/impacts/hit-spark'
 import * as doubleSlash from 'pixelfx/fx/melee/double-slash'
-import * as heavyCleave from 'pixelfx/fx/melee/heavy-cleave'
-import * as spinSlash from 'pixelfx/fx/melee/spin-slash'
 import * as swordSlash from 'pixelfx/fx/melee/sword-slash'
-import * as thrust from 'pixelfx/fx/melee/thrust'
 import * as uppercut from 'pixelfx/fx/melee/uppercut'
 import * as lightningCall from 'pixelfx/fx/moves/lightning-call'
 import * as coinEffect from 'pixelfx/fx/pickups/coin-spin'
 import * as collectEffect from 'pixelfx/fx/pickups/collect-burst'
 import * as poofEffect from 'pixelfx/fx/spawn/poof'
 import {
-  CHARGE_MAX, FRENZY_FACTOR, MAX_WOUNDS, accuracy, clearHubTargets, clickHubGame, comboMultiplier, isDead, isFrenzy, medalFor, moveIndexForCombo, newHubGame,
-  specialReady, startHubRound, stepHubGame, strikePosition,
-  type HubGamePhase, type HubGameState, type HubMedal, type HubStats, type HubTarget, type HubTargetKind, type HubWaveKind,
-} from './hubGameRules'
+  CHARGE_MAX, MAX_HEARTS, chainMultiplier, medalFor, meters, newRun, pauseRun, resizeRun, runScore, specialReady, startRun, stepRun,
+  type EnemyKind, type RunEvent, type RunInput, type RunMedal, type RunPhase, type RunState, type RunStats,
+} from './hubRunRules'
+import { blit, drawHills, drawKnight, drawTerrain, knightPose } from './hubRunScene'
 
 const PIXEL_SCALE = 2
-const FRAME_MS = 1000 / 30
-const BEST_KEY = 'adomnia.hub.gameBest'
-/** The sword lands this long after the click: the wind-up is skipped so a click feels immediate. */
-const STRIKE_SECONDS = 0.14
-/** The whole picture holds for a beat on every kill: most of what makes a hit feel heavy. */
-const HIT_STOP_SECONDS = 0.05
-/** The last explosion plays out before the menu comes back. */
-const DEATH_SECONDS = 1.1
-const BLAST_SECONDS = 0.45
-const BLAST_SHAKE = 4
+const FRAME_MS = 1000 / 60
+const BEST_KEY = 'adomnia.hub.runBest'
+/** An attack is drawn in its own small frame, feet at this point, then copied onto the knight. */
+const ATTACK_FRAME = { w: 140, h: 100, x: 54, y: 88 }
+/** The blade of a drawn swing lands this long after the key: the wind-up is skipped so it feels instant. */
+const SWING_LEAD = 0.04
+const HURT_SECONDS = 0.35
+const SHAKE = 3
 const POPUP_SECONDS = 0.8
-const POPUP_RISE = 26
-const GROUND_MARGIN = 3
-/** Topmost row a label may start on: higher and the big font is cut off. */
-const LABEL_TOP = 2
+const POPUP_RISE = 22
 const WHITE = 0xffffffff
 const GOLD = 0xff30c0f0
 const RED = 0xff3030ff
 const OUTLINE = 0xff140c0e
-const GOLD_RAMP = ['#3a2200', '#7a4a00', '#c88a10', '#f0c030', '#ffe070', '#fff2b0', '#ffffff']
-const WAVE_TITLES: Record<HubWaveKind, string> = { swarm: 'SWARM!', coins: 'COIN RAIN!' }
-const MULTI_TITLES = ['', '', 'DOUBLE', 'TRIPLE', 'QUAD']
-const MEDAL_TITLES: Record<HubMedal, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' }
-const MOVES: readonly PixelFxModule[] = [swordSlash, thrust, doubleSlash, uppercut, spinSlash, heavyCleave]
-const EFFECTS: Partial<Record<HubTargetKind, PixelFxModule>> = { bat: batEffect, bird: birdEffect, butterfly: butterflyEffect, coin: coinEffect }
+const SWINGS: readonly PixelFxModule[] = [swordSlash, doubleSlash, uppercut]
+const CRITTERS: Record<EnemyKind, PixelFxModule> = { slime: slimeEffect, frog: frogEffect, bat: batEffect, bird: birdEffect }
+/** Slimes and frogs are drawn from their feet, flyers from their middle. */
+const FEET_OFFSET: Record<EnemyKind, number> = { slime: 9, frog: 9, bat: 0, bird: 0 }
+const MEDAL_TITLES: Record<RunMedal, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' }
+
+type Key = 'left' | 'right' | 'jump' | 'attack' | 'special' | 'pause'
+const KEYS: Record<string, Key> = {
+  ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
+  ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', KeyZ: 'jump',
+  KeyX: 'attack', KeyJ: 'attack', KeyC: 'special', KeyK: 'special', Escape: 'pause', KeyP: 'pause',
+}
 
 function loadBest(): number {
   try { return Number(localStorage.getItem(BEST_KEY)) || 0 } catch { return 0 }
@@ -55,59 +54,36 @@ function saveBest(best: number): void {
   try { localStorage.setItem(BEST_KEY, String(best)) } catch { /* the record is only a nicety */ }
 }
 
-/** How far ahead of the knight a move lands. */
-function moveReach(move: PixelFxModule): number {
-  const act = move.act as { target?: { x?: number } } | undefined
-  return act?.target?.x ?? 60
-}
-
-/** A round bomb with a lit fuse, drawn straight into the frame: the library has no idle bomb. Colors are 0xAABBGGRR. */
-function drawBomb(frame: PixelFrame, x: number, y: number, time: number): void {
-  const put = (px: number, py: number, color: number) => {
-    const column = Math.round(px)
-    const row = Math.round(py)
-    if (column >= 0 && row >= 0 && column < frame.w && row < frame.h) frame.color[row * frame.w + column] = color
-  }
-  const pulse = Math.sin(time * 9) > 0
-  for (let dy = -7; dy <= 7; dy++) {
-    for (let dx = -7; dx <= 7; dx++) {
-      const reach = Math.hypot(dx, dy)
-      if (reach > 7.2) continue
-      const lit = dx < -1 && dy < -1 && reach > 2.5 && reach < 5.5
-      const body = pulse ? 0xff303bff : 0xff1a1fc0
-      put(x + dx, y + dy, reach > 6.2 ? 0xffd8e0ff : lit ? 0xffc8d0ff : body)
-    }
-  }
-  for (let step = 0; step < 5; step++) put(x + 3 + step, y - 8 - step, 0xff78c8f0)
-  const flicker = Math.sin(time * 40) > 0
-  put(x + 8, y - 13, flicker ? 0xff1ec8ff : 0xff2a5cff)
-  put(x + 9, y - 14, WHITE)
-  if (flicker) put(x + 7, y - 14, 0xff1ec8ff)
-}
-
 interface HudState {
-  phase: HubGamePhase
+  phase: RunPhase
   score: number
-  combo: number
-  seconds: number
-  wounds: number
+  meters: number
+  hearts: number
+  chain: number
   charge: number
-  died: boolean
-  frenzy: boolean
-  stats: HubStats
+  stats: RunStats
 }
 interface Popup { text: string; x: number; y: number; age: number; color: number }
+/** An effect placed in the world: it scrolls with the ground. */
+interface Placed { fx: PixelFx; x: number; y: number }
+
+const isOver = (run: RunState) => run.phase === 'over'
+const hudOf = (run: RunState): HudState => ({ phase: run.phase, score: runScore(run), meters: meters(run), hearts: run.hearts, chain: run.chain, charge: run.charge, stats: run.stats })
+const sameHud = (a: HudState, b: HudState) =>
+  a.phase === b.phase && a.score === b.score && a.meters === b.meters && a.hearts === b.hearts && a.chain === b.chain && a.charge === b.charge
 
 /**
- * A strip at the bottom of the Hub: a knight, and a 30 second round started by a click. At rest it
- * draws one frame and then nothing runs. Mouse only, so it never takes a key from the Hub.
+ * A strip at the bottom of the Hub: a knight running through an endless world. Arrows to move,
+ * Space to jump, X to slash, C for the lightning once charged. The keys are read only while the
+ * game has focus, and it pauses as soon as focus goes elsewhere: it never takes a key from the Hub.
  */
 export function HubGame() {
+  const rootRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const startRef = useRef<(() => void) | null>(null)
-  const [hud, setHud] = useState<HudState>({ phase: 'idle', score: 0, combo: 0, seconds: 30, wounds: 0, charge: 0, died: false, frenzy: false, stats: newHubGame().stats })
+  const controls = useRef<{ start: () => void; key: (key: Key, down: boolean, repeat: boolean) => void; pause: (paused: boolean) => void } | null>(null)
+  const [hud, setHud] = useState<HudState>(() => hudOf(newRun(280, 80)))
   const [best, setBest] = useState(loadBest)
-  /** The record this round beat, shown on the results; null (or 0, the first round) when there was none to beat. */
+  /** The record this run beat; 0 or null when there was none to beat. */
   const [beaten, setBeaten] = useState<number | null>(null)
 
   useEffect(() => {
@@ -115,31 +91,24 @@ export function HubGame() {
     const context = canvas?.getContext('2d')
     if (!canvas || !context || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined
 
-    let game: HubGameState = newHubGame()
     let frame: PixelFrame = createFrame(1, 1)
     let image = context.createImageData(1, 1)
-    const live = new Map<number, PixelFx>()
-    let bursts: PixelFx[] = []
-    let strikes: Array<{ target: HubTarget; left: number }> = []
+    let run: RunState = newRun(1, 1)
+    const attackFrame = createFrame(ATTACK_FRAME.w, ATTACK_FRAME.h)
+    const critters = new Map<number, PixelFx>()
+    const coins = new Map<number, PixelFx>()
+    let effects: Placed[] = []
     let popups: Popup[] = []
-    let knight: PixelAct = createAct(swordSlash, { x: 40, y: 0 })
-    let acting = false
+    let swing: PixelAct | null = null
+    let swings = 0
+    let cast: PixelAct | null = null
+    const held = new Set<Key>()
+    let pressed: Partial<Record<'jump' | 'attack' | 'special', boolean>> = {}
     let raf = 0
     let last = 0
     let clock = 0
-    let visible = true
-    let dying = 0
-    let blast = 0
-    let hitStop = 0
-    /** Seconds until the special lands: the world holds its breath meanwhile. */
-    let specialLeft = 0
+    let hurtFlash = 0
 
-    const groundY = () => frame.h - GROUND_MARGIN
-    /** The knight at rest: a move that has not started holds its first pose. Whole pixels only: the library draws no body at a fractional position. */
-    const standKnight = (flip = false) => {
-      knight = createAct(swordSlash, { x: Math.round(game.knightX), y: groundY(), flip })
-      acting = false
-    }
     const fit = () => {
       const width = Math.max(1, Math.floor(canvas.clientWidth / PIXEL_SCALE))
       const height = Math.max(1, Math.floor(canvas.clientHeight / PIXEL_SCALE))
@@ -148,120 +117,142 @@ export function HubGame() {
       canvas.height = height
       frame = createFrame(width, height)
       image = context.createImageData(width, height)
-      game = { ...game, knightX: Math.min(game.knightX, Math.max(20, width - 20)) }
-      standKnight()
+      run = run.phase === 'idle' ? newRun(width, height) : resizeRun(run, width, height)
       return true
     }
+    const screenX = (x: number) => x - run.cameraX
     const popup = (text: string, x: number, y: number, color: number) => { popups = [...popups, { text, x, y, age: 0, color }] }
-    const syncEffects = () => {
-      const present = new Set(game.targets.map((target) => target.id))
-      for (const id of live.keys()) if (!present.has(id) && !strikes.some((strike) => strike.target.id === id)) live.delete(id)
-      for (const target of game.targets) {
-        const effect = EFFECTS[target.kind]
-        if (!effect) continue
-        const fx = live.get(target.id) ?? createFx(effect, { seed: target.id, ...(target.golden ? { palette: GOLD_RAMP } : {}) })
-        live.set(target.id, fx)
-        fx.options.x = target.x
-        fx.options.y = target.y
-        fx.options.flip = target.speed < 0
+    const place = (effect: PixelFxModule, x: number, y: number, seed: number) => { effects = [...effects, { fx: createFx(effect, { x: screenX(x), y, seed }), x, y }] }
+
+    const react = (event: RunEvent) => {
+      switch (event.type) {
+        case 'swing': {
+          const move = SWINGS[swings++ % SWINGS.length]
+          swing = createAct(move, { x: ATTACK_FRAME.x, y: ATTACK_FRAME.y, flip: run.knight.facing < 0, seed: swings })
+          const windup = actTiming(move)?.windup ?? 0
+          if (windup > SWING_LEAD) swing.update(windup - SWING_LEAD)
+          break
+        }
+        case 'kill':
+        case 'stomp':
+          place(poofEffect, event.x, event.y + 12, Math.round(clock * 100))
+          popup(`${event.type === 'stomp' ? 'STOMP ' : ''}+${event.points}`, event.x, event.y - 16, event.type === 'stomp' ? GOLD : WHITE)
+          break
+        case 'coin':
+          place(collectEffect, event.x, event.y + 8, Math.round(clock * 100))
+          break
+        case 'hurt':
+        case 'fall':
+          place(hitSpark, event.x, event.y - 14, Math.round(clock * 100))
+          popup(event.type === 'fall' ? 'FALL' : 'OUCH', event.x, event.y - 46, RED)
+          hurtFlash = HURT_SECONDS
+          break
+        case 'special':
+          cast = createAct(lightningCall, { x: ATTACK_FRAME.x, y: ATTACK_FRAME.y, seed: Math.round(clock * 100) })
+          for (const enemy of event.cleared) place(powEffect, enemy.x, enemy.y, Math.round(enemy.x))
+          popup(`LIGHTNING +${event.points}`, run.knight.x + 40, 14, GOLD)
+          break
+        default:
+          break
       }
     }
-    const land = (target: HubTarget) => {
-      const effect = target.kind === 'coin' ? collectEffect : poofEffect
-      bursts = [...bursts, createFx(effect, { x: Math.round(target.x), y: Math.round(Math.min(target.y + 16, frame.h)), seed: target.id })]
-      live.delete(target.id)
-      hitStop = HIT_STOP_SECONDS
+
+    /** Keeps one animated sprite per enemy and coin, moved to where the rules put them. */
+    const syncSprites = () => {
+      const enemies = new Set(run.enemies.map((enemy) => enemy.id))
+      for (const id of critters.keys()) if (!enemies.has(id)) critters.delete(id)
+      for (const enemy of run.enemies) {
+        const fx = critters.get(enemy.id) ?? createFx(CRITTERS[enemy.kind], { seed: enemy.id })
+        critters.set(enemy.id, fx)
+        fx.options.x = Math.round(screenX(enemy.x))
+        fx.options.y = Math.round(enemy.y + FEET_OFFSET[enemy.kind])
+        fx.options.flip = enemy.vx < 0 || (!enemy.awake && enemy.x > run.knight.x)
+      }
+      const present = new Set(run.coins.map((coin) => coin.id))
+      for (const id of coins.keys()) if (!present.has(id)) coins.delete(id)
+      for (const coin of run.coins) {
+        const fx = coins.get(coin.id) ?? createFx(coinEffect, { seed: coin.id })
+        coins.set(coin.id, fx)
+        fx.options.x = Math.round(screenX(coin.x))
+        fx.options.y = Math.round(coin.y + 6)
+      }
     }
-    const wound = () => {
-      const x = Math.round(game.knightX)
-      bursts = [...bursts, createFx(hitSpark, { x, y: groundY() - 8, seed: Math.round(clock * 100) })]
-      popup('OUCH', x, groundY() - 44, RED)
-      blast = BLAST_SECONDS
-      if (isDead(game)) dying = DEATH_SECONDS
-    }
-    const landSpecial = () => {
-      const { state, cleared, points } = clearHubTargets(game)
-      game = state
-      for (const target of cleared) land(target)
-      if (points) popup(`+${points}`, frame.w / 2, frame.h / 2 - 10, GOLD)
-    }
+
     const advance = (dt: number) => {
-      if (acting) knight.update(dt)
-      if (acting && knight.done()) standKnight()
-      blast = Math.max(0, blast - dt)
+      const input: RunInput = {
+        left: held.has('left'), right: held.has('right'), jumpHeld: held.has('jump'),
+        jump: !!pressed.jump, attack: !!pressed.attack, special: !!pressed.special,
+      }
+      pressed = {}
+      run = stepRun(run, input, dt)
+      for (const event of run.events) react(event)
+      syncSprites()
+      for (const fx of [...critters.values(), ...coins.values()]) fx.update(dt)
+      for (const placed of effects) {
+        placed.fx.options.x = Math.round(screenX(placed.x))
+        placed.fx.update(dt)
+      }
+      effects = effects.filter((placed) => !placed.fx.done())
+      swing?.update(dt)
+      if (swing?.done() || run.knight.attack < 0) swing = null
+      cast?.update(dt)
+      if (cast?.done()) cast = null
       popups = popups.map((item) => ({ ...item, age: item.age + dt })).filter((item) => item.age < POPUP_SECONDS)
-      if (specialLeft > 0) {
-        specialLeft -= dt
-        if (specialLeft <= 0) landSpecial()
+      hurtFlash = Math.max(0, hurtFlash - dt)
+    }
+
+    const drawKnightNow = () => {
+      const { knight } = run
+      // Blinking while he cannot be hurt.
+      if (knight.invulnerable > 0 && Math.floor(clock * 14) % 2 === 0) return
+      const x = screenX(knight.x)
+      const act = cast ?? swing
+      if (!act) {
+        drawKnight(frame, knightPose(knight, clock), x, knight.y, knight.facing)
         return
       }
-      if (hitStop > 0) { hitStop -= dt; return }
-      const wounds = game.wounds
-      const waves = game.waves
-      const frenzy = isFrenzy(game)
-      game = stepHubGame(game, dt, frame.w, frame.h)
-      if (game.wounds !== wounds) wound()
-      if (game.waves !== waves && game.lastWave) popup(WAVE_TITLES[game.lastWave], frame.w / 2, 14, GOLD)
-      if (!frenzy && isFrenzy(game)) popup(`FRENZY ×${FRENZY_FACTOR}`, frame.w / 2, 14, RED)
-      syncEffects()
-      const landed = strikes.filter((strike) => strike.left - dt <= 0)
-      for (const strike of landed) land(strike.target)
-      strikes = strikes.filter((strike) => strike.left - dt > 0).map((strike) => ({ ...strike, left: strike.left - dt }))
-      for (const fx of [...live.values(), ...bursts]) fx.update(dt)
-      bursts = bursts.filter((fx) => !fx.done())
+      clearFrame(attackFrame)
+      act.draw(attackFrame, { target: false })
+      blit(frame, attackFrame, x - ATTACK_FRAME.x, knight.y - ATTACK_FRAME.y)
     }
+
     const paintLabels = () => {
       const painter = painterFor(frame)
-      // An attacker stops and flashes before it dives, then keeps its mark: a heart is never lost by surprise.
-      for (const target of game.targets) {
-        const warning = target.attack === 'warn' && Math.sin(clock * 30) > -0.2
-        // Above the critter, but never off the top of the strip, where the high fliers are.
-        // Twice the size while it warns: it is the one thing the player must not miss.
-        if (warning) painter.text('!!', target.x, Math.max(LABEL_TOP, target.y - 30), RED, { font: 'big', scale: 2, align: 'center', outline: OUTLINE })
-        else if (target.attack === 'dive') painter.text('!', target.x, Math.max(LABEL_TOP, target.y - 24), RED, { font: 'big', align: 'center', outline: OUTLINE })
-      }
-      if (specialReady(game) && game.phase === 'playing' && Math.sin(clock * 8) > -0.4) {
-        painter.text('CLICK ME', Math.max(24, Math.min(frame.w - 24, game.knightX)), groundY() - 50, GOLD, { font: 'mini', align: 'center', outline: OUTLINE })
+      if (specialReady(run) && run.phase === 'playing' && Math.sin(clock * 8) > -0.4) {
+        painter.text('C: LIGHTNING', Math.max(30, Math.min(frame.w - 30, screenX(run.knight.x))), Math.max(2, run.knight.y - 58), GOLD, { font: 'mini', align: 'center', outline: OUTLINE })
       }
       for (const item of popups) {
         const y = item.y - POPUP_RISE * (item.age / POPUP_SECONDS)
-        painter.text(item.text, item.x, y, item.color, { font: 'big', align: 'center', outline: OUTLINE, a: 1 - Math.max(0, item.age / POPUP_SECONDS - 0.6) / 0.4 })
+        painter.text(item.text, screenX(item.x), Math.max(2, y), item.color, { font: 'big', align: 'center', outline: OUTLINE, a: 1 - Math.max(0, item.age / POPUP_SECONDS - 0.6) / 0.4 })
       }
     }
+
     const paint = () => {
       clearFrame(frame)
-      for (const fx of live.values()) fx.draw(frame)
-      for (const target of game.targets) if (target.kind === 'bomb') drawBomb(frame, target.x, target.y, clock)
-      knight.draw(frame, { target: false })
-      for (const fx of bursts) fx.draw(frame)
+      drawHills(frame, run.cameraX)
+      drawTerrain(frame, run)
+      for (const fx of coins.values()) fx.draw(frame)
+      for (const fx of critters.values()) fx.draw(frame)
+      drawKnightNow()
+      for (const placed of effects) placed.fx.draw(frame)
       paintLabels()
       composite(frame, image.data)
-      const strength = blast / BLAST_SECONDS
-      const [hitX, hitY] = acting ? knight.shake : [0, 0]
-      const shakeX = hitX + (strength ? BLAST_SHAKE * strength * (Math.sin(clock * 90) > 0 ? 1 : -1) : 0)
-      const shakeY = hitY + (strength ? BLAST_SHAKE * strength * (Math.cos(clock * 70) > 0 ? 1 : -1) : 0)
+      const strength = hurtFlash / HURT_SECONDS
+      const shakeX = strength ? SHAKE * strength * (Math.sin(clock * 90) > 0 ? 1 : -1) : 0
       context.clearRect(0, 0, frame.w, frame.h)
-      context.putImageData(image, Math.round(shakeX), Math.round(shakeY))
+      context.putImageData(image, Math.round(shakeX), 0)
       if (strength) {
-        context.fillStyle = `rgba(255, 70, 40, ${(0.55 * strength).toFixed(3)})`
+        context.fillStyle = `rgba(255, 70, 40, ${(0.35 * strength).toFixed(3)})`
         context.fillRect(0, 0, frame.w, frame.h)
       }
     }
+
     const publish = () => {
-      const seconds = Math.ceil(game.timeLeft)
-      const frenzy = isFrenzy(game)
-      setHud((current) => (current.phase === game.phase && current.score === game.score && current.combo === game.combo && current.seconds === seconds && current.wounds === game.wounds && current.charge === game.charge && current.frenzy === frenzy
-        ? current
-        : { phase: game.phase, score: game.score, combo: game.combo, seconds, wounds: game.wounds, charge: game.charge, died: isDead(game), frenzy, stats: game.stats }))
+      const next = hudOf(run)
+      setHud((current) => (sameHud(current, next) ? current : next))
     }
     const finish = () => {
-      live.clear()
-      bursts = []
-      strikes = []
-      popups = []
-      standKnight()
-      paint()
-      const score = game.score
+      const score = runScore(run)
       setBest((current) => {
         if (score <= current) return current
         saveBest(score)
@@ -269,162 +260,167 @@ export function HubGame() {
         return score
       })
     }
+
     const tick = (now: number) => {
       raf = 0
-      if ((game.phase !== 'playing' && dying <= 0) || !visible || document.hidden) return
+      if (run.phase !== 'playing' || document.hidden) return
       raf = requestAnimationFrame(tick)
-      if (now - last < FRAME_MS) return
-      const dt = last ? Math.min(0.1, (now - last) / 1000) : FRAME_MS / 1000
+      if (now - last < FRAME_MS - 1) return
+      const dt = last ? Math.min(0.05, (now - last) / 1000) : FRAME_MS / 1000
       last = now
       clock += dt
       fit()
       advance(dt)
-      if (dying > 0) {
-        dying -= dt
-        paint()
-        if (dying > 0) return
-        cancelAnimationFrame(raf)
-        raf = 0
-        publish()
-        finish()
-        return
-      }
+      paint()
       publish()
-      // A round that just ended stops here: at rest nothing else runs.
-      if (game.phase === 'playing') paint()
-      else finish()
+      // advance() may have ended the run: read the phase again, not the one checked above.
+      if (isOver(run)) finish()
     }
     const wake = () => {
       last = 0
-      if ((game.phase === 'playing' || dying > 0) && !raf) raf = requestAnimationFrame(tick)
+      if (run.phase === 'playing' && !raf) raf = requestAnimationFrame(tick)
     }
-    const strike = (hits: HubTarget[], knightBefore: number) => {
-      const [target] = hits
-      const move = MOVES[moveIndexForCombo(game.combo, MOVES.length)]
-      const { x: knightX, flip } = strikePosition(target.x, knightBefore, moveReach(move), frame.w)
-      game = { ...game, knightX }
-      knight = createAct(move, { x: knightX, y: groundY(), flip, seed: target.id })
-      acting = true
-      const windup = actTiming(move)?.windup ?? 0
-      if (windup > STRIKE_SECONDS) knight.update(windup - STRIKE_SECONDS)
-      strikes = [...strikes, ...hits.map((hit) => ({ target: hit, left: STRIKE_SECONDS }))]
-    }
-    const fireSpecial = () => {
-      knight = createAct(lightningCall, { x: Math.round(game.knightX), y: groundY(), seed: Math.round(clock * 100) })
-      acting = true
-      specialLeft = actTiming(lightningCall)?.hits[0]?.t ?? 0.7
-      popup('LIGHTNING', frame.w / 2, 12, GOLD)
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      if (game.phase !== 'playing' || dying > 0 || specialLeft > 0) return
-      const box = canvas.getBoundingClientRect()
-      const knightBefore = game.knightX
-      const result = clickHubGame(game, (event.clientX - box.left) / PIXEL_SCALE, (event.clientY - box.top) / PIXEL_SCALE, frame.h)
-      game = result.state
-      if (result.special) {
-        fireSpecial()
-      } else if (result.hit?.kind === 'bomb') {
-        bursts = [...bursts, createFx(powEffect, { x: Math.round(result.hit.x), y: Math.round(result.hit.y), seed: result.hit.id })]
-        blast = BLAST_SECONDS
-        if (isDead(game)) {
-          dying = DEATH_SECONDS
-          return
-        }
-      } else if (result.hit) {
-        const hits = result.hits ?? [result.hit]
-        strike(hits, knightBefore)
-        const golden = hits.some((hit) => hit.golden || hit.kind === 'coin')
-        const multi = MULTI_TITLES[Math.min(hits.length, MULTI_TITLES.length - 1)]
-        popup(multi ? `${multi} +${result.points ?? 0}` : `+${result.points ?? 0}`, result.hit.x, result.hit.y - 14, golden || multi ? GOLD : WHITE)
-        if (result.bonusSeconds) popup(`+${result.bonusSeconds}s`, Math.min(frame.w - 30, result.hit.x + 34), result.hit.y - 2, GOLD)
-      }
+    const pause = (paused: boolean) => {
+      run = pauseRun(run, paused)
+      held.clear()
+      pressed = {}
       publish()
-    }
-    startRef.current = () => {
-      setBeaten(null)
-      game = startHubRound(game.knightX)
-      live.clear()
-      bursts = []
-      strikes = []
-      popups = []
-      clock = 0
-      dying = 0
-      blast = 0
-      hitStop = 0
-      specialLeft = 0
-      standKnight()
-      publish()
-      wake()
+      if (!paused) wake()
     }
 
-    const intersection = new IntersectionObserver((entries) => {
-      visible = entries.some((entry) => entry.isIntersecting)
-      if (visible) wake()
-    })
-    intersection.observe(canvas)
-    const resize = new ResizeObserver(() => { if (fit() && game.phase !== 'playing') paint() })
+    controls.current = {
+      start: () => {
+        setBeaten(null)
+        fit()
+        run = startRun(frame.w, frame.h)
+        critters.clear()
+        coins.clear()
+        effects = []
+        popups = []
+        swing = null
+        cast = null
+        held.clear()
+        pressed = {}
+        clock = 0
+        hurtFlash = 0
+        publish()
+        wake()
+      },
+      key: (key, down, repeat) => {
+        if (key === 'pause') {
+          if (down && !repeat) pause(run.phase === 'playing')
+          return
+        }
+        if (down) {
+          if (!repeat && (key === 'jump' || key === 'attack' || key === 'special')) pressed = { ...pressed, [key]: true }
+          held.add(key)
+        } else {
+          held.delete(key)
+        }
+      },
+      pause,
+    }
+
+    const resize = new ResizeObserver(() => { if (fit() && run.phase !== 'playing') { syncSprites(); paint() } })
     resize.observe(canvas)
-    canvas.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('visibilitychange', wake)
+    const onVisibility = () => { if (document.hidden) pause(true) }
+    document.addEventListener('visibilitychange', onVisibility)
     fit()
+    syncSprites()
     paint()
 
     return () => {
       cancelAnimationFrame(raf)
       resize.disconnect()
-      intersection.disconnect()
-      startRef.current = null
-      canvas.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('visibilitychange', wake)
+      controls.current = null
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 
-  const playing = hud.phase === 'playing'
-  const multiplier = comboMultiplier(hud.combo)
-  const ready = hud.charge >= CHARGE_MAX
-  const medal = medalFor(hud.score)
+  const onKey = (event: ReactKeyboardEvent<HTMLDivElement>, down: boolean) => {
+    // Shortcuts with a modifier stay the app's; only plain game keys are taken.
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+    const key = KEYS[event.code]
+    if (!key || (hud.phase !== 'playing' && hud.phase !== 'paused')) return
+    event.preventDefault()
+    event.stopPropagation()
+    controls.current?.key(key, down, event.repeat)
+  }
+  const start = () => {
+    controls.current?.start()
+    rootRef.current?.focus()
+  }
+  const resume = () => {
+    controls.current?.pause(false)
+    rootRef.current?.focus()
+  }
+
+  const active = hud.phase === 'playing' || hud.phase === 'paused'
+  const multiplier = chainMultiplier(hud.chain)
   return (
-    <div className="hub-game" data-phase={hud.phase} data-frenzy={hud.frenzy}>
-      <canvas ref={canvasRef} className="hub-game-canvas" role="img" aria-label="Mini game: a knight fights the critters you click. Do not click the bombs." />
-      {playing && multiplier > 1 && <p className="hub-game-combo" aria-hidden="true" style={{ fontSize: 16 + multiplier * 3 }}>×{multiplier}</p>}
-      {playing && (
+    <div
+      ref={rootRef}
+      className="hub-game"
+      data-phase={hud.phase}
+      tabIndex={-1}
+      onKeyDown={(event) => onKey(event, true)}
+      onKeyUp={(event) => onKey(event, false)}
+      onBlur={() => { if (hud.phase === 'playing') controls.current?.pause(true) }}
+    >
+      <canvas ref={canvasRef} className="hub-game-canvas" role="img" aria-label="Mini game: a knight runs through an endless world. Arrows move, Space jumps, X slashes, C casts lightning." />
+      {active && multiplier > 1 && <p className="hub-game-combo" aria-hidden="true" style={{ fontSize: 16 + multiplier * 3 }}>×{multiplier}</p>}
+      {active && (
         <p className="hub-game-score" aria-hidden="true">
-          <span className="hub-game-lives">{'♥'.repeat(Math.max(0, MAX_WOUNDS - hud.wounds))}<i>{'♥'.repeat(Math.min(MAX_WOUNDS, hud.wounds))}</i></span>
-          <span className="hub-game-time">{hud.seconds}s</span>
+          <span className="hub-game-lives">{'♥'.repeat(Math.max(0, hud.hearts))}<i>{'♥'.repeat(Math.max(0, MAX_HEARTS - hud.hearts))}</i></span>
+          <span className="hub-game-time">{hud.meters} m</span>
           <span className="hub-game-points">{hud.score}</span>
         </p>
       )}
-      {playing && (
-        <div className="hub-game-charge" data-ready={ready} aria-hidden="true">
+      {active && (
+        <div className="hub-game-charge" data-ready={hud.charge >= CHARGE_MAX} aria-hidden="true">
           <i style={{ transform: `scaleX(${hud.charge / CHARGE_MAX})` }} />
         </div>
       )}
-      {!playing && (
+      {hud.phase === 'paused' && (
         <div className="hub-game-menu">
-          {hud.phase === 'over' && <HubGameResults hud={hud} best={best} beaten={beaten} medal={medal} />}
-          {hud.phase === 'idle' && best > 0 && <p>best {best}{medalFor(best) && <> · {MEDAL_TITLES[medalFor(best)!]}</>}</p>}
-          <button type="button" onClick={() => startRef.current?.()}>{hud.phase === 'over' ? 'Play again' : 'Play'}</button>
+          <p>Paused</p>
+          <button type="button" onClick={resume}>Resume</button>
+        </div>
+      )}
+      {!active && (
+        <div className="hub-game-menu">
+          {hud.phase === 'over' ? <HubGameResults hud={hud} best={best} beaten={beaten} /> : <HubGameControls best={best} />}
+          <button type="button" onClick={start}>{hud.phase === 'over' ? 'Play again' : 'Play'}</button>
         </div>
       )}
     </div>
   )
 }
 
-/** The end of a round: what happened, the medal it earned and whether it beat the record. */
-function HubGameResults({ hud, best, beaten, medal }: Readonly<{ hud: HudState; best: number; beaten: number | null; medal: HubMedal | null }>) {
+/** The keys, shown before the first run. */
+function HubGameControls({ best }: Readonly<{ best: number }>) {
+  const medal = medalFor(best)
+  return (
+    <div className="hub-game-results">
+      <p className="hub-game-keys"><kbd>←</kbd><kbd>→</kbd> run · <kbd>Space</kbd> jump · <kbd>X</kbd> slash · <kbd>C</kbd> lightning · <kbd>Esc</kbd> pause</p>
+      {best > 0 && <p className="hub-game-stats">best {best}{medal && <> · {MEDAL_TITLES[medal]}</>}</p>}
+    </div>
+  )
+}
+
+/** The end of a run: how far, what it earned and whether it beat the record. */
+function HubGameResults({ hud, best, beaten }: Readonly<{ hud: HudState; best: number; beaten: number | null }>) {
+  const medal = medalFor(hud.score)
   const { stats } = hud
   return (
     <div className="hub-game-results">
       <p>
-        {hud.died && <b>You died · </b>}
-        <span>{hud.score}</span> points
+        <span>{hud.score}</span> points · {hud.meters} m
         {medal && <em className="hub-game-medal" data-medal={medal}>{MEDAL_TITLES[medal]}</em>}
         {beaten ? <strong className="hub-game-record">New best!</strong> : <> · best {best}</>}
       </p>
       <p className="hub-game-stats">
-        {stats.kills} down · {Math.round(accuracy(stats) * 100)}% accuracy · chain {stats.maxCombo}
-        {stats.bestMulti > 1 && <> · {MULTI_TITLES[Math.min(stats.bestMulti, MULTI_TITLES.length - 1)].toLowerCase()} kill</>}
-        {stats.bonusSeconds > 0 && <> · +{stats.bonusSeconds}s won</>}
+        {stats.kills} down{stats.stomps > 0 && <> ({stats.stomps} stomped)</>} · {stats.coins} coins · chain {stats.bestChain}
       </p>
     </div>
   )
