@@ -16,6 +16,12 @@ adOmnia includes or depends on the following third-party software:
 - **Copyright**: Copyright (c) Meta Platforms, Inc. and affiliates
 - **Repository**: https://github.com/facebook/react
 
+### pixelfx
+- **License**: MIT License
+- **Copyright**: Copyright (c) 2026 Patch, Copyright (c) 2026 Hugo Duprez; `src/core/act.js` Copyright (c) 2026 rehan-remade
+- **Repository**: https://github.com/patch-gg/pixelfx
+- Bundled: the Hub mini game uses its effects. Its gallery font is not used.
+
 ### ripgrep
 - **License**: dual MIT / Unlicense (the binary is distributed under the Unlicense; the source is offered under either)
 - **Copyright**: Copyright (c) 2016 Andrew Gallant
