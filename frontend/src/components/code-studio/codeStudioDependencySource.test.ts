@@ -7,11 +7,12 @@ vi.mock('@/lib/monacoRef', () => ({ monaco: { Uri: { file: (path: string) => ({ 
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: () => fixture.state, setState: vi.fn() } }))
 vi.mock('@/lib/code-studio-api', () => ({ resolveGoIDEDependencySource: vi.fn(), startGoIDEDependencyAction: vi.fn() }))
 vi.mock('@/lib/confirmDialog', () => ({ confirm: vi.fn() }))
-vi.mock('@/lib/codeStudioFilePicker', () => ({ pickGoIDEFile: vi.fn() }))
 vi.mock('./codeStudioQuickActions', () => ({ goModDirectoryOf: () => '' }))
 vi.mock('./codeStudioNavigation', () => ({ navigateToLocation: vi.fn() }))
 
-import { entryFileOf, goModDependencyAt, goModSourceLocation } from './codeStudioDependencySource'
+import { entryFileOf, goModDependencyAt, goModSourceLocation, openGoModSourceFile } from './codeStudioDependencySource'
+import { navigateToLocation } from './codeStudioNavigation'
+import * as monacoRef from '@/lib/monacoRef'
 
 const GO_MOD = `module example.com/app
 
@@ -44,6 +45,20 @@ describe('entryFileOf', () => {
   it('prefers the entry file of the module, then its first file', () => {
     expect(entryFileOf(source())).toBe('lib.go')
     expect(entryFileOf(source({ entryPath: '', files: [{ path: 'pkg/a.go', name: 'a.go' }] }))).toBe('pkg/a.go')
+  })
+})
+
+describe('openGoModSourceFile', () => {
+  it('opens a file from the tree before Monaco is loaded', () => {
+    fixture.state.sessions = []
+    const loaded = monacoRef.monaco
+    ;(monacoRef as { monaco: unknown }).monaco = undefined
+    try {
+      expect(openGoModSourceFile(source(), 's1', 'pkg/a.go')).toMatchObject({ external: true, path: 'C:/mod/cache/example.com/lib@v1.0.0/pkg/a.go' })
+      expect(navigateToLocation).toHaveBeenCalledTimes(1)
+    } finally {
+      ;(monacoRef as { monaco: unknown }).monaco = loaded
+    }
   })
 })
 

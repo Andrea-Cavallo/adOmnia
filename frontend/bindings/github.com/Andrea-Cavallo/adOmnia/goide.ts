@@ -1616,6 +1616,15 @@ export function ListExceptionBreakpoints(sessionID: string): $CancellablePromise
 }
 
 /**
+ * ListExternalDirectory legge una cartella del sorgente di una dipendenza, in sola lettura.
+ */
+export function ListExternalDirectory(sessionID: string, path: string): $CancellablePromise<codestudio$0.FileEntry[]> {
+    return $Call.ByID(910023232, sessionID, path).then(($result: any) => {
+        return $$createType152($result);
+    });
+}
+
+/**
  * ListFunctionBreakpoints restituisce i breakpoint di funzione e il panic breakpoint del progetto.
  */
 export function ListFunctionBreakpoints(sessionID: string): $CancellablePromise<codestudio$0.FunctionBreakpointsView> {

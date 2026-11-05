@@ -32,7 +32,7 @@ export interface GoModLens {
 }
 
 /** Azione di un CodeLens del go.mod: le azioni backend sulle dipendenze, più l'apertura del codice. */
-export type GoModLensAction = GoModDependencyAction | 'viewcode' | 'browse'
+export type GoModLensAction = GoModDependencyAction | 'viewcode'
 
 const MODULE_DIRECTIVE = /^\s*module\s+\S+/
 const BLOCK_START = /^\s*(require|replace)\s*\(\s*(\/\/.*)?$/
@@ -100,8 +100,7 @@ export function goModLenses(outline: GoModOutline): GoModLens[] {
   const replaced = new Set(outline.replacements.map((replacement) => replacement.path))
   for (const requirement of outline.requirements) {
     const { line, path } = requirement
-    lenses.push({ line, title: 'View code', tooltip: `Read the ${path} source (local module or module cache)`, action: 'viewcode', modulePath: path })
-    lenses.push({ line, title: 'Browse files', tooltip: `List the files of ${path} and open one`, action: 'browse', modulePath: path })
+    lenses.push({ line, title: 'View code', tooltip: `Open the ${path} source and show the module in the Project tree`, action: 'viewcode', modulePath: path })
     lenses.push({ line, title: '↑ Update', tooltip: `go get ${path}@latest`, action: 'update', modulePath: path })
     lenses.push(replaced.has(path)
       ? { line, title: 'Drop replace', tooltip: `go mod edit -dropreplace=${path}`, action: 'dropreplace', modulePath: path }

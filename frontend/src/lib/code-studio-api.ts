@@ -289,6 +289,11 @@ export function resolveGoIDEDependencySource(sessionId: string, moduleDirectory:
   return GoIDEBindings.ResolveDependencySource(sessionId, moduleDirectory, modulePath)
 }
 
+/** Un livello del sorgente di una dipendenza, per l'albero External Libraries. Solo filesystem, in sola lettura. */
+export function listGoIDEExternalDirectory(sessionId: string, path: string): CancellablePromise<GoIDEFileEntry[]> {
+  return GoIDEBindings.ListExternalDirectory(sessionId, path)
+}
+
 /** Versioni pubblicate di una dipendenza, dalla più recente (go list -m -versions, passa dal GOPROXY). */
 export function listGoIDEModuleVersions(sessionId: string, moduleDirectory: string, modulePath: string): CancellablePromise<string[]> {
   return GoIDEBindings.ListModuleVersions(sessionId, moduleDirectory, modulePath)

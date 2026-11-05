@@ -4,7 +4,7 @@ import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { unitBadges } from '@/lib/code-studio/projectUnits'
 import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
-import { ChevronRight, Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
 import { CodeStudioExplorerToolbar } from './CodeStudioExplorerToolbar'
 import { CodeStudioProjectNavigation } from './CodeStudioProjectNavigation'
 import { CodeStudioFolderIcon } from './CodeStudioFolderIcon'
@@ -26,6 +26,8 @@ import { copyReference, findInFiles, findInFolder, moveTreePath, openInSplit, op
 import type { CodeStudioCommandId } from './codeStudioCommands'
 import { CodeStudioPathDialog, type CodeStudioPathRequest } from './CodeStudioPathDialog'
 import { CodeStudioGistDialog } from './CodeStudioGistDialog'
+import { CodeStudioExternalLibraries } from './CodeStudioExternalLibraries'
+import { ROW_BASE_PX, ROW_INDENT_PX, TREE_ICON_PX, TreeChevron } from './codeStudioTreeRow'
 import { directoryMarkLabel, loadDirectoryMarks, saveDirectoryMark, type CodeStudioDirectoryMark } from './codeStudioDirectoryMarks'
 import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
 
@@ -82,21 +84,13 @@ interface CodeStudioProjectTreeProps {
   session: GoIDESession
   /** Percorso relativo del file attivo nell'editor, evidenziato nell'albero. */
   activePath: string | null
+  /** Percorso del documento esterno attivo (SDK, module cache, replace): l'albero External Libraries lo rivela. */
+  activeExternalPath: string | null
   /** Comandi del pannello (Local History, Git History, Blame) sul file appena aperto. Deve essere stabile. */
   onCommand: (id: CodeStudioCommandId) => void
 }
 
-const ROW_INDENT_PX = 16
-const ROW_BASE_PX = 6
-/** Consistent icon slots keep folder and file labels aligned. */
-const TREE_ICON_PX = 16
-
 const emptyEntries: GoIDEFileEntry[] = []
-
-/** Chevron unico che ruota all'apertura, come nella sidebar delle collection. */
-function TreeChevron({ open }: { open: boolean }) {
-  return <ChevronRight size={12} aria-hidden="true" className={`shrink-0 text-text-4 transition-transform duration-100 ${open ? 'rotate-90' : ''}`} />
-}
 
 /** Frecce su/giù, Home e End spostano il focus tra le righe visibili (roving tabindex: solo la riga attiva è nel Tab). */
 function moveTreeFocus(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -238,7 +232,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
 })
 
 /** Memoizzato: il pannello genitore si ridisegna a ogni tasto, questo solo quando cambia la sessione. */
-export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ session, activePath, onCommand, onBookmarks }: CodeStudioProjectTreeProps) {
+export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ session, activePath, activeExternalPath, onCommand, onBookmarks }: CodeStudioProjectTreeProps) {
   const entries = useCodeStudioStore((state) => state.directoryEntries[session.id]?.[''] ?? emptyEntries)
   const loadDirectory = useCodeStudioStore((state) => state.loadDirectory)
   const showIgnored = useCodeStudioStore((state) => state.showIgnoredBySession[session.id] ?? false)
@@ -256,6 +250,9 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
   const [collapseEpoch, setCollapseEpoch] = useState(0)
   useEffect(() => { setSelectedPath(null); setCreationFolder(''); setRootOpen(true) }, [rootKey])
   useEffect(() => { if (activePath) { setSelectedPath(null); setCreationFolder(parentOf(activePath)) } }, [activePath])
+
+  // Un file di dipendenza attivo è selezionato in External Libraries: qui non resta selezionato il precedente.
+  useEffect(() => { if (activeExternalPath) setSelectedPath(null) }, [activeExternalPath])
 
   useEffect(() => { void loadDirectory('') }, [loadDirectory, rootKey])
 
@@ -425,7 +422,8 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
       </div>
       <div onFocusCapture={(event) => {
         const row = (event.target as HTMLElement).closest<HTMLElement>('[role="treeitem"]')
-        if (!row) return
+        // Le righe delle dipendenze non sono cartelle del progetto: non spostano selezione e cartella di creazione.
+        if (!row || row.dataset.treeExternal !== undefined) return
         const path = row.dataset.treePath ?? ''
         setSelectedPath(path)
         setCreationFolder(row.dataset.treeDirectory === 'true' ? path : parentOf(path))
@@ -457,6 +455,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
         {rootOpen && entries.slice(0, rootLimit).map((entry) => <DirectoryNode key={`${collapseEpoch}:${entry.relativePath}`} sessionId={session.id} entry={entry} depth={2} activePath={activePath} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} unitLabels={unitLabels} />)}
         {rootOpen && entries.length > rootLimit && <ShowMoreRow hidden={entries.length - rootLimit} depth={2} onShow={() => setRootLimit((value) => value + TREE_PAGE)} />}
         {rootOpen && entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
+        <CodeStudioExternalLibraries key={session.id} session={session} activeExternalPath={activeExternalPath} collapseEpoch={collapseEpoch} />
       </div>
       <div className="shrink-0 truncate border-t border-border-1 px-3 py-1.5 text-[10px] text-text-4" title={projectSummary}>{projectSummary}</div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={buildTreeMenu(menu.entry, menuContext)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
