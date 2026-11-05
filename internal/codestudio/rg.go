@@ -111,13 +111,7 @@ func ripgrepVersion(binary string) string {
 // ripgrepArgs builds the command line. The search root is the working directory, so paths in the
 // output stay relative and the result does not leak the absolute workspace path to the UI.
 func ripgrepArgs(query SearchQuery, sortByPath bool) []string {
-	threads := runtime.NumCPU()
-	if threads > searchWorkers {
-		threads = searchWorkers
-	}
-	if threads < 1 {
-		threads = 1
-	}
+	threads := max(1, min(runtime.NumCPU(), searchWorkers))
 	args := []string{
 		"--json", "--no-config", "--color=never", "--stats", "--no-require-git",
 		"--max-filesize=" + strconv.Itoa(maxSearchFileBytes),
@@ -297,7 +291,6 @@ streamLoop:
 			if total >= maxSearchResults {
 				if total > maxSearchResults {
 					batch = batch[:len(batch)-(total-maxSearchResults)]
-					total = maxSearchResults
 				}
 				truncated = true
 				if len(batch) > 0 {
@@ -336,8 +329,7 @@ streamLoop:
 	// Exit code 1 means "no matches", which is a successful empty search; 2 is a real error
 	// (bad pattern, unreadable root). Everything else is unexpected.
 	if waitErr != nil {
-		var exitError *exec.ExitError
-		if errors.As(waitErr, &exitError) {
+		if exitError, ok := errors.AsType[*exec.ExitError](waitErr); ok {
 			switch exitError.ExitCode() {
 			case 1:
 				return nil
