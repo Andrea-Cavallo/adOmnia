@@ -26,6 +26,8 @@ export interface IdeLanguageContribution {
   icon: BrandIconSlug
   /** ID Monaco dei file serviti dal language server: i provider LSP generici si registrano su questi. */
   editorLanguages: readonly string[]
+  /** Funzioni, metodi e tipi riconosciuti senza server: colorano il file mentre il server carica il progetto. */
+  syntacticTokens?: (source: string) => import('@/lib/code-studio/goSyntacticTokens').SyntacticToken[]
   /** Nome del language server mostrato nella status bar (es. "gopls"). */
   languageServer?: string
   /** Menu proprio del linguaggio nella barra dei menu. */
@@ -106,6 +108,11 @@ export function heavyFeatureEditorLanguages(): string[] {
  */
 export function inlayHintEditorLanguages(): string[] {
   return IDE_LANGUAGES.filter((language) => language.heavyFeatures !== false || language.inlayHints).flatMap((language) => language.editorLanguages)
+}
+
+/** Colori immediati di un linguaggio, in attesa del suo language server: solo se il linguaggio li dichiara. */
+export function syntacticTokensFor(editorLanguage: string): IdeLanguageContribution['syntacticTokens'] {
+  return IDE_LANGUAGES.find((language) => language.editorLanguages.includes(editorLanguage))?.syntacticTokens
 }
 
 /** ID Monaco su cui registrare i colori semantici: le funzioni pesanti più i linguaggi che li chiedono da soli. */

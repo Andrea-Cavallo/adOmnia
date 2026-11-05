@@ -1,5 +1,6 @@
 import { goRunTemplates } from './runTemplates'
 import { GO_LANGUAGE_ID } from '@/lib/code-studio/goLanguage'
+import { goSyntacticTokens } from '@/lib/code-studio/goSyntacticTokens'
 import type { IdeLanguageContribution } from '../../languages'
 
 export { GO_LANGUAGE_ID }
@@ -13,6 +14,7 @@ export const GO_LANGUAGE: IdeLanguageContribution = {
   runTemplates: goRunTemplates,
   canDebugRun: config => config.kind === 'package' || config.kind === 'build',
   editorLanguages: ['go'],
+  syntacticTokens: goSyntacticTokens,
   languageServer: 'gopls',
   implementationMarkers: true,
   menu: { id: 'go', label: 'Go' },
