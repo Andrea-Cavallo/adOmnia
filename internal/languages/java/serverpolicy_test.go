@@ -28,6 +28,32 @@ func TestServerIsBlockedOnAnOsgiWorkspace(t *testing.T) {
 	}
 }
 
+// Outside OSGi the same upstream limit applies: a Maven project that declares Java 6 must not be
+// given a language server that would report its own compiler as unsupported.
+func TestServerIsBlockedOnAPlainLegacyProject(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "pom.xml"), `<project><properties>
+  <maven.compiler.source>1.6</maven.compiler.source>
+  <maven.compiler.target>1.6</maven.compiler.target>
+</properties></project>`)
+	language := &Language{}
+	if reason := language.ServerBlocked(root); reason == "" {
+		t.Fatal("a Maven project at Java 1.6 must block a language server that supports only 1.8+")
+	}
+
+	modern := t.TempDir()
+	writeTestFile(t, filepath.Join(modern, "pom.xml"), `<project><properties><maven.compiler.release>17</maven.compiler.release></properties></project>`)
+	if reason := language.ServerBlocked(modern); reason != "" {
+		t.Fatalf("a Java 17 project keeps the language server: %q", reason)
+	}
+
+	java8 := t.TempDir()
+	writeTestFile(t, filepath.Join(java8, "pom.xml"), `<project><properties><maven.compiler.source>1.8</maven.compiler.source></properties></project>`)
+	if reason := language.ServerBlocked(java8); reason != "" {
+		t.Fatalf("Java 1.8 is supported by JDT LS: %q", reason)
+	}
+}
+
 func writeTestFile(t *testing.T, path, text string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
