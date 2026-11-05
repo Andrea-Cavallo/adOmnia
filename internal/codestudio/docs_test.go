@@ -69,6 +69,8 @@ func TestDocumentationCacheInvalidatesOnEdit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The watcher starts in the background: an edit written while it registers folders is never reported.
+	waitWatching(t, service, session.ID)
 
 	first, err := service.Documentation(string(session.ID))
 	if err != nil {
