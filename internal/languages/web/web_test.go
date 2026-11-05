@@ -98,6 +98,10 @@ func TestInspectDevScriptAndTool(t *testing.T) {
 		{`"start":"react-scripts start"`, "start", ToolCRA},
 		{`"dev":"next dev -p 4000"`, "dev", ToolNext},
 		{`"serve":"ng serve"`, "serve", ToolAngular},
+		{`"preview":"vite preview"`, "preview", ToolVite},
+		{`"start:prod":"next start"`, "start:prod", ToolNext},
+		{`"serve:prod":"serve -s dist"`, "serve:prod", ToolUnknown},
+		{`"build":"vite build"`, "", ToolUnknown},
 		{`"build":"tsc"`, "", ToolUnknown},
 	}
 	for _, tc := range cases {

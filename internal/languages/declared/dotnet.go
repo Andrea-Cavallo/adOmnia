@@ -68,7 +68,7 @@ func (d dotnetAdapter) CommandSpec(request run.Request) (run.CommandSpec, error)
 	}
 	binary, err := lookPath("dotnet")
 	if err != nil {
-		return run.CommandSpec{}, fmt.Errorf("dotnet is not on PATH: install the .NET SDK to run %s projects", d.name)
+		return run.CommandSpec{}, fmt.Errorf("%s", dotnetMissingMessage("run", d.name, request.Root))
 	}
 	arguments := []string{"run"}
 	if options.Project != "" {
@@ -128,7 +128,7 @@ func (d dotnetAdapter) DebugAdapter(request dap.LaunchRequest) (dap.AdapterSpec,
 	}
 	dotnet, err := lookPath("dotnet")
 	if err != nil {
-		return dap.AdapterSpec{}, fmt.Errorf("dotnet is not on PATH: install the .NET SDK to debug %s projects", d.name)
+		return dap.AdapterSpec{}, fmt.Errorf("%s", dotnetMissingMessage("debug", d.name, request.Root))
 	}
 	output, err := runDotnetBuild(dotnet, request.WorkingDirectory, project, buildEnvironment(request.Environment))
 	if err != nil {

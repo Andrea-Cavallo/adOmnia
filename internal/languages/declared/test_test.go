@@ -27,7 +27,7 @@ func rowAdapter(t *testing.T, id string) language.Language {
 func TestCapabilitiesFollowTheRow(t *testing.T) {
 	for id, want := range map[string]language.Capabilities{
 		"php":    {Run: true, Debug: true, Tests: true, ProjectDetection: true},
-		"ruby":   {Run: true, ProjectDetection: true},
+		"ruby":   {Run: true, Tests: true, ProjectDetection: true},
 		"yaml":   {},
 		"cpp":    {Run: true, Debug: true, Tests: true, ProjectDetection: true},
 		"csharp": {Run: true, Debug: true, Tests: true, ProjectDetection: true},
@@ -35,6 +35,16 @@ func TestCapabilitiesFollowTheRow(t *testing.T) {
 		got := language.CapabilitiesOf(rowAdapter(t, id))
 		if got.Run != want.Run || got.Debug != want.Debug || got.Tests != want.Tests || got.ProjectDetection != want.ProjectDetection {
 			t.Errorf("%s: %+v", id, got)
+		}
+	}
+}
+
+// Every row whose runner understands the ecosystem's output must advertise Tests: the host uses
+// the capability to show the Test view and to route Run > Tests.
+func TestEveryDeclaredTestRunnerAdvertisesTheCapability(t *testing.T) {
+	for _, id := range []string{"dart", "ruby", "perl", "elixir", "lua", "zig", "haskell", "scala", "cpp", "php", "swift"} {
+		if capabilities := language.CapabilitiesOf(rowAdapter(t, id)); !capabilities.Tests {
+			t.Errorf("%s does not advertise Tests", id)
 		}
 	}
 }

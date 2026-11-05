@@ -92,6 +92,10 @@ func detectFile(rel string, data []byte, env map[string]string, hints AdapterHin
 		add(detectSQLMigration(rel, data))
 	case strings.HasSuffix(base, ".proto"), strings.HasSuffix(base, ".wsdl"):
 		add(detectContractFile(rel, data))
+	case strings.HasPrefix(strings.ToLower(base), "appsettings") && strings.HasSuffix(strings.ToLower(base), ".json"):
+		add(detectAppSettings(rel, data))
+	case base == "database.yml":
+		add(detectRailsDatabase(rel, data))
 	default:
 		add(detectOpenAPI(rel, data))
 	}

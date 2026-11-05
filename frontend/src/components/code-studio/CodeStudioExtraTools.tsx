@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, CircleAlert, Play, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, CircleAlert, Download, Play, Plus, Trash2 } from 'lucide-react'
 import { confirm } from '@/lib/confirmDialog'
 import { detectGoIDEGoTool, installGoIDEGoModule, runGoIDEGoTool, type GoIDEGoToolInfo } from '@/lib/code-studio-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
@@ -12,7 +12,7 @@ function errorText(error: unknown): string {
 }
 
 /** govulncheck, goimports, mockgen, stringer e i tool dell'utente: rilevamento, go install con conferma, esecuzione. */
-export function CodeStudioExtraTools({ sessionId, goAvailable, trusted }: { sessionId: string; goAvailable: boolean; trusted: boolean }) {
+export function CodeStudioExtraTools({ sessionId, goAvailable, trusted, onInstaller }: { sessionId: string; goAvailable: boolean; trusted: boolean; onInstaller?: () => void }) {
   const [custom, setCustom] = useState(readCustomTools)
   const [status, setStatus] = useState<Record<string, GoIDEGoToolInfo>>({})
   const [open, setOpen] = useState<string | null>(null)
@@ -72,7 +72,11 @@ export function CodeStudioExtraTools({ sessionId, goAvailable, trusted }: { sess
 
   return (
     <section className="mt-4 space-y-2">
-      <h4 className="gs-section-title">More Go tools</h4>
+      <div className="flex items-center gap-2">
+        <h4 className="gs-section-title">More tools</h4>
+        <span className="flex-1" />
+        {onInstaller && <CodeStudioButton small variant="ghost" icon={Download} onClick={onInstaller} title="Language servers, linters, debugger, ripgrep…">Installer…</CodeStudioButton>}
+      </div>
       <div className="gs-list">
         {tools.map((tool) => {
           const info = status[tool.binary]

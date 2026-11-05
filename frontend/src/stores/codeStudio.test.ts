@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   checkDocument: vi.fn(),
   closeDocument: vi.fn(),
   listDirectory: vi.fn(),
+  startDirectoryStream: vi.fn(),
   confirm: vi.fn(),
   getView: vi.fn(),
   openDocument: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('@/lib/code-studio-api', () => ({
   getGoIDECapabilities: vi.fn(),
   hasActiveGoIDERuns: vi.fn(),
   listGoIDEDirectory: mocks.listDirectory,
+  startGoIDEDirectoryStream: mocks.startDirectoryStream,
   listGoIDERuns: vi.fn(async () => []),
   listGoIDESessions: vi.fn(),
   listRecentGoIDEProjects: vi.fn(),
@@ -45,8 +47,8 @@ vi.mock('@/lib/code-studio-api', () => ({
 
 vi.mock('@/lib/confirmDialog', () => ({ confirm: mocks.confirm }))
 
-import type { GoIDESession } from '@/lib/code-studio-api'
-import { replaceSession, useCodeStudioStore, type GoIDEEditorDocument } from './codeStudio'
+import type { GoIDEFileEntry, GoIDESession } from '@/lib/code-studio-api'
+import { replaceSession, resetDirectoryScanState, useCodeStudioStore, type GoIDEEditorDocument } from './codeStudio'
 
 describe('session replacement', () => {
   const session = (updatedAt: string, units: number) => ({ id: 's1', updatedAt, project: { units: Array.from({ length: units }, () => ({ language: 'go' })) } }) as unknown as GoIDESession
@@ -105,8 +107,10 @@ const document: GoIDEEditorDocument = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  resetDirectoryScanState()
   mocks.checkDocument.mockResolvedValue({ documentId: 'document-one', changed: false, diskToken: 'token-one', modifiedAt: '2026-09-28T00:00:00Z' })
   mocks.listDirectory.mockResolvedValue([])
+  mocks.startDirectoryStream.mockRejectedValue(new Error('stream unavailable in this runtime'))
   mocks.confirm.mockResolvedValue(true)
   useCodeStudioStore.setState({
     activeSessionId: 'session-one',
@@ -250,6 +254,70 @@ describe('Code Studio editor state', () => {
   })
 })
 
+
+describe('directory scans', () => {
+  const entry = (name: string) => ({ name, relativePath: name, directory: false, ignored: false, size: 0, modifiedAt: '', language: 'go' }) as unknown as GoIDEFileEntry
+
+  it('shares one in-flight scan of the same folder', async () => {
+    useCodeStudioStore.setState({ directoryEntries: {} })
+    let resolve!: (entries: GoIDEFileEntry[]) => void
+    mocks.listDirectory.mockImplementationOnce(() => new Promise((done) => { resolve = done }))
+    const first = useCodeStudioStore.getState().loadDirectory('')
+    const second = useCodeStudioStore.getState().loadDirectory('')
+    // The runtime fallback happens after the rejected stream call: wait for the list request.
+    await vi.waitFor(() => expect(mocks.listDirectory).toHaveBeenCalledTimes(1))
+    resolve([entry('a.go')])
+    await Promise.all([first, second])
+    expect(useCodeStudioStore.getState().directoryEntries['session-one']?.['']?.map((item) => item.name)).toEqual(['a.go'])
+  })
+
+  it('paints the first page and completes it from the stream event', async () => {
+    useCodeStudioStore.setState({ directoryEntries: {}, directoryLoading: {} })
+    mocks.startDirectoryStream.mockResolvedValue({ streamId: 'stream-1', relativePath: '', entries: [entry('a.go')], done: false })
+    await useCodeStudioStore.getState().loadDirectory('')
+    expect(useCodeStudioStore.getState().directoryEntries['session-one']?.['']?.map((item) => item.name)).toEqual(['a.go'])
+    expect(useCodeStudioStore.getState().directoryLoading['session-one:']).toBe(true)
+    useCodeStudioStore.getState().handleEvent({
+      type: 'directory.entries', sessionId: 'session-one',
+      payload: { streamId: 'stream-1', relativePath: '', entries: [entry('a.go'), entry('b.go')], done: true },
+    } as never)
+    expect(useCodeStudioStore.getState().directoryEntries['session-one']?.['']?.map((item) => item.name)).toEqual(['a.go', 'b.go'])
+    expect(useCodeStudioStore.getState().directoryLoading['session-one:']).toBe(false)
+  })
+
+  it('buffers a chunk that overtakes its first page', async () => {
+    useCodeStudioStore.setState({ directoryEntries: {}, directoryLoading: {} })
+    let resolveStart!: (value: { streamId: string; relativePath: string; entries: GoIDEFileEntry[]; done: boolean }) => void
+    mocks.startDirectoryStream.mockImplementation(() => new Promise((resolve) => { resolveStart = resolve }))
+    const loading = useCodeStudioStore.getState().loadDirectory('')
+    useCodeStudioStore.getState().handleEvent({
+      type: 'directory.entries', sessionId: 'session-one',
+      payload: { streamId: 'stream-2', relativePath: '', entries: [entry('a.go'), entry('b.go')], done: true },
+    } as never)
+    resolveStart({ streamId: 'stream-2', relativePath: '', entries: [entry('a.go')], done: false })
+    await loading
+    expect(useCodeStudioStore.getState().directoryEntries['session-one']?.['']?.map((item) => item.name)).toEqual(['a.go', 'b.go'])
+    expect(useCodeStudioStore.getState().directoryLoading['session-one:']).toBe(false)
+  })
+
+  it('drops the answer of an obsolete forced scan', async () => {
+    useCodeStudioStore.setState({ directoryEntries: {} })
+    let resolveOld!: (entries: GoIDEFileEntry[]) => void
+    let resolveNew!: (entries: GoIDEFileEntry[]) => void
+    mocks.listDirectory
+      .mockImplementationOnce(() => new Promise((done) => { resolveOld = done }))
+      .mockImplementationOnce(() => new Promise((done) => { resolveNew = done }))
+    const old = useCodeStudioStore.getState().loadDirectory('', { force: true })
+    const fresh = useCodeStudioStore.getState().loadDirectory('', { force: true })
+    await vi.waitFor(() => expect(mocks.listDirectory).toHaveBeenCalledTimes(2))
+    resolveOld([entry('old.go')])
+    await old
+    expect(useCodeStudioStore.getState().directoryEntries['session-one']?.[''] ?? []).toEqual([])
+    resolveNew([entry('new.go')])
+    await fresh
+    expect(useCodeStudioStore.getState().directoryEntries['session-one']?.['']?.map((item) => item.name)).toEqual(['new.go'])
+  })
+})
 
 describe('Save snapshot isolation', () => {
  it('retains the editor language chosen while a save is pending', async () => {

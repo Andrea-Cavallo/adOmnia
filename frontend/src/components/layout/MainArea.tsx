@@ -1,6 +1,6 @@
 import { reportWorkspaceInteractive } from '@/lib/startupPerformance'
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
-import { ArrowLeft, Check, Circle, Columns2, MoreHorizontal, PanelsTopLeft, Plus, Rows2, Save, Square, Trash2, Wrench, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronsRight, Circle, Columns2, MoreHorizontal, PanelsTopLeft, Plus, Rows2, Save, Square, Trash2, Wrench, X } from 'lucide-react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { useCollectionsStore } from '@/stores/collections'
@@ -465,6 +465,7 @@ function ActiveRequestBar({
           aria-busy={loading}
           className="api-send-action api-send-nothing flex h-[var(--ui-control-h)] min-w-[132px] items-center justify-center gap-2 px-5 disabled:cursor-not-allowed disabled:opacity-40"
         >
+          <span className="api-send-icon" aria-hidden="true">{loading ? <Square size={9} fill="currentColor" /> : <ChevronsRight size={14} strokeWidth={2.25} />}</span>
           <span className="api-send-label">{tr('Send')}</span>
           <span className="api-send-status" data-running={loading} aria-hidden="true" />
         </button>

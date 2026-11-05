@@ -15,7 +15,7 @@ import type { GoIDEFileEntry, GoIDESession } from '@/lib/code-studio-api'
 import { isJavaOsgiProject } from '@/lib/code-studio-api'
 import { openJavaOsgi, openJavaOsgiImport, runOsgiBuild, runOsgiFramework } from './CodeStudioJavaOsgi'
 import { ContextMenu } from '@/components/ui/ContextMenu'
-import { buildTreeMarks, type CodeStudioTreeMark } from './codeStudioTreeMarks'
+import { buildTreeMarks, sameTreeMark, type CodeStudioTreeMark } from './codeStudioTreeMarks'
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
 import { useCodeStudioTestsStore } from '@/stores/codeStudioTests'
 import { openPemInPowerTools, openEnterpriseFile, sendFileToApiWorkspace } from './codeStudioFileHandoffs'
@@ -215,6 +215,25 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
       ))}</div>}
       {entry.directory && open && entries && entries.length > limit && <ShowMoreRow hidden={entries.length - limit} depth={depth + 1} onShow={() => setLimit((value) => value + TREE_PAGE)} />}
     </>
+  )
+}, (prev, next) => {
+  // The marks map is rebuilt whenever any diagnostic or Git status changes: a row must re-render
+  // only when its own decoration changed, not because the whole map has a new identity.
+  const path = prev.entry.relativePath
+  return (
+    prev.sessionId === next.sessionId
+    && prev.entry === next.entry
+    && prev.depth === next.depth
+    && prev.activePath === next.activePath
+    && prev.selectedPath === next.selectedPath
+    && prev.dropTarget === next.dropTarget
+    && prev.onContext === next.onContext
+    && prev.onKey === next.onKey
+    && prev.onMove === next.onMove
+    && prev.setDropTarget === next.setDropTarget
+    && sameTreeMark(prev.marks.get(path), next.marks.get(path))
+    && prev.directoryMarks[path] === next.directoryMarks[path]
+    && prev.unitLabels[path] === next.unitLabels[path]
   )
 })
 

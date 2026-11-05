@@ -201,7 +201,7 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'tools.aiPolicyAllowed', menu: 'tools', label: 'AI for This Project: Any Configured Provider', separatorBefore: true },
   { id: 'tools.aiPolicyLocal', menu: 'tools', label: 'AI for This Project: Local Models Only' },
   { id: 'tools.aiPolicyOff', menu: 'tools', label: 'AI for This Project: Off' },
-  { id: 'tools.installer', menu: 'tools', label: 'Installer: Language Servers, Linters, Debugger, Security…', separatorBefore: true },
+  { id: 'tools.installer', menu: 'tools', label: 'Installer: Tools (ripgrep), Language Servers, Linters, Debugger…', separatorBefore: true },
   { id: 'tools.installLanguageServers', menu: 'tools', label: 'Install All Language Servers…' },
   { id: 'tools.exportSettings', menu: 'tools', label: 'Export Settings Report (Privacy & Audit)…' },
   { id: 'code.lintBaseline', menu: 'code', label: 'Save Lint Baseline (Hide Current Findings)…' },

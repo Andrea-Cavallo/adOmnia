@@ -3,11 +3,16 @@
 // pdf.js is heavy and ESM-only; it is imported here so the bundle only pulls
 // it in when the PDF Editor panel is opened (the panel itself is lazy-loaded).
 
-import * as pdfjs from 'pdfjs-dist'
+// The modern pdf.js build assumes very recent JS built-ins (e.g.
+// `Map.prototype.getOrInsertComputed`, Chrome 137+). WebView2 versions shipped
+// with older Windows 10/11 installs do not have them, which made every PDF fail
+// with "getOrInsertComputed is not a function". The legacy build targets older
+// engines and ships its own polyfills, so it is the safe choice for the desktop app.
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 // Vite resolves this URL to a hashed asset and serves the worker file.
 // oxlint-disable-next-line import/default -- Vite `?url` import: the default export is synthesized by the bundler
-import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import PdfWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
 
 pdfjs.GlobalWorkerOptions.workerSrc = PdfWorker
 

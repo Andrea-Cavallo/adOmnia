@@ -50,13 +50,16 @@ type RecentProject struct {
 }
 
 type FileEntry struct {
-	Name         string    `json:"name"`
-	RelativePath string    `json:"relativePath"`
-	Directory    bool      `json:"directory"`
-	Ignored      bool      `json:"ignored,omitzero"`
-	Size         int64     `json:"size,omitzero"`
-	ModifiedAt   time.Time `json:"modifiedAt"`
-	Language     string    `json:"language,omitempty"`
+	Name         string `json:"name"`
+	RelativePath string `json:"relativePath"`
+	Directory    bool   `json:"directory"`
+	Ignored      bool   `json:"ignored,omitzero"`
+	// Size and ModifiedAt are optional: the Project Explorer never shows them, so a listing does
+	// not pay a stat per entry and the IPC payload stays small. A consumer that needs metadata
+	// asks for it explicitly instead of making every folder expansion collect it.
+	Size       int64     `json:"size,omitzero"`
+	ModifiedAt time.Time `json:"modifiedAt,omitzero"`
+	Language   string    `json:"language,omitempty"`
 }
 
 type QuickOpenResult struct {

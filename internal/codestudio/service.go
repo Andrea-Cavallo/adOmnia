@@ -2,6 +2,7 @@
 package codestudio
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/flight"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
@@ -546,6 +548,36 @@ func (s *Service) ReadFileDataURL(sessionID, relativePath string) (string, error
 		return "", err
 	}
 	return dataURL, nil
+}
+
+// ReadTextFile reads a small UTF-8 text file from the project without opening an editor document.
+// It exists for configuration discovery (.taplo.toml, .editorconfig) and keeps the same path
+// confinement as the document APIs.
+func (s *Service) ReadTextFile(sessionID, relativePath string) (string, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return "", err
+	}
+	path, err := s.documents.ResolveProjectPath(session.Project, relativePath)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		return "", fmt.Errorf("%s is not a readable file", relativePath)
+	}
+	const maxConfigBytes = 256 << 10
+	if info.Size() > maxConfigBytes {
+		return "", fmt.Errorf("%s is too large to read as configuration", relativePath)
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- path resolved and confined by ResolveProjectPath
+	if err != nil {
+		return "", err
+	}
+	if bytes.IndexByte(data, 0) >= 0 || !utf8.Valid(data) {
+		return "", fmt.Errorf("%s is not a UTF-8 text file", relativePath)
+	}
+	return string(data), nil
 }
 
 // SaveDocument salva un documento con controllo delle modifiche esterne.

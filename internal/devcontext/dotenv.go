@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -57,7 +58,8 @@ func parseDotenv(data []byte) []dotenvEntry {
 
 func detectDotenv(rel string, data []byte) ([]Entity, error) {
 	var out []Entity
-	for _, e := range parseDotenv(data) {
+	entries := parseDotenv(data)
+	for _, e := range entries {
 		src := Source{"dotenv", rel, e.Line}
 		// value@<file> keeps each profile's (masked) value: attrs merge first-writer-wins per key.
 		shown := displayValue(e.Key, e.Value)
@@ -67,7 +69,35 @@ func detectDotenv(rel string, data []byte) ([]Entity, error) {
 			out = append(out, ds)
 		}
 	}
+	// Laravel keeps the parts separate (DB_HOST, DB_PORT, …): one datasource for the group.
+	if ds, ok := laravelDatasource(entries, rel); ok {
+		out = append(out, ds)
+	}
+	out = append(out, kafkaTopicsFromEnv(entries, rel)...)
 	return out, nil
+}
+
+// kafkaTopicsFromEnv reads KAFKA_TOPIC / KAFKA_TOPICS and similar keys; the broker datasource is
+// already produced from KAFKA_BROKERS by datasourceFromValue.
+func kafkaTopicsFromEnv(entries []dotenvEntry, rel string) []Entity {
+	var out []Entity
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		upper := strings.ToUpper(entry.Key)
+		if !strings.Contains(upper, "KAFKA") || (!strings.Contains(upper, "TOPIC")) {
+			continue
+		}
+		for _, name := range topicNames(entry.Value) {
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			out = append(out, entity("topic", name, name, ConfidenceCertain,
+				map[string]string{"broker": "kafka", "declFile": rel, "declLine": strconv.Itoa(entry.Line)},
+				Source{"dotenv", rel, entry.Line}))
+		}
+	}
+	return out
 }
 
 // displayValue is the only form of an env value that leaves the backend.

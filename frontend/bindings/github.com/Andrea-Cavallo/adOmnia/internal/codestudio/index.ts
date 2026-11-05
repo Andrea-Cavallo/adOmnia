@@ -49,6 +49,7 @@ export {
     DependencyVulnerability,
     DependencyWhy,
     DiagnosticsReport,
+    DirectoryStreamStart,
     DockerOptions,
     DocumentDiskState,
     DocumentSymbolsResult,
