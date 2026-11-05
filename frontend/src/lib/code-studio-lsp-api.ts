@@ -240,6 +240,11 @@ export function requestRipgrepStatus(): Promise<GoIDERipgrepInfo> {
   return GoIDEBindings.RipgrepStatus()
 }
 
+/** Scarica il ripgrep pinnato nella cartella tools gestita (SHA-256 verificata dal backend). */
+export function installRipgrep(): Promise<GoIDERipgrepInfo> {
+  return GoIDEBindings.InstallRipgrep()
+}
+
 export function requestSemanticTokens(sessionId: string, documentId: string): CancellablePromise<SemanticTokensResult> {
   return GoIDEBindings.SemanticTokens(sessionId, documentId)
 }
