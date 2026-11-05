@@ -1,10 +1,29 @@
 import { monaco, type Monaco } from '@/lib/monacoRef'
+import type { TomlFormatOptions } from '@/lib/code-studio/tomlFormat'
 import { TOML_LANGUAGE } from './codeStudioTomlLanguage'
 import { MANIFEST_LANGUAGE } from './codeStudioManifestLanguage'
 import { manifestIssues } from '@/lib/code-studio/manifestDiagnostics'
+import { tomlDiagnosticFromError, tomlCompletions } from '@/lib/code-studio/tomlIntelligence'
 import { tomlOutline } from '@/lib/code-studio/tomlOutline'
 
 let registered = false
+
+/** The project's .taplo.toml overrides the editor defaults; a missing or unreadable file is not an error. */
+async function projectTomlOptions(model: Monaco.editor.ITextModel, options: TomlFormatOptions): Promise<TomlFormatOptions> {
+  try {
+    const { useCodeStudioStore } = await import('@/stores/codeStudio')
+    const state = useCodeStudioStore.getState()
+    const session = state.sessions.find((candidate) => candidate.id === state.activeSessionId)
+    const file = model.uri.fsPath.replace(/\\/g, '/')
+    const root = session?.project.realPath.replace(/\\/g, '/') ?? ''
+    if (!session || !root || !file.startsWith(`${root}/`)) return options
+    const { readGoIDETextFile } = await import('@/lib/code-studio-api')
+    const { taploFormatOptions } = await import('@/lib/code-studio/taploConfig')
+    return taploFormatOptions(options, await readGoIDETextFile(session.id, '.taplo.toml'))
+  } catch {
+    return options
+  }
+}
 
 /** go.sum: percorso del modulo, versione (eventualmente /go.mod) e hash h1:. Solo colorazione. */
 const GO_SUM: Monaco.languages.IMonarchLanguage = {
@@ -93,7 +112,7 @@ export function registerCodeStudioExtraLanguages(): void {
       try {
         if (token.isCancellationRequested) return []
         const { formatTomlInWorker } = await import('@/lib/code-studio/tomlFormatterClient')
-        const text = await formatTomlInWorker(source, options, controller.signal)
+        const text = await formatTomlInWorker(source, await projectTomlOptions(model, options), controller.signal)
         if (model.isDisposed() || token.isCancellationRequested || model.getVersionId() !== version || text === source) return []
         return [{ range: model.getFullModelRange(), text }]
       } catch (error) {
@@ -104,6 +123,55 @@ export function registerCodeStudioExtraLanguages(): void {
         return []
       } finally { off.dispose() }
     },
+  })
+  // TOML without taplo: local completions (tables/keys of the current file) and a syntax check
+  // through the same WASM engine as the formatter. With taplo installed the language server adds
+  // its richer schema-aware completion and diagnostics.
+  monaco.languages.registerCompletionItemProvider('toml', {
+    triggerCharacters: ['.', '[', '='],
+    provideCompletionItems(model, position) {
+      const word = model.getWordUntilPosition(position)
+      const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn }
+      return {
+        suggestions: tomlCompletions(model.getValue(), position.lineNumber, position.column).map((label) => ({
+          label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label, range,
+        })),
+      }
+    },
+  })
+  monaco.editor.onDidCreateModel((model) => {
+    if (model.getLanguageId() !== 'toml') return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let generation = 0
+    const validate = () => {
+      if (model.isDisposed() || model.getLanguageId() !== 'toml') return
+      const source = model.getValue()
+      if (source.length > 500_000) return
+      const current = ++generation
+      void import('@/lib/code-studio/tomlFormatterClient').then(async ({ formatTomlInWorker }) => {
+        try {
+          // Formatting parses first: a parse failure is the diagnostic, the formatted text is ignored.
+          await formatTomlInWorker(source, { tabSize: 2, insertSpaces: true })
+          if (!model.isDisposed() && current === generation) monaco.editor.setModelMarkers(model, 'toml', [])
+        } catch (error) {
+          if (model.isDisposed() || current !== generation) return
+          const diagnostic = tomlDiagnosticFromError(error instanceof Error ? error.message : String(error))
+          if (!diagnostic) return
+          monaco.editor.setModelMarkers(model, 'toml', [{
+            severity: monaco.MarkerSeverity.Error,
+            message: diagnostic.message,
+            startLineNumber: Math.min(diagnostic.line, model.getLineCount()),
+            startColumn: Math.min(diagnostic.column, model.getLineMaxColumn(Math.min(diagnostic.line, model.getLineCount()))),
+            endLineNumber: Math.min(diagnostic.line, model.getLineCount()),
+            endColumn: model.getLineMaxColumn(Math.min(diagnostic.line, model.getLineCount())),
+            source: 'TOML',
+          }])
+        }
+      })
+    }
+    const schedule = () => { if (timer) clearTimeout(timer); timer = setTimeout(validate, 500) }
+    schedule()
+    model.onDidChangeContent(schedule)
   })
   monaco.languages.register({ id: 'gosum', filenames: ['go.sum', 'go.work.sum'] })
   monaco.languages.setMonarchTokensProvider('gosum', GO_SUM)

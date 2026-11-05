@@ -95,7 +95,9 @@ export function DatabasePanel() {
   const aiAvailable = isAICompanionAvailable(aiSettings)
   const runMongoRef = useRef<(command: Record<string, unknown>) => Promise<DbResult>>(() => Promise.reject(new Error('Backend not ready')))
 
-  const active = connections.find((c) => c.id === activeId) ?? connections[0] ?? blankConnection()
+  // Stable until the connections load: a new id on every render makes useDbSchema reset its scope during render, forever (React #301).
+  const [placeholderConnection] = useState(blankConnection)
+  const active = connections.find((c) => c.id === activeId) ?? connections[0] ?? placeholderConnection
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0]
   const query = activeTab?.query ?? ''
   const isMongo = active.driver === 'mongodb'

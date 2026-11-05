@@ -86,8 +86,9 @@ export function ConfirmDialog({
 
   if (!open) return null
 
+  // Above every modal (Code Studio's reach z-90): a confirmation always comes from the action on top.
   return (
-    <div className="ad-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation" onClick={onCancel}>
+    <div className="ad-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4" role="presentation" onClick={onCancel}>
       <div className="contents" role="presentation" onClick={(e) => e.stopPropagation()}>
       <div
         ref={dialogRef}
@@ -96,11 +97,12 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={message ? messageId : undefined}
         tabIndex={-1}
-        className="w-[min(460px,100%)] overflow-hidden rounded-2xl border border-border-2 bg-surface-1"
+        className="flex max-h-full w-[min(460px,100%)] flex-col overflow-hidden rounded-2xl border border-border-2 bg-surface-1"
       >
         <div className={cn('h-0.5 bg-gradient-to-r from-transparent to-transparent', isDanger ? 'via-status-err/70' : 'via-accent/70')} />
 
-        <div className="flex gap-3.5 px-5 pb-4 pt-5">
+        {/* A long message scrolls here: the buttons must stay on screen, or the dialog is a dead end. */}
+        <div className="flex min-h-0 gap-3.5 overflow-y-auto px-5 pb-4 pt-5">
           <DialogIcon danger={isDanger} command={hasCommand} />
           <div className="min-w-0 flex-1">
             <h2 id={titleId} className="text-[14px] font-semibold leading-snug text-text-1">{title}</h2>
@@ -129,7 +131,7 @@ export function ConfirmDialog({
           </dl>
         )}
 
-        <div className="flex items-center justify-end gap-2 border-t border-border-1 bg-surface-0/60 px-5 py-3">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-1 bg-surface-0/60 px-5 py-3">
           {resolvedCancelLabel && (
             <button
               ref={cancelRef}

@@ -45,36 +45,36 @@ uses and for the reasons a language has no Debug row.
 | CMake | `cmake` | — | yes | yes | — | — | — | — | — |
 | CSS | `css` | — | yes | yes | — | — | — | — | — |
 | Clojure | `clojure` | yes | yes | yes | — | — | — | — | — |
-| Dart | `dart` | yes | yes | yes | yes | — | yes | — | — |
+| Dart | `dart` | yes | yes | yes | yes | yes | yes | — | — |
 | Dockerfile | `dockerfile` | — | yes | yes | — | — | — | — | — |
-| Elixir | `elixir` | yes | yes | yes | yes | — | — | — | — |
+| Elixir | `elixir` | yes | yes | yes | yes | yes | — | — | — |
 | Erlang | `erlang` | yes | yes | yes | — | — | — | — | — |
 | F# | `fsharp` | yes | yes | yes | yes | yes | yes | — | — |
 | Go | `go` | yes | yes | — | yes | yes | yes | yes | yes |
 | GraphQL | `graphql` | — | yes | yes | — | — | — | — | — |
 | Groovy | `groovy` | — | yes | yes | — | — | — | — | — |
 | HTML | `html` | yes | yes | yes | — | — | — | — | — |
-| Haskell | `haskell` | yes | yes | yes | — | — | — | — | — |
+| Haskell | `haskell` | yes | yes | yes | — | yes | — | — | — |
 | JSON | `json` | — | yes | yes | — | — | — | — | — |
 | Java | `java` | yes | yes | yes | yes | yes | yes | — | — |
 | Julia | `julia` | yes | yes | yes | yes | — | — | — | — |
 | Kotlin | `kotlin` | — | yes | yes | — | — | — | — | — |
 | LaTeX | `latex` | — | yes | yes | — | — | — | — | — |
-| Lua | `lua` | yes | yes | yes | yes | — | — | — | — |
+| Lua | `lua` | yes | yes | yes | yes | yes | — | — | — |
 | Markdown | `markdown` | — | yes | yes | — | — | — | — | — |
 | Nix | `nix` | — | yes | yes | — | — | — | — | — |
 | OCaml | `ocaml` | yes | yes | yes | — | — | — | — | — |
 | Objective-C | `objective-c` | — | yes | yes | yes | — | yes | — | — |
 | PHP | `php` | yes | yes | yes | yes | yes | yes | — | — |
-| Perl | `perl` | yes | yes | yes | yes | — | — | — | — |
+| Perl | `perl` | yes | yes | yes | yes | yes | — | — | — |
 | PowerShell | `powershell` | — | yes | yes | yes | — | — | — | — |
 | Protocol Buffers | `proto` | yes | yes | yes | — | — | — | — | — |
 | Python | `python` | yes | yes | yes | yes | yes | yes | — | — |
 | R | `r` | yes | yes | yes | yes | — | — | — | — |
-| Ruby | `ruby` | yes | yes | yes | yes | — | — | — | — |
+| Ruby | `ruby` | yes | yes | yes | yes | yes | — | — | — |
 | Rust | `rust` | yes | yes | yes | yes | yes | yes | — | — |
 | SQL | `sql` | — | yes | yes | — | — | — | — | — |
-| Scala | `scala` | yes | yes | yes | — | — | — | — | — |
+| Scala | `scala` | yes | yes | yes | — | yes | — | — | — |
 | Shell Script | `shellscript` | — | yes | yes | — | — | — | — | — |
 | Svelte | `svelte` | — | yes | yes | — | — | — | — | — |
 | Swift | `swift` | yes | yes | yes | yes | yes | yes | — | — |
@@ -84,7 +84,7 @@ uses and for the reasons a language has no Debug row.
 | Vue | `vue` | — | yes | yes | — | — | — | — | — |
 | XML | `xml` | — | yes | yes | — | — | — | — | — |
 | YAML | `yaml` | — | yes | yes | — | — | — | — | — |
-| Zig | `zig` | yes | yes | yes | yes | — | yes | — | — |
+| Zig | `zig` | yes | yes | yes | yes | yes | yes | — | — |
 <!-- capability-matrix:end -->
 
 ## Verification status

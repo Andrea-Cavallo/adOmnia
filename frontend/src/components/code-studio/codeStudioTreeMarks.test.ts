@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { buildTreeMarks, vcsMark } from './codeStudioTreeMarks'
+import { buildTreeMarks, sameTreeMark, vcsMark } from './codeStudioTreeMarks'
 
 const change = (relativePath: string, status: string, extra: Partial<{ untracked: boolean; conflicted: boolean }> = {}) => ({ relativePath, status, untracked: false, conflicted: false, ...extra })
 
 describe('Project tree marks', () => {
+  it('compares one node mark by value, so unchanged rows skip the render', () => {
+    expect(sameTreeMark(undefined, undefined)).toBe(true)
+    expect(sameTreeMark({ vcs: 'modified' }, { vcs: 'modified' })).toBe(true)
+    expect(sameTreeMark({ vcs: 'modified' }, { vcs: 'added' })).toBe(false)
+    expect(sameTreeMark({ problem: 'error', problems: 2 }, { problem: 'error', problems: 3 })).toBe(false)
+    expect(sameTreeMark({ testFailed: true }, undefined)).toBe(false)
+  })
+
   it('maps git porcelain codes', () => {
     expect(vcsMark(change('a.go', ' M'))).toBe('modified')
     expect(vcsMark(change('a.go', 'A '))).toBe('added')

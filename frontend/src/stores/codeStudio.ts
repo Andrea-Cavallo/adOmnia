@@ -21,6 +21,8 @@ import {
   hasActiveGoIDERuns,
   listGoIDEDirectory,
   listGoIDERuns,
+  startGoIDEDirectoryStream,
+  type GoIDEDirectoryStreamChunk,
   listRecentGoIDEProjects,
   openGoIDEDocument,
   openGoIDEProject,
@@ -75,6 +77,26 @@ import { recordRecentFile } from '@/lib/recentFiles'
 
 const LAYOUT_KEY = 'adomnia.codestudio.layout.v1'
 const MAX_CLOSED_HISTORY = 20
+
+/**
+ * One scan per session+folder: expanding, collapsing and refreshing the same folder must not read
+ * the disk twice, and an obsolete scan never overwrites the answer of a newer one (the same
+ * cancellation rule Yazi applies to its directory loader).
+ */
+type DirectoryScan = { generation: number; promise: Promise<void> }
+const directoryScans = new Map<string, DirectoryScan>()
+let directoryScanGeneration = 0
+/** Stream id of the listing being completed for a session+folder, once its first page arrived. */
+const directoryStreams = new Map<string, string>()
+/** Chunks that arrived before their StartDirectoryStream response: applied when the first page does. */
+const pendingDirectoryChunks = new Map<string, GoIDEDirectoryStreamChunk>()
+
+/** Test hook: a failed test must not leave an in-flight scan that blocks the next one. */
+export function resetDirectoryScanState(): void {
+  directoryScans.clear()
+  directoryStreams.clear()
+  pendingDirectoryChunks.clear()
+}
 
 /** Comandi go lanciabili direttamente da menu, CodeLens e gutter. */
 export type GoIDEQuickRunKind = 'maven' | 'build' | 'run' | 'test' | 'tidy' | 'vet' | 'generate' | 'install' | 'make' | 'docker-build' | 'docker-run' | 'docker-compose' | 'command' | 'script' | 'bin' | 'example' | 'build-run'
@@ -226,7 +248,7 @@ export interface GoIDEState {
   selectSession: (sessionId: string) => Promise<void>
   setToolAuthorization: (allowed: boolean) => Promise<void>
   closeActiveSession: (discardDocuments?: boolean) => Promise<boolean>
-  loadDirectory: (relativePath?: string) => Promise<void>
+  loadDirectory: (relativePath?: string, options?: { force?: boolean }) => Promise<void>
   toggleShowIgnored: () => Promise<void>
   /** preview: tab di anteprima, sostituita dalla prossima anteprima finché non la si modifica o la si rende permanente. */
   openDocument: (relativePath: string, options?: { preview?: boolean }) => Promise<string | null>
@@ -806,20 +828,53 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     }
   },
 
-  loadDirectory: async (relativePath = '') => {
+  loadDirectory: async (relativePath = '', options = {}) => {
     const sessionId = get().activeSessionId
     if (!sessionId) return
     const key = `${sessionId}:${relativePath}`
-    set((state) => ({ directoryLoading: { ...state.directoryLoading, [key]: true } }))
-    try {
-      const entries = await listGoIDEDirectory(sessionId, relativePath, get().showIgnoredBySession[sessionId] ?? false)
-      set((state) => ({
-        directoryEntries: { ...state.directoryEntries, [sessionId]: { ...(state.directoryEntries[sessionId] ?? {}), [relativePath]: entries } },
-        directoryLoading: { ...state.directoryLoading, [key]: false },
-      }))
-    } catch (error) {
-      set((state) => ({ error: errorMessage(error), directoryLoading: { ...state.directoryLoading, [key]: false } }))
-    }
+    const running = directoryScans.get(key)
+    if (running && !options.force) return running.promise
+    const generation = ++directoryScanGeneration
+    const promise = (async () => {
+      set((state) => ({ directoryLoading: { ...state.directoryLoading, [key]: true } }))
+      try {
+        const includeIgnored = get().showIgnoredBySession[sessionId] ?? false
+        let entries = [] as GoIDEFileEntry[]
+        let done = true
+        try {
+          // First page now, the complete listing as a `directory.entries` event (Yazi's model:
+          // show what is ready, finish the scan in the background). Older runtimes fall back below.
+          const start = await startGoIDEDirectoryStream(sessionId, relativePath, includeIgnored)
+          entries = start.entries
+          done = start.done
+          if (!start.done) {
+            directoryStreams.set(key, start.streamId)
+            const pending = pendingDirectoryChunks.get(start.streamId)
+            if (pending) {
+              pendingDirectoryChunks.delete(start.streamId)
+              directoryStreams.delete(key)
+              entries = pending.entries
+              done = true
+            }
+          }
+        } catch {
+          entries = await listGoIDEDirectory(sessionId, relativePath, includeIgnored)
+        }
+        // A newer scan (refresh, ignored toggle) started meanwhile: this answer is obsolete.
+        if (directoryScans.get(key)?.generation !== generation) return
+        set((state) => ({
+          directoryEntries: { ...state.directoryEntries, [sessionId]: { ...(state.directoryEntries[sessionId] ?? {}), [relativePath]: entries } },
+          directoryLoading: { ...state.directoryLoading, [key]: !done },
+        }))
+      } catch (error) {
+        if (directoryScans.get(key)?.generation !== generation) return
+        set((state) => ({ error: errorMessage(error), directoryLoading: { ...state.directoryLoading, [key]: false } }))
+      } finally {
+        if (directoryScans.get(key)?.generation === generation) directoryScans.delete(key)
+      }
+    })()
+    directoryScans.set(key, { generation, promise })
+    return promise
   },
 
   toggleShowIgnored: async () => {
@@ -829,7 +884,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
       showIgnoredBySession: { ...state.showIgnoredBySession, [sessionId]: !(state.showIgnoredBySession[sessionId] ?? false) },
       directoryEntries: { ...state.directoryEntries, [sessionId]: {} },
     }))
-    await get().loadDirectory('')
+    await get().loadDirectory('', { force: true })
   },
 
   openDocument: async (path, options = {}) => {
@@ -1065,7 +1120,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     const directories = new Set([relativePath, ...cachedDirectories.filter((directory) =>
       !relativePath || directory === relativePath || directory.startsWith(prefix),
     )])
-    await Promise.all([...directories].map((directory) => get().loadDirectory(directory)))
+    await Promise.all([...directories].map((directory) => get().loadDirectory(directory, { force: true })))
   },
 
   refreshModuleFiles: async (sessionId) => {
@@ -1313,6 +1368,23 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
     }
     if (event.type === 'files.changed' && event.sessionId) {
       void get().handleFilesChanged(event.sessionId, event.payload as GoIDEFilesChanged)
+      return
+    }
+    if (event.type === 'directory.entries' && event.sessionId) {
+      const chunk = event.payload as GoIDEDirectoryStreamChunk | undefined
+      if (!chunk?.streamId) return
+      const key = `${event.sessionId}:${chunk.relativePath}`
+      if (directoryStreams.get(key) !== chunk.streamId) {
+        // The event can overtake the response of StartDirectoryStream: keep it until the first
+        // page registers the stream (and ignore it when a newer scan replaced that stream).
+        pendingDirectoryChunks.set(chunk.streamId, chunk)
+        return
+      }
+      directoryStreams.delete(key)
+      set((state) => ({
+        directoryEntries: { ...state.directoryEntries, [event.sessionId!]: { ...(state.directoryEntries[event.sessionId!] ?? {}), [chunk.relativePath]: chunk.entries } },
+        directoryLoading: { ...state.directoryLoading, [key]: false },
+      }))
       return
     }
     if ((event.type === 'run.started' || event.type === 'run.finished') && isExecution(event.payload)) {

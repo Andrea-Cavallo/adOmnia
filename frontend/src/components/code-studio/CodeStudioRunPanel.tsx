@@ -379,7 +379,7 @@ export const CodeStudioRunPanel = memo(function CodeStudioRunPanel({ session, fi
       {view === 'fuzz' && <div className="min-h-0 flex-1"><CodeStudioFuzzPanel session={session} /></div>}
       {view === 'vulns' && <div className="min-h-0 flex-1"><CodeStudioSecurityPanel session={session} /></div>}
       {view === 'git' && <div className="min-h-0 flex-1"><CodeStudioGitPanel session={session} onCommand={onCommand} /></div>}
-      {view === 'go' && <div className="min-h-0 flex-1"><CodeStudioGoPanel session={session} /></div>}
+      {view === 'go' && <div className="min-h-0 flex-1"><CodeStudioGoPanel session={session} onCommand={onCommand} /></div>}
       {/* Il terminale resta montato quando si cambia scheda: una shell interattiva non si distrugge. */}
       {!terminalDetached && !logsOnly && terminalShown && <div className="min-h-0 flex-1" style={{ display: view === 'terminal' ? 'block' : 'none' }}><CodeStudioTerminalPanel session={session} visible={view === 'terminal' && visible} /></div>}
       </Suspense>

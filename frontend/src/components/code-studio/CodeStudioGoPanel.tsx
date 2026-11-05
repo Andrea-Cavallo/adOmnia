@@ -3,6 +3,7 @@ import './codeStudioGoPanel.css'
 import { useState } from 'react'
 import { Boxes, Gauge, Play, Wrench } from 'lucide-react'
 import type { GoIDESession } from '@/lib/code-studio-api'
+import type { CodeStudioCommandId } from './codeStudioCommands'
 import { confirm } from '@/lib/confirmDialog'
 import { detectGoIDEGoTool, installGoIDEGoModule, runGoIDEGoTool } from '@/lib/code-studio-api'
 import { activeGoIDERelativePath, useCodeStudioStore } from '@/stores/codeStudio'
@@ -26,7 +27,7 @@ const FIELD_ALIGNMENT_MODULE = 'golang.org/x/tools/go/analysis/passes/fieldalign
 function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error) }
 
 /** Go-only optimization hub. The stripe entry is mounted only for projects with a Go module. */
-export function CodeStudioGoPanel({ session }: { session: GoIDESession }) {
+export function CodeStudioGoPanel({ session, onCommand }: { session: GoIDESession; onCommand?: (id: CodeStudioCommandId) => void }) {
   const modules = goModules(session.project)
   const [view, setView] = useState<View>('profile')
   const [scope, setScope] = useState<EscapeScope>('project')
@@ -99,7 +100,7 @@ export function CodeStudioGoPanel({ session }: { session: GoIDESession }) {
           <section className="go-tools-struct-card"><h3 className="text-[13px] font-semibold text-text-1">Apply field ordering</h3><p className="mt-1 text-[11.5px] text-text-4">Runs fieldalignment with <code className="gs-mono">-fix</code>. Review the resulting Git changes before committing.</p><CodeStudioButton className="mt-4" variant="danger-ghost" disabled={!trusted || busy || !module} onClick={() => void runStructAnalysis(true)}>Analyze and fix…</CodeStudioButton></section>
           {message && <p role="status" className="go-tools-struct-message text-[11.5px] text-text-3">{message}</p>}
         </div>}
-        {view === 'tools' && <div className="go-tools-extra"><CodeStudioExtraTools sessionId={session.id} goAvailable={toolchain?.available === true} trusted={trusted} /></div>}
+        {view === 'tools' && <div className="go-tools-extra"><CodeStudioExtraTools sessionId={session.id} goAvailable={toolchain?.available === true} trusted={trusted} onInstaller={onCommand ? () => onCommand('tools.installer') : undefined} /></div>}
         </div>
       </div>
     </div>

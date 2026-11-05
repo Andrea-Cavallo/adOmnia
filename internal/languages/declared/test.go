@@ -1,6 +1,8 @@
 package declared
 
 import (
+	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"os"
@@ -23,6 +25,20 @@ type tester struct {
 	local   string
 	command string
 	args    []string
+	// prepare adapts the arguments to the project (e.g. CTest reads the actual CMake build
+	// directory instead of assuming `build/`). A nil prepare leaves the arguments untouched.
+	prepare func(workingDirectory string, args []string) ([]string, error)
+	// parser reads a runner that does not write JUnit/TRX reports (Dart JSON, TAP, ExUnit trace,
+	// JUnit on stdout, Zig's test runner). A nil parser reads the reports written under
+	// reportDirectory.
+	parser func() idetesting.EventParser
+	// reportDir names a report folder owned by the project (sbt writes target/test-reports): it is
+	// read after the run and never deleted, unlike the temporary reportDirectory.
+	reportDir func(workingDirectory string) string
+	// rerun narrows the command to one test (the `run` field of TestRunRequest). It receives the
+	// already-substituted arguments and returns the full list; nil means the ecosystem has no
+	// reliable single-test filter and the host answers with an explicit error.
+	rerun func(name string, args []string) []string
 }
 
 const maxReportBytes = 16 << 20
@@ -35,21 +51,101 @@ func (a adapter) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	if err != nil {
 		return run.CommandSpec{}, nil, err
 	}
-	reports, err := os.MkdirTemp("", "adomnia-tests-*")
-	if err != nil {
-		return run.CommandSpec{}, nil, fmt.Errorf("could not create the test report folder: %w", err)
+	reports := ""
+	if strings.Contains(strings.Join(a.test.args, " "), reportDirectory) {
+		reports, err = os.MkdirTemp("", "adomnia-tests-*")
+		if err != nil {
+			return run.CommandSpec{}, nil, fmt.Errorf("could not create the test report folder: %w", err)
+		}
 	}
 	arguments := make([]string, len(a.test.args))
 	for i, argument := range a.test.args {
 		arguments[i] = strings.ReplaceAll(argument, reportDirectory, reports)
 	}
+	if a.test.prepare != nil {
+		arguments, err = a.test.prepare(request.WorkingDirectory, arguments)
+		if err != nil {
+			if reports != "" {
+				_ = os.RemoveAll(reports) // best effort: the folder is empty
+			}
+			return run.CommandSpec{}, nil, err
+		}
+	}
+	var options struct {
+		Run string `json:"run"`
+	}
+	if len(request.LanguageOptions) > 0 {
+		_ = json.Unmarshal(request.LanguageOptions, &options) // the host always sends its own options
+	}
+	if strings.TrimSpace(options.Run) != "" {
+		if a.test.rerun == nil {
+			if reports != "" {
+				_ = os.RemoveAll(reports)
+			}
+			return run.CommandSpec{}, nil, fmt.Errorf("rerunning a single test is not supported for %s yet", a.name)
+		}
+		arguments = a.test.rerun(options.Run, arguments)
+	}
 	if err := run.CheckBatchSafe(binary, arguments); err != nil {
-		_ = os.RemoveAll(reports) // best effort: the folder is empty
+		if reports != "" {
+			_ = os.RemoveAll(reports) // best effort: the folder is empty
+		}
 		return run.CommandSpec{}, nil, err
 	}
 	spec := run.CommandSpec{Executable: binary, Arguments: arguments, WorkingDirectory: request.WorkingDirectory,
 		Environment: append([]string(nil), request.Environment...), DisplayCommand: a.test.command + " " + strings.ReplaceAll(strings.Join(a.test.args, " "), reportDirectory, "<report folder>")}
-	return spec, &reportParser{directory: reports}, nil
+	var parser idetesting.EventParser
+	switch {
+	case a.test.parser != nil:
+		parser = a.test.parser()
+	case a.test.reportDir != nil:
+		parser = &reportParser{directory: a.test.reportDir(request.WorkingDirectory), keep: true}
+	default:
+		parser = &reportParser{directory: reports}
+	}
+	// Coverage tools of declared ecosystems do not share a flag or a report path: scan the standard
+	// files they may have written after the run, without changing the runner command.
+	return spec, &coverageParser{inner: parser, root: request.WorkingDirectory}, nil
+}
+
+// prepareCTest points ctest at the directory CMake actually configured. `build/` is only the
+// convention: presets and IDEs use cmake-build-*/build-*/out/build/<preset>.
+func prepareCTest(workingDirectory string, args []string) ([]string, error) {
+	build, err := ctestBuildDirectory(workingDirectory)
+	if err != nil {
+		return nil, err
+	}
+	adapted := append([]string(nil), args...)
+	for index := 0; index+1 < len(adapted); index++ {
+		if adapted[index] == "--test-dir" {
+			adapted[index+1] = build
+			return adapted, nil
+		}
+	}
+	return adapted, nil
+}
+
+// ctestBuildDirectory returns the first configured CMake build directory, relative to the project.
+func ctestBuildDirectory(workingDirectory string) (string, error) {
+	candidates := []string{"build"}
+	for _, pattern := range []string{"cmake-build-*", "build-*", filepath.Join("out", "build", "*")} {
+		matches, _ := filepath.Glob(filepath.Join(workingDirectory, pattern))
+		for _, match := range matches {
+			if info, err := os.Stat(match); err == nil && info.IsDir() {
+				relative, relErr := filepath.Rel(workingDirectory, match)
+				if relErr == nil {
+					candidates = append(candidates, relative)
+				}
+			}
+		}
+	}
+	for _, candidate := range candidates {
+		marker := filepath.Join(workingDirectory, candidate, "CTestTestfile.cmake")
+		if info, err := os.Stat(marker); err == nil && info.Mode().IsRegular() {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("no configured CMake build directory: run `cmake -B build` first (ctest needs CTestTestfile.cmake)")
 }
 
 func (t tester) locate(workingDirectory string) (string, error) {
@@ -75,7 +171,9 @@ func (t tester) locate(workingDirectory string) (string, error) {
 // reportParser reads the reports once, when the runner exits: their output streams are free text.
 type reportParser struct {
 	directory string
-	done      bool
+	// keep leaves a project-owned report folder (sbt target/test-reports) in place.
+	keep bool
+	done bool
 }
 
 func (*reportParser) Parse([]byte) (idetesting.Event, bool) { return idetesting.Event{}, false }
@@ -85,7 +183,9 @@ func (p *reportParser) Finish() []idetesting.Event {
 		return nil
 	}
 	p.done = true
-	defer func() { _ = os.RemoveAll(p.directory) }() // best effort: a temporary folder
+	if !p.keep {
+		defer func() { _ = os.RemoveAll(p.directory) }() // best effort: a temporary folder
+	}
 	var events []idetesting.Event
 	_ = filepath.WalkDir(p.directory, func(path string, entry os.DirEntry, err error) error {
 		if err != nil || entry.IsDir() {
@@ -99,9 +199,14 @@ func (p *reportParser) Finish() []idetesting.Event {
 		if err != nil {
 			return nil
 		}
-		if strings.EqualFold(filepath.Ext(path), ".trx") {
+		switch {
+		case strings.EqualFold(filepath.Ext(path), ".trx"):
 			events = append(events, trxEvents(data)...)
-		} else {
+		case strings.EqualFold(filepath.Ext(path), ".json"):
+			events = append(events, rspecEvents(data)...)
+		case bytes.Contains(data, []byte("<test-suite")):
+			events = append(events, tastyEvents(data)...)
+		default:
 			events = append(events, junitEvents(data)...)
 		}
 		return nil
@@ -229,6 +334,9 @@ func trxEvents(data []byte) []idetesting.Event {
 type testResult struct {
 	suite, name, outcome, output string
 	seconds                      float64
+	// failure is the source location of a failed test when the runner reports it (TAP, ExUnit,
+	// Dart, RSpec): the UI can open the failing line instead of only the test name.
+	failure *idetesting.TestLocation
 }
 
 // slashReplacer: the tree nests on "/", which test names may contain (data sets, display names).
@@ -252,7 +360,7 @@ func resultEvents(results []testResult) []idetesting.Event {
 		if result.outcome == "fail" {
 			failed[suite] = true
 		}
-		events = append(events, idetesting.Event{Action: result.outcome, Package: suite, Test: name, Elapsed: result.seconds})
+		events = append(events, idetesting.Event{Action: result.outcome, Package: suite, Test: name, Elapsed: result.seconds, Failure: result.failure})
 	}
 	for _, suite := range suites {
 		action := "pass"

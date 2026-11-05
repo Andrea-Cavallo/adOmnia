@@ -54,6 +54,10 @@ describe('personal appearance', () => {
       contrast(derived.accent, derived['surface-4']),
     ).toBeGreaterThanOrEqual(4.5)
   })
+  it('applies the anthracite theme untouched, without re-deriving its palette', () => {
+    const colors = { 'surface-0': '#1C202A', 'surface-1': '#2B2F38', 'text-1': '#F4F4F4' }
+    expect(personalColors(colors, {}, 'dark')).toEqual(colors)
+  })
   it('rejects malformed profiles and duplicate ids without losing valid profiles', () => {
     const profile = {
       id: 'one',

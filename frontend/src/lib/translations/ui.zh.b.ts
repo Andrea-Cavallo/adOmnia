@@ -25,6 +25,8 @@ export const ZH_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Appearance": "外观",
   "Dark theme": "深色主题",
   "Light theme": "浅色主题",
+  "Anthracite theme": "无烟煤主题",
+  "Anthracite": "无烟煤",
   "Sketch theme": "Sketch 主题",
   "Terminal Green theme": "终端绿主题",
   "Generate with AI": "使用 AI 生成",

@@ -180,6 +180,12 @@ func (t *Tree) Apply(event Event) {
 		elapsed := int64(event.Elapsed * 1000)
 		node.ElapsedMillis = elapsed
 		node.Status = event.Action
+		// A runner can carry the failing source line on the result itself (TAP, ExUnit, Dart,
+		// RSpec); the tree keeps the first location it sees for the test.
+		if node.Failure == nil && event.Failure != nil {
+			failure := *event.Failure
+			node.Failure = &failure
+		}
 		if event.Test != "" && event.Action != "skip" {
 			recordRepetition(node, event.Action == "fail", elapsed)
 		}

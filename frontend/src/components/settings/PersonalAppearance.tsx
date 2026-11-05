@@ -4,6 +4,7 @@ import { useThemesStore } from '@/stores/themes'
 import { useThemeContext } from '@/components/themes/ThemeProvider'
 import { usePersonalAppearanceTranslation } from './personalAppearanceMessages'
 import { personalColors, type PersonalColors } from '@/lib/personalAppearance'
+import { ANTHRACITE_THEME_ID } from '@/lib/anthracitePalette'
 import { validAccent, luminance } from '@/lib/accentPalette'
 import { inferThemeMode } from '@/lib/themeCatalog'
 import './PersonalAppearance.css'
@@ -125,14 +126,8 @@ export function PersonalAppearance() {
         </button>
         <button
           type="button"
-          onClick={() =>
-            setDraft({
-              themeId: 'builtin-dark',
-              // Antracite neutro: superfici grafite morbide e accento argento, per tutta l'app.
-              accentColor: '#D4D8DE',
-              baseColor: '#1E2024',
-            })
-          }
+          // Anthracite is a complete theme: base and accent on top would repaint its measured palette.
+          onClick={() => setDraft({ themeId: ANTHRACITE_THEME_ID, accentColor: undefined, baseColor: undefined })}
         >
           {t('Anthracite')}
         </button>

@@ -380,6 +380,13 @@ func (g *GoIDE) ListDirectory(sessionID, relativePath string, includeIgnored boo
 	return g.service.ListDirectory(sessionID, relativePath, includeIgnored)
 }
 
+// StartDirectoryStream returns the first page of a folder; the rest arrives as a `directory.entries`
+// event. The JS side calls it by name (`main.GoIDE.StartDirectoryStream`) and falls back to
+// ListDirectory when the runtime does not expose the method.
+func (g *GoIDE) StartDirectoryStream(sessionID, relativePath string, includeIgnored bool) (codestudio.DirectoryStreamStart, error) {
+	return g.service.StartDirectoryStream(sessionID, relativePath, includeIgnored)
+}
+
 // OpenDocument apre un documento testuale o un'immagine confinato al progetto.
 func (g *GoIDE) OpenDocument(sessionID, relativePath string) (codestudio.OpenDocument, error) {
 	return g.service.OpenDocument(sessionID, relativePath)
@@ -388,6 +395,11 @@ func (g *GoIDE) OpenDocument(sessionID, relativePath string) (codestudio.OpenDoc
 // ReadFileDataURL legge un'immagine del progetto come data URL, per gli asset del Markdown.
 func (g *GoIDE) ReadFileDataURL(sessionID, relativePath string) (string, error) {
 	return g.service.ReadFileDataURL(sessionID, relativePath)
+}
+
+// ReadTextFile reads a small UTF-8 configuration file (.taplo.toml, .editorconfig) without opening it.
+func (g *GoIDE) ReadTextFile(sessionID, relativePath string) (string, error) {
+	return g.service.ReadTextFile(sessionID, relativePath)
 }
 
 // SaveDocument salva atomicamente il buffer con protezione dalle modifiche esterne.

@@ -35,7 +35,14 @@ const (
 
 // devScriptNames sono gli script cercati, in ordine di preferenza, per avviare il dev server.
 // start:dev (Nest) viene prima di start, che nei progetti Nest avvia senza watch.
-var devScriptNames = []string{"dev", "start:dev", "start", "serve", "develop"}
+var devScriptNames = []string{"dev", "start:dev", "start", "serve", "develop", "preview"}
+
+// Un progetto che non ha uno script "dev" può comunque avere un server (preview, serve:prod,
+// start:prod): Live Preview lo usa al posto del solo dev server.
+var (
+	serverScript    = regexp.MustCompile(`(?i)(^|[\s;&|])(vite|next|nuxt|astro|ng|react-scripts|webpack-dev-server|serve|http-server|nodemon|node)\b`)
+	nonServerScript = regexp.MustCompile(`(?i)\b(build|test|lint|format|tsc|jest|vitest|eslint|prettier|migrate|typecheck)\b`)
+)
 
 // Info descrive un progetto Node.js o statico: ciò che serve per avviarlo, senza eseguire nulla.
 type Info struct {
@@ -141,6 +148,18 @@ func pickDevScript(scripts map[string]string) string {
 			return name
 		}
 	}
+	names := make([]string, 0, len(scripts))
+	for name := range scripts {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		command := strings.ToLower(strings.TrimSpace(scripts[name]))
+		if command == "" || nonServerScript.MatchString(command) || !serverScript.MatchString(command) {
+			continue
+		}
+		return name
+	}
 	return ""
 }
 
@@ -149,7 +168,7 @@ var toolPatterns = []struct {
 	pattern *regexp.Regexp
 }{
 	{ToolVite, regexp.MustCompile(`(^|[\s;&|])vite(\s|$)`)},
-	{ToolNext, regexp.MustCompile(`(^|[\s;&|])next\s+dev`)},
+	{ToolNext, regexp.MustCompile(`(^|[\s;&|])next\s+(dev|start)`)},
 	{ToolCRA, regexp.MustCompile(`react-scripts\s+start`)},
 	{ToolAngular, regexp.MustCompile(`(^|[\s;&|])ng\s+serve`)},
 	{ToolAstro, regexp.MustCompile(`(^|[\s;&|])astro\s+dev`)},

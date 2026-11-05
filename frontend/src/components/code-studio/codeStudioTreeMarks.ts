@@ -14,6 +14,16 @@ export interface CodeStudioTreeMark {
   testFailed?: boolean
 }
 
+/**
+ * Value equality for one node's decoration. The marks map is rebuilt when any diagnostic or Git
+ * status changes, but a tree row must re-render only when its own mark changed.
+ */
+export function sameTreeMark(left: CodeStudioTreeMark | undefined, right: CodeStudioTreeMark | undefined): boolean {
+  if (left === right) return true
+  if (!left || !right) return false
+  return left.vcs === right.vcs && left.problem === right.problem && left.problems === right.problems && left.testFailed === right.testFailed
+}
+
 export interface TreeMarkInput {
   changes: Array<{ relativePath: string; status: string; untracked: boolean; conflicted: boolean }>
   diagnostics: Array<{ relativePath?: string; diagnostics: Array<{ severity: number }> }>

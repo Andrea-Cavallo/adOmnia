@@ -5,12 +5,15 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/fileio"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
@@ -51,51 +54,158 @@ func (m *DocumentManager) ListDirectory(proj Project, relativePath string, inclu
 	if err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(directory)
+	base, err := relativeDirectory(proj.RealPath, directory)
+	if err != nil {
+		return nil, err
+	}
+	// A folder of 50k generated files must not allocate 50k entries: the explorer shows at most
+	// MaxDirectoryItems, so read it in chunks and stop as soon as the visible limit is reached.
+	// Yazi does the same with its scanner: entries are produced until the consumer says stop.
+	file, err := os.Open(directory) // #nosec G304 -- path resolved and confined to the project root above
 	if err != nil {
 		return nil, fmt.Errorf("could not read the folder: %w", err)
 	}
+	defer file.Close()
 	ignore := project.LoadGitIgnore(proj.RealPath)
-	result := make([]FileEntry, 0, min(len(entries), MaxDirectoryItems))
-	for _, entry := range entries {
-		if len(result) >= MaxDirectoryItems {
+	result := make([]FileEntry, 0, min(MaxDirectoryItems, directoryReadBatch))
+	batchSize := directoryReadBatch
+	for len(result) < MaxDirectoryItems {
+		batch, readErr := file.ReadDir(batchSize)
+		for _, entry := range batch {
+			if len(result) >= MaxDirectoryItems {
+				break
+			}
+			path := filepath.Join(directory, entry.Name())
+			isDir := entry.IsDir()
+			ignored := (isDir && skipWalkDirectory(path, entry.Name())) || gitIgnored(ignore, proj.RealPath, path, isDir)
+			// Le cartelle ignorate restano nascoste come giÃ  accade per node_modules e build;
+			// i file ignorati restano visibili ma marcati (es. .env, spesso in .gitignore).
+			if ignored && isDir && !includeIgnored {
+				continue
+			}
+			// No entry.Info(): name, kind, ignore state and language are everything the tree
+			// renders. A stat per entry (bytes, mtime) is what Yazi defers to the size task.
+			result = append(result, FileEntry{
+				Name:         entry.Name(),
+				RelativePath: joinRelative(base, entry.Name()),
+				Directory:    isDir,
+				Ignored:      ignored,
+				Language:     languageForPath(entry.Name()),
+			})
+		}
+		if readErr == io.EOF {
 			break
 		}
-		path := filepath.Join(directory, entry.Name())
-		ignored := (entry.IsDir() && skipWalkDirectory(path, entry.Name())) || gitIgnored(ignore, proj.RealPath, path, entry.IsDir())
-		// Le cartelle ignorate restano nascoste come già accade per node_modules e build;
-		// i file ignorati restano visibili ma marcati (es. .env, spesso in .gitignore).
-		if ignored && entry.IsDir() && !includeIgnored {
-			continue
+		if readErr != nil {
+			return nil, fmt.Errorf("could not read the folder: %w", readErr)
 		}
-		info, infoErr := entry.Info()
-		if infoErr != nil {
-			continue
+		if len(batch) == 0 {
+			break
 		}
-		rel, relErr := filepath.Rel(proj.RealPath, path)
-		if relErr != nil {
-			continue
-		}
-		result = append(result, FileEntry{
-			Name:         entry.Name(),
-			RelativePath: filepath.ToSlash(rel),
-			Directory:    entry.IsDir(),
-			Ignored:      ignored,
-			Size:         info.Size(),
-			ModifiedAt:   info.ModTime().UTC(),
-			Language:     languageForPath(entry.Name()),
-		})
+		// Folders that are actually large read the following chunks in bigger batches; a small
+		// folder never pays for a 1,024-entry slice it does not need.
+		batchSize = directoryReadBatchLarge
 	}
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].Directory != result[j].Directory {
-			return result[i].Directory
+	slices.SortFunc(result, func(left, right FileEntry) int {
+		if left.Directory != right.Directory {
+			if left.Directory {
+				return -1
+			}
+			return 1
 		}
-		return strings.ToLower(result[i].Name) < strings.ToLower(result[j].Name)
+		return compareFolded(left.Name, right.Name)
 	})
 	return result, nil
 }
 
-// OpenDocument legge un file testuale e crea un'identità stabile nella sessione indicata.
+// directoryReadBatch is the chunk read at a time from a folder: big enough to amortize the syscall,
+// small enough that a huge directory never materializes a DirEntry slice of its own size.
+const (
+	directoryReadBatch      = 256
+	directoryReadBatchLarge = 1024
+)
+
+// relativeDirectory is the slash path of directory inside the project root, "" for the root itself.
+func relativeDirectory(root, directory string) (string, error) {
+	relative, err := filepath.Rel(root, directory)
+	if err != nil {
+		return "", fmt.Errorf("could not read the folder: %w", err)
+	}
+	relative = filepath.ToSlash(relative)
+	if relative == "." {
+		return "", nil
+	}
+	return strings.TrimSuffix(relative, "/"), nil
+}
+
+// joinRelative appends a name to a slash-relative folder path ("" is the root).
+func joinRelative(base, name string) string {
+	if base == "" {
+		return name
+	}
+	return base + "/" + name
+}
+
+// compareFolded orders two names case-insensitively without allocating a lowercase copy on every
+// comparison (sort calls this O(n log n) times on a folder with thousands of entries).
+func compareFolded(left, right string) int {
+	// ASCII fast path: file names are almost always ASCII, and decoding a rune per byte for every
+	// sort comparison costs more than the comparison itself.
+	index := 0
+	for index < len(left) && index < len(right) {
+		leftByte, rightByte := left[index], right[index]
+		if leftByte >= utf8.RuneSelf || rightByte >= utf8.RuneSelf {
+			return compareFoldedUnicode(left[index:], right[index:])
+		}
+		if leftByte >= 'A' && leftByte <= 'Z' {
+			leftByte += 'a' - 'A'
+		}
+		if rightByte >= 'A' && rightByte <= 'Z' {
+			rightByte += 'a' - 'A'
+		}
+		if leftByte != rightByte {
+			if leftByte < rightByte {
+				return -1
+			}
+			return 1
+		}
+		index++
+	}
+	switch {
+	case len(left) == len(right):
+		return 0
+	case index == len(left):
+		return -1
+	default:
+		return 1
+	}
+}
+
+// compareFoldedUnicode is the full case-folding comparison for names with non-ASCII characters.
+func compareFoldedUnicode(left, right string) int {
+	for left != "" && right != "" {
+		leftRune, leftSize := utf8.DecodeRuneInString(left)
+		rightRune, rightSize := utf8.DecodeRuneInString(right)
+		leftRune, rightRune = unicode.ToLower(leftRune), unicode.ToLower(rightRune)
+		if leftRune != rightRune {
+			if leftRune < rightRune {
+				return -1
+			}
+			return 1
+		}
+		left, right = left[leftSize:], right[rightSize:]
+	}
+	switch {
+	case left == "" && right == "":
+		return 0
+	case left == "":
+		return -1
+	default:
+		return 1
+	}
+}
+
+// OpenDocument legge un file testuale e crea un'identitÃ  stabile nella sessione indicata.
 func (m *DocumentManager) OpenDocument(session Session, relativePath string) (OpenDocument, error) {
 	path, err := m.ResolveProjectPath(session.Project, relativePath)
 	if err != nil {
@@ -471,7 +581,7 @@ func isIgnoredDirectory(name string) bool {
 	return project.IgnoredDirectory(name)
 }
 
-// skipWalkDirectory è il filtro dei walk sul progetto: cartelle sempre escluse più gli output di build
+// skipWalkDirectory Ã¨ il filtro dei walk sul progetto: cartelle sempre escluse piÃ¹ gli output di build
 // (target accanto a Cargo.toml/pom.xml, obj accanto a un progetto .NET).
 func skipWalkDirectory(path, name string) bool {
 	return project.SkipDirectory(filepath.Dir(path), name)

@@ -1,4 +1,6 @@
 import { accentTokens } from '@/lib/accentPalette'
+import { ANTHRACITE_TERMINAL, anthraciteActive } from '@/lib/anthracitePalette'
+import { cssColorToken } from '@/lib/cssColorToken'
 import type { ITheme } from '@xterm/xterm'
 
 /**
@@ -56,10 +58,14 @@ const lightTheme: ITheme = {
 export function codeStudioTerminalTheme(theme: 'light' | 'dark', customAccent?: string, presetId?: string): ITheme {
   const selected = TERMINAL_THEMES.find((item) => item.id === presetId)
   if (selected && selected.id !== 'adomnia-dark' && selected.id !== 'adomnia-light') return { ...selected.colors }
+  if (theme === 'dark' && selected?.id !== 'adomnia-light' && anthraciteActive()) return { ...ANTHRACITE_TERMINAL }
   if (selected?.id === 'adomnia-light') return { ...lightTheme }
   const base = selected?.id === 'adomnia-dark' ? darkTheme : theme === 'light' ? lightTheme : darkTheme
   const tokens = accentTokens(customAccent ?? '', selected?.id === 'adomnia-dark' ? 'dark' : theme)
-  return tokens.accent ? { ...base, cursor: tokens.accent, selectionBackground: tokens['accent-glow'] } : base
+  const themed = tokens.accent ? { ...base, cursor: tokens.accent, selectionBackground: tokens['accent-glow'] } : { ...base }
+  // The terminal is an island, so in dark mode it takes the live surface instead of a fixed fill.
+  const island = theme === 'dark' ? cssColorToken('--color-surface-1') : undefined
+  return island ? { ...themed, background: island, cursorAccent: island } : themed
 }
 
 

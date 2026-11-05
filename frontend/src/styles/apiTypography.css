@@ -25,18 +25,28 @@
 .api-request-bar .api-method,
 .api-request-bar .api-url { background: var(--color-surface-1); border-color: var(--color-border-1); border-radius: 4px; }
 .api-request-bar .api-url:focus-within { border-color: var(--color-accent); }
-/* Quiet dot-matrix action, with palette-owned ink and a running indicator. */
+/* Outlined send action: transparent fill, hairline border, icon + tracked label,
+   so the primary action reads as a control without shouting over the request. */
 .api-request-bar .api-send-nothing {
   --send-ink: var(--color-accent);
-  position: relative; border: 0; border-radius: 4px;
-  color: var(--send-ink); background: transparent; box-shadow: none;
+  position: relative;
+  border: 1px solid var(--send-ink);
+  border-radius: 6px;
+  color: var(--send-ink);
+  background: transparent;
+  box-shadow: none;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
-.api-send-label { font-family: Doto, var(--font-mono); font-weight: 800; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; line-height: 1; }
+.api-send-icon { display: grid; place-items: center; flex: none; color: currentColor; }
+.api-send-label { font-family: Doto, var(--font-mono); font-weight: 800; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; line-height: 1; }
 .api-send-status { width: 5px; height: 5px; border-radius: 50%; background: var(--send-ink); visibility: hidden; }
 .api-send-status[data-running="true"] { visibility: visible; box-shadow: 0 0 6px var(--send-ink); animation: api-send-pulse 1.2s ease-in-out infinite; }
-.api-request-bar .api-send-nothing:hover:not(:disabled) { background: transparent; }
-.api-request-bar .api-send-nothing:hover:not(:disabled) .api-send-label { text-decoration: underline; text-underline-offset: 5px; }
+.api-request-bar .api-send-nothing:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--send-ink) 10%, transparent);
+  border-color: var(--send-ink);
+}
 .api-request-bar .api-send-nothing:active:not(:disabled) { transform: translateY(1px); }
+.api-request-bar .api-send-nothing:focus-visible { outline: 2px solid var(--send-ink); outline-offset: 2px; }
 @keyframes api-send-pulse { 50% { opacity: .4; } }
 @media (prefers-reduced-motion: reduce) { .api-send-status[data-running="true"] { animation: none; } }
 .api-actions { position: relative; flex-shrink: 0; }

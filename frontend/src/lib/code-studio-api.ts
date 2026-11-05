@@ -6,7 +6,7 @@ import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/a
 import type { BundleDetail, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import type { Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Path as FlowPath, RuntimeEvidence as FlowRuntimeEvidence, Trace as FlowTrace } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
-import { Events } from '@wailsio/runtime'
+import { Call, Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
 import type { FileChange as AgentReviewFileModel, Review as AgentReviewModel } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/ide/agentreview/models'
 import type {
@@ -162,8 +162,37 @@ export async function listGoIDEDirectory(sessionId: string, relativePath = '', i
   return GoIDEBindings.ListDirectory(sessionId, relativePath, includeIgnored)
 }
 
+/** First page of a folder listing; the complete list follows as a `directory.entries` event. */
+export interface GoIDEDirectoryStreamStart {
+  streamId: string
+  relativePath: string
+  entries: GoIDEFileEntry[]
+  done: boolean
+}
+
+export interface GoIDEDirectoryStreamChunk {
+  streamId: string
+  relativePath: string
+  entries: GoIDEFileEntry[]
+  done: boolean
+}
+
+/**
+ * Starts a folder listing: the first page is returned immediately, the complete sorted list arrives
+ * as a `directory.entries` event carrying the same stream id. Called by name because the generated
+ * bindings predate the method; callers fall back to ListDirectory when the runtime does not expose it.
+ */
+export function startGoIDEDirectoryStream(sessionId: string, relativePath = '', includeIgnored = false): Promise<GoIDEDirectoryStreamStart> {
+  return Call.ByName('main.GoIDE.StartDirectoryStream', sessionId, relativePath, includeIgnored) as Promise<GoIDEDirectoryStreamStart>
+}
+
 export async function openGoIDEDocument(sessionId: string, relativePath: string): Promise<GoIDEOpenDocument> {
   return GoIDEBindings.OpenDocument(sessionId, relativePath)
+}
+
+/** Reads a small configuration file without opening an editor document. */
+export async function readGoIDETextFile(sessionId: string, relativePath: string): Promise<string> {
+  return GoIDEBindings.ReadTextFile(sessionId, relativePath)
 }
 
 export async function compareGoIDEPaths(sessionId: string, leftPath: string, rightPath: string): Promise<GoIDEPathComparison> {

@@ -100,7 +100,7 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
             {!focused && <ResizeHandle variant="splitter" label="Resize project pane" className="absolute inset-y-0 -right-2" {...onProjectResize} />}
           </div>
           <div className="relative" style={focused ? { display: 'none' } : { gridColumn: `${left.length + 1} / span ${centerColumns}`, gridRow: 1 }}>
-            <div className="code-studio-island absolute inset-0">{debugging ? <div className="flex h-full min-h-0 flex-col">
+            <div className="code-studio-island code-studio-island-editor absolute inset-0">{debugging ? <div className="flex h-full min-h-0 flex-col">
                 <div className="code-studio-tool-header">
                   <CodeStudioToolWindowMenu session={session} title="Debug" />
                   <button type="button" aria-label="Hide tool window" title="Hide · Alt+4" className="code-studio-icon-button ml-auto h-7 w-7" onClick={() => useCodeStudioStore.getState().updateLayout({ bottomOpen: false })}><Minus size={14} /></button>
@@ -129,7 +129,7 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
             {callView && !focused && <ResizeHandle variant="splitter" label="Resize Function Explorer" className={`absolute inset-y-0 ${functionDock.side === 'right' ? '-left-2' : '-right-2'}`} {...functionDock.resize} />}
           </div>
           <div className="relative" style={styleFor('run')}>
-            <div className="code-studio-island absolute inset-0">
+            <div className="code-studio-island code-studio-island-run absolute inset-0">
               {view !== 'find' && !debugging && <CodeStudioRunPanel session={session} visible={bottomOpen} onCommand={onCommand} />}
             </div>
             {!focused && (placements[bottomKey] ?? 'bottom') === 'bottom' && <ResizeHandle variant="splitter" orientation="horizontal" label="Resize tool window" className="absolute inset-x-0 -top-2" {...onBottomResize} />}

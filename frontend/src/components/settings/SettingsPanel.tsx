@@ -41,9 +41,11 @@ import { Toggle, Select, NumberInput, TextInput, PasswordInput, TextAreaInput } 
 import { AISettings } from './AISettings'
 import { DangerZone, SectionHeader, SettingsCard } from './SettingsLayout'
 import { NetworkPrivacySettings } from './NetworkPrivacySettings'
+import { SearchEngineSettings } from './SearchEngineSettings'
 import { UpdateCheckRow } from './UpdateCheckRow'
 import { WorkspacePanel } from '@/components/workspace/WorkspacePanel'
 import { redactSensitiveData } from '@/lib/secretRedaction'
+import { THIRD_PARTY_LICENSES } from './thirdPartyLicenses'
 import * as AppBindings from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
 const ThemePanel = lazy(() => import('@/components/themes/ThemePanel').then((module) => ({ default: module.ThemePanel })))
 const TemplatesWorkspace = lazy(() => import('@/components/templates/TemplatesWorkspace').then((module) => ({ default: module.TemplatesWorkspace })))
@@ -461,6 +463,7 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 onChange={(v) => updateGeneral({ confirmBeforeClosingDirtyTabs: v })}
               />
             </SettingsCard>
+            <SearchEngineSettings />
           </>
         )}
 
@@ -1138,15 +1141,10 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                   <summary className="cursor-pointer hover:text-text-1">
                     {s.about.openSourceLicenses}
                   </summary>
-                  <div className="mt-2 text-[12px] text-text-3 space-y-1">
-                    <p>React — MIT License</p>
-                    <p>Vite — MIT License</p>
-                    <p>Zustand — MIT License</p>
-                    <p>lucide-react — ISC License</p>
-                    <p>tailwind-merge — MIT License</p>
-                    <p>class-variance-authority — Apache 2.0</p>
-                    <p>clsx — MIT License</p>
-                    <p>Wails — MIT License</p>
+                  <div className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1 text-[12px] text-text-3">
+                    {THIRD_PARTY_LICENSES.map(({ license, packages }) => (
+                      <p key={license} className="break-words"><span className="font-medium text-text-2">{license}</span> — {packages.join(', ')}</p>
+                    ))}
                   </div>
                 </details>
               </div>

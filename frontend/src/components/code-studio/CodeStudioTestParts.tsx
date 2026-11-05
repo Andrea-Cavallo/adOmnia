@@ -2,7 +2,7 @@ import { withContentKeys } from '@/lib/contentKeys'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { Bug, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Clock3, Copy, Gauge, Loader2, MinusCircle, Play, Repeat, Shuffle, ShieldCheck, XCircle } from 'lucide-react'
 import { Clipboard as WailsClipboard } from '@wailsio/runtime'
-import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, type GoIDETestRun } from '@/lib/code-studio-tests-api'
+import { getGoIDETestOutput, type GoIDECoverageReport, type GoIDETestResult, type GoIDETestRun, type GoIDETestRunRequest } from '@/lib/code-studio-tests-api'
 import { requestWorkspaceSymbols } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { selectedTestRun, useCodeStudioTestsStore } from '@/stores/codeStudioTests'
@@ -19,6 +19,23 @@ import { testFailureDraft } from '@/lib/code-studio/testFailureAI'
 import { isChatPane, useCodeStudioAssistantStore } from '@/stores/codeStudioAssistant'
 
 const OUTPUT_LOCATION = /^(\s+)([\w.\-/]+\.go):(\d+)(:.*)$/
+
+// Languages whose runner has a reliable single-test filter in the backend. Go's -run is a regex,
+// Dart/RSpec/busted take a name/pattern; the rest answer with an explicit "not supported" error.
+const RERUN_LANGUAGES = new Set(['go', 'dart', 'ruby', 'lua', 'elixir', 'scala', 'haskell'])
+
+/** ExUnit filters by location, so a passed test without a failure line has no single-test target. */
+function canRerun(result: GoIDETestResult, language: string): boolean {
+  if (!result.name || !RERUN_LANGUAGES.has(language)) return false
+  return language !== 'elixir' || !!result.failure?.line
+}
+
+function rerunFilter(result: GoIDETestResult, language: string): string {
+  if (language === 'elixir' && result.failure) {
+    return `${result.failure.relativePath ?? result.failure.file}:${result.failure.line}`
+  }
+  return result.name ?? ''
+}
 
 export function StatusIcon({ status }: { status: string }) {
   switch (status) {
@@ -275,6 +292,15 @@ export function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun
   const [aiErrorState, setAIErrorState] = useState<{ key: string; message: string } | null>(null)
   const aiError = aiErrorState?.key === outputKey ? aiErrorState.message : null
   const setAIError = (message: string | null) => setAIErrorState(message === null ? null : { key: outputKey, message })
+  const [rerunError, setRerunError] = useState<string | null>(null)
+  const rerunTest = async () => {
+    setRerunError(null)
+    try {
+      await useCodeStudioTestsStore.getState().start({ ...run.request, sessionId: run.sessionId, run: rerunFilter(result, run.request.language || 'go') } as GoIDETestRunRequest)
+    } catch (reason) {
+      setRerunError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
   const openLocation = useCodeStudioStore((state) => state.openLocation)
   useEffect(() => {
     let cancelled = false
@@ -306,12 +332,18 @@ export function TestDetail({ run, result, runs, benchmark }: { run: GoIDETestRun
           <button type="button" onClick={() => void openLocation(result.failure!.relativePath!, result.failure!.line, 1)} className="shrink-0 font-mono text-[12px] text-danger underline decoration-danger/40 underline-offset-2">{result.failure.relativePath}:{result.failure.line}</button>
         )}
         <span className="ml-auto shrink-0 text-[12px] text-text-4">{result.elapsedMillis > 0 ? formatDuration(result.elapsedMillis) : ''}</span>
+        {canRerun(result, run.request.language || 'go') && (
+          <button type="button" onClick={() => void rerunTest()} title="Run only this test" className="inline-flex shrink-0 items-center gap-1 rounded border border-border-2 px-1.5 py-0.5 text-text-2 hover:border-accent hover:text-accent">
+            <Play size={10} fill="currentColor" aria-hidden="true" /> Rerun
+          </button>
+        )}
         {isFailed(result) && <button type="button" onClick={() => void analyzeFailure()} disabled={aiBusy || !output?.trim()} title="Prepare a failure analysis draft in AI chat; review it before sending" className="shrink-0 rounded border border-border-2 px-1.5 py-0.5 text-text-2 hover:border-accent hover:text-accent disabled:opacity-40">{aiBusy ? 'Preparing…' : 'Analyze failure'}</button>}
         <button type="button" onClick={() => void WailsClipboard.SetText(reproduceCommandFor(run, result))} title="Copy the go test command that reproduces this run (filter, repetitions, -shuffle seed, -race, tags)" className="grid h-5 w-5 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1">
           <Copy size={10} aria-hidden="true" />
         </button>
       </div>
       <RepetitionSummary run={run} result={result} output={output} />
+      {rerunError && <p role="alert" className="shrink-0 px-3 py-1 text-[13px] text-danger">{rerunError}</p>}
       {aiError && <p role="alert" className="shrink-0 px-3 py-1 text-[13px] text-danger">{aiError}</p>}
       <div className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[12px] leading-4 text-text-2">
         {benchmarkMeasurementFor(result)

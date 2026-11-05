@@ -1,6 +1,7 @@
 package codestudio
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -211,5 +212,70 @@ func TestLanguageForPathCoversProjectFiles(t *testing.T) {
 		if got := languageForPath(path); got != want {
 			t.Errorf("languageForPath(%q) = %q, want %q", path, got, want)
 		}
+	}
+}
+
+func TestListDirectorySortsFoldersFirstCaseInsensitively(t *testing.T) {
+	root := t.TempDir()
+	for _, directory := range []string{"zeta", "Alpha"} {
+		if err := os.MkdirAll(filepath.Join(root, directory), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"b.go", "A.go"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("package p\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := NewDocumentManager().ListDirectory(Project{RealPath: root}, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, entry := range entries {
+		got = append(got, entry.Name)
+	}
+	want := []string{"Alpha", "zeta", "A.go", "b.go"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+}
+
+func TestListDirectoryCapsHugeFolders(t *testing.T) {
+	root := t.TempDir()
+	for index := range 1_200 {
+		name := filepath.Join(root, fmt.Sprintf("File%05d.go", index))
+		if err := os.WriteFile(name, []byte("package p\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := NewDocumentManager().ListDirectory(Project{RealPath: root}, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != MaxDirectoryItems {
+		t.Fatalf("entries = %d, want %d", len(entries), MaxDirectoryItems)
+	}
+	for index := 1; index < len(entries); index++ {
+		if strings.ToLower(entries[index-1].Name) > strings.ToLower(entries[index].Name) {
+			t.Fatalf("unsorted at %d: %q > %q", index, entries[index-1].Name, entries[index].Name)
+		}
+	}
+}
+
+func TestListDirectoryBuildsNestedRelativePaths(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "src", "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "src", "pkg", "Main.java"), []byte("class Main {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := NewDocumentManager().ListDirectory(Project{RealPath: root}, "src/pkg", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].RelativePath != "src/pkg/Main.java" {
+		t.Fatalf("entries = %+v", entries)
 	}
 }

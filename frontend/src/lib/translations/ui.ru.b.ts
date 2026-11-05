@@ -25,6 +25,8 @@ export const RU_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Appearance": "Внешний вид",
   "Dark theme": "Тёмная тема",
   "Light theme": "Светлая тема",
+  "Anthracite theme": "Тема «Антрацит»",
+  "Anthracite": "Антрацит",
   "Sketch theme": "Тема Sketch",
   "Terminal Green theme": "Тема Terminal Green",
   "Generate with AI": "Сгенерировать с помощью ИИ",

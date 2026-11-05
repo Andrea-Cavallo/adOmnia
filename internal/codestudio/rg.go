@@ -61,6 +61,9 @@ func RipgrepBinary(toolsRoot string) (string, bool) {
 			for _, candidate := range []string{
 				filepath.Join(dir, name),
 				filepath.Join(dir, "bin", name),
+				// The development build stages the pinned binary under build/rg/<goos>/ instead of
+				// next to the executable; release packages put it beside the app.
+				filepath.Join(dir, "build", "rg", runtime.GOOS, name),
 				filepath.Join(dir, "..", "Resources", "bin", name),
 			} {
 				if path, ok := try(candidate); ok {
