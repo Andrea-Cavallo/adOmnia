@@ -6,7 +6,7 @@ import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { beginToolInstall, endToolInstall } from '@/stores/codeStudioToolInstall'
 
 /** Everything adOmnia can download for the IDE, in one list: the Installer dialog and its tests read only this. */
-export type InstallerGroup = 'servers' | 'diagnostics' | 'debug' | 'security' | 'tools'
+export type InstallerGroup = 'servers' | 'diagnostics' | 'debug' | 'security' | 'tools' | 'goTools'
 
 export type InstallerSource =
   | { kind: 'module'; binary: string; module: string }
@@ -27,7 +27,8 @@ export const INSTALLER_GROUPS: ReadonlyArray<{ id: InstallerGroup; label: string
   { id: 'diagnostics', label: 'Linters & diagnostics', hint: 'Problems, lint on save, quick fixes' },
   { id: 'debug', label: 'Run & Debug', hint: 'Breakpoints, stepping, variables' },
   { id: 'security', label: 'Security', hint: 'Vulnerabilities your code actually reaches, AI pentest' },
-  { id: 'tools', label: 'Go tools', hint: 'Imports, mocks, generated code' },
+  { id: 'tools', label: 'Tools', hint: 'Search engine and command-line helpers, installed into adOmnia' },
+  { id: 'goTools', label: 'Go tools', hint: 'Imports, mocks, generated code' },
 ]
 
 export const INSTALLER_TOOLS: ReadonlyArray<InstallerTool> = [
@@ -60,10 +61,10 @@ export const INSTALLER_TOOLS: ReadonlyArray<InstallerTool> = [
   { id: 'dlv', name: 'Delve', group: 'debug', purpose: 'Go debugger (launch, attach, remote)', source: { kind: 'module', binary: 'dlv', module: 'github.com/go-delve/delve/cmd/dlv@latest' } },
   { id: 'govulncheck', name: 'govulncheck', group: 'security', purpose: 'Known vulnerabilities your code actually calls', source: { kind: 'module', binary: 'govulncheck', module: 'golang.org/x/vuln/cmd/govulncheck@latest' } },
   { id: 'strix', name: 'Strix', group: 'security', purpose: 'AI pentest agents (needs Docker)', source: { kind: 'strix' } },
-  { id: 'goimports', name: 'goimports', group: 'tools', purpose: 'Fix imports and format files', source: { kind: 'module', binary: 'goimports', module: 'golang.org/x/tools/cmd/goimports@latest' } },
-  { id: 'mockgen', name: 'mockgen', group: 'tools', purpose: 'Mocks from interfaces', source: { kind: 'module', binary: 'mockgen', module: 'go.uber.org/mock/mockgen@latest' } },
-  { id: 'stringer', name: 'stringer', group: 'tools', purpose: 'String() for enum constants', source: { kind: 'module', binary: 'stringer', module: 'golang.org/x/tools/cmd/stringer@latest' } },
-  { id: 'ripgrep', name: 'ripgrep', group: 'tools', purpose: 'Fast Find in Files engine (bundled in release builds)', source: { kind: 'ripgrep' } },
+  { id: 'goimports', name: 'goimports', group: 'goTools', purpose: 'Fix imports and format files', source: { kind: 'module', binary: 'goimports', module: 'golang.org/x/tools/cmd/goimports@latest' } },
+  { id: 'mockgen', name: 'mockgen', group: 'goTools', purpose: 'Mocks from interfaces', source: { kind: 'module', binary: 'mockgen', module: 'go.uber.org/mock/mockgen@latest' } },
+  { id: 'stringer', name: 'stringer', group: 'goTools', purpose: 'String() for enum constants', source: { kind: 'module', binary: 'stringer', module: 'golang.org/x/tools/cmd/stringer@latest' } },
+  { id: 'ripgrep', name: 'ripgrep', group: 'tools', purpose: 'Fast Find in Files engine (bundled in release builds, installable/updatable here)', source: { kind: 'ripgrep' } },
 ]
 
 export interface InstallerStatus {
@@ -159,4 +160,11 @@ async function followStrix(sessionId: string, runId: string, done: () => void): 
 
 export function finishInstall(sessionId: string, toolId: string, succeeded: boolean): void {
   endToolInstall(sessionId, `installer:${toolId}`, succeeded)
+}
+
+/** Counts for the progress bar of one batch: null when there is no batch. `current` is the first tool still busy. */
+export function installProgress(batch: readonly string[], isBusy: (id: string) => boolean): { done: number; total: number; current?: string } | null {
+  if (!batch.length) return null
+  const busy = batch.filter((id) => isBusy(id))
+  return { done: batch.length - busy.length, total: batch.length, current: busy[0] }
 }

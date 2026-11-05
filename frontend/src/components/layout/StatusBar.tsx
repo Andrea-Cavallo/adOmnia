@@ -11,8 +11,11 @@ import { AccentColorSetting } from '@/components/settings/AccentColorSetting'
 import { useSettingsStore } from '@/stores/settings'
 import { ResourceStatus } from './ResourceStatus'
 import { luminance, validAccent } from '@/lib/accentPalette'
+import { ANTHRACITE_THEME_ID } from '@/lib/anthracitePalette'
 
 const BASE_PRESETS = { dark: ['#000000', '#0B1020', '#111827', '#1C1917'], light: ['#FFFFFF', '#F8FAFC', '#FAF7F0', '#EEF2F7'] } as const
+
+const quickButton = (active: unknown) => cn('h-6 px-2 gap-1.5 flex items-center justify-center rounded transition-colors', active ? 'bg-surface-3 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')
 
 export function StatusBar() {
   const tr = useUiTranslation()
@@ -77,6 +80,15 @@ export function StatusBar() {
   const modeBases = useSettingsStore((s) => s.settings.appearance.modeBases)
   const activeBase = useSettingsStore((s) => s.settings.appearance.baseColor)
   const accentColor = useSettingsStore((s) => s.settings.appearance.accentColor)
+  // Anthracite is a complete theme: base and accent come off, or they would repaint the measured palette.
+  const anthraciteActive = activeThemeId === ANTHRACITE_THEME_ID
+  const darkPresetActive = currentMode === 'dark' && !anthraciteActive
+  const applyAnthracite = () => {
+    const anthracite = themes.find((t) => t.id === ANTHRACITE_THEME_ID)
+    if (!anthracite) return
+    applyTheme(anthracite)
+    updateAppearance({ accentColor: undefined })
+  }
   const appearanceRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!paletteOpen) return
@@ -145,32 +157,42 @@ export function StatusBar() {
           {([
             { mode: 'dark' as const, Icon: Moon, label: tr('Dark theme'), text: 'Dark' },
             { mode: 'light' as const, Icon: Sun, label: tr('Light theme'), text: 'White' },
-          ]).map(({ mode, Icon, label, text }) => (
-            <button
-              key={mode}
-              onClick={() => { applyQuickMode(mode, null); updateAppearance({ accentColor: undefined }) }}
-              title={`${label} · ${tr('Default colors')}`}
-              aria-label={label}
-              aria-pressed={currentQuickMode === mode}
-              className={cn(
-                'h-6 px-2 gap-1.5 flex items-center justify-center rounded transition-colors',
-                currentQuickMode === mode
-                  ? 'bg-surface-3 text-accent'
-                  : 'text-text-4 hover:bg-surface-3 hover:text-text-2',
-              )}
-            >
-              <Icon size={11} /><span>{text}</span>
-            </button>
-          ))}
+          ]).map(({ mode, Icon, label, text }) => {
+            // Dark and Anthracite share the dark mode: only one may look pressed.
+            const active = mode === 'dark' ? darkPresetActive : currentQuickMode === mode
+            return (
+              <button
+                key={mode}
+                onClick={() => { applyQuickMode(mode, null); updateAppearance({ accentColor: undefined }) }}
+                title={`${label} · ${tr('Default colors')}`}
+                aria-label={label}
+                aria-pressed={active}
+                className={quickButton(active)}
+              >
+                <Icon size={11} /><span>{text}</span>
+              </button>
+            )
+          })}
+          <button
+            onClick={applyAnthracite}
+            title={tr('Anthracite theme')}
+            aria-label={tr('Anthracite theme')}
+            aria-pressed={anthraciteActive}
+            className={quickButton(anthraciteActive)}
+          >
+            <span
+              aria-hidden="true"
+              className="h-2.5 w-2.5 shrink-0 rounded-[2px] border border-border-3"
+              style={{ background: '#1C202A' }}
+            />
+            <span>{tr('Anthracite')}</span>
+          </button>
           <button
             onClick={() => setPaletteMode((open) => (open ? null : currentMode))}
             title={tr('Accent and base color')}
             aria-label={tr('Custom colors')}
             aria-expanded={paletteOpen}
-            className={cn(
-              'h-6 px-2 gap-1.5 flex items-center justify-center rounded transition-colors',
-              paletteOpen || accentColor || activeBase ? 'bg-surface-3 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2',
-            )}
+            className={quickButton(paletteOpen || accentColor || activeBase)}
           >
             <Palette size={11} /><span>{tr('Custom')}</span>
           </button>

@@ -6,6 +6,15 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Fixes
+
+- **Installer: installing several tools no longer hangs.** The confirmation grew taller than the window (4,400 px with 24 tools), so its buttons were out of reach, and it opened behind the Installer window; every confirmation now stays on screen, on top of any window, and scrolls. *Install selected* shows a progress bar with the current tool and a count.
+- **Database Studio no longer crashes at startup.** The placeholder connection got a new id on every render until the connections loaded, an endless render loop (React #301) when the panel was restored at startup.
+
+### Anthracite theme
+
+- **A real theme next to Dark and White in the Hub.** `builtin-anthracite` replaces the base color derived from a single hex: surfaces, code colors, brackets by depth (yellow, pink, cyan), terminal and JSON use a palette measured on the reference screenshot, in Code Studio and in every other module.
+
 ## [1.0.25] — 2026-11-05
 
 Release notes: [docs/releases/v1.0.25.md](docs/releases/v1.0.25.md).
@@ -53,6 +62,58 @@ Release notes: [docs/releases/v1.0.25.md](docs/releases/v1.0.25.md).
 - **`adomnia mcp` now speaks Code Studio.** The project folder passed to the server is also the default workspace, so an agent asks the same engine the IDE uses: `osgi_workspace`, `osgi_bundles` (state/Activator/start level, full-text query, source/state/issues filters, limit+offset paging for very large workspaces), `osgi_bundle` (manifest, wiring, diagnostics, Activator lines, services, impact, focused graph), `osgi_search`, `osgi_impact` (bundle or class), `osgi_diagnose`, `osgi_resolve` (any MANIFEST.MF or existing bundle against the active target), `osgi_target` (active target and comparison). The app does not need to be open: the folder, its `.adomnia/eclipse-target.json` and the target index are read directly.
 - **Writes are opt-in and confined.** `--write` (or `ADOMNIA_MCP_WRITE=1`) enables `osgi_set_target`, `osgi_manifest_set` (header rewritten preserving order, line endings and the rest of the manifest, re-parsed before saving), `osgi_manifest_requirement` (append a clause, or add the missing range to an existing unversioned one: the usual fix for an unresolved import), `osgi_import_plugins`, `osgi_add_target_jars`, and `workspace_read_file` / `workspace_write_file` / `workspace_list_files`. File writes are atomic, limited to the workspace (traversal and symlink escapes refused), 4 MiB, and accept an expected SHA-256 so a concurrent edit is never overwritten. The explorer cache is invalidated after every write.
 - **Tested:** new Go tests build a PDE workspace with a target, then drive the tools through the server and through the real stdio entry point: overview/filters/paging, bundle detail/impact/diagnostics, manifest resolution (resolved and version-conflict), target info, manifest and requirement edits, read/write, traversal refusal, stale-hash refusal, file listing and write opt-in. `go test ./internal/adomniacli ./internal/eclipsepde` is green.
+
+### Declared languages: coverage from standard reports
+
+- **lcov, Cobertura/Scoverage and Ruby SimpleCov are read after every declared test run**, when the project already writes a standard report (`coverage/lcov.info`, `lcov.info`, `coverage.xml`, `cobertura.xml`, `target/scoverage-report/scoverage.xml`, `coverage/.resultset.json`, …). The neutral `CoverageReport` (files, lines, covered/statements) reaches the existing Coverage view; the parser's test events are untouched.
+- **No flag is forced**: a toolchain that needs project configuration to emit coverage (Dart VM JSON, `mix test --cover` text, luacov, Devel::Cover, hpc, Zig) still needs its own setup; when it writes lcov/Cobertura, the view works.
+- **Verified:** lcov and Cobertura fixtures plus the parser wrapper in `internal/languages/declared/coverage_test.go`; declared and testing packages green.
+
+### .NET: the unit's SDK is named, not guessed
+
+- **`global.json` per unit.** C#/F# runs and debugs read the nearest `global.json` (bounded walk) and know the requested `sdk.version`/`rollForward`; commands execute in the unit directory, so the `dotnet` muxer already selects that SDK.
+- **Actionable missing-tool error.** Without `dotnet` on PATH the error now says which SDK the project requests and which file asked for it, instead of a generic “install the .NET SDK”.
+- **Verified:** unit detection + `global.json` fixture in `internal/languages/declared/dotnetsdk_test.go`; full declared package green.
+
+### Live Preview: non-dev server scripts
+
+- **Live Preview now attaches to scripts that are not called `dev`.** After the known names (`dev`, `start:dev`, `start`, `serve`, `develop`, `preview`), `pickDevScript` falls back to the first script whose command is a server (`vite preview`, `next start`, `serve -s dist`, `http-server`, `nodemon`, `node …`) and skips build/test/lint/tsc/format scripts.
+- **`next start` is recognised as Next**, so the preview choice shows `run start:prod` (or the real script name) instead of only `run dev`.
+- **Verified:** `TestInspectDevScriptAndTool` covers preview, start:prod, serve:prod and rejects `vite build`; full `go test ./internal/languages/web` green.
+
+### TOML: local completion and live syntax diagnostics
+
+- **Completion without a language server:** table headers already in the file plus the usual manifest tables (`package`, `workspace`, `project`, `tool`, `profile`…) and the keys declared in the current table; after `=` it suggests booleans, strings, arrays and inline tables.
+- **Continuous syntax diagnostics:** the editor reuses the same `@taplo/lib` WASM engine as the formatter after a short debounce, marks the parse error at its line/column, and clears the marker when the document is valid again. No network, no schema fetch.
+- **With `taplo` installed** the language server still adds its schema-aware completion and diagnostics; the local path is the fallback, not a replacement.
+- **`.taplo.toml` formatting options are honoured.** The formatter reads `[formatting].indent_string` and `trailing_newline` from the project root through the new confined `GoIDE.ReadTextFile` (UTF-8, ≤256 KB, inside the project) and lets them override the editor defaults.
+- **Verified:** `tomlIntelligence.test.ts`, `taploConfig.test.ts`, `tsc --noEmit`, `npm run build`; `go test ./internal/codestudio -run '^$'` compiles the new binding.
+
+### Developer Context: datasources from C#, Rails and Laravel manifests
+
+- **`appsettings*.json`** — ASP.NET Core `ConnectionStrings` become `datasource` entities (SQL Server, PostgreSQL, MySQL/MariaDB, MongoDB, SQLite heuristics; ADO.NET `Server=…;Database=…` and URL forms). Passwords are never read into an entity.
+- **`config/database.yml`** — Rails environments (`postgresql`, `mysql2`, `sqlite3`, `sqlserver`, `mongodb`) with host/port/database/username; ERB placeholders are skipped rather than guessed.
+- **Laravel `.env`** — `DB_CONNECTION`/`DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME` become one datasource instead of only loose env vars.
+- **Kafka topics from configuration** — `appsettings.json` topic lists (only when the document mentions Kafka, to avoid generic `Topics` false positives) and `.env` `KAFKA_TOPIC`/`KAFKA_TOPICS` become `topic` entities with `broker: kafka`, `declFile`/`declLine`, so Kafka/Broker Studio see C#/Laravel topics like Go and Rust ones.
+- **Verified:** `internal/devcontext/manifests_test.go` (connection string, Rails merge keys, Laravel group, no password attribute, JSON/env topics); full `go test ./internal/devcontext` green.
+
+### Declared languages: real test trees for eight ecosystems
+
+- **Dart, Ruby, Perl, Elixir, Lua, Scala, Zig and Haskell now report tests in the Code Studio tree.** Dart reads `dart test --reporter json` line by line, Ruby reads RSpec's `--format json`, Perl parses TAP from `prove --verbose`, Elixir parses `mix test --trace` (ExUnit), Lua parses busted's JUnit output on stdout, Scala reads the JUnit XML sbt writes in `target/test-reports`, Zig parses its runner lines, and Haskell reads Tasty's `--xml` report. Failures carry the source file and line where the format provides it.
+- **CTest finds the configured build directory.** `ctest` no longer assumes `build/`: it looks for `build/`, `cmake-build-*`, `build-*` and `out/build/*` through `CTestTestfile.cmake`, and otherwise fails with “run `cmake -B build` first” instead of an opaque test error.
+- **The test tree keeps a failure location reported on the result event**, not only on a following output line; this is what lets the new parsers open the failing line.
+- **Rerun a single test.** The test detail has a *Rerun* action that asks the runner for one test instead of the whole suite: Go `-run`, Dart `-n ^name$`, RSpec `-e`, busted `--filter`, Elixir `path:line`, Scala `testOnly * -- -z`, Haskell Tasty `-p/…/`. Zig and Perl have no reliable single-test filter and answer with “rerunning a single test is not supported … yet” rather than silently running everything.
+- **Verified:** parser tests for every format plus the CTest build-directory test (`internal/languages/declared/testparsers_test.go`); `go test ./internal/languages/declared ./internal/ide/testing` green. No real toolchain for those eight ecosystems is installed on this machine, so the commands themselves still need a run elsewhere; Scala shows a tree only when the project enables ScalaTest's JUnit reporter.
+
+### Project Explorer: fast folders, lazy metadata, streaming and per-row rendering
+
+- **A 50,000-file folder no longer costs a 50,000-entry read.** `ListDirectory` reads the folder in chunks (256 entries, then 1,024) and stops as soon as the explorer's visible limit is reached — the same "produce until the consumer says stop" the Yazi scanner uses. 50k files: **50.4 ms → 7.9 ms**, 11.2 MB → 0.8 MB per expansion; 10k: **11.2 ms → 2.9 ms**. A 100-file folder pays ~0.2 ms more for the chunking; 1k and above are faster.
+- **Cheaper per entry.** One `filepath.Rel` per folder instead of one per entry, paths joined from the relative base, and case-insensitive sorting without allocating a lowercase copy per comparison (ASCII fast path, Unicode fallback).
+- **Lazy metadata.** A listing no longer calls `entry.Info()`: the tree renders name, folder/file kind, ignore state and language, so `size` and `modifiedAt` are no longer read (a stat per entry on every expansion) nor serialized (`omitzero`). Folders that need metadata ask for it explicitly. Broken symlinks now appear in the tree instead of being silently dropped by a failed stat.
+- **Streaming first page.** `StartDirectoryStream` returns the first 250 entries immediately and completes the sorted listing with a `directory.entries` event carrying the same stream id (called by name, with a transparent fallback to `ListDirectory` on runtimes that do not expose it). A chunk that overtakes its response is buffered by stream id; a newer scan makes old chunks irrelevant. The tree keeps its loading spinner until the stream finishes.
+- **Per-row rendering and browser virtualization.** The marks map is rebuilt on every diagnostic/Git change, but each row now re-renders only when its own mark changed (value comparator on `vcs`/`problem`/`problems`/`testFailed`); off-screen rows use `content-visibility: auto` with an exact intrinsic height, so thousands of expanded rows stay cheap without a JS windowing layer.
+- **No duplicate scans from the UI.** `loadDirectory` shares an in-flight request for the same session+folder, and a forced refresh (user Refresh, ignored-files toggle) invalidates an older answer so a slow scan can no longer overwrite a newer one.
+- **Benchmarks:** `BenchmarkListDirectory` / `BenchmarkListDirectoryBaseline` in `internal/codestudio/documents_bench_test.go` cover 100 / 1k / 10k / 50k files and the nested-folder case, with the previous implementation kept as the baseline. New tests cover the stream (first page + event, small folders, chunk-before-response) and the mark comparator.
 
 ### OSGi: the target from a parent pom, and diagnostics that do not cry wolf
 

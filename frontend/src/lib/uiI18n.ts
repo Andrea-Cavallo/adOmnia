@@ -563,6 +563,8 @@ export const ITALIAN_UI_MESSAGES = {
   'Appearance': 'Aspetto',
   'Dark theme': 'Tema scuro',
   'Light theme': 'Tema chiaro',
+  'Anthracite theme': 'Tema antracite',
+  'Anthracite': 'Antracite',
   'Sketch theme': 'Tema Sketch',
   'Terminal Green theme': 'Tema verde terminale',
   'Generate with AI': 'Genera con l’AI',

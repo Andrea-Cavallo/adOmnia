@@ -314,6 +314,7 @@ func (tm *ThemeManager) GetBuiltinThemes() []Theme {
 			Shadows: map[string]string{},
 			Meta:    map[string]string{"builtin": "true"},
 		},
+		anthraciteTheme(),
 		{
 			ID:          "builtin-midnight",
 			Name:        "Midnight",

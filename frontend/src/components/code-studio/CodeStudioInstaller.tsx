@@ -7,7 +7,7 @@ import { showInstallOutput } from '@/stores/codeStudioToolInstall'
 import { studioToast } from '@/stores/codeStudioToast'
 import { CodeStudioAlert, CodeStudioButton, CodeStudioModal } from './CodeStudioModal'
 import {
-  INSTALLER_GROUPS, INSTALLER_TOOLS, detectInstallerStatus, finishInstall, installerCommand, startInstall,
+  INSTALLER_GROUPS, INSTALLER_TOOLS, detectInstallerStatus, finishInstall, installProgress, installerCommand, startInstall,
   type InstallerStatus, type InstallerTool,
 } from './codeStudioInstallerTools'
 
@@ -24,6 +24,8 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
   const [loading, setLoading] = useState(false)
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set())
   const [running, setRunning] = useState<ReadonlySet<string>>(new Set())
+  // Tools of the last "Install selected": what the progress bar counts.
+  const [batch, setBatch] = useState<readonly string[]>([])
   // runId → tool id, for the go tools that report completion through the shared run.finished event.
   const runs = useRef(new Map<string, string>())
   const serverInstalls = useIdeLanguageServersStore((state) => state.installing[sessionId])
@@ -45,8 +47,8 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
     return () => { cancelled = true }
   }, [open, sessionId])
 
+  // Also while closed: an install that ends behind a closed dialog must not stay "running" forever.
   useEffect(() => {
-    if (!open) return undefined
     return subscribeGoIDEEvents((event) => {
       if (event.sessionId !== sessionId || event.type !== 'run.finished') return
       const execution = event.payload as { id?: string; exitCode?: number | null; status?: string } | undefined
@@ -56,7 +58,7 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
         finishInstall(sessionId, toolId, execution?.exitCode === 0 || execution?.status === 'exited')
         setRunning((current) => new Set([...current].filter((id) => id !== toolId)))
       }
-      void detectInstallerStatus(sessionId).then(setStatus)
+      if (open) void detectInstallerStatus(sessionId).then(setStatus)
     })
   }, [open, sessionId])
 
@@ -68,29 +70,58 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
     return next
   })
   const chosen = INSTALLER_TOOLS.filter((tool) => picked.has(tool.id) && missing.includes(tool) && !isBusy(tool))
+  const progress = installProgress(batch, (id) => { const tool = INSTALLER_TOOLS.find((item) => item.id === id); return !!tool && isBusy(tool) })
+  const currentTool = INSTALLER_TOOLS.find((tool) => tool.id === progress?.current)
 
   const installChosen = async () => {
     const commands = await Promise.all(chosen.map(async (tool) => `• ${await installerCommand(sessionId, tool).catch((error: unknown) => String(error))}  (${tool.name})`))
     const approved = await confirm({
       title: `Install ${chosen.length} tool${chosen.length === 1 ? '' : 's'}?`,
-      message: `Commands:\n${commands.join('\n')}\n\nEverything is downloaded into adOmnia's own tools folder, never into your project. Output appears in the Run console.`,
+      message: "Everything is downloaded into adOmnia's own tools folder, never into your project. Output appears in the Run console.",
+      details: [{ label: 'Commands', value: commands.join('\n'), mono: true }],
       confirmLabel: 'Install',
     })
     if (!approved) return
     setPicked(new Set())
     showInstallOutput()
+    // All busy from the start: a tool still queued must not count as finished in the progress bar.
+    setBatch(chosen.map((tool) => tool.id))
+    setRunning((current) => new Set([...current, ...chosen.map((tool) => tool.id)]))
     for (const tool of chosen) {
-      setRunning((current) => new Set(current).add(tool.id))
       const clear = () => { setRunning((current) => new Set([...current].filter((id) => id !== tool.id))); void detect() }
       try {
         // oxlint-disable-next-line eslint/no-await-in-loop -- installs run one at a time so the Run console output stays ordered
         const runId = await startInstall(sessionId, tool, clear)
         if (runId) runs.current.set(runId, tool.id)
-        else if (tool.source.kind === 'server') clear()
+        else if (tool.source.kind !== 'strix') clear() // Strix reports its own end through clear
       } catch (error) {
         clear()
         studioToast(`${tool.name}: ${error instanceof Error ? error.message : String(error)}`, 'info')
       }
+    }
+  }
+
+  // An already installed tool can still be reinstalled or updated: a release build bundles
+  // ripgrep, but the user may want the pinned copy refreshed into adOmnia's tools folder.
+  const canReinstall = (tool: InstallerTool) => tool.source.kind === 'ripgrep' || tool.source.kind === 'module'
+  const reinstall = async (tool: InstallerTool) => {
+    const command = await installerCommand(sessionId, tool).catch((error: unknown) => String(error))
+    const approved = await confirm({
+      title: `Reinstall ${tool.name}?`,
+      message: `Command:\n${command}\n\nadOmnia downloads it into its own tools folder, never into your project. Output appears in the Run console.`,
+      confirmLabel: 'Reinstall',
+    })
+    if (!approved) return
+    setRunning((current) => new Set(current).add(tool.id))
+    const clear = () => { setRunning((current) => new Set([...current].filter((id) => id !== tool.id))); void detect() }
+    showInstallOutput()
+    try {
+      const runId = await startInstall(sessionId, tool, clear)
+      if (runId) runs.current.set(runId, tool.id)
+      else clear()
+    } catch (error) {
+      clear()
+      studioToast(`${tool.name}: ${error instanceof Error ? error.message : String(error)}`, 'info')
     }
   }
 
@@ -103,6 +134,17 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
       footer={<CodeStudioButton variant="primary" icon={Download} disabled={!trusted || !chosen.length} onClick={() => void installChosen()}>Install selected ({chosen.length})</CodeStudioButton>}
     >
       {!trusted && <CodeStudioAlert tone="warning">Trust this project to install tools: installs run commands on this machine.</CodeStudioAlert>}
+      {progress && (
+        <div className="sticky top-0 z-10 -mx-1 mb-1 rounded-lg border border-border-1 bg-surface-1 px-3 py-2" aria-live="polite">
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]">
+            <span className="min-w-0 truncate text-text-1">{currentTool ? `Installing ${currentTool.name}…` : 'Install finished'}</span>
+            <span className="shrink-0 tabular-nums text-text-3">{progress.done} / {progress.total}</span>
+          </div>
+          <div role="progressbar" aria-label="Tools installed" aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.done} className="h-1.5 overflow-hidden rounded-full bg-surface-3">
+            <div className="h-full origin-left rounded-full bg-accent transition-transform duration-300" style={{ transform: `scaleX(${progress.done / progress.total})` }} />
+          </div>
+        </div>
+      )}
       {INSTALLER_GROUPS.map((group) => (
         <section key={group.id} className="mt-3 space-y-1">
           <h4 className="gs-section-title">{group.label} <span className="font-normal text-text-4">· {group.hint}</span></h4>
@@ -121,6 +163,17 @@ export function CodeStudioInstaller({ open, sessionId, trusted, onClose }: CodeS
                       {busy ? 'Installing… see the Run console' : info?.available ? info.detail || 'Installed' : info?.error || (info ? 'Not installed' : 'Checking…')}
                     </div>
                   </div>
+                  {info?.available && canReinstall(tool) && !busy && (
+                    <button
+                      type="button"
+                      className="gs-btn shrink-0"
+                      disabled={!trusted}
+                      title={tool.source.kind === 'ripgrep' ? 'Download the pinned copy into adOmnia tools folder again' : `go install ${tool.source.kind === 'module' ? tool.source.module : ''}`}
+                      onClick={(event) => { event.preventDefault(); event.stopPropagation(); void reinstall(tool) }}
+                    >
+                      {tool.source.kind === 'ripgrep' ? 'Reinstall' : 'Update'}
+                    </button>
+                  )}
                 </label>
               )
             })}

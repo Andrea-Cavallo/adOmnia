@@ -673,14 +673,18 @@
 /* Filled actions share one accessible foreground across the default palettes. */
 html[data-theme='builtin-dark'] .bg-accent.text-white,
 html[data-theme='builtin-light'] .bg-accent.text-white,
+html[data-theme='builtin-anthracite'] .bg-accent.text-white,
 html[data-theme='builtin-dark'] .bg-accent-light.text-white,
 html[data-theme='builtin-light'] .bg-accent-light.text-white,
+html[data-theme='builtin-anthracite'] .bg-accent-light.text-white,
 html[data-theme='builtin-dark'] .glass-action,
-html[data-theme='builtin-light'] .glass-action { color: var(--color-on-accent); }
+html[data-theme='builtin-light'] .glass-action,
+html[data-theme='builtin-anthracite'] .glass-action { color: var(--color-on-accent); }
 
 /* Default product actions use the same flat treatment as the Hub. */
 html[data-theme='builtin-dark'] .glass-action,
-html[data-theme='builtin-light'] .glass-action {
+html[data-theme='builtin-light'] .glass-action,
+html[data-theme='builtin-anthracite'] .glass-action {
   background: var(--color-accent);
   border-color: var(--color-accent);
   box-shadow: none;
@@ -689,12 +693,16 @@ html[data-theme='builtin-light'] .glass-action {
 html[data-theme='builtin-dark'] .glass-action::before,
 html[data-theme='builtin-dark'] .glass-action::after,
 html[data-theme='builtin-light'] .glass-action::before,
-html[data-theme='builtin-light'] .glass-action::after { display: none; }
+html[data-theme='builtin-light'] .glass-action::after,
+html[data-theme='builtin-anthracite'] .glass-action::before,
+html[data-theme='builtin-anthracite'] .glass-action::after { display: none; }
 html[data-theme='builtin-dark'] .glass-action:hover,
-html[data-theme='builtin-light'] .glass-action:hover { background: var(--color-accent-hover); box-shadow: none; }
+html[data-theme='builtin-light'] .glass-action:hover,
+html[data-theme='builtin-anthracite'] .glass-action:hover { background: var(--color-accent-hover); box-shadow: none; }
 
 html[data-theme='builtin-dark'] img[data-brand-mark],
-html[data-theme='builtin-light'] img[data-brand-mark] { filter: hue-rotate(280deg) saturate(.8); }
+html[data-theme='builtin-light'] img[data-brand-mark],
+html[data-theme='builtin-anthracite'] img[data-brand-mark] { filter: hue-rotate(280deg) saturate(.8); }
 
 html img[data-palette-logo] { filter: var(--brand-palette-filter, none); }
 

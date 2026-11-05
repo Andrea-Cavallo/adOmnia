@@ -25,6 +25,8 @@ export const JA_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Appearance": "外観",
   "Dark theme": "ダークテーマ",
   "Light theme": "ライトテーマ",
+  "Anthracite theme": "アントラサイトテーマ",
+  "Anthracite": "アントラサイト",
   "Sketch theme": "スケッチテーマ",
   "Terminal Green theme": "ターミナルグリーンテーマ",
   "Generate with AI": "AI で生成",

@@ -1,5 +1,7 @@
 import { accentTokens } from './accentPalette'
+import { ANTHRACITE_EDITOR_COLORS, ANTHRACITE_SYNTAX_RULES, anthraciteActive } from './anthracitePalette'
 import { codeStudioSyntaxRules, codeStudioGutterColors } from './codeStudioEditorAppearance'
+import { cssColorToken } from './cssColorToken'
 import { useSettingsStore } from '@/stores/settings'
 import { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
@@ -72,22 +74,6 @@ const LIGHT_COLORS: monaco.editor.IColors = {
   'dropdown.background': '#FFFFFF',
 }
 
-let probe: CanvasRenderingContext2D | null | undefined
-
-/** Resolves any CSS color (hex, rgb, oklch, color-mix…) to the #rrggbb Monaco requires. */
-function cssToken(name: string): string | undefined {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  if (!value) return undefined
-  probe ??= document.createElement('canvas').getContext('2d', { willReadFrequently: true })
-  if (!probe) return undefined
-  probe.clearRect(0, 0, 1, 1)
-  probe.fillStyle = '#000'
-  probe.fillStyle = value
-  probe.fillRect(0, 0, 1, 1)
-  const [r, g, b] = probe.getImageData(0, 0, 1, 1).data
-  return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('')
-}
-
 /**
  * Editor surfaces follow the live theme tokens (theme + personal base color),
  * so Monaco never stays white/black while the chrome around it is tinted.
@@ -97,8 +83,8 @@ function liveSurface(mode: 'dark' | 'light', island: boolean): monaco.editor.ICo
   const active = document.documentElement.classList.contains('light') ? 'light' : 'dark'
   if (mode !== active) return {}
   // In scuro l'isola usa il nero scelto nell'hub (surface-0), come il chrome di Code Studio.
-  const bg = cssToken(island && mode === 'light' ? '--color-surface-1' : '--color-surface-0')
-  const raised = cssToken('--color-surface-2')
+  const bg = cssColorToken(island && mode === 'light' ? '--color-surface-1' : '--color-surface-0')
+  const raised = cssColorToken('--color-surface-2')
   const colors: monaco.editor.IColors = {}
   const set = (key: string, value: string | undefined) => { if (value) colors[key] = value }
   set('editor.background', bg)
@@ -110,11 +96,11 @@ function liveSurface(mode: 'dark' | 'light', island: boolean): monaco.editor.ICo
   set('editorSuggestWidget.background', raised)
   set('input.background', raised)
   set('dropdown.background', raised)
-  set('editor.foreground', cssToken('--color-text-1'))
-  set('editorLineNumber.foreground', cssToken('--color-text-3'))
-  set('editorLineNumber.activeForeground', cssToken('--color-text-2'))
-  set('editorWidget.border', cssToken('--color-border-1'))
-  set('editorIndentGuide.background1', cssToken('--color-border-1'))
+  set('editor.foreground', cssColorToken('--color-text-1'))
+  set('editorLineNumber.foreground', cssColorToken('--color-text-3'))
+  set('editorLineNumber.activeForeground', cssColorToken('--color-text-2'))
+  set('editorWidget.border', cssColorToken('--color-border-1'))
+  set('editorIndentGuide.background1', cssColorToken('--color-border-1'))
   return colors
 }
 
@@ -129,8 +115,8 @@ export function applyAdomniaMonacoTheme(m: typeof monaco): void {
   m.editor.defineTheme('adomnia-dark', {
     base: 'vs-dark',
     inherit: true,
-    rules: withoutSyntaxTokens(GO_SEMANTIC_RULES_DARK),
-    colors: { ...DARK_COLORS, ...liveSurface('dark', false), ...editorAccent('dark') },
+    rules: withoutSyntaxTokens(GO_SEMANTIC_RULES_DARK).concat(anthraciteActive() ? ANTHRACITE_SYNTAX_RULES : []),
+    colors: { ...DARK_COLORS, ...liveSurface('dark', false), ...editorAccent('dark'), ...(anthraciteActive() ? ANTHRACITE_EDITOR_COLORS : {}) },
   })
   m.editor.defineTheme('adomnia-light', {
     base: 'vs',
@@ -217,7 +203,8 @@ const CODE_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
 /** Temi di Code Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
 export function applyCodeStudioMonacoThemes(m: typeof monaco): void {
   applyAdomniaMonacoTheme(m)
-  m.editor.defineTheme(CODE_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: [...GO_SEMANTIC_RULES_DARK, ...codeStudioSyntaxRules(false)], colors: { ...CODE_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark'), ...codeStudioGutterColors(false) } })
+  const anthracite = anthraciteActive()
+  m.editor.defineTheme(CODE_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: [...GO_SEMANTIC_RULES_DARK, ...codeStudioSyntaxRules(false), ...(anthracite ? ANTHRACITE_SYNTAX_RULES : [])], colors: { ...CODE_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark'), ...codeStudioGutterColors(false), ...(anthracite ? ANTHRACITE_EDITOR_COLORS : {}) } })
   m.editor.defineTheme(CODE_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: [...GO_SEMANTIC_RULES_LIGHT, ...codeStudioSyntaxRules(true)], colors: { ...CODE_STUDIO_LIGHT_COLORS, ...liveSurface('light', true), ...editorAccent('light'), ...codeStudioGutterColors(true) } })
 }
 

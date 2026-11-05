@@ -135,7 +135,7 @@ export function CodeStudioStatusBar({ session, toolchain, documentInfo, executio
   }
 
   return (
-    <div className="flex h-7 min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2 text-[11.5px] text-text-3">
+    <div className="code-studio-statusbar flex h-7 min-w-0 shrink-0 items-center gap-1 overflow-hidden px-2 text-[11.5px] text-text-3">
       {/* Sinistra: dove sei nel codice. Si accorcia per primo, così i widget a destra non escono mai dal bordo. */}
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         {documentInfo && <CodeStudioBreadcrumb documentId={documentInfo.id} relativePath={documentInfo.relativePath} readOnly={documentInfo.readOnly} cursor={cursor} />}

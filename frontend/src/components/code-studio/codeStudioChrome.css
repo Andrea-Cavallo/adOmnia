@@ -495,6 +495,20 @@ html.dark .code-studio-root {
 }
 .code-studio-explorer .code-studio-tree-root { margin-bottom: 4px; }
 
+/* Browser-level row virtualization: off-screen rows are not rendered or laid out, while the DOM
+   (selection, keyboard navigation, context menu) stays intact. The fixed row height makes the
+   intrinsic size exact, so the scrollbar does not jump. A no-op on engines without support. */
+@supports (content-visibility: auto) {
+  .code-studio-explorer .code-studio-tree-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 28px;
+  }
+  .code-studio-explorer .code-studio-tree-root {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 32px;
+  }
+}
+
 /* A single folder tone and monospaced names make nested paths easier to scan. */
 .code-studio-explorer [role="tree"] {
   font-family: var(--font-mono);
@@ -524,3 +538,32 @@ html.dark .code-studio-root {
 .code-studio-editor-save[data-save-state='dirty'], .code-studio-editor-save[data-save-state='error'] { color: var(--color-text-1); }
 .code-studio-editor-save[data-save-state='dirty']::after, .code-studio-editor-save[data-save-state='error']::after { content: ''; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 999px; background: var(--color-accent); box-shadow: 0 0 0 2px var(--gs-island); }
 .code-studio-editor-save[data-save-state='error']::after { background: var(--color-danger); }
+
+/*
+ * Anthracite: the tones below were measured on the reference screenshot. The
+ * editor is the darkest surface, the panels around it get lighter, the gaps
+ * between islands are darker than everything.
+ */
+html[data-theme='builtin-anthracite'] .code-studio-root {
+  --gs-ground: #14171F;
+  --gs-island: #1C202A;
+  --gs-raised: #454951;
+}
+html[data-theme='builtin-anthracite'] .code-studio-toolbar { background: #33373F; }
+html[data-theme='builtin-anthracite'] .code-studio-toolbar .code-studio-widget,
+html[data-theme='builtin-anthracite'] .code-studio-toolbar .code-studio-run-group { background: transparent; box-shadow: none; }
+html[data-theme='builtin-anthracite'] .code-studio-island { background: #2B2F38; }
+html[data-theme='builtin-anthracite'] .code-studio-island-editor { background: #1C202A; }
+html[data-theme='builtin-anthracite'] .code-studio-island-run { background: #22262F; }
+html[data-theme='builtin-anthracite'] .code-studio-tool-header { background: #30343D; }
+html[data-theme='builtin-anthracite'] .code-studio-island-run .code-studio-tool-header { background: #343842; }
+html[data-theme='builtin-anthracite'] .code-studio-statusbar { background: #282D36; color: var(--color-text-1); }
+html[data-theme='builtin-anthracite'] .code-studio-editor-tabbar,
+html[data-theme='builtin-anthracite'] .code-studio-editor-actions { background: #30343C; }
+html[data-theme='builtin-anthracite'] .code-studio-tab { color: var(--color-text-1); }
+html[data-theme='builtin-anthracite'] .code-studio-tab[aria-selected='true'] { background: #454951; }
+html[data-theme='builtin-anthracite'] .code-studio-tab[aria-selected='true']::after { background: #F6F6F7; }
+html[data-theme='builtin-anthracite'] .code-studio-explorer [role="tree"] { font-family: var(--gs-font-ui); }
+html[data-theme='builtin-anthracite'] .code-studio-explorer .code-studio-tree-row,
+html[data-theme='builtin-anthracite'] .code-studio-explorer .code-studio-tree-root { font-size: 13px; color: var(--color-text-1); }
+html[data-theme='builtin-anthracite'] .code-studio-explorer .code-studio-folder-icon { color: var(--color-text-2); }
