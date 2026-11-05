@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.26] — 2026-11-05
+
+Release notes: [docs/releases/v1.0.26.md](docs/releases/v1.0.26.md).
+
 ### Fixes
 
 - **Installer: installing several tools no longer hangs.** The confirmation grew taller than the window (4,400 px with 24 tools), so its buttons were out of reach, and it opened behind the Installer window; every confirmation now stays on screen, on top of any window, and scrolls. *Install selected* shows a progress bar with the current tool and a count.
