@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md` (local planning note; the published status is [ISSUES.md](ISSUES.md)). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.0.26 — Anthracite theme, Installer and Database fixes
+
+[Release notes](releases/v1.0.26.md). Bulk install of every language server and native acceptance on macOS and Linux remain manual.
+
 ## v1.0.25 — OSGi Control Center, Equinox runtime, Flow Intelligence, MCP tools and ripgrep search
 
 [Release notes](releases/v1.0.25.md). Open large Java 6 / Tycho workspaces without migrating them, diagnose why a bundle does not start, run it in the real Equinox, follow its flows and let an agent read and (opt-in) write the workspace with the same engine. Find in Files now runs on bundled ripgrep with streamed results and a virtualized list. Native acceptance of the new panels remains manual.
