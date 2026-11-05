@@ -45,8 +45,8 @@ describe('goModLenses', () => {
   it('puts module-wide actions on the module line and per-dependency actions on each require', () => {
     const lenses = goModLenses(parseGoMod(GO_MOD))
     expect(lenses.filter((lens) => lens.line === 2).map((lens) => lens.action)).toEqual(['updateall', 'updatepatch', 'tidy', 'download', 'verify'])
-    expect(lenses.filter((lens) => lens.line === 6).map((lens) => lens.action)).toEqual(['viewcode', 'browse', 'update', 'replace', 'remove'])
-    expect(lenses.filter((lens) => lens.line === 9).map((lens) => lens.action)).toEqual(['viewcode', 'browse', 'update', 'dropreplace', 'remove'])
+    expect(lenses.filter((lens) => lens.line === 6).map((lens) => lens.action)).toEqual(['viewcode', 'update', 'replace', 'remove'])
+    expect(lenses.filter((lens) => lens.line === 9).map((lens) => lens.action)).toEqual(['viewcode', 'update', 'dropreplace', 'remove'])
     expect(lenses.filter((lens) => lens.line === 13).map((lens) => lens.action)).toEqual(['viewcode', 'dropreplace'])
     expect(lenses.find((lens) => lens.line === 13 && lens.action === 'dropreplace')).toMatchObject({ modulePath: 'github.com/pkg/errors' })
   })

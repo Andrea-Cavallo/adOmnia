@@ -5,6 +5,7 @@ import (
 	jsonv1 "encoding/json"
 	"encoding/json/v2"
 	"fmt"
+	"time"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
@@ -84,12 +85,17 @@ func documentParams(document trackedDocument) map[string]any {
 }
 
 // SemanticTokens restituisce i token semantici dell'intero buffer, codificati come da LSP (relativi).
+// semanticTokensTimeout copre il caricamento iniziale del workspace: il server risponde quando ha
+// finito. Con il timeout breve delle altre richieste i colori arrivavano solo al tentativo successivo,
+// fino a 30 s dopo che il server era pronto, e dopo sei tentativi non arrivavano più.
+const semanticTokensTimeout = 5 * time.Minute
+
 func (m *LSPManager) SemanticTokens(ctx context.Context, sessionID SessionID, documentID DocumentID) (SemanticTokensResult, error) {
 	document, process, err := m.snapshot(sessionID, documentID)
 	if err != nil {
 		return SemanticTokensResult{}, err
 	}
-	ctx, cancel := withRequestTimeout(ctx)
+	ctx, cancel := context.WithTimeout(ctx, semanticTokensTimeout)
 	defer cancel()
 	var tokens *struct {
 		Data []uint32 `json:"data"`

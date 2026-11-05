@@ -95,7 +95,7 @@ export function CodeStudioWorkspace({ session, projectWidth, structureWidth, bot
               sconfinare nel gap senza essere tagliata da overflow: hidden. */}
           <div className="relative" style={styleFor('project')}>
             <div className="code-studio-island absolute inset-0">
-              <CodeStudioProjectTree session={session} activePath={active?.document.external ? null : active?.document.relativePath ?? null} onCommand={onCommand} onBookmarks={onBookmarks} />
+              <CodeStudioProjectTree session={session} activePath={active?.document.external ? null : active?.document.relativePath ?? null} activeExternalPath={active?.document.external ? active.document.path : null} onCommand={onCommand} onBookmarks={onBookmarks} />
             </div>
             {!focused && <ResizeHandle variant="splitter" label="Resize project pane" className="absolute inset-y-0 -right-2" {...onProjectResize} />}
           </div>

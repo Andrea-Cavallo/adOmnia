@@ -1,7 +1,7 @@
 import { featuresForEditor } from './codeStudioServerFeatures'
 import { importColorRanges } from './codeStudioImportColors'
 import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
-import { heavyFeatureEditorLanguages, inlayHintEditorLanguages, semanticTokenEditorLanguages } from '@/components/ide/languages'
+import { heavyFeatureEditorLanguages, inlayHintEditorLanguages, semanticTokenEditorLanguages, syntacticTokensFor } from '@/components/ide/languages'
 import { heavyFeatureEnabled } from './codeStudioResourceMode'
 import type { CancellablePromise } from '@wailsio/runtime'
 import { monaco, type Monaco } from '@/lib/monacoRef'
@@ -18,7 +18,7 @@ import {
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { currentCodeStudioDocumentVersion } from './codeStudioLspSync'
 import { prepareDocument, toEditorRange, toMonacoRange } from './codeStudioLanguageFeatures'
-import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, isLiteralArgument, remapSemanticTokens, type SemanticRemapContext, semanticRetryDelay, typeInfoFromHover } from './codeStudioSemanticTokens'
+import { CLIENT_TOKEN_MODIFIERS, CLIENT_TOKEN_TYPES, encodeSyntacticTokens, isLiteralArgument, remapSemanticTokens, type SemanticRemapContext, semanticRetryDelay, typeInfoFromHover } from './codeStudioSemanticTokens'
 
 // Provider LSP generici: valgono per ogni linguaggio servito da un language server.
 const INLAY_LANGUAGES = inlayHintEditorLanguages()
@@ -90,6 +90,36 @@ function semanticContextFor(model: Monaco.editor.ITextModel): SemanticRemapConte
   }
 }
 
+/**
+ * Modelli che hanno già i colori del server: da lì in poi Monaco tiene i precedenti mentre si digita, senza
+ * sfarfallio. Per modello e non per documento: un file riaperto riparte dai colori locali. Si azzera quando
+ * il server cambia stato, perché dopo un riavvio risponde solo a caricamento finito.
+ */
+let serverColored = new WeakSet<Monaco.editor.ITextModel>()
+const firstRequests = new Set<string>()
+
+/** Prima richiesta al server: non blocca i colori locali e, quando risponde, fa rileggere i token. */
+function requestFirstServerColors(sessionId: string, documentId: string, model: Monaco.editor.ITextModel): void {
+  if (firstRequests.has(documentId)) return
+  firstRequests.add(documentId)
+  requestSemanticTokens(sessionId, documentId).then((result) => {
+    firstRequests.delete(documentId)
+    if (result.data.length === 0 && model.getLineCount() > 3) { scheduleSemanticRetry(documentId); return }
+    serverColored.add(model)
+    semanticFailures.delete(documentId)
+    semanticChanged.fire()
+  }).catch(() => {
+    firstRequests.delete(documentId)
+    scheduleSemanticRetry(documentId)
+  })
+}
+
+function syntacticColors(model: Monaco.editor.ITextModel): { data: Uint32Array } | null {
+  const tokenize = syntacticTokensFor(model.getLanguageId())
+  if (!tokenize) return null
+  return { data: remapSemanticTokens(encodeSyntacticTokens(tokenize(model.getValue())), CLIENT_TOKEN_TYPES, CLIENT_TOKEN_MODIFIERS, semanticContextFor(model)) }
+}
+
 function registerSemanticTokens(): void {
   monaco.languages.registerDocumentSemanticTokensProvider(semanticTokenEditorLanguages(), {
     onDidChange: semanticChanged.event,
@@ -98,7 +128,15 @@ function registerSemanticTokens(): void {
       if (!heavyFeatureEnabled(useCodeStudioLspStore.getState(), 'semanticHighlighting')) return null
       const prepared = await prepareDocument(model)
       const features = prepared ? featuresForEditor(prepared.sessionId, prepared.document.document.language) : null
-      if (!prepared || !features?.semanticTokens) return null
+      // Server non pronto, o progetto non autorizzato: i colori locali, subito.
+      if (!prepared || !features?.semanticTokens) return syntacticColors(model)
+      if (!serverColored.has(model)) {
+        const local = syntacticColors(model)
+        if (local) {
+          requestFirstServerColors(prepared.sessionId, prepared.documentId, model)
+          return local
+        }
+      }
       const result = await settle(requestSemanticTokens(prepared.sessionId, prepared.documentId), token).catch(() => {
         if (!token.isCancellationRequested) scheduleSemanticRetry(prepared.documentId)
         throw cancelled()
@@ -174,7 +212,7 @@ export function registerCodeStudioSemanticFeatures(): void {
   registerInlayHints()
   registerDocumentHighlights()
   useIdeLanguageServersStore.subscribe((state, previous) => {
-    if (state.servers !== previous.servers) { semanticFailures.clear(); semanticChanged.fire(); inlayChanged.fire() }
+    if (state.servers !== previous.servers) { serverColored = new WeakSet(); semanticFailures.clear(); semanticChanged.fire(); inlayChanged.fire() }
   })
   useCodeStudioLspStore.subscribe((state, previous) => {
     const preferencesChanged = state.preferences.semanticHighlighting !== previous.preferences.semanticHighlighting || state.preferences.inlayHints !== previous.preferences.inlayHints
@@ -189,6 +227,7 @@ export function registerCodeStudioSemanticFeatures(): void {
       lastWorkRefresh = Date.now()
       semanticFailures.clear()
     }
+    if (state.status !== previous.status) serverColored = new WeakSet()
     if (state.status !== previous.status || preferencesChanged || workFinished) {
       semanticChanged.fire()
       inlayChanged.fire()

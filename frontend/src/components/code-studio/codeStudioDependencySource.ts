@@ -2,12 +2,25 @@ import { monaco } from '@/lib/monacoRef'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { resolveGoIDEDependencySource, startGoIDEDependencyAction, type GoIDEDependencySource } from '@/lib/code-studio-api'
 import { confirm } from '@/lib/confirmDialog'
-import { pickGoIDEFile } from '@/lib/codeStudioFilePicker'
 import { parseGoMod } from './codeStudioGoMod'
 import { goModDirectoryOf } from './codeStudioQuickActions'
 import { navigateToLocation, type StudioLocation } from './codeStudioNavigation'
+import { revealSymbolOrigin } from './codeStudioOriginTree'
 
 const FIRST_LINE = { startLine: 1, startColumn: 1, endLine: 1, endColumn: 1 }
+/** Oltre questa attesa si rilegge comunque: il messaggio di errore dice cosa manca. */
+const DOWNLOAD_WAIT_MS = 120_000
+
+/** Si risolve quando il comando è finito: l'avvio ritorna subito, il modulo arriva dopo. */
+function executionFinished(id: string): Promise<void> {
+  const finished = () => useCodeStudioStore.getState().executions.some((item) => item.id === id && item.status !== 'running')
+  return new Promise((resolve) => {
+    if (finished()) { resolve(); return }
+    const stop = () => { clearTimeout(timer); unsubscribe(); resolve() }
+    const timer = setTimeout(stop, DOWNLOAD_WAIT_MS)
+    const unsubscribe = useCodeStudioStore.subscribe(() => { if (finished()) stop() })
+  })
+}
 
 function normalizePath(path: string): string {
   // `(?<!\/)` ancora il gruppo di barre finali: senza, la regex riprova da ogni posizione.
@@ -49,21 +62,34 @@ function relativeToRoot(root: string, path: string): string {
 }
 
 /**
- * Posizione di un file del sorgente di una dipendenza: dentro il progetto si apre in modifica,
- * in un progetto importato si apre lì, altrimenti in sola lettura come SDK Go e module cache.
+ * Dove aprire un file del sorgente di una dipendenza: dentro il progetto in modifica, in un progetto
+ * importato lì, altrimenti in sola lettura come SDK Go e module cache. Niente URI: serve Monaco, che
+ * non è ancora caricato quando dall'albero si apre il primo file.
  */
-export function goModSourceLocation(source: GoIDEDependencySource, sessionId: string, file: string): StudioLocation | null {
+function goModSourceTarget(source: GoIDEDependencySource, sessionId: string, file: string): Omit<StudioLocation, 'uri'> | null {
   if (!source.directory || !file) return null
   const path = `${source.directory}/${normalizePath(file)}`
-  const uri = monaco.Uri.file(path).toString()
   if (source.relativeDir) {
-    return { uri, path, relativePath: joinRelative(source.relativeDir, file), external: false, targetSessionId: sessionId, range: FIRST_LINE }
+    return { path, relativePath: joinRelative(source.relativeDir, file), external: false, targetSessionId: sessionId, range: FIRST_LINE }
   }
   const owner = ownerSessionOf(source.directory)
   if (owner) {
-    return { uri, path, relativePath: relativeToRoot(owner.root, path), external: false, targetSessionId: owner.id, range: FIRST_LINE }
+    return { path, relativePath: relativeToRoot(owner.root, path), external: false, targetSessionId: owner.id, range: FIRST_LINE }
   }
-  return { uri, path, relativePath: normalizePath(path), external: true, range: FIRST_LINE }
+  return { path, relativePath: normalizePath(path), external: true, range: FIRST_LINE }
+}
+
+/** Posizione per i provider dell'editor (Ctrl+click, F12), che girano solo con Monaco caricato. */
+export function goModSourceLocation(source: GoIDEDependencySource, sessionId: string, file: string): StudioLocation | null {
+  const target = goModSourceTarget(source, sessionId, file)
+  return target && { ...target, uri: monaco.Uri.file(target.path).toString() }
+}
+
+/** Apre un file del sorgente di una dipendenza; null se il sorgente non ha quel file. */
+export function openGoModSourceFile(source: GoIDEDependencySource, sessionId: string, file: string): Omit<StudioLocation, 'uri'> | null {
+  const target = goModSourceTarget(source, sessionId, file)
+  if (target) navigateToLocation(target)
+  return target
 }
 
 /**
@@ -88,7 +114,8 @@ export async function ensureGoModDependencySource(sessionId: string, moduleDirec
       confirmLabel: 'Download',
     })
     if (!download) return null
-    await startGoIDEDependencyAction({ sessionId, moduleDirectory, action: 'download', modulePath, version: '', localPath: '', confirmed: true })
+    const execution = await startGoIDEDependencyAction({ sessionId, moduleDirectory, action: 'download', modulePath, version: '', localPath: '', confirmed: true })
+    await executionFinished(execution.id)
     const downloaded = await resolveGoIDEDependencySource(sessionId, moduleDirectory, modulePath)
     if (!downloaded.downloaded) {
       useCodeStudioStore.setState({ error: downloaded.reason || `${modulePath} is not available in the module cache.` })
@@ -118,21 +145,14 @@ export async function goModDefinitionLocation(document: GoIDEEditorDocument, lin
   return goModSourceLocation(source, document.document.sessionId, entryFileOf(source))
 }
 
-/** Apre il codice di una dipendenza del go.mod: il file di ingresso o uno scelto dai suoi file. */
-export async function openGoModDependencySource(document: GoIDEEditorDocument, modulePath: string, browse = false): Promise<void> {
+/** Apre il file di ingresso di una dipendenza e mostra il modulo nell'albero a sinistra, per esplorarlo. */
+export async function openGoModDependencySource(document: GoIDEEditorDocument, modulePath: string): Promise<void> {
   const sessionId = document.document.sessionId
   const source = await ensureGoModDependencySource(sessionId, goModDirectoryOf(document), modulePath)
   if (!source) return
-  let file = entryFileOf(source)
-  if (browse) {
-    const picked = await pickGoIDEFile({
-      title: `Files of ${modulePath}`,
-      prefix: source.version ? `${modulePath} ${source.version}` : modulePath,
-      items: source.files.map((item) => ({ id: item.path, name: item.name, detail: item.path })),
-    })
-    if (!picked) return
-    file = picked
-  }
-  const location = goModSourceLocation(source, sessionId, file)
-  if (location) navigateToLocation(location)
+  const location = openGoModSourceFile(source, sessionId, entryFileOf(source))
+  if (!location) return
+  // Un file esterno lo rivela External Libraries quando diventa attivo; uno di progetto l'albero del progetto.
+  if (location.external) useCodeStudioStore.getState().updateLayout({ projectOpen: true })
+  else if (location.relativePath) revealSymbolOrigin(location.targetSessionId ?? sessionId, location.relativePath)
 }

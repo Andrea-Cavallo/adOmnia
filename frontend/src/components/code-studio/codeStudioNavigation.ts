@@ -10,7 +10,7 @@ export interface StudioLocation extends GoIDEEditorLocation {
 }
 
 /** Apre la posizione nel progetto o, per SDK Go, module cache e replace locali, in sola lettura. */
-export function navigateToLocation(location: StudioLocation): void {
+export function navigateToLocation(location: Omit<StudioLocation, 'uri'> & { uri?: string }): void {
   const open = () => {
     const store = useCodeStudioStore.getState()
     const { startLine, startColumn } = location.range

@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.27] — 2026-11-05
+
+Release notes: [docs/releases/v1.0.27.md](docs/releases/v1.0.27.md).
+
+### Hub
+
+- **Laser in the Hub.** A beam of light falls next to the clock and opens on the first section, in the dark themes. It draws at 30 fps at most and stops while the Hub is hidden.
+
 ## [1.0.26] — 2026-11-05
 
 Release notes: [docs/releases/v1.0.26.md](docs/releases/v1.0.26.md).

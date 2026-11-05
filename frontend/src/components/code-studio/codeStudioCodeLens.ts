@@ -135,8 +135,8 @@ export function registerCodeStudioCodeLens(): void {
   monaco.editor.registerCommand(GO_MOD_COMMAND, (_accessor, documentId: string, action: GoModLensAction, modulePath: string) => {
     const document = editableDocument(documentId)
     if (!document) return
-    // View code e Browse files aprono il sorgente della dipendenza, non modificano il go.mod.
-    if (action === 'viewcode' || action === 'browse') void openGoModDependencySource(document, modulePath, action === 'browse')
+    // View code apre il sorgente della dipendenza, non modifica il go.mod.
+    if (action === 'viewcode') void openGoModDependencySource(document, modulePath)
     else void runGoModQuickAction(document, action, modulePath)
   })
   monaco.editor.registerCommand(PACKAGE_COMMAND, (_accessor, documentId: string, kind: GoIDEQuickRunKind) => {

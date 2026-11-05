@@ -101,20 +101,35 @@ func (s *Service) OpenExternalDocument(sessionID, path string) (OpenDocument, er
 	if err != nil {
 		return OpenDocument{}, err
 	}
-	// Le sorgenti delle librerie Java (jdt://) sono salvate sotto virtualDocumentsRoot; quelle Go stanno in GOROOT/GOMODCACHE.
-	roots := append([]string{langserver.VirtualDocumentsRoot()}, localDependencyRoots(session.Project)...)
-	info, detected := s.toolchain.LastDetected(session.ID)
-	if detected {
-		roots = append(roots, info.GOROOT, info.GOMODCACHE)
-	} else if !strings.HasPrefix(filepath.Clean(path), langserver.VirtualDocumentsRoot()) {
+	if _, detected := s.toolchain.LastDetected(session.ID); !detected && !strings.HasPrefix(filepath.Clean(path), langserver.VirtualDocumentsRoot()) {
 		return OpenDocument{}, fmt.Errorf("detect the Go SDK to browse its sources")
 	}
-	document, err := s.documents.OpenExternalDocument(session, path, roots)
+	document, err := s.documents.OpenExternalDocument(session, path, s.externalRoots(session))
 	if err != nil {
 		return OpenDocument{}, err
 	}
 	s.lsp.TrackDocument(session, document.Document, document.Content, true)
 	return document, nil
+}
+
+// ListExternalDirectory legge una cartella di una dipendenza per l'albero External Libraries: legge
+// solo il filesystem, quindi come OpenExternalDocument non richiede i tool autorizzati.
+func (s *Service) ListExternalDirectory(sessionID, path string) ([]FileEntry, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return s.documents.ListExternalDirectory(path, s.externalRoots(session))
+}
+
+// externalRoots sono le radici leggibili fuori dal progetto. Le sorgenti delle librerie Java (jdt://)
+// sono salvate sotto VirtualDocumentsRoot; quelle Go stanno in GOROOT/GOMODCACHE.
+func (s *Service) externalRoots(session Session) []string {
+	roots := append([]string{langserver.VirtualDocumentsRoot()}, localDependencyRoots(session.Project)...)
+	if info, detected := s.toolchain.LastDetected(session.ID); detected {
+		roots = append(roots, info.GOROOT, info.GOMODCACHE)
+	}
+	return roots
 }
 
 // Completion restituisce i suggerimenti per la posizione Monaco indicata.

@@ -492,6 +492,11 @@ func (g *GoIDE) ResolveDependencySource(sessionID, moduleDirectory, modulePath s
 	return g.service.ResolveDependencySource(sessionID, moduleDirectory, modulePath)
 }
 
+// ListExternalDirectory legge una cartella del sorgente di una dipendenza, in sola lettura.
+func (g *GoIDE) ListExternalDirectory(sessionID, path string) ([]codestudio.FileEntry, error) {
+	return g.service.ListExternalDirectory(sessionID, path)
+}
+
 // ListModuleVersions elenca le versioni pubblicate di una dipendenza, dalla più recente.
 func (g *GoIDE) ListModuleVersions(sessionID, moduleDirectory, modulePath string) ([]string, error) {
 	return g.service.ListModuleVersions(sessionID, moduleDirectory, modulePath)

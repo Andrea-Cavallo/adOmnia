@@ -159,3 +159,36 @@ func TestResolveDependencySourceGoWork(t *testing.T) {
 		t.Fatalf("radici locali %v, attesa %q", roots, resolved)
 	}
 }
+
+// TestListExternalDirectory: l'albero External Libraries vede tutti i file del modulo, cartelle
+// prima, e non può uscire dalle radici consentite.
+func TestListExternalDirectory(t *testing.T) {
+	workspace := t.TempDir()
+	module := filepath.Join(workspace, "cache", "example.com", "lib@v1.0.0")
+	writeFixtureFile(t, module, "go.mod", "module example.com/lib\n")
+	writeFixtureFile(t, module, "api.proto", "syntax = \"proto3\";\n")
+	writeFixtureFile(t, module, "pkg/deep/a.go", "package deep\n")
+	writeFixtureFile(t, workspace, "secret/key.txt", "no\n")
+	manager := NewDocumentManager()
+	roots := []string{filepath.Join(workspace, "cache")}
+
+	entries, err := manager.ListExternalDirectory(module, roots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := []string{}
+	for _, entry := range entries {
+		names = append(names, entry.Name)
+	}
+	if strings.Join(names, ",") != "pkg,api.proto,go.mod" || !entries[0].Directory {
+		t.Fatalf("voci inattese: %#v", entries)
+	}
+	if !strings.HasSuffix(entries[0].RelativePath, "lib@v1.0.0/pkg") {
+		t.Fatalf("percorso della cartella %q", entries[0].RelativePath)
+	}
+	for _, outside := range []string{filepath.Join(workspace, "secret"), filepath.Join(module, "..", "..", "..", "secret")} {
+		if _, err := manager.ListExternalDirectory(outside, roots); err == nil {
+			t.Fatalf("%s è fuori dalle radici e non deve essere letto", outside)
+		}
+	}
+}

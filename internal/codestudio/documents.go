@@ -106,7 +106,13 @@ func (m *DocumentManager) ListDirectory(proj Project, relativePath string, inclu
 		// folder never pays for a 1,024-entry slice it does not need.
 		batchSize = directoryReadBatchLarge
 	}
-	slices.SortFunc(result, func(left, right FileEntry) int {
+	sortFileEntries(result)
+	return result, nil
+}
+
+// sortFileEntries mette le cartelle prima dei file, ciascuno in ordine alfabetico.
+func sortFileEntries(entries []FileEntry) {
+	slices.SortFunc(entries, func(left, right FileEntry) int {
 		if left.Directory != right.Directory {
 			if left.Directory {
 				return -1
@@ -115,7 +121,6 @@ func (m *DocumentManager) ListDirectory(proj Project, relativePath string, inclu
 		}
 		return compareFolded(left.Name, right.Name)
 	})
-	return result, nil
 }
 
 // directoryReadBatch is the chunk read at a time from a folder: big enough to amortize the syscall,
@@ -318,16 +323,9 @@ func (m *DocumentManager) CheckDocument(session Session, documentID DocumentID, 
 
 // OpenExternalDocument apre in sola lettura un file dell'SDK Go o della module cache, confinato alle radici consentite.
 func (m *DocumentManager) OpenExternalDocument(session Session, path string, allowedRoots []string) (OpenDocument, error) {
-	abs, err := filepath.Abs(filepath.Clean(path))
+	realPath, err := resolveExternalPath(path, allowedRoots)
 	if err != nil {
-		return OpenDocument{}, fmt.Errorf("invalid path: %w", err)
-	}
-	realPath, err := filepath.EvalSymlinks(abs)
-	if err != nil {
-		return OpenDocument{}, fmt.Errorf("could not resolve the file: %w", err)
-	}
-	if !withinAnyRoot(realPath, allowedRoots) {
-		return OpenDocument{}, fmt.Errorf("the file does not belong to the project, the Go SDK, the module cache or a local replacement")
+		return OpenDocument{}, err
 	}
 	mediaType, isImage := imageMimeType(realPath)
 	content, dataURL, info, token := "", "", (os.FileInfo)(nil), ""
@@ -352,6 +350,50 @@ func (m *DocumentManager) OpenExternalDocument(session Session, path string, all
 	m.documents[document.ID] = documentRecord{document: document, diskToken: token}
 	m.mu.Unlock()
 	return OpenDocument{Document: document, Content: content, DiskToken: token, ModifiedAt: info.ModTime().UTC(), DataURL: dataURL}, nil
+}
+
+// ListExternalDirectory legge un livello di una cartella fuori dal progetto (SDK Go, module cache,
+// replace locale), confinata alle radici consentite. RelativePath è il percorso assoluto con "/",
+// come per i documenti esterni.
+func (m *DocumentManager) ListExternalDirectory(path string, allowedRoots []string) ([]FileEntry, error) {
+	directory, err := resolveExternalPath(path, allowedRoots)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(directory) // #nosec G304 -- path confined to the allowed roots above
+	if err != nil {
+		return nil, fmt.Errorf("could not read the folder: %w", err)
+	}
+	result := make([]FileEntry, 0, min(len(entries), MaxDirectoryItems))
+	for _, entry := range entries[:min(len(entries), MaxDirectoryItems)] {
+		full := filepath.Join(directory, entry.Name())
+		isDir := entry.IsDir()
+		// Un link non è una cartella per ReadDir: si segue qui, poi la sua lettura ripassa dal confine.
+		if entry.Type()&os.ModeSymlink != 0 {
+			if info, statErr := os.Stat(full); statErr == nil {
+				isDir = info.IsDir()
+			}
+		}
+		result = append(result, FileEntry{Name: entry.Name(), RelativePath: filepath.ToSlash(full), Directory: isDir, Language: languageForPath(entry.Name())})
+	}
+	sortFileEntries(result)
+	return result, nil
+}
+
+// resolveExternalPath risolve i link di un percorso esterno e lo confina alle radici consentite.
+func resolveExternalPath(path string, allowedRoots []string) (string, error) {
+	abs, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+	realPath, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", fmt.Errorf("could not resolve the file: %w", err)
+	}
+	if !withinAnyRoot(realPath, allowedRoots) {
+		return "", fmt.Errorf("the file does not belong to the project, the Go SDK, the module cache or a local replacement")
+	}
+	return realPath, nil
 }
 
 func withinAnyRoot(path string, roots []string) bool {

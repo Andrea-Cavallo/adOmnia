@@ -101,6 +101,12 @@ export function remapSemanticTokens(data: ArrayLike<number>, serverTypes: readon
   return encode(mapped)
 }
 
+/** Token riconosciuti senza server, nella legenda del client: passano poi da `remapSemanticTokens` come quelli del server. */
+export function encodeSyntacticTokens(tokens: readonly import('@/lib/code-studio/goSyntacticTokens').SyntacticToken[]): Uint32Array {
+  const clientTypes = indexByName(CLIENT_TOKEN_TYPES)
+  return encode(tokens.map((token) => ({ line: token.line, start: token.start, length: token.length, type: clientTypes.get(token.kind)!, modifiers: 0 })))
+}
+
 const LITERAL_ARGUMENT = /^\s*(?:-?\.?\d|"|`|'|nil\b|true\b|false\b)/
 
 /** Il nome del parametro si mostra solo quando l'argomento è un literal o nil. */

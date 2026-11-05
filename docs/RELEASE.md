@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md` (local planning note; the published status is [ISSUES.md](ISSUES.md)). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.0.27 — External Libraries and faster colors
+
+[Release notes](releases/v1.0.27.md). Native acceptance on macOS and Linux remains manual.
+
 ## v1.0.26 — Anthracite theme, Installer and Database fixes
 
 [Release notes](releases/v1.0.26.md). Bulk install of every language server and native acceptance on macOS and Linux remain manual.
