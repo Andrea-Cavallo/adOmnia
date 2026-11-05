@@ -130,3 +130,6 @@ __pycache__/
 /mds/REFACTOR-FIX-CODE-UI.md
 /mds/assets/code-ui/
 /.planning/
+
+# Vendored ripgrep staged by scripts/fetch-ripgrep.mjs (release packaging only)
+build/rg/

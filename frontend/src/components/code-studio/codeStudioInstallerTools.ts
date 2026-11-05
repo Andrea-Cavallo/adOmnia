@@ -1,6 +1,7 @@
 import { detectGoIDEGoTool, installGoIDEGoModule } from '@/lib/code-studio-api'
 import { languageServers, previewServerInstall } from '@/lib/ide-servers-api'
 import { strixInfo, strixInstall, strixInstallPlan, strixStatus, isStrixActive } from '@/lib/strix-api'
+import { installRipgrep, requestRipgrepStatus } from '@/lib/code-studio-lsp-api'
 import { useIdeLanguageServersStore } from '@/stores/ideLanguageServers'
 import { beginToolInstall, endToolInstall } from '@/stores/codeStudioToolInstall'
 
@@ -11,6 +12,7 @@ export type InstallerSource =
   | { kind: 'module'; binary: string; module: string }
   | { kind: 'server'; language: string }
   | { kind: 'strix' }
+  | { kind: 'ripgrep' }
 
 export interface InstallerTool {
   id: string
@@ -61,6 +63,7 @@ export const INSTALLER_TOOLS: ReadonlyArray<InstallerTool> = [
   { id: 'goimports', name: 'goimports', group: 'tools', purpose: 'Fix imports and format files', source: { kind: 'module', binary: 'goimports', module: 'golang.org/x/tools/cmd/goimports@latest' } },
   { id: 'mockgen', name: 'mockgen', group: 'tools', purpose: 'Mocks from interfaces', source: { kind: 'module', binary: 'mockgen', module: 'go.uber.org/mock/mockgen@latest' } },
   { id: 'stringer', name: 'stringer', group: 'tools', purpose: 'String() for enum constants', source: { kind: 'module', binary: 'stringer', module: 'golang.org/x/tools/cmd/stringer@latest' } },
+  { id: 'ripgrep', name: 'ripgrep', group: 'tools', purpose: 'Fast Find in Files engine (bundled in release builds)', source: { kind: 'ripgrep' } },
 ]
 
 export interface InstallerStatus {
@@ -87,6 +90,10 @@ export async function detectInstallerStatus(sessionId: string): Promise<Record<s
         const info = servers.find((item) => item.language === source.language)
         return [tool.id, { available: !!info?.available, detail: info?.binary, installable: !!info?.installable, error: info?.available ? undefined : info?.error }]
       }
+      if (source.kind === 'ripgrep') {
+        const info = await requestRipgrepStatus()
+        return [tool.id, { available: info.available, detail: info.available ? (info.version ?? info.path) : undefined, installable: true }]
+      }
       const info = await strixInfo()
       return [tool.id, { available: info.installed, detail: info.version ?? info.binary, installable: true }]
     } catch (error) {
@@ -101,6 +108,7 @@ export async function installerCommand(sessionId: string, tool: InstallerTool): 
   const { source } = tool
   if (source.kind === 'module') return `go install ${source.module}`
   if (source.kind === 'server') return (await previewServerInstall(sessionId, source.language)).command
+  if (source.kind === 'ripgrep') return 'Download the pinned ripgrep into the adOmnia tools folder (SHA-256 verified)'
   return (await strixInstallPlan()).command
 }
 
@@ -118,6 +126,17 @@ export async function startInstall(sessionId: string, tool: InstallerTool, onStr
     const execution = await installGoIDEGoModule(sessionId, source.module)
     beginToolInstall(sessionId, `installer:${tool.id}`, `Installing ${tool.name}…`)
     return execution.id
+  }
+  if (source.kind === 'ripgrep') {
+    beginToolInstall(sessionId, 'installer:ripgrep', 'Installing ripgrep…')
+    try {
+      await installRipgrep()
+      endToolInstall(sessionId, 'installer:ripgrep', true)
+    } catch (error) {
+      endToolInstall(sessionId, 'installer:ripgrep', false)
+      throw error
+    }
+    return null
   }
   beginToolInstall(sessionId, 'installer:strix', 'Installing Strix…')
   void followStrix(sessionId, (await strixInstall()).id, onStrixDone)

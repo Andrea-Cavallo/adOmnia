@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/code-studio-api', () => ({ detectGoIDEGoTool: vi.fn(), installGoIDEGoModule: vi.fn() }))
 vi.mock('@/lib/ide-servers-api', () => ({ languageServers: vi.fn(), previewServerInstall: vi.fn() }))
 vi.mock('@/lib/strix-api', () => ({ strixInfo: vi.fn(), strixInstall: vi.fn(), strixInstallPlan: vi.fn(), strixStatus: vi.fn(), isStrixActive: vi.fn() }))
+vi.mock('@/lib/code-studio-lsp-api', () => ({ requestRipgrepStatus: vi.fn(), installRipgrep: vi.fn() }))
 vi.mock('@/stores/ideLanguageServers', () => ({ useIdeLanguageServersStore: { getState: () => ({ install: vi.fn() }) } }))
 vi.mock('@/stores/codeStudioToolInstall', () => ({ beginToolInstall: vi.fn(), endToolInstall: vi.fn() }))
 

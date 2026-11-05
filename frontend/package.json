@@ -2,7 +2,7 @@
   "name": "adomnia-frontend",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "type": "module",
   "engines": {
     "node": ">=22.13.0"
