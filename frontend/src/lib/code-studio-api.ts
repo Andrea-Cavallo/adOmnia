@@ -967,10 +967,32 @@ export function listJavaLibraries(sessionId: string): CancellablePromise<JavaLib
 export function resolveJavaLibrarySource(sessionId: string, groupId: string, artifactId: string, version: string): CancellablePromise<GoIDEDependencySource> {
   return GoIDEBindings.JavaLibrarySource(sessionId, groupId, artifactId, version)
 }
-
 /** Scarica il jar dei sorgenti di una libreria (mvn dependency:get): lancia Maven e va in rete. */
 export async function downloadJavaLibrarySources(sessionId: string, groupId: string, artifactId: string, version: string): Promise<void> {
   return GoIDEBindings.DownloadJavaLibrarySources(sessionId, groupId, artifactId, version)
+}
+
+export type LanguageLibraries = Awaited<ReturnType<typeof GoIDEBindings.PythonLibraries>>
+export type LanguageLibrary = LanguageLibraries['libraries'][number]
+
+/** I pacchetti installati nell'ambiente Python (External Libraries), letti da site-packages: nessun processo. */
+export function listPythonLibraries(sessionId: string): CancellablePromise<LanguageLibraries> {
+  return GoIDEBindings.PythonLibraries(sessionId)
+}
+
+/** Il codice di un pacchetto Python installato, in sola lettura. */
+export function resolvePythonLibrarySource(sessionId: string, name: string): CancellablePromise<GoIDEDependencySource> {
+  return GoIDEBindings.PythonLibrarySource(sessionId, name)
+}
+
+/** Le dipendenze dichiarate da un progetto C/C++ (External Libraries), solo dai manifest. */
+export function listNativeLibraries(sessionId: string): CancellablePromise<LanguageLibraries> {
+  return GoIDEBindings.NativeLibraries(sessionId)
+}
+
+/** Il codice di una dipendenza C/C++ trovata in FetchContent o vcpkg, in sola lettura. */
+export function resolveNativeLibrarySource(sessionId: string, name: string, module: string): CancellablePromise<GoIDEDependencySource> {
+  return GoIDEBindings.NativeLibrarySource(sessionId, name, module)
 }
 
 /** Bundle OSGi/PDE del progetto e come si risolvono sulla target platform attiva (legge solo i manifest). */

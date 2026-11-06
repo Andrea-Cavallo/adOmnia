@@ -55,3 +55,33 @@ export function shortGroup(groupId: string): string {
   const parts = groupId.split('.')
   return parts.length > 2 ? parts.slice(-2).join('.') : groupId
 }
+
+/** I file che cambiano le dipendenze di un progetto Java: un salvataggio rilegge External Libraries. */
+const BUILD_CONFIG_NAMES = new Set([
+  'pom.xml', 'build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradle.properties', 'libs.versions.toml',
+])
+
+export function isJavaBuildConfig(relativePath: string): boolean {
+  const name = relativePath.replace(/\\/g, '/').split('/').pop() ?? ''
+  return BUILD_CONFIG_NAMES.has(name)
+}
+
+/** La cartella del build file relativa al progetto, come la usa External Libraries ("" per la radice). */
+export function moduleOfBuildFile(relativePath: string): string {
+  return relativePath.replace(/\\/g, '/').replace(/\/?(pom\.xml|build\.gradle(?:\.kts)?)$/i, '')
+}
+
+export type JavaBuildTool = 'maven' | 'gradle'
+
+/** I build tool Java del progetto, nell'ordine in cui il badge li mostra. */
+export function javaBuildTools(units: ReadonlyArray<{ language?: string; kind?: string }>): JavaBuildTool[] {
+  const kinds = new Set(units.filter((unit) => unit.language === 'java').map((unit) => unit.kind))
+  const tools: JavaBuildTool[] = []
+  if (kinds.has('maven')) tools.push('maven')
+  if (kinds.has('gradle')) tools.push('gradle')
+  return tools
+}
+
+export function javaBuildLabel(tools: readonly JavaBuildTool[]): string {
+  return tools.length ? tools.map((tool) => (tool === 'maven' ? 'Maven' : 'Gradle')).join(' · ') : 'Java'
+}

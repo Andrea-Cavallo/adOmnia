@@ -1723,19 +1723,41 @@ func (g *GoIDE) JavaDependencyTree(sessionID, module string) ([]java.TreeNode, e
 	return g.service.JavaDependencyTree(sessionID, module)
 }
 
-// JavaLibraries elenca le librerie Maven del progetto (External Libraries): legge solo il repository locale.
+// JavaLibraries elenca le librerie Java del progetto (External Libraries): per Maven legge il repository
+// locale, per Gradle il grafo risolto e la cache Gradle.
 func (g *GoIDE) JavaLibraries(sessionID string) (codestudio.JavaLibraries, error) {
 	return g.service.JavaLibraries(sessionID)
 }
 
-// JavaLibrarySource prepara il codice di una libreria Maven dal suo jar dei sorgenti, in sola lettura.
+// JavaLibrarySource prepara il codice di una libreria Maven/Gradle dal suo jar dei sorgenti, in sola lettura.
 func (g *GoIDE) JavaLibrarySource(sessionID, groupID, artifactID, version string) (codestudio.DependencySource, error) {
 	return g.service.JavaLibrarySource(sessionID, groupID, artifactID, version)
 }
 
-// DownloadJavaLibrarySources scarica il jar dei sorgenti di una libreria con Maven (dependency:get).
+// DownloadJavaLibrarySources scarica il jar dei sorgenti di una libreria (Maven o Gradle, in base al progetto).
 func (g *GoIDE) DownloadJavaLibrarySources(sessionID, groupID, artifactID, version string) error {
 	return g.service.DownloadJavaLibrarySources(sessionID, groupID, artifactID, version)
+}
+
+// PythonLibraries elenca i pacchetti installati nell'ambiente Python (External Libraries), senza eseguire
+// l'interprete: legge site-packages e i metadati delle distribuzioni.
+func (g *GoIDE) PythonLibraries(sessionID string) (codestudio.LanguageLibraries, error) {
+	return g.service.PythonLibraries(sessionID)
+}
+
+// PythonLibrarySource prepara il codice di un pacchetto Python installato, in sola lettura.
+func (g *GoIDE) PythonLibrarySource(sessionID, name string) (codestudio.DependencySource, error) {
+	return g.service.PythonLibrarySource(sessionID, name)
+}
+
+// NativeLibraries elenca le dipendenze dichiarate da un progetto C/C++ (External Libraries).
+func (g *GoIDE) NativeLibraries(sessionID string) (codestudio.LanguageLibraries, error) {
+	return g.service.NativeLibraries(sessionID)
+}
+
+// NativeLibrarySource prepara il codice di una dipendenza C/C++ trovata in FetchContent o vcpkg.
+func (g *GoIDE) NativeLibrarySource(sessionID, name, module string) (codestudio.DependencySource, error) {
+	return g.service.NativeLibrarySource(sessionID, name, module)
 }
 
 // JavaOsgiWorkspace elenca i bundle OSGi/PDE del progetto e come si risolvono sulla target platform.

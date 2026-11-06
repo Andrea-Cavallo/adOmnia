@@ -27,23 +27,25 @@ const (
 	javaLibrariesMaxComponents = 5000
 )
 
-// JavaLibraries è External Libraries di un progetto Maven.
+// JavaLibraries è External Libraries di un progetto Java (Maven o Gradle).
 type JavaLibraries struct {
 	Libraries []java.Library `json:"libraries"`
-	// Repository è il repository Maven locale da cui si leggono jar e sorgenti.
+	// Repository è il repository Maven locale da cui si leggono jar e sorgenti; Gradle aggiunge la sua cache.
 	Repository string   `json:"repository"`
 	Warnings   []string `json:"warnings"`
 }
 
-// JavaLibraries elenca le dipendenze che i pom del progetto risolvono, transitive comprese, con lo stesso
-// resolver offline del pom (parent, BOM e pom delle dipendenze dal repository locale). Legge solo file:
-// niente Maven, niente rete, quindi niente autorizzazione dei tool.
+// JavaLibraries elenca le dipendenze che i build del progetto risolvono (Maven dai pom, Gradle dai build
+// script), transitive comprese, con lo stesso resolver offline del pom per Maven e un task di sola lettura per
+// Gradle. Maven legge solo file; Gradle viene eseguito solo con il progetto autorizzato, altrimenti si leggono
+// le dipendenze dichiarate con una versione.
 func (s *Service) JavaLibraries(sessionID string) (JavaLibraries, error) {
 	session, err := s.session(sessionID)
 	if err != nil {
 		return JavaLibraries{}, err
 	}
-	repository := mavensecurity.LocalRepository(s.javaEnvironment(session))
+	environment := s.javaEnvironment(session)
+	repository := mavensecurity.LocalRepository(environment)
 	var poms []string
 	for _, unit := range mavenUnits(session.Project) {
 		poms = append(poms, java.ReactorPoms(unit.Manifest, session.Project.RealPath)...)
@@ -72,7 +74,23 @@ func (s *Service) JavaLibraries(sessionID string) (JavaLibraries, error) {
 			refs = append(refs, java.LibraryRef{GroupID: group, ArtifactID: artifact, Version: component.Version, Scope: string(component.Scope), Direct: component.Direct, Module: module})
 		}
 	}
+	gradle := gradleUnits(session.Project)
+	if len(gradle) > 0 {
+		if session.Project.Authorization == AuthorizationPermitted {
+			gradleRefs, warnings := s.gradleLibraryRefs(session, gradle)
+			refs = append(refs, gradleRefs...)
+			result.Warnings = append(result.Warnings, warnings...)
+		} else {
+			gradleRefs, warnings := staticGradleLibraryRefs(session, gradle)
+			refs = append(refs, gradleRefs...)
+			result.Warnings = append(result.Warnings, warnings...)
+			result.Warnings = append(result.Warnings, "Authorize the tools for this project to resolve Gradle dependencies with Gradle: transitive dependencies, platforms and version catalogs need it.")
+		}
+	}
 	result.Libraries = java.MergeLibraries(refs, own, repository)
+	if len(gradle) > 0 {
+		markGradleArtifacts(result.Libraries, environment)
+	}
 	return result, nil
 }
 
@@ -89,10 +107,9 @@ func (s *Service) JavaLibrarySource(sessionID, groupID, artifactID, version stri
 	source := DependencySource{ModulePath: groupID + ":" + artifactID, Version: version, Found: true, Files: []DependencySourceFile{}}
 	directory := java.SourcesDirectory(langserver.VirtualDocumentsRoot(), groupID, artifactID, version)
 	if !java.SourcesExtracted(directory) {
-		repository := mavensecurity.LocalRepository(s.javaEnvironment(session))
-		sourcesJar := java.ArtifactPath(repository, groupID, artifactID, version, "sources")
-		if _, err := os.Stat(sourcesJar); err != nil {
-			source.Reason = "the sources of this library are not in the local Maven repository yet"
+		sourcesJar := s.gradleSourcesJar(session, groupID, artifactID, version)
+		if !fileExists(sourcesJar) {
+			source.Reason = "the sources of this library are not in the local Maven repository or the Gradle cache yet"
 			return source, nil
 		}
 		if err := java.ExtractSources(sourcesJar, directory); err != nil {
@@ -102,8 +119,9 @@ func (s *Service) JavaLibrarySource(sessionID, groupID, artifactID, version stri
 	return describeDependencyDirectory(session.Project, source, directory, "maven-sources"), nil
 }
 
-// DownloadJavaLibrarySources scarica nel repository locale il jar dei sorgenti di una libreria con
-// `dependency:get`: lancia Maven e va in rete, quindi solo con il progetto autorizzato e dopo la conferma.
+// DownloadJavaLibrarySources scarica il jar dei sorgenti di una libreria: con Gradle usar il build del
+// progetto (init script), con Maven `dependency:get`. Va in rete e lancia un tool, quindi solo con il progetto
+// autorizzato e dopo la conferma.
 func (s *Service) DownloadJavaLibrarySources(sessionID, groupID, artifactID, version string) error {
 	session, err := s.session(sessionID)
 	if err != nil {
@@ -113,11 +131,21 @@ func (s *Service) DownloadJavaLibrarySources(sessionID, groupID, artifactID, ver
 		return errors.New("explicitly authorize the tools for this project")
 	}
 	if !java.LibraryCoordinateValid(groupID, artifactID, version) {
-		return errors.New("invalid Maven coordinate")
+		return errors.New("invalid library coordinate")
 	}
 	units := mavenUnits(session.Project)
+	if len(gradleUnits(session.Project)) > 0 {
+		err := s.downloadGradleLibrarySources(session, groupID, artifactID, version)
+		if err == nil {
+			return nil
+		}
+		// Un progetto con entrambi i build: la libreria può essere solo nel pom.
+		if len(units) == 0 {
+			return err
+		}
+	}
 	if len(units) == 0 {
-		return errors.New("downloading sources needs a Maven project (pom.xml)")
+		return errors.New("downloading sources needs a Maven or Gradle project")
 	}
 	executable, _, _, err := java.BuildToolOf(units[0].Root)
 	if err != nil {

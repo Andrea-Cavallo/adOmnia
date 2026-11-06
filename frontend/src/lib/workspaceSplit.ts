@@ -72,6 +72,7 @@ export function projectTree(collections: Collection[]): Collection[] {
       children: collection.children.map(projectNode),
     }
     if (collection.color !== undefined) projected.color = collection.color
+    if (collection.scope !== undefined) projected.scope = collection.scope
     return projected
   })
 }

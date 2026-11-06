@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Library, Loader2, Package, RefreshCw, Search } from 'lucide-react'
 import { resolveJavaLibrarySource, type GoIDEDependencySource, type GoIDESession, type JavaLibrary } from '@/lib/code-studio-api'
-import { libraryCoordinate, libraryOfSourcesPath, shortGroup } from '@/lib/code-studio/javaLibraries'
+import { isJavaBuildConfig, javaBuildLabel, javaBuildTools, libraryCoordinate, libraryOfSourcesPath, shortGroup, type JavaBuildTool } from '@/lib/code-studio/javaLibraries'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { useJavaLibrariesStore } from '@/stores/codeStudioJavaLibraries'
 import { downloadLibrarySources } from './codeStudioJavaLibrarySource'
@@ -13,16 +13,17 @@ const FILTER_THRESHOLD = 15
 
 function libraryTitle(library: JavaLibrary): string {
   const where = library.modules.map((module) => module || '(root)').join(', ')
-  return `${libraryCoordinate(library)}${library.scope ? ` · ${library.scope}` : ''} · ${library.direct ? 'declared in a pom' : 'transitive'} · ${where}${library.downloaded ? '' : ' · not downloaded yet'}`
+  return `${libraryCoordinate(library)}${library.scope ? ` · ${library.scope}` : ''} · ${library.direct ? 'declared in a build file' : 'transitive'} · ${where}${library.downloaded ? '' : ' · not in the local cache yet'}`
 }
 
 interface LibraryNodeProps {
   sessionId: string
   library: JavaLibrary
   revealFile: string | null
+  buildTool: JavaBuildTool
 }
 
-function JavaLibraryNode({ sessionId, library, revealFile }: LibraryNodeProps) {
+function JavaLibraryNode({ sessionId, library, revealFile, buildTool }: LibraryNodeProps) {
   const [open, setOpen] = useState(false)
   const [source, setSource] = useState<GoIDEDependencySource | null>(null)
   const [error, setError] = useState('')
@@ -41,7 +42,7 @@ function JavaLibraryNode({ sessionId, library, revealFile }: LibraryNodeProps) {
 
   const download = async () => {
     setBusy(true)
-    if (await downloadLibrarySources(sessionId, library)) setAttempt((value) => value + 1)
+    if (await downloadLibrarySources(sessionId, library, buildTool)) setAttempt((value) => value + 1)
     setBusy(false)
   }
   return (
@@ -59,8 +60,8 @@ function JavaLibraryNode({ sessionId, library, revealFile }: LibraryNodeProps) {
       {open && source?.downloaded && <ExternalFolder sessionId={sessionId} source={source} relative="" depth={3} revealFile={revealFile} />}
       {open && source && !source.downloaded && (
         <ExternalNote depth={3}>
-          <span className="min-w-0">{library.downloaded ? 'No sources jar in the local Maven repository.' : 'Not downloaded yet: build the project once.'}</span>
-          <button type="button" disabled={busy} onClick={() => void download()} className="shrink-0 rounded px-1.5 text-accent hover:bg-surface-2 disabled:opacity-50">{busy ? 'Downloading…' : 'Download sources'}</button>
+          <span className="min-w-0">{library.downloaded ? 'No sources jar in the local Maven repository or the Gradle cache.' : 'Not in the local cache yet: build the project once.'}</span>
+          <button type="button" disabled={busy} onClick={() => void download()} className="shrink-0 rounded px-1.5 text-accent hover:bg-surface-2 disabled:opacity-50">{busy ? 'Downloading…' : `Download sources (${buildTool === 'gradle' ? 'Gradle' : 'Maven'})`}</button>
         </ExternalNote>
       )}
     </>
@@ -75,23 +76,27 @@ interface CodeStudioJavaLibrariesProps {
 }
 
 /**
- * Le librerie Maven del progetto come nodo dell'albero, come External Libraries per Go: transitive comprese,
- * dai pom e dal repository locale. Il codice viene dal jar dei sorgenti, in sola lettura.
+ * Le librerie Java del progetto (Maven e Gradle) come nodo dell'albero, come External Libraries per Go:
+ * transitive comprese, dai build file e dal repository/cache locale. Il codice viene dal jar dei sorgenti, in
+ * sola lettura.
  */
 export function CodeStudioJavaLibraries({ session, activeExternalPath, collapseEpoch }: CodeStudioJavaLibrariesProps) {
   const sessionId = session.id
-  const hasMaven = (session.project.units ?? []).some((unit) => unit.language === 'java' && unit.kind === 'maven')
+  const buildTools = useMemo(() => javaBuildTools(session.project.units ?? []), [session.project.units])
+  const hasJava = buildTools.length > 0
+  const buildLabel = javaBuildLabel(buildTools)
+  const buildTool: JavaBuildTool = buildTools[0] ?? 'maven'
   const state = useJavaLibrariesStore((store) => store.bySession[sessionId])
   const load = useJavaLibrariesStore((store) => store.load)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  // Un pom salvato cambia le dipendenze: l'elenco si rilegge come External Libraries rilegge il go.mod.
-  const pomContent = useCodeStudioStore((store) => store.documents.filter((item) => item.document.sessionId === sessionId && item.document.name === 'pom.xml').map((item) => item.savedContent).join('\0'))
+  // Un build file salvato cambia le dipendenze: l'elenco si rilegge come External Libraries rilegge il build.
+  const buildContent = useCodeStudioStore((store) => store.documents.filter((item) => item.document.sessionId === sessionId && isJavaBuildConfig(item.document.relativePath)).map((item) => item.savedContent).join('\0'))
   const needed = open || !!activeExternalPath
 
   useEffect(() => {
-    if (hasMaven && needed) void load(sessionId, true)
-  }, [hasMaven, load, needed, pomContent, sessionId])
+    if (hasJava && needed) void load(sessionId, true)
+  }, [buildContent, hasJava, load, needed, sessionId])
 
   const libraries = useMemo(() => state?.result?.libraries ?? [], [state?.result])
   const reveal = useMemo(() => (activeExternalPath ? libraryOfSourcesPath(activeExternalPath, libraries) : null), [activeExternalPath, libraries])
@@ -105,7 +110,7 @@ export function CodeStudioJavaLibraries({ session, activeExternalPath, collapseE
 
   const needle = query.trim().toLowerCase()
   const visible = needle ? libraries.filter((library) => libraryCoordinate(library).toLowerCase().includes(needle)) : libraries
-  if (!hasMaven) return null
+  if (!hasJava) return null
   const direct = libraries.filter((library) => library.direct).length
   return (
     <div className="mt-1 border-t border-border-1/60 pt-1" data-java-libraries>
@@ -116,7 +121,7 @@ export function CodeStudioJavaLibraries({ session, activeExternalPath, collapseE
         aria-expanded={open}
         aria-selected={false}
         tabIndex={-1}
-        title="Source code of the Maven dependencies, read-only"
+        title={`Source code of the ${buildLabel} dependencies, read-only`}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return
@@ -129,14 +134,14 @@ export function CodeStudioJavaLibraries({ session, activeExternalPath, collapseE
         <TreeChevron open={open} />
         <Library size={14} className="shrink-0 text-text-3" aria-hidden="true" />
         <span className="min-w-0 truncate">External Libraries</span>
-        <span className="shrink-0 rounded bg-surface-3 px-1 text-[10px] leading-4 text-text-3">Maven</span>
+        <span className="shrink-0 rounded bg-surface-3 px-1 text-[10px] leading-4 text-text-3">{buildLabel}</span>
         <span className="flex-1" />
         {state?.result && <span className="shrink-0 font-mono text-[10px] text-text-4" title={`${direct} declared, ${libraries.length - direct} transitive`}>{libraries.length}</span>}
         <button
           type="button"
           disabled={state?.loading}
-          aria-label="Reload Maven libraries"
-          title="Reload · re-read the poms and the local Maven repository"
+          aria-label="Reload Java libraries"
+          title="Reload · re-read the build files and the local caches"
           onClick={(event) => { event.stopPropagation(); setOpen(true); void load(sessionId, true) }}
           className="code-studio-icon-button h-5 w-5 shrink-0 disabled:opacity-50"
         >
@@ -151,13 +156,13 @@ export function CodeStudioJavaLibraries({ session, activeExternalPath, collapseE
         </label>
       )}
       {open && state?.error && <ExternalNote depth={2} tone="text-danger">{state.error}</ExternalNote>}
-      {open && !state?.result && !state?.error && <ExternalNote depth={2}><Loader2 size={12} className="animate-spin" /> Reading the poms…</ExternalNote>}
+      {open && !state?.result && !state?.error && <ExternalNote depth={2}><Loader2 size={12} className="animate-spin" /> Reading the build files…</ExternalNote>}
       {open && state?.result?.warnings.map((warning) => <ExternalNote key={warning} depth={2} tone="text-warning">{warning}</ExternalNote>)}
-      {open && state?.result && libraries.length === 0 && <ExternalNote depth={2}>No dependencies in the poms.</ExternalNote>}
+      {open && state?.result && libraries.length === 0 && <ExternalNote depth={2}>No dependencies in the build files.</ExternalNote>}
       {open && needle && visible.length === 0 && <ExternalNote depth={2}>Nothing matches.</ExternalNote>}
       {open && <div role="group">{visible.map((library) => {
         const key = libraryCoordinate(library)
-        return <JavaLibraryNode key={key} sessionId={sessionId} library={library} revealFile={revealKey === key && reveal ? reveal.file : null} />
+        return <JavaLibraryNode key={key} sessionId={sessionId} library={library} revealFile={revealKey === key && reveal ? reveal.file : null} buildTool={buildTool} />
       })}</div>}
     </div>
   )

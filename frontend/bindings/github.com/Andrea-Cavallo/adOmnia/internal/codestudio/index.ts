@@ -110,6 +110,8 @@ export {
     JavaJDKReport,
     JavaJFRRecording,
     JavaLibraries,
+    LanguageLibraries,
+    LanguageLibrary,
     LanguageServerInfo,
     LanguageServerSettings,
     LanguageServerStatus,

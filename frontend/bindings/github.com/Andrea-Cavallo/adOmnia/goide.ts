@@ -838,7 +838,7 @@ export function Documentation(sessionID: string): $CancellablePromise<codestudio
 }
 
 /**
- * DownloadJavaLibrarySources scarica il jar dei sorgenti di una libreria con Maven (dependency:get).
+ * DownloadJavaLibrarySources scarica il jar dei sorgenti di una libreria (Maven o Gradle, in base al progetto).
  */
 export function DownloadJavaLibrarySources(sessionID: string, groupID: string, artifactID: string, version: string): $CancellablePromise<void> {
     return $Call.ByID(3432454001, sessionID, groupID, artifactID, version);
@@ -1462,7 +1462,8 @@ export function JavaJVMs(sessionID: string): $CancellablePromise<java$0.JVMProce
 }
 
 /**
- * JavaLibraries elenca le librerie Maven del progetto (External Libraries): legge solo il repository locale.
+ * JavaLibraries elenca le librerie Java del progetto (External Libraries): per Maven legge il repository
+ * locale, per Gradle il grafo risolto e la cache Gradle.
  */
 export function JavaLibraries(sessionID: string): $CancellablePromise<codestudio$0.JavaLibraries> {
     return $Call.ByID(1892430825, sessionID).then(($result: any) => {
@@ -1471,7 +1472,7 @@ export function JavaLibraries(sessionID: string): $CancellablePromise<codestudio
 }
 
 /**
- * JavaLibrarySource prepara il codice di una libreria Maven dal suo jar dei sorgenti, in sola lettura.
+ * JavaLibrarySource prepara il codice di una libreria Maven/Gradle dal suo jar dei sorgenti, in sola lettura.
  */
 export function JavaLibrarySource(sessionID: string, groupID: string, artifactID: string, version: string): $CancellablePromise<codestudio$0.DependencySource> {
     return $Call.ByID(2595136712, sessionID, groupID, artifactID, version).then(($result: any) => {
@@ -1941,11 +1942,29 @@ export function MyBatisIndex(sessionID: string): $CancellablePromise<java$0.MyBa
 }
 
 /**
+ * NativeLibraries elenca le dipendenze dichiarate da un progetto C/C++ (External Libraries).
+ */
+export function NativeLibraries(sessionID: string): $CancellablePromise<codestudio$0.LanguageLibraries> {
+    return $Call.ByID(1116843868, sessionID).then(($result: any) => {
+        return $$createType195($result);
+    });
+}
+
+/**
+ * NativeLibrarySource prepara il codice di una dipendenza C/C++ trovata in FetchContent o vcpkg.
+ */
+export function NativeLibrarySource(sessionID: string, name: string, $module: string): $CancellablePromise<codestudio$0.DependencySource> {
+    return $Call.ByID(3213927997, sessionID, name, $module).then(($result: any) => {
+        return $$createType129($result);
+    });
+}
+
+/**
  * OpenDocument apre un documento testuale o un'immagine confinato al progetto.
  */
 export function OpenDocument(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.OpenDocument> {
     return $Call.ByID(3794134535, sessionID, relativePath).then(($result: any) => {
-        return $$createType195($result);
+        return $$createType196($result);
     });
 }
 
@@ -1954,7 +1973,7 @@ export function OpenDocument(sessionID: string, relativePath: string): $Cancella
  */
 export function OpenExternalDocument(sessionID: string, path: string): $CancellablePromise<codestudio$0.OpenDocument> {
     return $Call.ByID(3817412392, sessionID, path).then(($result: any) => {
-        return $$createType195($result);
+        return $$createType196($result);
     });
 }
 
@@ -2006,7 +2025,7 @@ export function OrganizeImports(sessionID: string, documentID: string): $Cancell
  */
 export function PackageHeatmap(sessionID: string): $CancellablePromise<codestudio$0.PackageHeatmap> {
     return $Call.ByID(3066723674, sessionID).then(($result: any) => {
-        return $$createType196($result);
+        return $$createType197($result);
     });
 }
 
@@ -2015,7 +2034,7 @@ export function PackageHeatmap(sessionID: string): $CancellablePromise<codestudi
  */
 export function PomDependencies(sessionID: string, content: string): $CancellablePromise<java$0.PomDependency[]> {
     return $Call.ByID(4003491615, sessionID, content).then(($result: any) => {
-        return $$createType198($result);
+        return $$createType199($result);
     });
 }
 
@@ -2024,7 +2043,7 @@ export function PomDependencies(sessionID: string, content: string): $Cancellabl
  */
 export function PomManagedVersions(sessionID: string, relativePath: string): $CancellablePromise<{ [_ in string]?: codestudio$0.PomManagedVersion }> {
     return $Call.ByID(2766981366, sessionID, relativePath).then(($result: any) => {
-        return $$createType200($result);
+        return $$createType201($result);
     });
 }
 
@@ -2033,7 +2052,7 @@ export function PomManagedVersions(sessionID: string, relativePath: string): $Ca
  */
 export function PomVersions(sessionID: string, current: { [_ in string]?: string }): $CancellablePromise<java$0.VersionInfo[]> {
     return $Call.ByID(4186919959, sessionID, current).then(($result: any) => {
-        return $$createType202($result);
+        return $$createType203($result);
     });
 }
 
@@ -2051,7 +2070,7 @@ export function PrepareHierarchy(sessionID: string, documentID: string, kind: st
  */
 export function PrepareRename(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.RenameTarget> {
     return $Call.ByID(2777806199, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType203($result);
+        return $$createType204($result);
     });
 }
 
@@ -2061,7 +2080,7 @@ export function PrepareRename(sessionID: string, documentID: string, line: numbe
  */
 export function PreviewDebuggerInstall(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(2226808568, sessionID, languageID).then(($result: any) => {
-        return $$createType204($result);
+        return $$createType205($result);
     });
 }
 
@@ -2070,7 +2089,7 @@ export function PreviewDebuggerInstall(sessionID: string, languageID: string): $
  */
 export function PreviewGoTool(request: codestudio$0.GoToolRequest): $CancellablePromise<codestudio$0.GoToolPreview> {
     return $Call.ByID(1722645302, request).then(($result: any) => {
-        return $$createType205($result);
+        return $$createType206($result);
     });
 }
 
@@ -2079,7 +2098,7 @@ export function PreviewGoTool(request: codestudio$0.GoToolRequest): $Cancellable
  */
 export function PreviewJavaOsgiP2(sessionID: string): $CancellablePromise<eclipsepde$0.P2Preview | null> {
     return $Call.ByID(3687878418, sessionID).then(($result: any) => {
-        return $$createType207($result);
+        return $$createType208($result);
     });
 }
 
@@ -2088,7 +2107,7 @@ export function PreviewJavaOsgiP2(sessionID: string): $CancellablePromise<eclips
  */
 export function PreviewRustComponentInstall(sessionID: string, component: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(2916478714, sessionID, component).then(($result: any) => {
-        return $$createType204($result);
+        return $$createType205($result);
     });
 }
 
@@ -2097,7 +2116,7 @@ export function PreviewRustComponentInstall(sessionID: string, component: string
  */
 export function PreviewRustDebuggerInstall(sessionID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(1862267458, sessionID).then(($result: any) => {
-        return $$createType204($result);
+        return $$createType205($result);
     });
 }
 
@@ -2106,7 +2125,7 @@ export function PreviewRustDebuggerInstall(sessionID: string): $CancellablePromi
  */
 export function PreviewRustToolchainInstall(sessionID: string, channel: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(3726469058, sessionID, channel).then(($result: any) => {
-        return $$createType204($result);
+        return $$createType205($result);
     });
 }
 
@@ -2115,7 +2134,7 @@ export function PreviewRustToolchainInstall(sessionID: string, channel: string):
  */
 export function PreviewServerInstall(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(145453932, sessionID, languageID).then(($result: any) => {
-        return $$createType204($result);
+        return $$createType205($result);
     });
 }
 
@@ -2124,7 +2143,7 @@ export function PreviewServerInstall(sessionID: string, languageID: string): $Ca
  */
 export function PreviewWebDebuggerInstall(sessionID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(862236262, sessionID).then(($result: any) => {
-        return $$createType204($result);
+        return $$createType205($result);
     });
 }
 
@@ -2133,7 +2152,7 @@ export function PreviewWebDebuggerInstall(sessionID: string): $CancellablePromis
  */
 export function PrivateRepoCredentialStatus(host: string): $CancellablePromise<codestudio$0.PrivateRepoCredential> {
     return $Call.ByID(2894914022, host).then(($result: any) => {
-        return $$createType208($result);
+        return $$createType209($result);
     });
 }
 
@@ -2142,7 +2161,7 @@ export function PrivateRepoCredentialStatus(host: string): $CancellablePromise<c
  */
 export function ProjectServices(sessionID: string): $CancellablePromise<codestudio$0.ProjectService[]> {
     return $Call.ByID(297239615, sessionID).then(($result: any) => {
-        return $$createType210($result);
+        return $$createType211($result);
     });
 }
 
@@ -2167,7 +2186,7 @@ export function ProvidedLanguageServerStatus(sessionID: string, languageID: stri
  */
 export function ProvidedLanguageServers(sessionID: string): $CancellablePromise<codestudio$0.LanguageServerInfo[]> {
     return $Call.ByID(2514059221, sessionID).then(($result: any) => {
-        return $$createType212($result);
+        return $$createType213($result);
     });
 }
 
@@ -2186,7 +2205,7 @@ export function PruneMissingSessions(): $CancellablePromise<codestudio$0.Session
  */
 export function PythonDependencies(sessionID: string): $CancellablePromise<codestudio$0.PythonUnitDependencies[]> {
     return $Call.ByID(1928149377, sessionID).then(($result: any) => {
-        return $$createType214($result);
+        return $$createType215($result);
     });
 }
 
@@ -2196,7 +2215,7 @@ export function PythonDependencies(sessionID: string): $CancellablePromise<codes
  */
 export function PythonEnvironment(sessionID: string, unit: string): $CancellablePromise<python$0.EnvironmentPlan> {
     return $Call.ByID(1419401253, sessionID, unit).then(($result: any) => {
-        return $$createType215($result);
+        return $$createType216($result);
     });
 }
 
@@ -2206,13 +2225,32 @@ export function PythonEnvironment(sessionID: string, unit: string): $Cancellable
  */
 export function PythonInterpreters(sessionID: string): $CancellablePromise<codestudio$0.PythonInterpreterReport> {
     return $Call.ByID(2845009395, sessionID).then(($result: any) => {
-        return $$createType216($result);
+        return $$createType217($result);
+    });
+}
+
+/**
+ * PythonLibraries elenca i pacchetti installati nell'ambiente Python (External Libraries), senza eseguire
+ * l'interprete: legge site-packages e i metadati delle distribuzioni.
+ */
+export function PythonLibraries(sessionID: string): $CancellablePromise<codestudio$0.LanguageLibraries> {
+    return $Call.ByID(106740759, sessionID).then(($result: any) => {
+        return $$createType195($result);
+    });
+}
+
+/**
+ * PythonLibrarySource prepara il codice di un pacchetto Python installato, in sola lettura.
+ */
+export function PythonLibrarySource(sessionID: string, name: string): $CancellablePromise<codestudio$0.DependencySource> {
+    return $Call.ByID(399625818, sessionID, name).then(($result: any) => {
+        return $$createType129($result);
     });
 }
 
 export function PythonUnitInterpreters(sessionID: string, unit: string): $CancellablePromise<codestudio$0.PythonInterpreterReport> {
     return $Call.ByID(429973581, sessionID, unit).then(($result: any) => {
-        return $$createType216($result);
+        return $$createType217($result);
     });
 }
 
@@ -2230,7 +2268,7 @@ export function QuickDefinition(sessionID: string, documentID: string, line: num
  */
 export function QuickOpen(sessionID: string, query: string, limit: number): $CancellablePromise<codestudio$0.QuickOpenResult[]> {
     return $Call.ByID(2164854073, sessionID, query, limit).then(($result: any) => {
-        return $$createType218($result);
+        return $$createType219($result);
     });
 }
 
@@ -2246,7 +2284,7 @@ export function ReadFileDataURL(sessionID: string, relativePath: string): $Cance
  */
 export function ReadFuzzInput(sessionID: string, packageDir: string, target: string, source: string, name: string): $CancellablePromise<codestudio$0.FuzzInputContent> {
     return $Call.ByID(2681117665, sessionID, packageDir, target, source, name).then(($result: any) => {
-        return $$createType219($result);
+        return $$createType220($result);
     });
 }
 
@@ -2277,7 +2315,7 @@ export function ReadyPreviewURL(sessionID: string, previewID: string): $Cancella
  */
 export function RecursiveCalls(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.RecursiveCallsResult> {
     return $Call.ByID(2923315195, sessionID, documentID).then(($result: any) => {
-        return $$createType220($result);
+        return $$createType221($result);
     });
 }
 
@@ -2445,13 +2483,13 @@ export function ResolveDependencySource(sessionID: string, moduleDirectory: stri
  */
 export function ResourceEnvironment(): $CancellablePromise<resources$0.Environment> {
     return $Call.ByID(3330585671).then(($result: any) => {
-        return $$createType221($result);
+        return $$createType222($result);
     });
 }
 
 export function ResourceUsage(): $CancellablePromise<resources$0.Snapshot> {
     return $Call.ByID(2235300005).then(($result: any) => {
-        return $$createType222($result);
+        return $$createType223($result);
     });
 }
 
@@ -2509,7 +2547,7 @@ export function RunGoTool(sessionID: string, binary: string, $arguments: string[
  */
 export function RunLint(sessionID: string): $CancellablePromise<codestudio$0.LintResult> {
     return $Call.ByID(1402341846, sessionID).then(($result: any) => {
-        return $$createType223($result);
+        return $$createType224($result);
     });
 }
 
@@ -2518,7 +2556,7 @@ export function RunLint(sessionID: string): $CancellablePromise<codestudio$0.Lin
  */
 export function RunLintChanged(sessionID: string): $CancellablePromise<codestudio$0.LintResult> {
     return $Call.ByID(3396593074, sessionID).then(($result: any) => {
-        return $$createType223($result);
+        return $$createType224($result);
     });
 }
 
@@ -2536,7 +2574,7 @@ export function RunSonarScan(sessionID: string, token: string): $CancellableProm
  */
 export function RustDependencyTree(sessionID: string): $CancellablePromise<rust$0.CargoTreeNode[]> {
     return $Call.ByID(3447563737, sessionID).then(($result: any) => {
-        return $$createType225($result);
+        return $$createType226($result);
     });
 }
 
@@ -2546,7 +2584,7 @@ export function RustDependencyTree(sessionID: string): $CancellablePromise<rust$
  */
 export function RustEnvironment(sessionID: string): $CancellablePromise<codestudio$0.RustEnvironmentReport> {
     return $Call.ByID(3393578449, sessionID).then(($result: any) => {
-        return $$createType226($result);
+        return $$createType227($result);
     });
 }
 
@@ -2555,7 +2593,7 @@ export function RustEnvironment(sessionID: string): $CancellablePromise<codestud
  */
 export function RustToolchains(sessionID: string): $CancellablePromise<codestudio$0.RustToolchainReport> {
     return $Call.ByID(2944931276, sessionID).then(($result: any) => {
-        return $$createType227($result);
+        return $$createType228($result);
     });
 }
 
@@ -2564,7 +2602,7 @@ export function RustToolchains(sessionID: string): $CancellablePromise<codestudi
  */
 export function SaveDocument(sessionID: string, documentID: string, content: string, diskToken: string, force: boolean): $CancellablePromise<codestudio$0.OpenDocument> {
     return $Call.ByID(3463741930, sessionID, documentID, content, diskToken, force).then(($result: any) => {
-        return $$createType195($result);
+        return $$createType196($result);
     });
 }
 
@@ -2587,7 +2625,7 @@ export function SavePreviewConfig(sessionID: string, config: codestudio$0.Previe
  */
 export function SavePrivateRepoCredential(host: string, username: string, token: string): $CancellablePromise<codestudio$0.PrivateRepoCredential> {
     return $Call.ByID(1996559851, host, username, token).then(($result: any) => {
-        return $$createType208($result);
+        return $$createType209($result);
     });
 }
 
@@ -2633,7 +2671,7 @@ export function SaveSonarBaseline(sessionID: string, token: string): $Cancellabl
  */
 export function SaveSonarConfig(sessionID: string, config: codestudio$0.SonarConfig): $CancellablePromise<codestudio$0.SonarConfig> {
     return $Call.ByID(2689463436, sessionID, config).then(($result: any) => {
-        return $$createType228($result);
+        return $$createType229($result);
     });
 }
 
@@ -2642,7 +2680,7 @@ export function SaveSonarConfig(sessionID: string, config: codestudio$0.SonarCon
  */
 export function SearchProject(query: codestudio$0.SearchQuery): $CancellablePromise<codestudio$0.SearchResult> {
     return $Call.ByID(1135993643, query).then(($result: any) => {
-        return $$createType229($result);
+        return $$createType230($result);
     });
 }
 
@@ -2651,7 +2689,7 @@ export function SearchProject(query: codestudio$0.SearchQuery): $CancellableProm
  */
 export function SecurityExposures(sessionID: string, locations: codestudio$0.FindingLocation[]): $CancellablePromise<codestudio$0.SecurityExposure[]> {
     return $Call.ByID(1294922534, sessionID, locations).then(($result: any) => {
-        return $$createType231($result);
+        return $$createType232($result);
     });
 }
 
@@ -2660,7 +2698,7 @@ export function SecurityExposures(sessionID: string, locations: codestudio$0.Fin
  */
 export function SecurityScan(sessionID: string): $CancellablePromise<codestudio$0.SecurityReport> {
     return $Call.ByID(1068563901, sessionID).then(($result: any) => {
-        return $$createType232($result);
+        return $$createType233($result);
     });
 }
 
@@ -2715,7 +2753,7 @@ export function SelectProjectParent(): $CancellablePromise<string> {
  */
 export function SemanticTokens(sessionID: string, documentID: string): $CancellablePromise<codestudio$0.SemanticTokensResult> {
     return $Call.ByID(330697916, sessionID, documentID).then(($result: any) => {
-        return $$createType233($result);
+        return $$createType234($result);
     });
 }
 
@@ -2737,7 +2775,7 @@ export function SetActiveStudioWorkspace(id: string): $CancellablePromise<codest
 
 export function SetBackendMemoryLimit(mib: number): $CancellablePromise<resources$0.GoRuntime> {
     return $Call.ByID(2918410432, mib).then(($result: any) => {
-        return $$createType234($result);
+        return $$createType235($result);
     });
 }
 
@@ -2746,7 +2784,7 @@ export function SetBackendMemoryLimit(mib: number): $CancellablePromise<resource
  */
 export function SetBreakpoints(sessionID: string, relativePath: string, breakpoints: codestudio$0.Breakpoint[]): $CancellablePromise<codestudio$0.BreakpointState[]> {
     return $Call.ByID(914916034, sessionID, relativePath, breakpoints).then(($result: any) => {
-        return $$createType236($result);
+        return $$createType237($result);
     });
 }
 
@@ -2849,7 +2887,7 @@ export function SetWindowDirtyDocumentCount(windowID: string, count: number): $C
  */
 export function ShutdownAnalysis(sessionID: string, target: string, health: string, graceSeconds: number): $CancellablePromise<codestudio$0.ShutdownReport> {
     return $Call.ByID(2737527334, sessionID, target, health, graceSeconds).then(($result: any) => {
-        return $$createType237($result);
+        return $$createType238($result);
     });
 }
 
@@ -2858,7 +2896,7 @@ export function ShutdownAnalysis(sessionID: string, target: string, health: stri
  */
 export function SignatureHelp(sessionID: string, documentID: string, line: number, column: number): $CancellablePromise<codestudio$0.SignatureResult> {
     return $Call.ByID(4264674347, sessionID, documentID, line, column).then(($result: any) => {
-        return $$createType238($result);
+        return $$createType239($result);
     });
 }
 
@@ -2867,7 +2905,7 @@ export function SignatureHelp(sessionID: string, documentID: string, line: numbe
  */
 export function SonarConfigFor(sessionID: string): $CancellablePromise<codestudio$0.SonarConfig> {
     return $Call.ByID(4113315866, sessionID).then(($result: any) => {
-        return $$createType228($result);
+        return $$createType229($result);
     });
 }
 
@@ -2876,7 +2914,7 @@ export function SonarConfigFor(sessionID: string): $CancellablePromise<codestudi
  */
 export function SpringEndpoints(sessionID: string): $CancellablePromise<java$0.SpringEndpoint[]> {
     return $Call.ByID(3324107379, sessionID).then(($result: any) => {
-        return $$createType240($result);
+        return $$createType241($result);
     });
 }
 
@@ -2886,7 +2924,7 @@ export function SpringEndpoints(sessionID: string): $CancellablePromise<java$0.S
  */
 export function SpringIndex(sessionID: string): $CancellablePromise<java$0.SpringIndex> {
     return $Call.ByID(3641293781, sessionID).then(($result: any) => {
-        return $$createType241($result);
+        return $$createType242($result);
     });
 }
 
@@ -2896,7 +2934,7 @@ export function SpringIndex(sessionID: string): $CancellablePromise<java$0.Sprin
  */
 export function SpringMetadataRefresh(sessionID: string, limit: number): $CancellablePromise<java$0.SpringMetadataReport> {
     return $Call.ByID(1432124745, sessionID, limit).then(($result: any) => {
-        return $$createType242($result);
+        return $$createType243($result);
     });
 }
 
@@ -2958,7 +2996,7 @@ export function StartDevContainer(sessionID: string): $CancellablePromise<codest
  */
 export function StartDirectoryStream(sessionID: string, relativePath: string, includeIgnored: boolean): $CancellablePromise<codestudio$0.DirectoryStreamStart> {
     return $Call.ByID(1416059505, sessionID, relativePath, includeIgnored).then(($result: any) => {
-        return $$createType243($result);
+        return $$createType244($result);
     });
 }
 
@@ -3009,7 +3047,7 @@ export function StartJavaOsgiBuild(sessionID: string): $CancellablePromise<codes
  */
 export function StartJavaOsgiRun(sessionID: string): $CancellablePromise<codestudio$0.OsgiRunResult> {
     return $Call.ByID(2880530869, sessionID).then(($result: any) => {
-        return $$createType244($result);
+        return $$createType245($result);
     });
 }
 
@@ -3055,7 +3093,7 @@ export function StartPreview(sessionID: string, request: codestudio$0.PreviewReq
  */
 export function StartProjectSearch(query: codestudio$0.SearchQuery): $CancellablePromise<codestudio$0.SearchStreamInfo> {
     return $Call.ByID(1671509795, query).then(($result: any) => {
-        return $$createType245($result);
+        return $$createType246($result);
     });
 }
 
@@ -3118,7 +3156,7 @@ export function StartWebDebug(request: codestudio$0.WebDebugRequest): $Cancellab
  */
 export function StartupAnalysis(sessionID: string, target: string, health: string, timeoutSeconds: number): $CancellablePromise<codestudio$0.StartupReport> {
     return $Call.ByID(1020562025, sessionID, target, health, timeoutSeconds).then(($result: any) => {
-        return $$createType246($result);
+        return $$createType247($result);
     });
 }
 
@@ -3180,7 +3218,7 @@ export function SuppressSecurityFinding(sessionID: string, finding: codestudio$0
  */
 export function TestModuleRegistry(sessionID: string): $CancellablePromise<codestudio$0.ModuleRegistryCheck> {
     return $Call.ByID(2927291149, sessionID).then(($result: any) => {
-        return $$createType247($result);
+        return $$createType248($result);
     });
 }
 
@@ -3189,7 +3227,7 @@ export function TestModuleRegistry(sessionID: string): $CancellablePromise<codes
  */
 export function ToolchainSettings(sessionID: string): $CancellablePromise<codestudio$0.ToolchainSettings> {
     return $Call.ByID(1885808392, sessionID).then(($result: any) => {
-        return $$createType248($result);
+        return $$createType249($result);
     });
 }
 
@@ -3228,7 +3266,7 @@ export function UseGlobalToolchain(sessionID: string): $CancellablePromise<void>
  */
 export function VCSBlame(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSBlameLine[]> {
     return $Call.ByID(3401291297, sessionID, relativePath).then(($result: any) => {
-        return $$createType250($result);
+        return $$createType251($result);
     });
 }
 
@@ -3237,7 +3275,7 @@ export function VCSBlame(sessionID: string, relativePath: string): $CancellableP
  */
 export function VCSChangedSymbols(sessionID: string): $CancellablePromise<codestudio$0.VCSChangedSymbol[]> {
     return $Call.ByID(2852524783, sessionID).then(($result: any) => {
-        return $$createType252($result);
+        return $$createType253($result);
     });
 }
 
@@ -3253,7 +3291,7 @@ export function VCSCheckout(sessionID: string, branch: string): $CancellableProm
  */
 export function VCSCommitFiles(sessionID: string, message: string, relativePaths: string[]): $CancellablePromise<git$0.CommitResult> {
     return $Call.ByID(2017164414, sessionID, message, relativePaths).then(($result: any) => {
-        return $$createType253($result);
+        return $$createType254($result);
     });
 }
 
@@ -3269,7 +3307,7 @@ export function VCSFileAtRevision(sessionID: string, relativePath: string, revis
  */
 export function VCSFileHistory(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSCommit[]> {
     return $Call.ByID(4154237980, sessionID, relativePath).then(($result: any) => {
-        return $$createType255($result);
+        return $$createType256($result);
     });
 }
 
@@ -3278,7 +3316,7 @@ export function VCSFileHistory(sessionID: string, relativePath: string): $Cancel
  */
 export function VCSLineHistory(sessionID: string, relativePath: string, start: number, end: number): $CancellablePromise<codestudio$0.VCSCommit[]> {
     return $Call.ByID(3679175152, sessionID, relativePath, start, end).then(($result: any) => {
-        return $$createType255($result);
+        return $$createType256($result);
     });
 }
 
@@ -3287,7 +3325,7 @@ export function VCSLineHistory(sessionID: string, relativePath: string, start: n
  */
 export function VCSPatchLines(sessionID: string, base: string): $CancellablePromise<{ [_ in string]?: git$0.LineRange[] }> {
     return $Call.ByID(447699899, sessionID, base).then(($result: any) => {
-        return $$createType258($result);
+        return $$createType259($result);
     });
 }
 
@@ -3314,7 +3352,7 @@ export function VCSRevert(sessionID: string, relativePaths: string[]): $Cancella
 
 export function VCSSelectRepository(sessionID: string, root: string): $CancellablePromise<codestudio$0.VCSStatus> {
     return $Call.ByID(156071826, sessionID, root).then(($result: any) => {
-        return $$createType259($result);
+        return $$createType260($result);
     });
 }
 
@@ -3330,7 +3368,7 @@ export function VCSStage(sessionID: string, relativePaths: string[], staged: boo
  */
 export function VCSStatus(sessionID: string): $CancellablePromise<codestudio$0.VCSStatus> {
     return $Call.ByID(2262380148, sessionID).then(($result: any) => {
-        return $$createType259($result);
+        return $$createType260($result);
     });
 }
 
@@ -3339,7 +3377,7 @@ export function VCSStatus(sessionID: string): $CancellablePromise<codestudio$0.V
  */
 export function VCSWorkingDiff(sessionID: string, relativePath: string): $CancellablePromise<codestudio$0.VCSWorkingDiff> {
     return $Call.ByID(4260236086, sessionID, relativePath).then(($result: any) => {
-        return $$createType260($result);
+        return $$createType261($result);
     });
 }
 
@@ -3348,7 +3386,7 @@ export function VCSWorkingDiff(sessionID: string, relativePath: string): $Cancel
  */
 export function VulnerabilityScan(sessionID: string, moduleDirectory: string): $CancellablePromise<codestudio$0.VulnReport> {
     return $Call.ByID(416955177, sessionID, moduleDirectory).then(($result: any) => {
-        return $$createType261($result);
+        return $$createType262($result);
     });
 }
 
@@ -3357,7 +3395,7 @@ export function VulnerabilityScan(sessionID: string, moduleDirectory: string): $
  */
 export function WatcherStatus(sessionID: string): $CancellablePromise<codestudio$0.WatcherStatus> {
     return $Call.ByID(999645628, sessionID).then(($result: any) => {
-        return $$createType262($result);
+        return $$createType263($result);
     });
 }
 
@@ -3366,7 +3404,7 @@ export function WatcherStatus(sessionID: string): $CancellablePromise<codestudio
  */
 export function WorkspaceGraphSummary(sessionID: string, rebuild: boolean): $CancellablePromise<codestudio$0.GraphSummary> {
     return $Call.ByID(4166878463, sessionID, rebuild).then(($result: any) => {
-        return $$createType263($result);
+        return $$createType264($result);
     });
 }
 
@@ -3375,7 +3413,7 @@ export function WorkspaceGraphSummary(sessionID: string, rebuild: boolean): $Can
  */
 export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<codestudio$0.WorkspaceModule[]> {
     return $Call.ByID(368877389, sessionID).then(($result: any) => {
-        return $$createType265($result);
+        return $$createType266($result);
     });
 }
 
@@ -3384,7 +3422,7 @@ export function WorkspaceModuleGraph(sessionID: string): $CancellablePromise<cod
  */
 export function WorkspaceSymbols(sessionID: string, query: string): $CancellablePromise<codestudio$0.WorkspaceSymbol[]> {
     return $Call.ByID(3951183568, sessionID, query).then(($result: any) => {
-        return $$createType267($result);
+        return $$createType268($result);
     });
 }
 
@@ -3598,76 +3636,77 @@ const $$createType191 = langserver$0.EditorLocation.createFrom;
 const $$createType192 = $Create.Array($$createType191);
 const $$createType193 = codestudio$0.MemoryModelReport.createFrom;
 const $$createType194 = java$0.MyBatisIndex.createFrom;
-const $$createType195 = workspace$0.OpenDocument.createFrom;
-const $$createType196 = codestudio$0.PackageHeatmap.createFrom;
-const $$createType197 = java$0.PomDependency.createFrom;
-const $$createType198 = $Create.Array($$createType197);
-const $$createType199 = codestudio$0.PomManagedVersion.createFrom;
-const $$createType200 = $Create.Map($Create.Any, $$createType199);
-const $$createType201 = java$0.VersionInfo.createFrom;
-const $$createType202 = $Create.Array($$createType201);
-const $$createType203 = langserver$0.RenameTarget.createFrom;
-const $$createType204 = lsp$0.InstallPlan.createFrom;
-const $$createType205 = codestudio$0.GoToolPreview.createFrom;
-const $$createType206 = eclipsepde$0.P2Preview.createFrom;
-const $$createType207 = $Create.Nullable($$createType206);
-const $$createType208 = codestudio$0.PrivateRepoCredential.createFrom;
-const $$createType209 = codestudio$0.ProjectService.createFrom;
-const $$createType210 = $Create.Array($$createType209);
-const $$createType211 = lsp$0.ServerInfo.createFrom;
-const $$createType212 = $Create.Array($$createType211);
-const $$createType213 = codestudio$0.PythonUnitDependencies.createFrom;
-const $$createType214 = $Create.Array($$createType213);
-const $$createType215 = python$0.EnvironmentPlan.createFrom;
-const $$createType216 = codestudio$0.PythonInterpreterReport.createFrom;
-const $$createType217 = codestudio$0.QuickOpenResult.createFrom;
-const $$createType218 = $Create.Array($$createType217);
-const $$createType219 = codestudio$0.FuzzInputContent.createFrom;
-const $$createType220 = langserver$0.RecursiveCallsResult.createFrom;
-const $$createType221 = resources$0.Environment.createFrom;
-const $$createType222 = resources$0.Snapshot.createFrom;
-const $$createType223 = codestudio$0.LintResult.createFrom;
-const $$createType224 = rust$0.CargoTreeNode.createFrom;
-const $$createType225 = $Create.Array($$createType224);
-const $$createType226 = codestudio$0.RustEnvironmentReport.createFrom;
-const $$createType227 = codestudio$0.RustToolchainReport.createFrom;
-const $$createType228 = codestudio$0.SonarConfig.createFrom;
-const $$createType229 = codestudio$0.SearchResult.createFrom;
-const $$createType230 = codestudio$0.SecurityExposure.createFrom;
-const $$createType231 = $Create.Array($$createType230);
-const $$createType232 = security$0.Report.createFrom;
-const $$createType233 = langserver$0.SemanticTokensResult.createFrom;
-const $$createType234 = resources$0.GoRuntime.createFrom;
-const $$createType235 = dap$0.BreakpointState.createFrom;
-const $$createType236 = $Create.Array($$createType235);
-const $$createType237 = codestudio$0.ShutdownReport.createFrom;
-const $$createType238 = langserver$0.SignatureResult.createFrom;
-const $$createType239 = java$0.SpringEndpoint.createFrom;
-const $$createType240 = $Create.Array($$createType239);
-const $$createType241 = java$0.SpringIndex.createFrom;
-const $$createType242 = java$0.SpringMetadataReport.createFrom;
-const $$createType243 = codestudio$0.DirectoryStreamStart.createFrom;
-const $$createType244 = codestudio$0.OsgiRunResult.createFrom;
-const $$createType245 = codestudio$0.SearchStreamInfo.createFrom;
-const $$createType246 = codestudio$0.StartupReport.createFrom;
-const $$createType247 = codestudio$0.ModuleRegistryCheck.createFrom;
-const $$createType248 = golang$0.ToolchainSettings.createFrom;
-const $$createType249 = codestudio$0.VCSBlameLine.createFrom;
-const $$createType250 = $Create.Array($$createType249);
-const $$createType251 = codestudio$0.VCSChangedSymbol.createFrom;
-const $$createType252 = $Create.Array($$createType251);
-const $$createType253 = git$0.CommitResult.createFrom;
-const $$createType254 = codestudio$0.VCSCommit.createFrom;
-const $$createType255 = $Create.Array($$createType254);
-const $$createType256 = git$0.LineRange.createFrom;
-const $$createType257 = $Create.Array($$createType256);
-const $$createType258 = $Create.Map($Create.Any, $$createType257);
-const $$createType259 = codestudio$0.VCSStatus.createFrom;
-const $$createType260 = codestudio$0.VCSWorkingDiff.createFrom;
-const $$createType261 = govuln$0.Report.createFrom;
-const $$createType262 = codestudio$0.WatcherStatus.createFrom;
-const $$createType263 = codestudio$0.GraphSummary.createFrom;
-const $$createType264 = codestudio$0.WorkspaceModule.createFrom;
-const $$createType265 = $Create.Array($$createType264);
-const $$createType266 = langserver$0.WorkspaceSymbol.createFrom;
-const $$createType267 = $Create.Array($$createType266);
+const $$createType195 = codestudio$0.LanguageLibraries.createFrom;
+const $$createType196 = workspace$0.OpenDocument.createFrom;
+const $$createType197 = codestudio$0.PackageHeatmap.createFrom;
+const $$createType198 = java$0.PomDependency.createFrom;
+const $$createType199 = $Create.Array($$createType198);
+const $$createType200 = codestudio$0.PomManagedVersion.createFrom;
+const $$createType201 = $Create.Map($Create.Any, $$createType200);
+const $$createType202 = java$0.VersionInfo.createFrom;
+const $$createType203 = $Create.Array($$createType202);
+const $$createType204 = langserver$0.RenameTarget.createFrom;
+const $$createType205 = lsp$0.InstallPlan.createFrom;
+const $$createType206 = codestudio$0.GoToolPreview.createFrom;
+const $$createType207 = eclipsepde$0.P2Preview.createFrom;
+const $$createType208 = $Create.Nullable($$createType207);
+const $$createType209 = codestudio$0.PrivateRepoCredential.createFrom;
+const $$createType210 = codestudio$0.ProjectService.createFrom;
+const $$createType211 = $Create.Array($$createType210);
+const $$createType212 = lsp$0.ServerInfo.createFrom;
+const $$createType213 = $Create.Array($$createType212);
+const $$createType214 = codestudio$0.PythonUnitDependencies.createFrom;
+const $$createType215 = $Create.Array($$createType214);
+const $$createType216 = python$0.EnvironmentPlan.createFrom;
+const $$createType217 = codestudio$0.PythonInterpreterReport.createFrom;
+const $$createType218 = codestudio$0.QuickOpenResult.createFrom;
+const $$createType219 = $Create.Array($$createType218);
+const $$createType220 = codestudio$0.FuzzInputContent.createFrom;
+const $$createType221 = langserver$0.RecursiveCallsResult.createFrom;
+const $$createType222 = resources$0.Environment.createFrom;
+const $$createType223 = resources$0.Snapshot.createFrom;
+const $$createType224 = codestudio$0.LintResult.createFrom;
+const $$createType225 = rust$0.CargoTreeNode.createFrom;
+const $$createType226 = $Create.Array($$createType225);
+const $$createType227 = codestudio$0.RustEnvironmentReport.createFrom;
+const $$createType228 = codestudio$0.RustToolchainReport.createFrom;
+const $$createType229 = codestudio$0.SonarConfig.createFrom;
+const $$createType230 = codestudio$0.SearchResult.createFrom;
+const $$createType231 = codestudio$0.SecurityExposure.createFrom;
+const $$createType232 = $Create.Array($$createType231);
+const $$createType233 = security$0.Report.createFrom;
+const $$createType234 = langserver$0.SemanticTokensResult.createFrom;
+const $$createType235 = resources$0.GoRuntime.createFrom;
+const $$createType236 = dap$0.BreakpointState.createFrom;
+const $$createType237 = $Create.Array($$createType236);
+const $$createType238 = codestudio$0.ShutdownReport.createFrom;
+const $$createType239 = langserver$0.SignatureResult.createFrom;
+const $$createType240 = java$0.SpringEndpoint.createFrom;
+const $$createType241 = $Create.Array($$createType240);
+const $$createType242 = java$0.SpringIndex.createFrom;
+const $$createType243 = java$0.SpringMetadataReport.createFrom;
+const $$createType244 = codestudio$0.DirectoryStreamStart.createFrom;
+const $$createType245 = codestudio$0.OsgiRunResult.createFrom;
+const $$createType246 = codestudio$0.SearchStreamInfo.createFrom;
+const $$createType247 = codestudio$0.StartupReport.createFrom;
+const $$createType248 = codestudio$0.ModuleRegistryCheck.createFrom;
+const $$createType249 = golang$0.ToolchainSettings.createFrom;
+const $$createType250 = codestudio$0.VCSBlameLine.createFrom;
+const $$createType251 = $Create.Array($$createType250);
+const $$createType252 = codestudio$0.VCSChangedSymbol.createFrom;
+const $$createType253 = $Create.Array($$createType252);
+const $$createType254 = git$0.CommitResult.createFrom;
+const $$createType255 = codestudio$0.VCSCommit.createFrom;
+const $$createType256 = $Create.Array($$createType255);
+const $$createType257 = git$0.LineRange.createFrom;
+const $$createType258 = $Create.Array($$createType257);
+const $$createType259 = $Create.Map($Create.Any, $$createType258);
+const $$createType260 = codestudio$0.VCSStatus.createFrom;
+const $$createType261 = codestudio$0.VCSWorkingDiff.createFrom;
+const $$createType262 = govuln$0.Report.createFrom;
+const $$createType263 = codestudio$0.WatcherStatus.createFrom;
+const $$createType264 = codestudio$0.GraphSummary.createFrom;
+const $$createType265 = codestudio$0.WorkspaceModule.createFrom;
+const $$createType266 = $Create.Array($$createType265);
+const $$createType267 = langserver$0.WorkspaceSymbol.createFrom;
+const $$createType268 = $Create.Array($$createType267);

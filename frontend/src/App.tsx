@@ -38,6 +38,7 @@ const DebugBar = React.lazy(() => import('@/components/devsession/DebugBar').the
 const DevSessionHost = React.lazy(() => import('@/components/devsession/DevSessionHost').then((module) => ({ default: module.DevSessionHost })))
 const DevLogOverlay = React.lazy(() => import('@/components/ui/DevLogOverlay').then((module) => ({ default: module.DevLogOverlay })))
 const UpdateNotice = React.lazy(() => import('@/components/settings/UpdateNotice'))
+const ApiCodeLinkHost = React.lazy(() => import('@/components/api-code-link/ApiCodeLinkHost').then((module) => ({ default: module.ApiCodeLinkHost })))
 function App() {
   const { commandPaletteOpen, setCommandPaletteOpen, firstStableFrame } = useAppInit()
   const { dragOver, dropPreview, dropFeedback, handlers } = useFileDrop()
@@ -45,7 +46,7 @@ function App() {
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const activeRail     = useAppStore((s) => s.activeRail)
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
-  const showSidebar    = activeRail === 'collections' && !sidebarCollapsed
+  const showSidebar    = (activeRail === 'collections' || activeRail === 'websocket') && !sidebarCollapsed
   const splitView = useAppStore((s) => s.splitView)
   const codeStudioMaximized = useAppStore((s) => s.codeStudioMaximized || s.codeStudioZen) && activeRail === 'codestudio' && !splitView
   const workspaceHydrated = useWorkspaceHydration()
@@ -155,6 +156,7 @@ function App() {
         {firstStableFrame && <Suspense fallback={null}><CodeStudioCloseGuard /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><DevSessionHost /></Suspense>}
         {firstStableFrame && <Suspense fallback={null}><UpdateNotice /></Suspense>}
+        {firstStableFrame && <Suspense fallback={null}><ApiCodeLinkHost /></Suspense>}
         {import.meta.env.DEV && devLogVisible && <Suspense fallback={null}><DevLogOverlay visible onClose={toggleDevTools} /></Suspense>}
       </ThemeProvider>
     </ErrorBoundary>

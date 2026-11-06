@@ -7,8 +7,9 @@ import (
 	"strings"
 )
 
-// External Libraries di un progetto Maven: le dipendenze che il build risolve, con il jar e il jar dei
-// sorgenti nel repository locale. Come i moduli del go.mod per Go: codice da leggere, non da modificare.
+// External Libraries di un progetto Java: per Maven le dipendenze che il build risolve, con il jar e il jar
+// dei sorgenti nel repository locale; per Gradle le stesse righe lette dal grafo risolto e dalla cache
+// Gradle. Come i moduli del go.mod per Go: codice da leggere, non da modificare.
 
 // LibraryRef è una dipendenza risolta di un modulo, come la dà il resolver offline del pom.
 type LibraryRef struct {

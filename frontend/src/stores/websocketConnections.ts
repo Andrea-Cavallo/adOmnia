@@ -257,11 +257,17 @@ export const useWsConnections = create<WsConnectionsState>((set, get) => {
     openExtraClients: async (tabId, count) => {
       const runtime = runtimeOf(tabId)
       if (!runtime.request) return
+      const url = connectPayload(runtime.request, runtime.vars).url
       const offset = runtime.extras.length + 2
       const results = await Promise.all(Array.from({ length: Math.min(count, MAX_EXTRA_CLIENTS) }, async (_, index) => {
         const label = `#${offset + index}`
         try {
-          const data = await openSession(runtime.request!, runtime.vars)
+          // Every extra client is a run like the main connection, so its handshake
+          // carries the same correlation id and traceparent into the service logs.
+          const live = await beginLiveWebSocket(url).catch(() => null)
+          const started = performance.now()
+          const data = await openSession(runtime.request!, runtime.vars, live?.headers)
+          if (live) void endLiveWebSocket(live, !!data.sessionId && !data.error, performance.now() - started, data.error ?? '')
           if (data.error || !data.sessionId) return `${label}: ${data.error ?? 'no session'}`
           const stream = await streamFor(data.sessionId)
           if (!stream) return `${label}: the local server is not ready`

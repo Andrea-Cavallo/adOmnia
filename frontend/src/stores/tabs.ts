@@ -72,9 +72,9 @@ interface TabsState {
   closeTab: (id: string) => void
   closeRequestTabs: (requestId: string) => void
   renameRequestTabs: (requestId: string, name: string) => void
-  closeTabsToRight: (id: string) => void
-  closeTabsToLeft: (id: string) => void
-  closeAllTabs: () => void
+  closeTabsToRight: (id: string, scope?: (tab: Tab) => boolean) => void
+  closeTabsToLeft: (id: string, scope?: (tab: Tab) => boolean) => void
+  closeAllTabs: (scope?: (tab: Tab) => boolean) => void
   reorderTab: (fromId: string, toId: string, position: TabDropPosition) => void
   setActiveTab: (id: string) => void
   newTab: (method?: HttpMethod) => void
@@ -449,15 +449,16 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     get().save()
   },
 
-  closeTabsToRight: (id) => {
+  closeTabsToRight: (id, scope) => {
     set((s) => {
-      const workspaceTabs = s.tabs.filter((tab) => belongsToWorkspace(tab))
+      const inScope = (tab: Tab) => belongsToWorkspace(tab) && (!scope || scope(tab))
+      const workspaceTabs = s.tabs.filter(inScope)
       const idx = workspaceTabs.findIndex((t) => t.id === id)
       if (idx === -1) return s
       const removeIds = new Set(workspaceTabs.slice(idx + 1).filter(canCloseTab).map((tab) => tab.id))
       const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
-      const remainingWorkspaceTabs = filtered.filter((tab) => belongsToWorkspace(tab))
+      const remainingWorkspaceTabs = filtered.filter(inScope)
       return {
         tabs: filtered,
         activeTabId: activeTabStillExists ? s.activeTabId : remainingWorkspaceTabs[remainingWorkspaceTabs.length - 1]?.id ?? null,
@@ -467,9 +468,10 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     get().save()
   },
 
-  closeTabsToLeft: (id) => {
+  closeTabsToLeft: (id, scope) => {
     set((s) => {
-      const workspaceTabs = s.tabs.filter((tab) => belongsToWorkspace(tab))
+      const inScope = (tab: Tab) => belongsToWorkspace(tab) && (!scope || scope(tab))
+      const workspaceTabs = s.tabs.filter(inScope)
       const idx = workspaceTabs.findIndex((t) => t.id === id)
       if (idx === -1) return s
       const removeIds = new Set(workspaceTabs.slice(0, idx).filter(canCloseTab).map((tab) => tab.id))
@@ -477,21 +479,22 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
       return {
         tabs: filtered,
-        activeTabId: activeTabStillExists ? s.activeTabId : filtered.find((tab) => belongsToWorkspace(tab))?.id ?? null,
+        activeTabId: activeTabStillExists ? s.activeTabId : filtered.find(inScope)?.id ?? null,
         viewStateByTabId: retainViewStates(s.viewStateByTabId, filtered),
       }
     })
     get().save()
   },
 
-  closeAllTabs: () => {
+  closeAllTabs: (scope) => {
     set((s) => {
-      const removeIds = new Set(s.tabs.filter((tab) => belongsToWorkspace(tab) && canCloseTab(tab)).map((tab) => tab.id))
+      const inScope = (tab: Tab) => belongsToWorkspace(tab) && (!scope || scope(tab))
+      const removeIds = new Set(s.tabs.filter(inScope).filter(canCloseTab).map((tab) => tab.id))
       const filtered = s.tabs.filter((tab) => !removeIds.has(tab.id))
       const activeTabStillExists = filtered.some((t) => t.id === s.activeTabId)
       return {
         tabs: filtered,
-        activeTabId: activeTabStillExists ? s.activeTabId : filtered.find((tab) => belongsToWorkspace(tab))?.id ?? null,
+        activeTabId: activeTabStillExists ? s.activeTabId : filtered.find(inScope)?.id ?? null,
         viewStateByTabId: retainViewStates(s.viewStateByTabId, filtered),
       }
     })

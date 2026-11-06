@@ -241,6 +241,11 @@
 .monaco-editor .code-studio-comment-fixme { color: var(--color-error) !important; font-style: normal; font-weight: 600; }
 .monaco-editor .code-studio-comment-note { color: var(--color-info) !important; font-style: normal; }
 .monaco-editor .code-studio-comment-important { color: var(--color-accent) !important; font-style: normal; font-weight: 700; }
+/* Indent rainbow (Python, YAML): una fascia per livello, tinte leggere che reggono temi chiari e scuri. */
+.monaco-editor .code-studio-indent-rainbow-0 { background-color: rgba(255, 255, 64, 0.08); }
+.monaco-editor .code-studio-indent-rainbow-1 { background-color: rgba(127, 255, 127, 0.08); }
+.monaco-editor .code-studio-indent-rainbow-2 { background-color: rgba(255, 127, 255, 0.08); }
+.monaco-editor .code-studio-indent-rainbow-3 { background-color: rgba(79, 236, 236, 0.08); }
 
 /* Inline diagnostics use the same semantic tokens in light and dark skins. */
 .monaco-editor .code-studio-diagnostic-text { font-style: italic; opacity: .9; }

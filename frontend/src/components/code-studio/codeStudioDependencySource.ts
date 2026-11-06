@@ -69,10 +69,13 @@ function relativeToRoot(root: string, path: string): string {
 function goModSourceTarget(source: GoIDEDependencySource, sessionId: string, file: string): Omit<StudioLocation, 'uri'> | null {
   if (!source.directory || !file) return null
   const path = `${source.directory}/${normalizePath(file)}`
-  if (source.relativeDir) {
+  // Il codice di terze parti dentro il progetto (FetchContent, vcpkg) resta in sola lettura: non è
+  // codice dell'utente anche se vive sotto la stessa radice.
+  const thirdParty = source.kind === 'native-dependency' || source.kind === 'python-site-packages'
+  if (!thirdParty && source.relativeDir) {
     return { path, relativePath: joinRelative(source.relativeDir, file), external: false, targetSessionId: sessionId, range: FIRST_LINE }
   }
-  const owner = ownerSessionOf(source.directory)
+  const owner = thirdParty ? null : ownerSessionOf(source.directory)
   if (owner) {
     return { path, relativePath: relativeToRoot(owner.root, path), external: false, targetSessionId: owner.id, range: FIRST_LINE }
   }

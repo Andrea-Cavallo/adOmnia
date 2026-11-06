@@ -119,7 +119,11 @@ function handlerLenses(document: GoIDEEditorDocument, withInline = false): Monac
 export function openHttpRouteAt(document: GoIDEEditorDocument, line: number): boolean {
   const route = findHttpRoutes(document.buffer).find((item) => item.line === line)
   if (!route) return false
-  openRouteInApiClient(route, document.buffer, `${document.document.relativePath}:${line}`)
+  openRouteInApiClient(route, document.buffer, `${document.document.relativePath}:${line}`, {
+    sessionId: document.document.sessionId,
+    file: document.document.relativePath,
+    line,
+  })
   return true
 }
 

@@ -30,6 +30,10 @@ export type ModuleAction =
   | { kind: 'dispatch'; eventName: string; detail: Record<string, unknown> }
   /** A source location in Code Studio. */
   | { kind: 'open-location'; file: string; line: number; sessionId?: string }
+  /** API → Code Studio: show the handler of a request in the shared split. */
+  | { kind: 'api-code-request'; requestTabId: string; method: string; url: string; vars?: Record<string, string> }
+  /** Code Studio → API: show the endpoint of a handler in the shared split. */
+  | { kind: 'api-code-handler'; sessionId: string; file: string; line: number; routeId?: string; fallback?: { method: string; path: string; label?: string } }
 
 export interface RouteOptions {
   /** false: change the module's data without switching to it (e.g. "imported, stay in Code Studio"). */
@@ -101,6 +105,9 @@ function runLocally(rail: RailItem, action: ModuleAction | null, reveal: boolean
     case 'dispatch': deliverWhenMounted(rail, action.eventName, action.detail, onTimeout); break
     // Code Studio stays out of the startup bundle: loaded only when a link really opens code.
     case 'open-location': void import('@/stores/codeStudio').then(async ({ useCodeStudioStore }) => { if (action.sessionId) { if (!useCodeStudioStore.getState().sessions.some(session => session.id === action.sessionId)) return; await useCodeStudioStore.getState().selectSession(action.sessionId) }; await useCodeStudioStore.getState().openLocation(action.file, action.line, 1) }); break
+    // The API ↔ code link is lazy too: the workspace shell never pays for it.
+    case 'api-code-request': void import('@/lib/api-code-link/actions').then((module) => module.openRequestInCodeStudio(action)); break
+    case 'api-code-handler': void import('@/lib/api-code-link/actions').then((module) => module.openHandlerInApiWorkspace(action)); break
   }
 }
 

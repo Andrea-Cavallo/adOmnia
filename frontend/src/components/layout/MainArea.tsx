@@ -43,18 +43,19 @@ import { showEntityNotice } from '@/lib/entities/notice'
 import { useDevSessionStore } from '@/stores/devSession'
 import { LiveResponseFrame } from '@/components/devsession/LiveResponseFrame'
 import { LiveRequestStrip } from '@/components/devsession/LiveRequestStrip'
+import { RequestCodeLinkButton } from '@/components/devsession/RequestCodeLinkButton'
 import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
 import { WebSocketRequestBar } from '@/components/websocket/WebSocketRequestBar'
 import { WebSocketComposer } from '@/components/websocket/WebSocketComposer'
 import { WebSocketMessagesPanel } from '@/components/websocket/WebSocketMessagesPanel'
 import { useWsConnections } from '@/stores/websocketConnections'
 import { activeMessage, isWebSocketRequest, messageMode } from '@/lib/websocket/wsRequest'
-import { openWebSocketUrl } from '@/lib/websocket/openWebSocketTab'
+import { migrateLegacyWebSocketTab, openWebSocketTab, openWebSocketUrl } from '@/lib/websocket/openWebSocketTab'
 import { WEBSOCKET_HANDOFF_INTENT, useEntityHandoff } from '@/lib/entities/dispatch'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WelcomePanel, WebSocketRailEntry, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CodeStudioPanel } from './lazyPanels'
+import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CodeStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -285,6 +286,7 @@ function LayoutSwitcher({ layout, onLayoutChange, onDetach }: {
 }
 
 function ActiveRequestBar({
+  tabId,
   request,
   isDirty,
   loading,
@@ -302,6 +304,7 @@ function ActiveRequestBar({
   recordingCount,
   onToggleRecording,
 }: {
+  tabId: string
   request: RequestItem
   isDirty: boolean
   loading?: boolean
@@ -393,6 +396,8 @@ function ActiveRequestBar({
             inputRef={urlInputRef}
           />
         </div>
+
+        <RequestCodeLinkButton tabId={tabId} request={request} />
 
         <details ref={actionsRef} className="api-actions">
           <summary aria-label={tr('Request actions')} title={tr('Request actions')}><MoreHorizontal size={18} /></summary>
@@ -562,7 +567,34 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
       : allTabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId && !detachedTabIds[tab.id]),
     [activeWorkspaceId, allTabs, detachedTabIds, standaloneTabId],
   )
-  const activeTabId = standaloneTabId ?? selectedTabId
+  // The WebSocket module has its own tab strip: it holds only WebSocket
+  // connections, while the API workspace holds every other tab.
+  const activeRail = useAppStore((s) => s.activeRail)
+  const wsModule = !standaloneTabId && activeRail === 'websocket'
+  const moduleTabs = useMemo(
+    () => (standaloneTabId
+      ? tabs
+      : tabs.filter((tab) => (wsModule ? !tab.tool && isWebSocketRequest(tab.request) : !!tab.tool || !isWebSocketRequest(tab.request)))),
+    [standaloneTabId, tabs, wsModule],
+  )
+  const activeTabId = standaloneTabId ?? (moduleTabs.some((tab) => tab.id === selectedTabId)
+    ? selectedTabId
+    : moduleTabs[moduleTabs.length - 1]?.id ?? null)
+  // Switching module brings its own last tab forward, so shortcuts never act on
+  // a tab the visible strip does not contain.
+  useEffect(() => {
+    if (standaloneTabId || !workspaceHydrated) return
+    if (activeRail !== 'collections' && activeRail !== 'websocket') return
+    if (moduleTabs.some((tab) => tab.id === selectedTabId)) return
+    const next = moduleTabs[moduleTabs.length - 1]
+    if (next) setActiveTab(next.id)
+  }, [activeRail, moduleTabs, selectedTabId, setActiveTab, standaloneTabId, workspaceHydrated])
+  // The old WebSocket panel's saved connection becomes a tab the first time the
+  // module opens with nothing of its own.
+  useEffect(() => {
+    if (!wsModule || !workspaceHydrated || moduleTabs.length > 0) return
+    migrateLegacyWebSocketTab()
+  }, [wsModule, workspaceHydrated, moduleTabs.length])
   const confirmBeforeClosingDirtyTabs = useSettingsStore((s) => s.settings.general.confirmBeforeClosingDirtyTabs)
 
   const environments = useEnvironmentsStore((s) => s.environments)
@@ -615,10 +647,10 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     await DetachRequest(tabId, snapshot, tab.request.name || tab.request.url || tr('API Request'))
     setDetached(tabId, true)
     if (useTabsStore.getState().activeTabId === tabId) {
-      const nextTab = useTabsStore.getState().tabs.find((candidate) => candidate.id !== tabId && !detachedTabIds[candidate.id])
+      const nextTab = moduleTabs.find((candidate) => candidate.id !== tabId && !detachedTabIds[candidate.id])
       if (nextTab) setActiveTab(nextTab.id)
     }
-  }, [detachedTabIds, setActiveTab, setDetached, tr])
+  }, [detachedTabIds, moduleTabs, setActiveTab, setDetached, tr])
 
   const detachRequestAndResponse = useCallback(async () => {
     const tab = useTabsStore.getState().tabs.find((candidate) => candidate.id === activeTabId)
@@ -630,9 +662,9 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     })
     await DetachRequestAndResponse(tab.id, snapshot, tab.request.name || tab.request.url || tr('API Request'))
     setDetached(tab.id, true)
-    const nextTab = useTabsStore.getState().tabs.find((candidate) => candidate.id !== tab.id && !detachedTabIds[candidate.id])
+    const nextTab = moduleTabs.find((candidate) => candidate.id !== tab.id && !detachedTabIds[candidate.id])
     if (nextTab) setActiveTab(nextTab.id)
-  }, [activeTabId, detachedTabIds, setActiveTab, setDetached, tr])
+  }, [activeTabId, detachedTabIds, moduleTabs, setActiveTab, setDetached, tr])
 
   // The main window remains the coordinator while a native request window is
   // open. It receives fresh snapshots and restores the same tab on attach or
@@ -732,7 +764,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   }, [])
   // ── End resizable split ─────────────────────────────────────────────────────
 
-  const activeTab = tabs.find((t) => t.id === activeTabId)
+  const activeTab = moduleTabs.find((t) => t.id === activeTabId)
   const showRequestPane = standalonePane !== 'response'
   const oaSpec =
     activeTab?.collectionId
@@ -796,7 +828,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   const handleSend = () => (isWebSocketTab ? sendWebSocketMessage().then(() => undefined) : sendActive())
 
   // A WebSocket found in code (Code Studio, Developer Context) opens here as a connection tab.
-  useEntityHandoff('collections', (_ref, intent, payload) => {
+  useEntityHandoff(wsModule ? 'websocket' : 'collections', (_ref, intent, payload) => {
     if (standaloneTabId || intent !== WEBSOCKET_HANDOFF_INTENT) return false
     if (typeof payload.url === 'string' && payload.url) openWebSocketUrl(payload.url, _ref.label || 'WebSocket')
     return true
@@ -942,31 +974,34 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   // Returns the dirty tabs affected by a pending close action
   const getDirtyTabsForPending = useCallback((pending: PendingClose): typeof tabs => {
     if (pending.kind === 'single') {
-      const t = tabs.find((tab) => tab.id === pending.tabId)
+      const t = moduleTabs.find((tab) => tab.id === pending.tabId)
       return t?.dirty && !t.pinned ? [t] : []
     }
     if (pending.kind === 'all') {
-      return tabs.filter((t) => t.dirty && !t.pinned)
+      return moduleTabs.filter((t) => t.dirty && !t.pinned)
     }
-    const idx = tabs.findIndex((t) => t.id === pending.tabId)
+    const idx = moduleTabs.findIndex((t) => t.id === pending.tabId)
     if (idx === -1) return []
     const affected = pending.kind === 'right'
-      ? tabs.filter((_, i) => i > idx)
-      : tabs.filter((_, i) => i < idx)
+      ? moduleTabs.filter((_, i) => i > idx)
+      : moduleTabs.filter((_, i) => i < idx)
     return affected.filter((t) => t.dirty && !t.pinned)
-  }, [tabs])
+  }, [moduleTabs])
 
   const executePendingClose = useCallback((pending: PendingClose, doSave: boolean) => {
     if (doSave) {
       const dirty = getDirtyTabsForPending(pending)
       dirty.forEach((t) => saveTab(t.id))
     }
+    const inModule = (tab: Tab) => (wsModule
+      ? !tab.tool && isWebSocketRequest(tab.request)
+      : !!tab.tool || !isWebSocketRequest(tab.request))
     if (pending.kind === 'single') closeTab(pending.tabId)
-    else if (pending.kind === 'right') closeTabsToRight(pending.tabId)
-    else if (pending.kind === 'left') closeTabsToLeft(pending.tabId)
-    else closeAllTabs()
+    else if (pending.kind === 'right') closeTabsToRight(pending.tabId, inModule)
+    else if (pending.kind === 'left') closeTabsToLeft(pending.tabId, inModule)
+    else closeAllTabs(inModule)
     setPendingClose(null)
-  }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs])
+  }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs, wsModule])
 
   // Attempt close — show dialog if there are dirty tabs
   const attemptClose = useCallback((pending: PendingClose) => {
@@ -1010,7 +1045,22 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 
   const dirtyInDialog = pendingClose ? getDirtyTabsForPending(pendingClose) : []
 
-  if (tabs.length === 0) {
+  if (moduleTabs.length === 0) {
+    if (wsModule) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-surface-0 select-none">
+          <p className="text-[13px] font-medium text-text-3">{tr('No WebSocket connection open')}</p>
+          <p className="text-[11px] text-text-4">{tr('Open one from the sidebar on the left or start a new connection.')}</p>
+          <button
+            type="button"
+            onClick={() => openWebSocketTab()}
+            className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+          >
+            {tr('New WebSocket')}
+          </button>
+        </div>
+      )
+    }
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-2 bg-surface-0 select-none"
         onDragOver={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
@@ -1039,7 +1089,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
         />
       )}
       {!standaloneTabId && <TabBar
-        tabs={tabs}
+        tabs={moduleTabs}
         activeTabId={activeTabId}
         onSelect={setActiveTab}
         onClose={(id) => attemptClose({ kind: 'single', tabId: id })}
@@ -1047,7 +1097,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
         onCloseToLeft={(id) => attemptClose({ kind: 'left', tabId: id })}
         onCloseAll={(id) => attemptClose({ kind: 'all', tabId: id })}
         onReorder={reorderTab}
-        onNewTab={newTab}
+        onNewTab={wsModule ? () => openWebSocketTab() : newTab}
         onDuplicate={duplicateTab}
         onTogglePinned={togglePinned}
         onRenameTab={handleRenameTab}
@@ -1068,6 +1118,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
       )}
       {activeTab && !activeTab.tool && !isWebSocketTab && showRequestPane && (
         <ActiveRequestBar
+          tabId={activeTab.id}
           request={activeTab.request}
           isDirty={activeTab.dirty}
           loading={activeTab.loading}
@@ -1339,7 +1390,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'collections': return { component: <RequestWorkspace />, titleKey: 'API Workspace' }
     case 'scenarios':   return { component: <DailyScenariosPanel />, titleKey: 'Daily Scenarios', overflow: true }
     case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
-    case 'websocket':   return { component: <WebSocketRailEntry />,   titleKey: 'WebSocket' }
+    case 'websocket':   return { component: <RequestWorkspace />,      titleKey: 'WebSocket' }
     case 'sse':         return { component: <SsePanel />,             titleKey: 'SSE Client',    overflow: true }
     case 'broker':      return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'mock':        return { component: <MockPanel />,            titleKey: 'mock',      overflow: true }

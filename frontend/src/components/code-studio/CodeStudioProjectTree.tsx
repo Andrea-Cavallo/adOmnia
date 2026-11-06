@@ -28,6 +28,7 @@ import { CodeStudioPathDialog, type CodeStudioPathRequest } from './CodeStudioPa
 import { CodeStudioGistDialog } from './CodeStudioGistDialog'
 import { CodeStudioExternalLibraries } from './CodeStudioExternalLibraries'
 import { CodeStudioJavaLibraries } from './CodeStudioJavaLibraries'
+import { CodeStudioLanguageLibraries } from './CodeStudioLanguageLibraries'
 import { ROW_BASE_PX, ROW_INDENT_PX, TREE_ICON_PX, TreeChevron } from './codeStudioTreeRow'
 import { directoryMarkLabel, loadDirectoryMarks, saveDirectoryMark, type CodeStudioDirectoryMark } from './codeStudioDirectoryMarks'
 import type { GoIDETestRun } from '@/lib/code-studio-tests-api'
@@ -458,6 +459,8 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
         {rootOpen && entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
         <CodeStudioExternalLibraries key={session.id} session={session} activeExternalPath={activeExternalPath} collapseEpoch={collapseEpoch} />
         <CodeStudioJavaLibraries key={`java:${session.id}`} session={session} activeExternalPath={activeExternalPath} collapseEpoch={collapseEpoch} />
+        <CodeStudioLanguageLibraries key={`python:${session.id}`} session={session} language="python" activeExternalPath={activeExternalPath} collapseEpoch={collapseEpoch} />
+        <CodeStudioLanguageLibraries key={`native:${session.id}`} session={session} language="native" activeExternalPath={activeExternalPath} collapseEpoch={collapseEpoch} />
       </div>
       <div className="shrink-0 truncate border-t border-border-1 px-3 py-1.5 text-[10px] text-text-4" title={projectSummary}>{projectSummary}</div>
       {menu && <ContextMenu appearance="studio" x={menu.x} y={menu.y} items={buildTreeMenu(menu.entry, menuContext)} onSelect={selectMenuItem} onClose={() => setMenu(null)} />}
