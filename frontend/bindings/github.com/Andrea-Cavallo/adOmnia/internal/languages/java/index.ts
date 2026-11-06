@@ -5,6 +5,7 @@ export {
     JDK,
     JVMHeapSample,
     JVMProcess,
+    Library,
     MainClassInfo,
     MyBatisIndex,
     MyBatisLink,

@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Code Studio · Java
+
+- **External Libraries for Maven, like Go.** The Project tree lists every library the poms resolve, transitive ones included, across the whole reactor. Expand one to browse its sources (read-only, from the `-sources.jar` of the local Maven repository); a library without sources offers *Download sources* with the exact Maven command. In a pom.xml, *View source* above each dependency and Ctrl+click on a `<dependency>` open its code.
+
 ### WebSocket
 
 - **WebSocket connections now live in the API workspace, with the REST layout.** A connection is a collection item (*New WebSocket*) that opens as a tab: the request bar with a `WS`/`WSS` badge and Connect/Disconnect, sections for saved messages, Params, Headers, Auth, Settings, Script, Mock and Parallel, and a Messages panel with filters, search, pause, export and an inspector where REST shows the response. Connections are saved and exported with the workspace and close with their tab. The old panel's saved connection and templates move into a tab the first time you open WebSocket.

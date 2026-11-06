@@ -1723,6 +1723,21 @@ func (g *GoIDE) JavaDependencyTree(sessionID, module string) ([]java.TreeNode, e
 	return g.service.JavaDependencyTree(sessionID, module)
 }
 
+// JavaLibraries elenca le librerie Maven del progetto (External Libraries): legge solo il repository locale.
+func (g *GoIDE) JavaLibraries(sessionID string) (codestudio.JavaLibraries, error) {
+	return g.service.JavaLibraries(sessionID)
+}
+
+// JavaLibrarySource prepara il codice di una libreria Maven dal suo jar dei sorgenti, in sola lettura.
+func (g *GoIDE) JavaLibrarySource(sessionID, groupID, artifactID, version string) (codestudio.DependencySource, error) {
+	return g.service.JavaLibrarySource(sessionID, groupID, artifactID, version)
+}
+
+// DownloadJavaLibrarySources scarica il jar dei sorgenti di una libreria con Maven (dependency:get).
+func (g *GoIDE) DownloadJavaLibrarySources(sessionID, groupID, artifactID, version string) error {
+	return g.service.DownloadJavaLibrarySources(sessionID, groupID, artifactID, version)
+}
+
 // JavaOsgiWorkspace elenca i bundle OSGi/PDE del progetto e come si risolvono sulla target platform.
 func (g *GoIDE) JavaOsgiWorkspace(sessionID string) (*eclipsepde.WorkspaceReport, error) {
 	return g.service.JavaOsgiWorkspace(sessionID)

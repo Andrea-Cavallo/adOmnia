@@ -86,7 +86,7 @@ export function goModSourceLocation(source: GoIDEDependencySource, sessionId: st
 }
 
 /** Apre un file del sorgente di una dipendenza; null se il sorgente non ha quel file. */
-export function openGoModSourceFile(source: GoIDEDependencySource, sessionId: string, file: string): Omit<StudioLocation, 'uri'> | null {
+export function openDependencySourceFile(source: GoIDEDependencySource, sessionId: string, file: string): Omit<StudioLocation, 'uri'> | null {
   const target = goModSourceTarget(source, sessionId, file)
   if (target) navigateToLocation(target)
   return target
@@ -150,7 +150,7 @@ export async function openGoModDependencySource(document: GoIDEEditorDocument, m
   const sessionId = document.document.sessionId
   const source = await ensureGoModDependencySource(sessionId, goModDirectoryOf(document), modulePath)
   if (!source) return
-  const location = openGoModSourceFile(source, sessionId, entryFileOf(source))
+  const location = openDependencySourceFile(source, sessionId, entryFileOf(source))
   if (!location) return
   // Un file esterno lo rivela External Libraries quando diventa attivo; uno di progetto l'albero del progetto.
   if (location.external) useCodeStudioStore.getState().updateLayout({ projectOpen: true })

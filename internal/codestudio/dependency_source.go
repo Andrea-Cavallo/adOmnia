@@ -232,7 +232,7 @@ func dependencySourceFiles(root string) []DependencySourceFile {
 // e documentazione, senza artefatti di build.
 func dependencySourceName(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".go", ".mod", ".md":
+	case ".go", ".mod", ".md", ".java", ".kt", ".scala", ".groovy":
 		return true
 	}
 	upper := strings.ToUpper(name)

@@ -3,7 +3,10 @@ import { dependencyStatuses, isBuildFile, updateEdit, type PomDependencyStatus }
 import { usePomStore, type PomState } from '@/stores/codeStudioPom'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioStore } from '@/stores/codeStudio'
-import { documentForModel } from './codeStudioLanguageFeatures'
+import { documentForModel, rememberLocations } from './codeStudioLanguageFeatures'
+import { dependencyBlockAt } from '@/lib/code-studio/javaLibraries'
+import { entryFileOf, goModSourceLocation } from './codeStudioDependencySource'
+import { ensureJavaLibrarySource, openJavaLibrarySource, resolvedLibrary } from './codeStudioJavaLibrarySource'
 import { editorModelUri } from './codeStudioModelUri'
 
 const LANGUAGES = ['xml', 'kotlin'] // pom.xml, build.gradle(.kts): gli altri file di questi linguaggi non hanno lens
@@ -12,6 +15,9 @@ const CHECK_COMMAND = 'codeStudio.pomCheckUpdates'
 const SCAN_COMMAND = 'codeStudio.pomScan'
 const UPDATE_COMMAND = 'codeStudio.pomUpdate'
 const NEXT_PROBLEM_COMMAND = 'editor.action.marker.next'
+const VIEW_SOURCE_COMMAND = 'codeStudio.pomViewSource'
+/** Le sezioni del pom il cui artefatto è una libreria del build, con codice da leggere. */
+const LIBRARY_SECTIONS = new Set(['dependencies', 'dependencyManagement'])
 
 const EMPTY_STATE: PomState = { dependencies: [], versions: [], findings: [], checkingUpdates: false, scanning: false, updatesCheckedAt: '', scannedAt: '', error: '' }
 
@@ -75,6 +81,31 @@ function toolbarLenses(documentId: string, state: PomState, scannable: boolean):
   const summary = summaryLens(documentId, state)
   if (summary) lenses.push({ range: lensRange(1), command: { id: NEXT_PROBLEM_COMMAND, title: summary, tooltip: 'Go to the next problem' } })
   return lenses
+}
+
+/** Solo un pom.xml: i jar di Gradle stanno nella sua cache, che External Libraries non legge ancora. */
+const isPom = (relativePath: string) => /(^|\/)pom\.xml$/i.test(relativePath)
+
+/** La cartella del pom relativa al progetto, come la usa External Libraries ("" per la radice). */
+const moduleOf = (relativePath: string) => relativePath.replace(/\\/g, '/').replace(/\/?pom\.xml$/i, '')
+
+function viewSourceLens(document: GoIDEEditorDocument, status: PomDependencyStatus): Monaco.languages.CodeLens[] {
+  const dependency = status.dependency
+  if (!isPom(document.document.relativePath) || !LIBRARY_SECTIONS.has(dependency.section)) return []
+  return [{ range: lensRange(dependency.line), command: { id: VIEW_SOURCE_COMMAND, title: '{ } View source', tooltip: `Open the source code of ${status.key} (read-only)`, arguments: [document.document.sessionId, dependency.groupId, dependency.artifactId, moduleOf(document.document.relativePath)] } }]
+}
+
+/** Ctrl+click / F12 su una dipendenza del pom: il file d'ingresso dei suoi sorgenti. */
+async function pomDefinition(model: Monaco.editor.ITextModel, position: Monaco.Position): Promise<Monaco.languages.Location[] | null> {
+  const document = documentForModel(model)
+  if (!document || !isPom(document.document.relativePath)) return null
+  const block = dependencyBlockAt(model.getValue(), position.lineNumber)
+  if (!block) return null
+  const sessionId = document.document.sessionId
+  const library = await resolvedLibrary(sessionId, block.groupId, block.artifactId, moduleOf(document.document.relativePath))
+  const source = library && await ensureJavaLibrarySource(sessionId, library)
+  const location = source && goModSourceLocation(source, sessionId, entryFileOf(source))
+  return location ? rememberLocations([location]) : null
 }
 
 function dependencyLenses(documentId: string, status: PomDependencyStatus): Monaco.languages.CodeLens[] {
@@ -172,6 +203,10 @@ export function registerCodeStudioPom(): void {
     const document = documentById(documentId)
     if (document) void usePomStore.getState().scanVulnerabilities(documentId, document.document.sessionId, document.document.path, document.document.relativePath)
   })
+  monaco.editor.registerCommand(VIEW_SOURCE_COMMAND, (_accessor, sessionId: string, groupId: string, artifactId: string, module: string) => {
+    void resolvedLibrary(sessionId, groupId, artifactId, module).then((library) => (library ? openJavaLibrarySource(sessionId, library) : undefined))
+  })
+  monaco.languages.registerDefinitionProvider('xml', { provideDefinition: (model, position) => pomDefinition(model, position) })
   monaco.editor.registerCommand(UPDATE_COMMAND, (_accessor, documentId: string, line: number, version: string) => applyPomUpdate(documentId, line, version))
 
   const changed = new monaco.Emitter<Monaco.languages.CodeLensProvider>()
@@ -186,7 +221,7 @@ export function registerCodeStudioPom(): void {
         parsedContent.set(documentId, text)
         void usePomStore.getState().refreshDependencies(documentId, document.document.sessionId, text)
       }
-      const lenses = [...toolbarLenses(documentId, stateOf(documentId), isBuildFile(document.document.relativePath)), ...statusesOf(documentId).flatMap((status) => dependencyLenses(documentId, status))]
+      const lenses = [...toolbarLenses(documentId, stateOf(documentId), isBuildFile(document.document.relativePath)), ...statusesOf(documentId).flatMap((status) => [...viewSourceLens(document, status), ...dependencyLenses(documentId, status)])]
       return { lenses, dispose: () => undefined }
     },
   }

@@ -150,6 +150,71 @@ export class JVMProcess {
 }
 
 /**
+ * Library è una riga di External Libraries.
+ */
+export class Library {
+    "groupId": string;
+    "artifactId": string;
+    "version": string;
+    "scope"?: string;
+
+    /**
+     * Direct è vero se almeno un pom del progetto la dichiara.
+     */
+    "direct": boolean;
+
+    /**
+     * Modules sono i pom (cartelle relative al progetto) che la portano.
+     */
+    "modules": string[];
+
+    /**
+     * Downloaded dice se il jar è nel repository locale; Sources se c'è anche il jar dei sorgenti.
+     */
+    "downloaded": boolean;
+    "sources": boolean;
+
+    /** Creates a new Library instance. */
+    constructor($$source: Partial<Library> = {}) {
+        if (!("groupId" in $$source)) {
+            this["groupId"] = "";
+        }
+        if (!("artifactId" in $$source)) {
+            this["artifactId"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("direct" in $$source)) {
+            this["direct"] = false;
+        }
+        if (!("modules" in $$source)) {
+            this["modules"] = [];
+        }
+        if (!("downloaded" in $$source)) {
+            this["downloaded"] = false;
+        }
+        if (!("sources" in $$source)) {
+            this["sources"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Library instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Library {
+        const $$createField5_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("modules" in $$parsedSource) {
+            $$parsedSource["modules"] = $$createField5_0($$parsedSource["modules"]);
+        }
+        return new Library($$parsedSource as Partial<Library>);
+    }
+}
+
+/**
  * MainClassInfo è una classe lanciabile con chi l'ha decisa.
  */
 export class MainClassInfo {

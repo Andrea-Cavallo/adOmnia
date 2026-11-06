@@ -955,6 +955,24 @@ export async function getJavaDependencyTree(sessionId: string, module: string): 
   return GoIDEBindings.JavaDependencyTree(sessionId, module)
 }
 
+export type JavaLibraries = Awaited<ReturnType<typeof GoIDEBindings.JavaLibraries>>
+export type JavaLibrary = JavaLibraries['libraries'][number]
+
+/** Le librerie Maven del progetto, transitive comprese, dal repository locale: niente Maven, niente rete. */
+export function listJavaLibraries(sessionId: string): CancellablePromise<JavaLibraries> {
+  return GoIDEBindings.JavaLibraries(sessionId)
+}
+
+/** Il codice di una libreria Maven dal suo jar dei sorgenti, estratto in sola lettura. */
+export function resolveJavaLibrarySource(sessionId: string, groupId: string, artifactId: string, version: string): CancellablePromise<GoIDEDependencySource> {
+  return GoIDEBindings.JavaLibrarySource(sessionId, groupId, artifactId, version)
+}
+
+/** Scarica il jar dei sorgenti di una libreria (mvn dependency:get): lancia Maven e va in rete. */
+export async function downloadJavaLibrarySources(sessionId: string, groupId: string, artifactId: string, version: string): Promise<void> {
+  return GoIDEBindings.DownloadJavaLibrarySources(sessionId, groupId, artifactId, version)
+}
+
 /** Bundle OSGi/PDE del progetto e come si risolvono sulla target platform attiva (legge solo i manifest). */
 export async function getJavaOsgiWorkspace(sessionId: string): Promise<WorkspaceReport | null> {
   return GoIDEBindings.JavaOsgiWorkspace(sessionId)
