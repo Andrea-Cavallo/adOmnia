@@ -498,6 +498,11 @@ export const RU_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Dark base color": "Базовый цвет тёмной темы",
   "White base color": "Базовый цвет светлой темы",
   "Base color": "Базовый цвет",
+  "Connection": "Соединение",
+  "Disconnect": "Отключить",
+  "Connect": "Подключить",
+  "Message": "Сообщение",
+  "New WebSocket": "Новый WebSocket",
 }
 
 /** Navigation labels (rail, feature groups, welcome surfaces). */

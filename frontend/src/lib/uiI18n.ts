@@ -1036,6 +1036,11 @@ export const ITALIAN_UI_MESSAGES = {
   'Dark base color': 'Colore di base Dark',
   'White base color': 'Colore di base White',
   'Base color': 'Colore di base',
+  'Connection': 'Connessione',
+  'Disconnect': 'Disconnetti',
+  'Connect': 'Connetti',
+  'Message': 'Messaggio',
+  'New WebSocket': 'Nuovo WebSocket',
 } as const
 
 export type UiMessage = keyof typeof ITALIAN_UI_MESSAGES

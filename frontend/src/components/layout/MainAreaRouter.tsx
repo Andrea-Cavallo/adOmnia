@@ -16,7 +16,7 @@ import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 
-import { WelcomePanel, WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
+import { WelcomePanel, WebSocketRailEntry, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
 
 let workspaceModulePromise: ReturnType<typeof importWorkspaceModule> | undefined
 
@@ -115,7 +115,7 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'collections': return { component: <RequestWorkspace />, titleKey: 'API Workspace' }
     case 'scenarios': return { component: <DailyScenariosPanel />, titleKey: 'Daily Scenarios', overflow: true }
     case 'history': return { component: <RequestHistoryPanel />, titleKey: 'Request History', overflow: true }
-    case 'websocket': return { component: <WebSocketPanel />, titleKey: 'WebSocket', overflow: true }
+    case 'websocket': return { component: <WebSocketRailEntry />, titleKey: 'WebSocket' }
     case 'sse': return { component: <SsePanel />, titleKey: 'SSE Client', overflow: true }
     case 'broker': return { component: <BrokerStudioPanel />, titleKey: 'Broker Studio', overflow: true }
     case 'mock': return { component: <MockPanel />, titleKey: 'mock', overflow: true }

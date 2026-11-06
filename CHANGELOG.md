@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### WebSocket
+
+- **WebSocket connections now live in the API workspace, with the REST layout.** A connection is a collection item (*New WebSocket*) that opens as a tab: the request bar with a `WS`/`WSS` badge and Connect/Disconnect, sections for saved messages, Params, Headers, Auth, Settings, Script, Mock and Parallel, and a Messages panel with filters, search, pause, export and an inspector where REST shows the response. Connections are saved and exported with the workspace and close with their tab. The old panel's saved connection and templates move into a tab the first time you open WebSocket.
+
 ## [1.0.27] — 2026-11-05
 
 Release notes: [docs/releases/v1.0.27.md](docs/releases/v1.0.27.md).

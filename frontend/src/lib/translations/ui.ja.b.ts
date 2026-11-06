@@ -498,6 +498,11 @@ export const JA_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Dark base color": "ダークのベースカラー",
   "White base color": "ホワイトのベースカラー",
   "Base color": "ベースカラー",
+  "Connection": "接続",
+  "Disconnect": "切断",
+  "Connect": "接続",
+  "Message": "メッセージ",
+  "New WebSocket": "新しい WebSocket",
 }
 
 /** Navigation labels (rail, feature groups, welcome surfaces). */

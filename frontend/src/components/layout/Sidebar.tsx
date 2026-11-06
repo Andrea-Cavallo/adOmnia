@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
+import { blankWebSocketRequest } from '@/lib/websocket/wsRequest'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore, findParentInfo } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
@@ -14,6 +15,9 @@ import { useUiTranslation } from '@/lib/uiI18n'
 import { prefetchWorkspace } from '@/lib/workspacePrefetch'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
 import { WorkspaceSidebarSkeleton } from '@/components/layout/WorkspaceHydrationShell'
+
+/** A new collection item: a WebSocket connection for 'WS', an HTTP request otherwise. */
+const newRequestOf = (method: HttpMethod) => (method === 'WS' ? blankWebSocketRequest() : blankRequest(method, 'New Request'))
 
 export function Sidebar() {
   const tr = useUiTranslation()
@@ -57,7 +61,7 @@ export function Sidebar() {
   const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false)
 
   const handleNewRequest = (method: HttpMethod = 'GET'): string => {
-    const request = blankRequest(method, 'New Request')
+    const request = newRequestOf(method)
     const collectionId = addQuickRequest(request)
     openTab(request, collectionId)
     return collectionId
@@ -85,7 +89,7 @@ export function Sidebar() {
   }
 
   const handleAddRequestToFolder = (collectionId: string, parentId: string | null, method: HttpMethod = 'GET'): string | null => {
-    const req = blankRequest(method, 'New Request')
+    const req = newRequestOf(method)
     addRequest(collectionId, parentId, req)
     openTab(req, collectionId)
     return parentId

@@ -19,6 +19,7 @@ import {
   Upload,
   UploadCloud,
   X,
+  Cable,
 } from 'lucide-react'
 import type { Collection, FolderItem, HttpMethod, RequestItem, TreeNode } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -67,7 +68,7 @@ const METHOD_COLORS: Record<string, string> = {
   DELETE: 'text-method-delete',
   HEAD: 'text-method-head',
   OPTIONS: 'text-method-head',
-  WS: 'text-warning',
+  WS: 'text-info',
   SOAP: 'text-info',
 }
 
@@ -1112,6 +1113,11 @@ export function CollectionTree({
                 if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
                 setContext(null)
               }}><Plus size={12} /> {tr('New Request')}</MenuButton>
+              <MenuButton onClick={() => {
+                const collectionId = onNewRequest('WS')
+                if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
+                setContext(null)
+              }}><Cable size={12} /> {tr('New WebSocket')}</MenuButton>
               <MenuButton onClick={() => { onAddCollection(); setContext(null) }}><FolderPlus size={12} /> {tr('New Collection')}</MenuButton>
               <MenuButton onClick={() => { fileInputRef.current?.click(); setContext(null) }}><Upload size={12} /> {tr('Import file')}</MenuButton>
               <MenuButton onClick={() => { exportAll('adomnia'); setContext(null) }}><Download size={12} /> {tr('Export all collections')}</MenuButton>
@@ -1130,6 +1136,7 @@ export function CollectionTree({
               <MenuButton onClick={() => { setCollectionFolder({ collectionId: context.collection.id }); setContext(null) }}><FolderOpen size={12} /> {tr('Collection folder...')}</MenuButton>
               <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collection.id, parentId: null }); setContext(null) }}><FolderPlus size={12} /> {tr('New Folder')}</MenuButton>
               <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>
+              <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null, 'WS'); setContext(null) }}><Cable size={12} /> {tr('New WebSocket')}</MenuButton>
               {workspaceTargets.length > 0 && (
                 <div className="border-t border-border-1 py-1">
                   <div className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">{tr('Move to workspace')}</div>
@@ -1156,6 +1163,7 @@ export function CollectionTree({
               <MenuButton onClick={() => { onDuplicateNode(context.collectionId, context.node.id); setContext(null) }}><Copy size={12} /> {tr('Duplicate')}</MenuButton>
               <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collectionId, parentId: context.node.id }); setContext(null) }}><FolderPlus size={12} /> {tr('New Subfolder')}</MenuButton>
               <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id); setOpenIds((s) => { const n = new Set(s); n.add(context.node.id); return n }); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>
+              <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id, 'WS'); setOpenIds((s) => { const n = new Set(s); n.add(context.node.id); return n }); setContext(null) }}><Cable size={12} /> {tr('New WebSocket')}</MenuButton>
               {contextExportMenu(context)}
               <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> {tr('Delete')}</MenuButton>
             </>

@@ -197,7 +197,7 @@ adomnia/
 | `ResponsePanel.tsx` | HTTP response viewer, syntax highlighting, tests, history |
 | `EnvBar.tsx` | Environment switcher, variable editor |
 | `TabBar.tsx` | Tab management, pinning, context menus |
-| `WSPanel.tsx` | WebSocket client with live messaging |
+| `websocket/WebSocket*.tsx` | WebSocket connections as API workspace tabs (`method: 'WS'`): request bar, composer, Messages panel; live sockets in `stores/websocketConnections.ts` |
 | `KafkaPanel.tsx` | Kafka producer/consumer UI |
 | `MockPanel.tsx` | Mock Server Control Room: endpoint source/import, focused request scope, runtime configuration, endpoint inspector, and decision-aware traffic |
 | `ProxyPanel.tsx` | Interceptor traffic viewer, breakpoints, map local/remote |

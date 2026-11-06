@@ -233,23 +233,26 @@ Existing `{{variable}}` references are also linked when their current environmen
 
 ### B3. WebSocket Client
 
+WebSocket connections live in the API workspace, with the same layout as REST requests: they are collection items with `method: "WS"`, open as tabs and travel with the workspace export. The **WebSocket** rail item brings the WebSocket tab in front (or creates one).
+
 | # | Feature | Description |
 |---|-------------|-------------|
-| B3.1 | **Connect / Disconnect** | Open and close a WebSocket connection with a colored status indicator. |
-| B3.2 | **Authentication** | Auth support: none, Bearer token, Basic. |
-| B3.3 | **Custom Headers** | Header editor with enable/disable toggles; active header count badge. |
-| B3.4 | **Auto-Reconnect** | Automatic reconnection with configurable delay in seconds. |
-| B3.5 | **Message Mode** | Text / JSON toggle with automatic prettify. |
-| B3.6 | **Send Message** | Send button and Enter shortcut (Shift+Enter for newline). |
-| B3.7 | **Ping** | Ping button available when connected. |
-| B3.8 | **Message Log** | Displays inbound/outbound/system messages with type (message/ping/pong/close/error), timestamp, expandable JSON payload. |
-| B3.9 | **Copy Payload** | Copy the payload of a single message to the clipboard. |
-| B3.10 | **Auto-Scroll** | Automatically scrolls to the latest received message. |
-| B3.11 | **Export Conversation** | Exports the entire message session as JSONL. |
-| B3.12 | **On-Message Script** | Run in-browser JavaScript on each inbound message; execution errors shown inline. |
-| B3.13 | **Mock WebSocket Server — Start/Stop** | Starts a local mock WebSocket server on a configurable port; auto-connect button. |
+| B3.1 | **Connection bar** | Same bar as a REST request: `WS`/`WSS` badge (switching it to an HTTP method turns the tab into a REST request), URL with `{{variables}}`, Save/Delete, and **Connect / Disconnect** where REST has Send. The tab shows a live status dot. |
+| B3.2 | **Collections and tabs** | *New WebSocket* in the collections menus; one connection per tab, closed when its tab closes; saved and exported like any request. |
+| B3.3 | **Saved messages** | The *Message* section holds the connection's saved messages (body variants): JSON or text editor, add/delete/rename, Send button and Ctrl+Enter (connects first when disconnected). |
+| B3.4 | **Params and Headers** | The REST editors: query params in sync with the URL, headers with enable/disable. |
+| B3.5 | **Authentication** | The REST auth editor. Bearer and Basic go in the handshake, API Key as a header, OAuth 2.0 with a token as Bearer; the types the handshake cannot carry show a notice. |
+| B3.6 | **Settings** | Subprotocols (`Sec-WebSocket-Protocol`), auto-reconnect (up to 10 attempts) with delay, binary (Base64) payloads. |
+| B3.7 | **Messages panel** | Where REST shows the response: status and uptime, received/sent counts, timeline of inbound/outbound/system frames, filters (All/In/Out/Sys/Error), search, pause with queued count, auto-follow. |
+| B3.8 | **Inspector** | The selected frame: event, time, size, pretty JSON or hex/ASCII for binary, copy. |
+| B3.9 | **Export Conversation** | Exports the conversation as JSONL. |
+| B3.10 | **On-Message Script** | JavaScript run in a sandbox for each inbound message (`msg`); errors and returned values appear in the stream. |
+| B3.11 | **Parallel send** | Several commands (`---` separated) × copies × extra clients at once, `{{$i}}` as send index. |
+| B3.12 | **Live service** | When the URL reaches a live Go service: open or debug its handler, connection logs in the Log Inspector. |
+| B3.13 | **Mock WebSocket Server — Start/Stop** | Local mock WebSocket server; one click points the tab at it. |
 | B3.14 | **Mock WebSocket Server — Rules** | Response rules with condition type (any, exact match, contains, regex, JSONPath), JSLT-lite response (`{{.field}}`, `{{$MSG}}`, `{{$NOW}}`, `{{$UUID}}`), delay ms. |
 | B3.15 | **Mock WebSocket Server — Hit Log** | Match log with incoming message preview and generated response. |
+| B3.16 | **Migration** | The old WebSocket panel's saved connection and templates become a WebSocket tab the first time the rail item opens; the old keys stay in place. |
 
 ---
 

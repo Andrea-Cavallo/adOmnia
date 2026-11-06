@@ -44,10 +44,17 @@ import { useDevSessionStore } from '@/stores/devSession'
 import { LiveResponseFrame } from '@/components/devsession/LiveResponseFrame'
 import { LiveRequestStrip } from '@/components/devsession/LiveRequestStrip'
 import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
+import { WebSocketRequestBar } from '@/components/websocket/WebSocketRequestBar'
+import { WebSocketComposer } from '@/components/websocket/WebSocketComposer'
+import { WebSocketMessagesPanel } from '@/components/websocket/WebSocketMessagesPanel'
+import { useWsConnections } from '@/stores/websocketConnections'
+import { activeMessage, isWebSocketRequest, messageMode } from '@/lib/websocket/wsRequest'
+import { openWebSocketUrl } from '@/lib/websocket/openWebSocketTab'
+import { WEBSOCKET_HANDOFF_INTENT, useEntityHandoff } from '@/lib/entities/dispatch'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WelcomePanel, WebSocketPanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CodeStudioPanel } from './lazyPanels'
+import { WelcomePanel, WebSocketRailEntry, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CodeStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -770,7 +777,30 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     sendAbortRef.current = null
   }
 
-  const handleSend = () => sendActive()
+  const isWebSocketTab = !!activeTab && !activeTab.tool && isWebSocketRequest(activeTab.request)
+
+  /** A WebSocket tab sends its active saved message; disconnected, Send (Ctrl+Enter) connects. */
+  const sendWebSocketMessage = async (): Promise<string | null> => {
+    if (!activeTab) return null
+    const connections = useWsConnections.getState()
+    const vars = liveVars(getResolvedVars())
+    if (connections.connections[activeTab.id]?.status !== 'connected') {
+      if (activeTab.request.url.trim()) await connections.connect(activeTab.id, activeTab.request, vars)
+      return null
+    }
+    const message = activeMessage(activeTab.request)
+    if (!message) return 'No saved message to send'
+    return connections.send(activeTab.id, message.raw, messageMode(activeTab.request, message), vars)
+  }
+
+  const handleSend = () => (isWebSocketTab ? sendWebSocketMessage().then(() => undefined) : sendActive())
+
+  // A WebSocket found in code (Code Studio, Developer Context) opens here as a connection tab.
+  useEntityHandoff('collections', (_ref, intent, payload) => {
+    if (standaloneTabId || intent !== WEBSOCKET_HANDOFF_INTENT) return false
+    if (typeof payload.url === 'string' && payload.url) openWebSocketUrl(payload.url, _ref.label || 'WebSocket')
+    return true
+  })
 
   /** Debug Request: start or reuse the service under Delve, wait until it listens, then send and follow. */
   const handleDebugRequest = async () => {
@@ -1000,7 +1030,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   return (
     <div data-request-workspace className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
       {mockFeedback && <DropToast feedback={mockFeedback} />}
-      {parallelOpen && activeTab && !activeTab.tool && (
+      {parallelOpen && activeTab && !activeTab.tool && !isWebSocketTab && (
         <ParallelSendPanel
           request={activeTab.request}
           vars={liveVars(getResolvedVars())}
@@ -1024,7 +1054,19 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
         onMockTab={handleMockTab}
         onDetach={detachTab}
       />}
-      {activeTab && !activeTab.tool && showRequestPane && (
+      {activeTab && isWebSocketTab && showRequestPane && (
+        <WebSocketRequestBar
+          tabId={activeTab.id}
+          request={activeTab.request}
+          isDirty={activeTab.dirty}
+          vars={liveVars(getResolvedVars())}
+          hasActiveEnv={activeEnvId !== null}
+          onChange={(request) => updateRequest(activeTab.id, request)}
+          onSave={handleSave}
+          onDelete={confirmDeleteActiveRequest}
+        />
+      )}
+      {activeTab && !activeTab.tool && !isWebSocketTab && showRequestPane && (
         <ActiveRequestBar
           request={activeTab.request}
           isDirty={activeTab.dirty}
@@ -1044,10 +1086,10 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
           onToggleRecording={requestStopRecording}
         />
       )}
-      {activeTab && !activeTab.tool && showRequestPane && (
+      {activeTab && !activeTab.tool && !isWebSocketTab && showRequestPane && (
         <LiveRequestStrip tabId={activeTab.id} request={activeTab.request} vars={getResolvedVars()} onChange={(request) => updateRequest(activeTab.id, request)} />
       )}
-      {showRequestPane && <ApiToolsBar
+      {showRequestPane && !isWebSocketTab && <ApiToolsBar
           activeRequest={activeTab && !activeTab.tool ? activeTab.request : null}
           onChangeRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
           onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
@@ -1060,7 +1102,9 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
       ) : activeTab ? (
 		standalonePane === 'request' ? (
 		  <div className="flex-1 min-h-0 overflow-hidden">
-			{showLoadTest ? (
+			{isWebSocketTab ? (
+			  <WebSocketComposer key={activeTab.id} tabId={activeTab.id} request={activeTab.request} vars={liveVars(getResolvedVars())} onChange={(req) => updateRequest(activeTab.id, req)} onSend={sendWebSocketMessage} />
+			) : showLoadTest ? (
 			  <LoadTestDrawer request={activeTab.request} onClose={() => setShowLoadTest(false)} />
 			) : (
 			  <Composer
@@ -1078,7 +1122,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 		  </div>
 		) : standalonePane === 'response' ? (
 		  <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-			<LiveResponseFrame tabId={activeTab.id} loading={!!activeTab.loading}>
+			{isWebSocketTab ? <WebSocketMessagesPanel key={activeTab.id} tabId={activeTab.id} /> : <LiveResponseFrame tabId={activeTab.id} loading={!!activeTab.loading}>
 			<ResponsePanel
 			  key={activeTab.id}
 			  tabId={activeTab.id}
@@ -1089,7 +1133,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 			  oaMethod={oaMethod}
 			  assertions={activeTab.request.assertions}
 			/>
-			</LiveResponseFrame>
+			</LiveResponseFrame>}
 		  </div>
 		) : (
         /* ── Horizontal split: Composer (left, fixed width) | drag | Response (right, flex-1) ── */
@@ -1107,6 +1151,9 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
             )}
             style={requestResponseLayout === 'horizontal' ? { width: composerWidth, maxWidth: '65%' } : { height: composerHeight }}
           >
+            {isWebSocketTab ? (
+              <WebSocketComposer key={activeTab.id} tabId={activeTab.id} request={activeTab.request} vars={liveVars(getResolvedVars())} onChange={(req) => updateRequest(activeTab.id, req)} onSend={sendWebSocketMessage} />
+            ) : (
             <Composer
               key={activeTab.id}
               tabId={activeTab.id}
@@ -1118,9 +1165,10 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
               loading={activeTab.loading}
               hideRequestBar
             />
+            )}
           </div>
 
-          {showLoadTest ? (
+          {showLoadTest && !isWebSocketTab ? (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <LoadTestDrawer
                 request={activeTab.request}
@@ -1139,6 +1187,13 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 
               {/* ── Response pane — right side, fills remaining space ── */}
               <div className="flex-1 flex min-h-0 min-w-0 flex-col overflow-hidden">
+                {isWebSocketTab ? (
+                  <WebSocketMessagesPanel
+                    key={activeTab.id}
+                    tabId={activeTab.id}
+                    headerActions={<LayoutSwitcher layout={requestResponseLayout} onLayoutChange={changeRequestResponseLayout} />}
+                  />
+                ) : (
                 <LiveResponseFrame tabId={activeTab.id} loading={!!activeTab.loading}>
                 <ResponsePanel
                   key={activeTab.id}
@@ -1158,6 +1213,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
                   }
                 />
                 </LiveResponseFrame>
+                )}
               </div>
             </>
           )}
@@ -1283,7 +1339,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'collections': return { component: <RequestWorkspace />, titleKey: 'API Workspace' }
     case 'scenarios':   return { component: <DailyScenariosPanel />, titleKey: 'Daily Scenarios', overflow: true }
     case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
-    case 'websocket':   return { component: <WebSocketPanel />,       titleKey: 'WebSocket',     overflow: true }
+    case 'websocket':   return { component: <WebSocketRailEntry />,   titleKey: 'WebSocket' }
     case 'sse':         return { component: <SsePanel />,             titleKey: 'SSE Client',    overflow: true }
     case 'broker':      return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'mock':        return { component: <MockPanel />,            titleKey: 'mock',      overflow: true }

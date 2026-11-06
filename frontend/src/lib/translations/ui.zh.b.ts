@@ -498,6 +498,11 @@ export const ZH_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Dark base color": "深色基础色",
   "White base color": "白色基础色",
   "Base color": "基础色",
+  "Connection": "连接",
+  "Disconnect": "断开",
+  "Connect": "连接",
+  "Message": "消息",
+  "New WebSocket": "新建 WebSocket",
 }
 
 /** Navigation labels (rail, feature groups, welcome surfaces). */

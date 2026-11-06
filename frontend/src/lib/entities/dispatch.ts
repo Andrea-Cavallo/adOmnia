@@ -5,6 +5,8 @@ import { showEntityNotice } from './notice'
 import type { EntityRef } from './types'
 
 export const ENTITY_HANDOFF_EVENT = 'adomnia:entity-handoff'
+/** A WebSocket entity handed to the API workspace, which opens it as a connection tab. */
+export const WEBSOCKET_HANDOFF_INTENT = 'open-websocket'
 
 /**
  * Show a panel and deliver an event once it is mounted, in the window where the panel lives: the

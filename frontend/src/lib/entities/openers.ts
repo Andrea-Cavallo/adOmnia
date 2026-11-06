@@ -7,7 +7,7 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { showModule } from '@/lib/moduleRouting'
 import { detachedPanelOfThisWindow } from '@/lib/panel-windows-api'
-import { handoffToPanel } from './dispatch'
+import { WEBSOCKET_HANDOFF_INTENT, handoffToPanel } from './dispatch'
 import { showEntityNotice } from './notice'
 import { registerOpener } from './router'
 import { httpMethodForRoute, mockPathForRoute, requestUrlForRoute, withBaseUrl } from './routeRequest'
@@ -142,7 +142,7 @@ export function registerDefaultOpeners(): () => void {
     registerOpener('websocket', {
       intent: 'connect', title: 'Open in WebSocket client', isDefault: true,
       available: (ref) => !!ref.attrs.url || !!ref.attrs.path,
-      run: (ref) => handoffToPanel('websocket', ref, 'connect', { url: websocketUrlFor(ref, useEnvironmentsStore.getState().getResolvedVars().baseUrl) }),
+      run: (ref) => handoffToPanel('collections', ref, WEBSOCKET_HANDOFF_INTENT, { url: websocketUrlFor(ref, useEnvironmentsStore.getState().getResolvedVars().baseUrl) }),
     }),
   ]
   return () => offs.forEach((off) => off())

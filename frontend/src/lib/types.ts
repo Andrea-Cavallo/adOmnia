@@ -115,6 +115,27 @@ export interface RequestItem {
   _openapiSecurity?: OpenAPISecurityDoc
   assertions?: RequestAssertion[]
   psd2?: PSD2RequestConfig
+  /** WebSocket settings of a `method: 'WS'` request; its saved messages are its body variants. */
+  ws?: WebSocketSettings
+}
+
+/** How a WebSocket message is sent: text as typed, JSON validated and formatted, or binary (base64/hex). */
+export type WebSocketPayloadMode = 'text' | 'json' | 'binary'
+
+/** What a WebSocket request adds to a request: the handshake options, the client behaviour and its tools. */
+export interface WebSocketSettings {
+  /** Comma-separated subprotocols offered in the handshake. */
+  subprotocols: string
+  autoReconnect: boolean
+  /** Seconds between reconnect attempts. */
+  reconnectDelay: number
+  payloadMode: WebSocketPayloadMode
+  /** JavaScript run on every inbound message, with `msg` in scope. */
+  onMessageScript?: string
+  /** Copies of each command sent at once by the parallel send. */
+  parallelCopies?: number
+  /** Extra clients the parallel tab opens to the same URL. */
+  parallelClients?: number
 }
 
 export type PSD2Operation = 'ais-consent' | 'pis-payment' | 'fcs-confirmation'
