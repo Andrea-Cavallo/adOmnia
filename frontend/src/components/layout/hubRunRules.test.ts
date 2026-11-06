@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BOSS_EVERY, BOSS_HP, BOSS_WARN_SECONDS, HEART_CAP, SHIELD_SECONDS, WIDE_REACH, WIDE_SECONDS, bossOf, ghostVisibility, tangible,
   ATTACK_REACH, CHAIN_SECONDS, CHAIN_STEP, CHARGE_MAX, COIN_POINTS, GRAVITY, INVULNERABLE_SECONDS, JUMP_SPEED, KILL_POINTS, MAX_HEARTS, PIT_MAX, RUN_SPEED,
   chainMultiplier, groundY, medalFor, meters, newRun, pauseRun, resizeRun, runScore, startRun, stepRun,
   type Enemy, type RunInput, type RunState,
 } from './hubRunRules'
+import { FROG_CROUCH, blankEnemy, bossAt, frogCrouching } from './hubRunEnemies'
 
 const W = 562
 const H = 120
@@ -24,7 +26,7 @@ const steps = (state: RunState, seconds: number, input: Partial<RunInput> = {}, 
   return current
 }
 const enemy = (kind: Enemy['kind'], x: number, y: number, extra: Partial<Enemy> = {}): Enemy =>
-  ({ id: 900, kind, x, y, vx: 0, vy: 0, age: 0, awake: true, baseY: y, hop: 99, ...extra })
+  ({ ...blankEnemy(900, kind, x, y), awake: true, hop: 99, ...extra })
 
 describe('hub run: the knight', () => {
   it('stands still until a run starts, and pauses and resumes', () => {
@@ -195,5 +197,116 @@ describe('hub run: score', () => {
     const taller = resizeRun(run, W, H + 40)
     expect(taller.knight.y).toBe(groundY(H + 40))
     expect(taller.knight.x).toBe(run.knight.x)
+  })
+})
+
+describe('hub run: bosses', () => {
+  const swingAt = (run: RunState) => steps(stepRun(run, { ...idle, attack: true }, DT), 0.35)
+  it('sends a boss every 20 seconds while none is out', () => {
+    const due = stepRun(flat({ bossIn: 0.01 }), idle, DT)
+    const boss = bossOf(due)
+    expect(boss).toMatchObject({ kind: 'skull', hp: BOSS_HP, bossPhase: 'enter' })
+    expect(due.events.some((e) => e.type === 'boss')).toBe(true)
+    expect(due.bossIn).toBe(BOSS_EVERY)
+    const later = steps(due, 30)
+    expect(later.enemies.filter((e) => e.boss)).toHaveLength(1)
+  })
+  it('always flashes its warning before it dives', () => {
+    let run = flat({ bossIn: 0.01, hearts: 99 })
+    let warnedFor = 0
+    let dives = 0
+    for (let t = 0; t < 20; t += DT) {
+      const before = bossOf(run)
+      run = stepRun({ ...run, hearts: 99 }, idle, DT)
+      const after = bossOf(run)
+      if (after?.bossPhase === 'warn') warnedFor += DT
+      if (before?.bossPhase === 'warn' && after?.bossPhase === 'dive') {
+        expect(warnedFor).toBeGreaterThanOrEqual(BOSS_WARN_SECONDS - DT)
+        dives++
+      }
+      if (after?.bossPhase !== 'warn') warnedFor = 0
+    }
+    expect(dives).toBeGreaterThan(2)
+  })
+  it('takes five hits, one per swing, then drops a chest and resets the countdown', () => {
+    let run = flat({ enemies: [bossAt(700, 'skull', 40 + 20, TOP - 24)], bossIn: BOSS_EVERY })
+    for (let hit = 1; hit <= BOSS_HP; hit++) {
+      const boss = bossOf(run)!
+      run = swingAt({ ...run, enemies: [{ ...boss, x: run.knight.x + 20, y: TOP - 24, bossPhase: 'hover', timer: 99, flash: 0 }] })
+      if (hit < BOSS_HP) expect(bossOf(run)?.hp).toBe(BOSS_HP - hit)
+    }
+    expect(bossOf(run)).toBeUndefined()
+    expect(run.stats.bosses).toBe(1)
+    expect(run.chests).toHaveLength(1)
+    expect(run.bossIn).toBe(BOSS_EVERY)
+  })
+  it('holds back the other enemies while a boss is out', () => {
+    const run = flat({ enemies: [bossAt(700, 'ghost', 400, TOP - 60)], builtTo: 1000, ground: [{ x0: -500, x1: 1000 }] })
+    const built = stepRun({ ...run, cameraX: 900, knight: { ...run.knight, x: 1100 } }, idle, DT, seeded(4))
+    expect(built.enemies.filter((e) => !e.boss)).toHaveLength(0)
+  })
+})
+
+describe('hub run: new enemies', () => {
+  it('lets a hidden ghost neither hurt nor be hurt', () => {
+    const solid = enemy('ghost', 46, TOP - 20, { age: 0.5 })
+    expect(tangible(solid)).toBe(true)
+    const hiddenAge = [...Array(30)].map((_, i) => i / 10).find((age) => ghostVisibility(age) === 'hidden')!
+    const hidden = { ...solid, age: hiddenAge }
+    expect(tangible(hidden)).toBe(false)
+    expect(stepRun(flat({ enemies: [{ ...hidden, vx: 0 }] }), idle, DT).hearts).toBe(MAX_HEARTS)
+    expect(steps(stepRun(flat({ enemies: [{ ...hidden, x: 60 }] }), { ...idle, attack: true }, DT), 0.1).stats.kills).toBe(0)
+  })
+  it('splits a big slime into two small ones', () => {
+    const big = enemy('slime', 40 + ATTACK_REACH - 10, TOP - 13, { big: true })
+    const after = steps(stepRun(flat({ enemies: [big] }), { ...idle, attack: true }, DT), 0.05)
+    expect(after.events.length >= 0).toBe(true)
+    const smalls = after.enemies.filter((e) => e.kind === 'slime')
+    expect(smalls).toHaveLength(2)
+    expect(smalls.every((e) => !e.big)).toBe(true)
+    expect(Math.sign(smalls[0].vx)).not.toBe(Math.sign(smalls[1].vx))
+  })
+  it('makes a frog crouch before it leaps', () => {
+    const frog = enemy('frog', 120, TOP - 9, { hop: FROG_CROUCH })
+    const crouching = stepRun(flat({ enemies: [frog] }), idle, DT).enemies[0]
+    expect(frogCrouching(crouching)).toBe(true)
+    expect(crouching.vy).toBe(0)
+    const leapt = steps(flat({ enemies: [frog] }), FROG_CROUCH + 0.05).enemies[0]
+    expect(leapt.vy).toBeLessThan(0)
+  })
+  it('keeps a far frog ready but not crouching', () => {
+    const far = stepRun(flat({ enemies: [enemy('frog', 500, TOP - 9, { hop: 0.2 })] }), idle, DT).enemies[0]
+    expect(frogCrouching(far)).toBe(false)
+  })
+})
+
+describe('hub run: chests', () => {
+  const chestRun = (extra: Partial<RunState> = {}) => flat({ chests: [{ id: 800, x: 44, y: TOP }], ...extra })
+  it('opens on touch and grants a power', () => {
+    const opened = stepRun(chestRun(), idle, DT, () => 0.5)
+    expect(opened.chests).toHaveLength(0)
+    expect(opened.stats.chests).toBe(1)
+    expect(opened.events.find((e) => e.type === 'chest')).toBeTruthy()
+  })
+  it('adds a heart, never above the cap', () => {
+    expect(stepRun(chestRun(), idle, DT, () => 0).hearts).toBe(MAX_HEARTS + 1)
+    const full = stepRun(chestRun({ hearts: HEART_CAP }), idle, DT, () => 0)
+    expect(full.hearts).toBe(HEART_CAP)
+    expect(full.wide + full.shield).toBeGreaterThan(0)
+  })
+  it('widens the slash for a while', () => {
+    const wide = stepRun(chestRun(), idle, DT, () => 0.5)
+    expect(wide.wide).toBeCloseTo(WIDE_SECONDS, 0)
+    const far = enemy('bat', 40 + WIDE_REACH - 8, TOP - 24)
+    expect(steps(stepRun({ ...wide, enemies: [far] }, { ...idle, attack: true }, DT), 0.15).stats.kills).toBe(1)
+    expect(steps(stepRun(flat({ enemies: [far] }), { ...idle, attack: true }, DT), 0.15).stats.kills).toBe(0)
+  })
+  it('lets the shield take one hit instead of a heart', () => {
+    const shielded = stepRun(chestRun(), idle, DT, () => 0.9)
+    expect(shielded.shield).toBeCloseTo(SHIELD_SECONDS, 0)
+    const blocked = stepRun({ ...shielded, enemies: [enemy('slime', 46, TOP - 9)] }, idle, DT)
+    expect(blocked.hearts).toBe(MAX_HEARTS)
+    expect(blocked.shield).toBe(0)
+    expect(blocked.events.some((e) => e.type === 'block')).toBe(true)
   })
 })
