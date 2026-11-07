@@ -33,7 +33,7 @@ function GrpcHandlerStrip({ service, method }: { service: string; method: string
   if (!link) return null
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-text-3">
-      <span>Served by <span className="font-mono text-text-1">{link.name}()</span> · {link.relativePath}:{link.line}</span>
+      <span>Served by <span className="font-mono text-text-1">{link.name}()</span>{link.language && link.language !== 'go' ? ` · ${link.language[0].toUpperCase()}${link.language.slice(1)}` : ''} · {link.relativePath}:{link.line}</span>
       <button type="button" onClick={() => void openGrpcHandler(link)} className="inline-flex items-center gap-1 rounded border border-border-2 px-2 py-0.5 text-text-2 hover:border-accent hover:text-accent"><Code2 size={11} /> Handler</button>
     </div>
   )

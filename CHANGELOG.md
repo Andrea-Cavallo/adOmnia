@@ -12,6 +12,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **No reflection needed.** A call can be described by `.proto` files on disk (with import paths) or a protoset; invoke, streams, load tests and the mock all use it.
 - **gRPC mock server** built from the `.proto`: rules per method, templated replies, status codes, delays, streams, reflection on.
 - **Pooled connections**, one per server, reused across calls.
+- **Rust handlers.** A gRPC call and the `.proto` lens jump to the Rust method that serves the rpc: the `async fn` of the `#[tonic::async_trait]` impl (`say_hello` for `SayHello`), read from the detected services, no analysis to run.
 - **Linked to code and Flows.** A Go service or a `.proto` rpc in Code Studio opens a call; a call shows and opens the Go handler that serves it; gRPC calls run as Flow steps and with pre/post scripts.
 
 ### Code Studio · Java

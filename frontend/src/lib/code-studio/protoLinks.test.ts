@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoIDEArchitecture } from '@/lib/code-studio-api'
-import { ancestorDirs, findProtoType, goHandlerFor, importCandidates, protoDeclarations, protoImports, protoRpcs, protocArguments } from './protoLinks'
+import { ancestorDirs, entityHandlerFor, findProtoType, goHandlerFor, importCandidates, protoDeclarations, protoImports, protoRpcs, protocArguments } from './protoLinks'
 
 const PROTO = `syntax = "proto3";
 // service Fake { rpc Nope(A) returns (B); }
@@ -91,5 +91,17 @@ describe('proto generation helpers', () => {
   it('walks up to the project root', () => {
     expect(ancestorDirs('svc/api/v1/orders.proto')).toEqual(['svc/api/v1', 'svc/api', 'svc', ''])
     expect(ancestorDirs('orders.proto')).toEqual([''])
+  })
+})
+
+describe('entityHandlerFor', () => {
+  const entity = (attrs: Record<string, string>) => ({ id: 'grpc:Greeter', kind: 'grpc' as const, label: 'Greeter', attrs, sources: [], confidence: 'inferred' as const })
+  it('finds the Rust method serving an rpc from the grpc entity', () => {
+    const entities = [entity({ language: 'rust', service: 'Greeter', declFile: 'src/server.rs', 'rpc.say_hello': '12', 'rpc.get_http_status': '20' })]
+    expect(entityHandlerFor(entities, 'helloworld.Greeter', 'SayHello')).toEqual({ name: 'say_hello', language: 'rust', site: { relativePath: 'src/server.rs', line: 12, column: 1 } })
+    expect(entityHandlerFor(entities, 'Greeter', 'GetHTTPStatus')?.site.line).toBe(20)
+    expect(entityHandlerFor(entities, 'Greeter', 'Missing')).toBeNull()
+    expect(entityHandlerFor(entities, 'Other', 'SayHello')).toBeNull()
+    expect(entityHandlerFor([entity({ service: 'Greeter', 'rpc.say_hello': '3' })], 'Greeter', 'SayHello')).toBeNull()
   })
 })

@@ -2,13 +2,14 @@ import { monaco, type Monaco } from '@/lib/monacoRef'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { handoffToPanel } from '@/lib/entities/dispatch'
 import { architectureFor, cachedArchitecture } from '@/lib/code-studio/architectureCache'
-import { ancestorDirs, findProtoType, goHandlerFor, importCandidates, protocArguments, protoDeclarations, protoImports, protoRpcs, type ProtoRpc } from '@/lib/code-studio/protoLinks'
+import { ancestorDirs, entityHandlerFor, findProtoType, goHandlerFor, importCandidates, protocArguments, protoDeclarations, protoImports, protoRpcs, type ProtoRpc } from '@/lib/code-studio/protoLinks'
 import { detectGoIDEGoTool, installGoIDEGoModule, listGoIDEDirectory, runGoIDEGoTool } from '@/lib/code-studio-api'
 import { confirm } from '@/lib/confirmDialog'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { readDevContextFile } from '@/lib/devcontext-api'
 import { documentForModel, rememberLocations } from './codeStudioLanguageFeatures'
 import { openArchSite } from './CodeStudioInterfaceExplorer'
+import { useDevContextStore } from '@/stores/devcontext'
 
 // .proto → Go: on every rpc, the Go method that serves it, Debug and a call in the gRPC client.
 const LANGUAGE = 'proto'
@@ -39,15 +40,22 @@ function lensesFor(sessionId: string, documentId: string, text: string): Monaco.
   const rpcs = protoRpcs(text)
   if (!rpcs.length) return [generate]
   const report = cachedArchitecture(sessionId)?.report
+  // Detected entities (Rust tonic) need no analysis: they come with the Developer Context of the project.
+  void useDevContextStore.getState().ensure(sessionId).catch(() => undefined)
+  const entities = useDevContextStore.getState().snapshots[sessionId]?.entities ?? []
   const out: Monaco.languages.CodeLens[] = [generate]
-  if (!report) out.push(lens(rpcs[0].line, LINK_COMMAND, 'Link rpcs to Go handlers', 'Analyze the project (nothing runs) to find the Go method serving each rpc', [sessionId]))
+  const fromEntities = rpcs.some((rpc) => entityHandlerFor(entities, rpc.service, rpc.method))
+  if (!report && !fromEntities) out.push(lens(rpcs[0].line, LINK_COMMAND, 'Link rpcs to Go handlers', 'Analyze the project (nothing runs) to find the Go method serving each rpc', [sessionId]))
   for (const rpc of rpcs) {
-    const handler = report ? goHandlerFor(report, rpc.service, rpc.method) : null
-    if (handler) {
-      out.push(lens(rpc.line, HANDLER_COMMAND, `→ ${handler.name}`, `${handler.site.relativePath}:${handler.site.line}`, [sessionId, rpc.service, rpc.method]))
+    const goHandler = report ? goHandlerFor(report, rpc.service, rpc.method) : null
+    const otherHandler = goHandler ? null : entityHandlerFor(entities, rpc.service, rpc.method)
+    if (goHandler) {
+      out.push(lens(rpc.line, HANDLER_COMMAND, `→ ${goHandler.name}`, `${goHandler.site.relativePath}:${goHandler.site.line}`, [sessionId, rpc.service, rpc.method]))
       out.push(lens(rpc.line, DEBUG_COMMAND, 'Debug', 'Breakpoint in the Go handler, run under Delve, then call the rpc from the gRPC client', [sessionId, documentId, rpc.service, rpc.method]))
+    } else if (otherHandler) {
+      out.push(lens(rpc.line, HANDLER_COMMAND, `→ ${otherHandler.name}`, `${otherHandler.language ? `${otherHandler.language} · ` : ''}${otherHandler.site.relativePath}:${otherHandler.site.line}`, [sessionId, rpc.service, rpc.method]))
     } else if (report) {
-      out.push(lens(rpc.line, HANDLER_COMMAND, 'No Go handler', 'No RegisterXServer type implements this rpc in this project', [sessionId, rpc.service, rpc.method]))
+      out.push(lens(rpc.line, HANDLER_COMMAND, 'No handler', 'No Go RegisterXServer type or Rust tonic impl serves this rpc in this project', [sessionId, rpc.service, rpc.method]))
     }
     out.push(lens(rpc.line, CALL_COMMAND, 'Call in gRPC client', 'Load this .proto in the gRPC client with the rpc selected', [documentId, rpc.service, rpc.method]))
   }
@@ -56,7 +64,8 @@ function lensesFor(sessionId: string, documentId: string, text: string): Monaco.
 
 function handlerOf(sessionId: string, service: string, method: string) {
   const report = cachedArchitecture(sessionId)?.report
-  return report ? goHandlerFor(report, service, method) : null
+  const goHandler = report ? goHandlerFor(report, service, method) : null
+  return goHandler ?? entityHandlerFor(useDevContextStore.getState().snapshots[sessionId]?.entities ?? [], service, method)
 }
 
 /** The fully qualified service name the gRPC client calls: the .proto package plus the service. */
@@ -215,6 +224,9 @@ export function registerCodeStudioProtoLens(): void {
       return { lenses: lensesFor(document.document.sessionId, document.document.id, model.getValue()), dispose: () => undefined }
     },
   }
+  // The entities arrive after the first lens pass (and change on save): redraw the lenses then.
+  useDevContextStore.subscribe((state, previous) => { if (state.snapshots !== previous.snapshots) changed().fire(provider) })
+
   monaco.languages.registerCodeLensProvider(LANGUAGE, provider)
   monaco.languages.registerDocumentSymbolProvider(LANGUAGE, { provideDocumentSymbols: (model) => protoSymbols(model) })
   monaco.languages.registerDefinitionProvider(LANGUAGE, { provideDefinition: (model, position) => protoDefinition(model, position) })
