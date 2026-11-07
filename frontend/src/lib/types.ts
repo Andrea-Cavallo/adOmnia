@@ -90,7 +90,7 @@ export interface OpenAPISecurityDoc {
   requirements?: Array<Record<string, string[]>>
 }
 
-export type HttpMethod = 'GET' | 'QUERY' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'CONNECT' | 'TRACE' | 'WS' | 'SOAP'
+export type HttpMethod = 'GET' | 'QUERY' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'CONNECT' | 'TRACE' | 'WS' | 'SOAP' | 'GRPC'
 
 export interface RequestItem {
   id: string
@@ -117,6 +117,47 @@ export interface RequestItem {
   psd2?: PSD2RequestConfig
   /** WebSocket settings of a `method: 'WS'` request; its saved messages are its body variants. */
   ws?: WebSocketSettings
+  /** gRPC call of a `method: 'GRPC'` request: `url` is host:port, the body variants are the messages. */
+  grpc?: GrpcSettings
+}
+
+/** Where a gRPC call takes its schema from: server reflection, .proto files on disk, or a compiled protoset. */
+export type GrpcDescriptorKind = 'reflection' | 'proto' | 'protoset'
+
+/** A rule of the gRPC mock: how one method answers. */
+export interface GrpcMockRuleSetting {
+  id: string
+  name: string
+  enabled: boolean
+  method: string
+  match: string
+  /** Reply JSON; `{{request.field}}`, `{{$uuid}}` and `{{$now}}` are filled per call. A server stream takes an array. */
+  response: string
+  status: string
+  message: string
+  delayMs: number
+}
+
+/** What a gRPC request adds to a request. Paths are of this machine, like certificate paths. */
+export interface GrpcSettings {
+  service: string
+  method: string
+  /** The rpc shape of the method, saved when it is picked: Invoke knows unary from stream without the schema. */
+  kind?: 'unary' | 'server' | 'client' | 'bidi'
+  source: GrpcDescriptorKind
+  protoFiles: string[]
+  importPaths: string[]
+  protosetPath: string
+  /** .proto sources kept inline (an upload from the old gRPC panel, a contract opened from code). */
+  inlineProtos?: Record<string, string>
+  tls: boolean
+  caCertPath: string
+  clientCertPath: string
+  clientKeyPath: string
+  /** Deadline of the call in ms; 0 is the default (30 s). */
+  timeoutMs: number
+  mockPort?: number
+  mockRules?: GrpcMockRuleSetting[]
 }
 
 /** How a WebSocket message is sent: text as typed, JSON validated and formatted, or binary (base64/hex). */
@@ -206,8 +247,8 @@ export interface Collection {
   name: string
   color?: string
   children: TreeNode[]
-  /** Dedicated to the WebSocket module: never shown in the API workspace. Absent for API collections. */
-  scope?: 'websocket'
+  /** Dedicated to a protocol module (WebSocket, gRPC): never shown in the API workspace. Absent for API collections. */
+  scope?: 'websocket' | 'grpc'
   _openapiSpec?: string
 }
 

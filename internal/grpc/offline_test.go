@@ -145,9 +145,9 @@ func TestMockServesProtoFilesFromDiskWithRulesAndReflection(t *testing.T) {
 	descriptors := DescriptorSource{Kind: SourceProto, ProtoPaths: []string{protoPath}, ImportPaths: []string{importRoot}}
 	port, err := StartMock(MockConfig{Descriptors: descriptors, Rules: []MockRule{
 		{ID: "fail", Enabled: true, Method: "Say", Match: "boom", Status: "NOT_FOUND", Message: "no {{request.name}} here"},
-		{ID: "hello", Name: "Hello", Enabled: true, Service: "demo.v1.Echo", Method: "Say", Response: []byte(`{"text":"hi {{request.name}}","tip":{"currency":"EUR","units":"{{request.tip.units}}"}}`)},
-		{ID: "list", Enabled: true, Method: "List", Response: []byte(`[{"text":"one"},{"text":"two"}]`)},
-		{ID: "chat", Enabled: true, Method: "Chat", Response: []byte(`{"text":"echo {{request.name}}"}`)},
+		{ID: "hello", Name: "Hello", Enabled: true, Service: "demo.v1.Echo", Method: "Say", Response: `{"text":"hi {{request.name}}","tip":{"currency":"EUR","units":"{{request.tip.units}}"}}`},
+		{ID: "list", Enabled: true, Method: "List", Response: `[{"text":"one"},{"text":"two"}]`},
+		{ID: "chat", Enabled: true, Method: "Chat", Response: `{"text":"echo {{request.name}}"}`},
 	}})
 	if err != nil {
 		t.Fatal(err)

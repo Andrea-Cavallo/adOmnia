@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect, useRef } from 'react'
+import { isWorkspaceRail } from '@/lib/protocolModules'
 import { Rail } from '@/components/layout/Rail'
 import { MainAreaRouter } from '@/components/layout/MainAreaRouter'
 import { StatusBar } from '@/components/layout/StatusBar'
@@ -46,7 +47,7 @@ function App() {
   const toggleDevTools = useAppStore((s) => s.toggleDevTools)
   const activeRail     = useAppStore((s) => s.activeRail)
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
-  const showSidebar    = (activeRail === 'collections' || activeRail === 'websocket') && !sidebarCollapsed
+  const showSidebar    = isWorkspaceRail(activeRail) && !sidebarCollapsed
   const splitView = useAppStore((s) => s.splitView)
   const codeStudioMaximized = useAppStore((s) => s.codeStudioMaximized || s.codeStudioZen) && activeRail === 'codestudio' && !splitView
   const workspaceHydrated = useWorkspaceHydration()

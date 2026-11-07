@@ -192,18 +192,23 @@ Existing `{{variable}}` references are also linked when their current environmen
 
 ### B1. gRPC Client
 
+gRPC calls are a module with the API workspace's layout: the **gRPC** rail item shows its own collections (`scope: "grpc"`) and tab strip, and the calls are collection items with `method: "GRPC"`, saved and exported with the workspace.
+
 | # | Feature | Description |
 |---|-------------|-------------|
-| B1.1 | **Server Reflection** | Connect to a gRPC server and automatically retrieve the list of services and methods. |
-| B1.2 | **Method Discovery** | For each method: name, input type, output type, client streaming flag, server streaming flag. |
-| B1.3 | **Message Schema** | Describes a protobuf type: fields, type, number, repeated flag. |
-| B1.4 | **Unary Invoke** | Invokes a unary gRPC method with a JSON payload; timing is measured. |
-| B1.5 | **TLS Support** | TLS on/off toggle for the connection. |
-| B1.6 | **Metadata Headers** | Key-value editor for custom gRPC metadata (sent with every request). |
-| B1.7 | **Prettify Payload** | Formats JSON in the payload with indentation. |
-| B1.8 | **Connection Presets** | Save address+TLS as a local preset; chips for quick loading. |
-| B1.9 | **Streaming Invocation** | Runs server, client and bidirectional streaming calls; client/bidi streams accept ordered JSONL messages and display streamed responses. |
-| B1.10 | **Copy Response** | Copy JSON response to the clipboard. |
+| B1.1 | **Request bar** | `gRPC` badge (lock when TLS), server address with `{{variables}}` (`host:port`, `grpc://`, `grpcs://`), service/method picker grouped by service with the rpc kind, *Load services*, Save/Delete, **Invoke** (unary) or **Stream**/**Stop**. |
+| B1.2 | **Schema without reflection** | Services and messages come from server reflection, from `.proto` files on disk with import paths (like `protoc -I`), or from a protoset. Calls, streams, load tests and the mock work with any of the three; paths are saved, so edits to the `.proto` apply. |
+| B1.3 | **Message** | Saved messages (body variants) in the JSON editor with `{{variables}}`, *Example* built from the input type, field reference with types and enum values; a JSON array sends several messages on a client/bidi stream. |
+| B1.4 | **Metadata and Auth** | Metadata rows, and the request auth as metadata: Bearer, Basic, API key, OAuth 2.0 token. |
+| B1.5 | **TLS and mTLS** | TLS switch (or the `grpcs://` scheme), custom CA, client certificate and key. |
+| B1.6 | **Unary response** | The standard Response panel: JSON body, metadata and trailers as headers, `grpc-status`, timing; gRPC codes map to HTTP-like statuses (NOT_FOUND → 404) so assertions and Flows read them. |
+| B1.7 | **Streams** | Server, client and bidi streams in a Stream panel (the WebSocket message view): live messages, filters, search, inspector, JSONL export; client/bidi streams stay open, *Send* adds messages and *Close send* ends the sending side. |
+| B1.8 | **Connections** | One pooled connection per server and TLS files, reused across calls, closed after 5 idle minutes. |
+| B1.9 | **Mock server** | A local gRPC server built from the call's `.proto`/protoset: rules per method with match text, JSON reply with `{{request.field}}`, `{{$uuid}}`, `{{$now}}`, status code and message, delay; server streams reply with an array, bidi answers each message; reflection on; hit log; *Use as address*. |
+| B1.10 | **Load test** | N calls with a concurrency, p50/p95/p99, throughput and error rate, with the same schema source. |
+| B1.11 | **Code** | A Go service registered with `RegisterXServer` opens a call by reflection at its address; *Call in gRPC client* on a `.proto` rpc opens the file with its import root and the rpc selected (from Debug, pointed at the running service); a call shows *Served by Handler()* and opens the Go method; calls to a live session carry its correlation id and traceparent. |
+| B1.12 | **Flows and scripts** | Saved gRPC calls are Flow steps (status, assertions, variables from the reply) and run pre/post scripts, through the same pipeline as HTTP. |
+| B1.13 | **Migration** | The old gRPC panel's saved connections become calls the first time the module opens; a dropped `.proto` opens a call described by it. |
 
 ---
 
@@ -407,7 +412,7 @@ WebSocket connections live in the API workspace, with the same layout as REST re
 | # | Feature | Description |
 |---|-------------|-------------|
 | C4.1 | **HTTP Load Test** | URL, method, headers, body, concurrency (1–200), total requests (1–50,000), duration mode, timeout, ramp-up, cooldown. |
-| C4.2 | **gRPC Load Test** | Address, service, method, payload, concurrency, total requests, timeout, TLS. |
+| C4.2 | **gRPC Load Test** | From the gRPC call's *Load test* section: concurrency, total calls, timeout, TLS, and the call's schema (reflection, .proto, protoset). |
 | C4.3 | **Metriche HDR Histogram** | Distribuzione latenza: avg, min, max, P50, P75, P90, P95, P99, P99.9. Precisione ms, 3 cifre significative. |
 | C4.4 | **Timeline Chart** | Per-request timeline: elapsed, latency, status code, success/failure flag. |
 | C4.5 | **Timeline Throughput** | Bucket per-secondo: req/s e latenza media. |

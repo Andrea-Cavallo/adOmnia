@@ -745,6 +745,8 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 		ClientCertPath string            `json:"clientCertPath"`
 		ClientKeyPath  string            `json:"clientKeyPath"`
 		Metadata       map[string]string `json:"metadata"`
+		// Descriptors describe the call when the server has no reflection (.proto files, protoset).
+		Descriptors jsonv1.RawMessage `json:"descriptors,omitempty"`
 	}
 	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -799,7 +801,8 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 				ClientCertPath string            `json:"client_cert_path,omitempty"`
 				ClientKeyPath  string            `json:"client_key_path,omitempty"`
 				Metadata       map[string]string `json:"metadata,omitempty"`
-			}{req.Address, req.Service, req.Method, jsonv1.RawMessage(payload), req.Tls, req.TimeoutMs, req.CACertPath, req.ClientCertPath, req.ClientKeyPath, req.Metadata})
+				Descriptors    jsonv1.RawMessage `json:"descriptors,omitempty"`
+			}{req.Address, req.Service, req.Method, jsonv1.RawMessage(payload), req.Tls, req.TimeoutMs, req.CACertPath, req.ClientCertPath, req.ClientKeyPath, req.Metadata, req.Descriptors})
 			if marshalErr != nil {
 				mu.Lock()
 				failed++
@@ -877,7 +880,7 @@ func grpcLoadTestOutcome(httpStatus int, body []byte) (bool, string) {
 	if err := json.Unmarshal(body, &result); err != nil {
 		return false, "INVALID_RESPONSE"
 	}
-	if result.Status == "OK" && result.Error == "" {
+	if strings.EqualFold(result.Status, "OK") && result.Error == "" {
 		return true, "OK"
 	}
 	if result.Status == "" {
@@ -887,7 +890,9 @@ func grpcLoadTestOutcome(httpStatus int, body []byte) (bool, string) {
 }
 
 func grpcStatusCode(status string) int {
-	codes := map[string]int{"OK": 0, "CANCELLED": 1, "UNKNOWN": 2, "INVALID_ARGUMENT": 3, "DEADLINE_EXCEEDED": 4, "NOT_FOUND": 5, "ALREADY_EXISTS": 6, "PERMISSION_DENIED": 7, "RESOURCE_EXHAUSTED": 8, "FAILED_PRECONDITION": 9, "ABORTED": 10, "OUT_OF_RANGE": 11, "UNIMPLEMENTED": 12, "INTERNAL": 13, "UNAVAILABLE": 14, "DATA_LOSS": 15, "UNAUTHENTICATED": 16}
+	// The sidecar names codes as gRPC-Go does (NotFound) or as the spec does (NOT_FOUND): compare without case or "_".
+	status = strings.ToUpper(strings.ReplaceAll(status, "_", ""))
+	codes := map[string]int{"OK": 0, "CANCELLED": 1, "UNKNOWN": 2, "INVALIDARGUMENT": 3, "DEADLINEEXCEEDED": 4, "NOTFOUND": 5, "ALREADYEXISTS": 6, "PERMISSIONDENIED": 7, "RESOURCEEXHAUSTED": 8, "FAILEDPRECONDITION": 9, "ABORTED": 10, "OUTOFRANGE": 11, "UNIMPLEMENTED": 12, "INTERNAL": 13, "UNAVAILABLE": 14, "DATALOSS": 15, "UNAUTHENTICATED": 16}
 	if code, ok := codes[status]; ok {
 		return code
 	}

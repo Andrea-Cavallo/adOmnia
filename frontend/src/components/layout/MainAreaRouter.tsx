@@ -1,4 +1,5 @@
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { isWorkspaceRail } from '@/lib/protocolModules'
 import { AppWindow, ArrowLeft, X } from 'lucide-react'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { DRAG, TitlebarWindowControls, WindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'
@@ -18,7 +19,7 @@ import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 import { useSplitViewStore } from '@/lib/api-code-link/splitView'
 import { canSplitHere, isInSplit, layoutBack, useWorkspaceLayoutStore } from '@/lib/workspaceLayout'
 
-import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
+import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
 
 let workspaceModulePromise: ReturnType<typeof importWorkspaceModule> | undefined
 
@@ -110,19 +111,19 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
 export type PanelDef = { component: React.ReactNode; titleKey?: string; overflow?: boolean }
 
 /** Panels that stay mounted once visited: the developer moves between code and API without losing either. */
-export const KEEP_ALIVE_PANELS: readonly RailItem[] = ['collections', 'codestudio', 'websocket']
+export const KEEP_ALIVE_PANELS: readonly RailItem[] = ['collections', 'codestudio', 'websocket', 'grpc']
 
 export function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
-    case 'collections': return { component: <RequestWorkspace />, titleKey: 'API Workspace' }
+    case 'collections': return { component: <RequestWorkspace rail="collections" />, titleKey: 'API Workspace' }
     case 'scenarios': return { component: <DailyScenariosPanel />, titleKey: 'Daily Scenarios', overflow: true }
     case 'history': return { component: <RequestHistoryPanel />, titleKey: 'Request History', overflow: true }
-    case 'websocket': return { component: <RequestWorkspace />, titleKey: 'WebSocket' }
+    case 'websocket': return { component: <RequestWorkspace rail="websocket" />, titleKey: 'WebSocket' }
     case 'sse': return { component: <SsePanel />, titleKey: 'SSE Client', overflow: true }
     case 'broker': return { component: <BrokerStudioPanel />, titleKey: 'Broker Studio', overflow: true }
     case 'mock': return { component: <MockPanel />, titleKey: 'mock', overflow: true }
     case 'proxy': return { component: <ProxyPanel />, titleKey: 'proxy', overflow: true }
-    case 'grpc': return { component: <GrpcPanel />, titleKey: 'grpc', overflow: true }
+    case 'grpc': return { component: <RequestWorkspace rail="grpc" />, titleKey: 'gRPC' }
     case 'browser': return { component: <BrowserDebugPanel />, titleKey: 'browser' }
     case 'powertools': return { component: <UtilsPanel />, titleKey: 'Power Tools', overflow: true }
     case 'flows': return { component: <FlowsPanel />, titleKey: 'flows', overflow: true }
@@ -162,7 +163,7 @@ export function MainAreaRouter() {
   const goBack = useAppStore((s) => s.goBack)
   const workspaceHydrated = useWorkspaceHydration()
   const workspaceShellPhase = useWorkspaceHydrationShell(workspaceHydrated)
-  const workspaceHydrating = (activeRail === 'collections' || activeRail === 'websocket') && workspaceShellPhase !== 'ready'
+  const workspaceHydrating = isWorkspaceRail(activeRail) && workspaceShellPhase !== 'ready'
   const quietWorkspaceShell = workspaceShellPhase === 'quiet'
 
   useEffect(() => { startModuleActionListener() }, [])
@@ -258,13 +259,13 @@ export function MainAreaRouter() {
   }, [handleKeyDown])
 
   const { component, titleKey, overflow } = panelFor(activeRail)
-  const fallback = activeRail === 'collections' || activeRail === 'websocket'
+  const fallback = isWorkspaceRail(activeRail)
     ? <WorkspaceMainSkeleton quiet />
     : <PanelSkeleton />
 
   const renderPanel = (rail: RailItem) => {
     const panel = panelFor(rail).component
-    return <Suspense fallback={rail === 'collections' || rail === 'websocket' ? <WorkspaceMainSkeleton quiet /> : <PanelSkeleton />}>{panel}</Suspense>
+    return <Suspense fallback={isWorkspaceRail(rail) ? <WorkspaceMainSkeleton quiet /> : <PanelSkeleton />}>{panel}</Suspense>
   }
 
   return (
@@ -297,7 +298,7 @@ export function MainAreaRouter() {
             ? (rail === 'codestudio' || rail === 'collections') && hiddenPane !== rail && (!maximizedPane || maximizedPane === rail)
             : rail === activeRail && !workspaceHydrating
           // The API workspace needs hydrated collections before it mounts.
-          if ((rail === 'collections' || rail === 'websocket') && workspaceShellPhase !== 'ready') return null
+          if (isWorkspaceRail(rail) && workspaceShellPhase !== 'ready') return null
           const code = rail === 'codestudio'
           // Hiding the third pane leaves code and request side by side, not one of them alone.
           const solo = maximizedPane !== null || (hiddenPane !== null && hiddenPane !== auxiliary)

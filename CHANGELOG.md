@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### gRPC
+
+- **gRPC is a module with the API workspace's layout, like WebSocket.** Calls are collection items (*New gRPC call*) with their own tab strip and collections: a request bar with address, service/method picker and Invoke/Stream, sections for Message, Metadata, Auth, Schema, TLS, Settings, Mock and Load test, the standard Response panel for unary calls and a live Stream panel for streams. Calls are saved, exported with the workspace and take `{{variables}}`.
+- **No reflection needed.** A call can be described by `.proto` files on disk (with import paths) or a protoset; invoke, streams, load tests and the mock all use it.
+- **gRPC mock server** built from the `.proto`: rules per method, templated replies, status codes, delays, streams, reflection on.
+- **Pooled connections**, one per server, reused across calls.
+- **Linked to code and Flows.** A Go service or a `.proto` rpc in Code Studio opens a call; a call shows and opens the Go handler that serves it; gRPC calls run as Flow steps and with pre/post scripts.
+
 ### Code Studio · Java
 
 - **External Libraries for Maven, like Go.** The Project tree lists every library the poms resolve, transitive ones included, across the whole reactor. Expand one to browse its sources (read-only, from the `-sources.jar` of the local Maven repository); a library without sources offers *Download sources* with the exact Maven command. In a pom.xml, *View source* above each dependency and Ctrl+click on a `<dependency>` open its code.

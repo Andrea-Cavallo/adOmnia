@@ -1051,6 +1051,7 @@ export const ITALIAN_UI_MESSAGES = {
   'New WebSocket': 'Nuovo WebSocket',
   'No WebSocket connection open': 'Nessuna connessione WebSocket aperta',
   'Open one from the sidebar on the left or start a new connection.': 'Aprine una dalla barra a sinistra oppure avvia una nuova connessione.',
+  'Streaming': 'In streaming',
 } as const
 
 export type UiMessage = keyof typeof ITALIAN_UI_MESSAGES

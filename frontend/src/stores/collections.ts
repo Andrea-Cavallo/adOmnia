@@ -97,8 +97,11 @@ export const DEFAULT_WORKSPACE_ID = 'workspace-default'
 // versioned collection format while the sidebar presents them at workspace root.
 export const QUICK_REQUESTS_COLLECTION_ID = '__adomnia-quick-requests__'
 const QUICK_REQUESTS_COLLECTION_NAME = 'Quick Requests'
-const QUICK_WEBSOCKETS_COLLECTION_ID = '__adomnia-quick-websockets__'
-const QUICK_WEBSOCKETS_COLLECTION_NAME = 'WebSocket Quick Requests'
+/** The hidden quick collection of each protocol module: its quick requests never mix with the API ones. */
+const QUICK_COLLECTIONS: Record<NonNullable<Collection['scope']>, { id: string; name: string }> = {
+  websocket: { id: '__adomnia-quick-websockets__', name: 'WebSocket Quick Requests' },
+  grpc: { id: '__adomnia-quick-grpc__', name: 'gRPC Quick Calls' },
+}
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace'
 const COLLECTIONS_INDEX_VERSION = 3
 const pendingWorkspaceSaves = new Set<string>()
@@ -738,9 +741,7 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => {
 
   addQuickRequest: (request, scope) => {
     get().hydrateNow()
-    const websocket = scope === 'websocket'
-    const id = websocket ? QUICK_WEBSOCKETS_COLLECTION_ID : QUICK_REQUESTS_COLLECTION_ID
-    const name = websocket ? QUICK_WEBSOCKETS_COLLECTION_NAME : QUICK_REQUESTS_COLLECTION_NAME
+    const { id, name } = scope ? QUICK_COLLECTIONS[scope] : { id: QUICK_REQUESTS_COLLECTION_ID, name: QUICK_REQUESTS_COLLECTION_NAME }
     set((s) => {
       const quickCollection = s.collections.find((collection) => collection.id === id)
       if (quickCollection) {

@@ -9,7 +9,6 @@ export const SsePanel             = lazy(() => import('@/components/sse/SsePanel
 export const BrokerStudioPanel    = lazy(() => import('@/components/kafka/BrokerStudioPanel').then(m => ({ default: m.BrokerStudioPanel })))
 export const MockPanel            = lazy(() => import('@/components/mock/MockPanel').then(m => ({ default: m.MockPanel })))
 export const ProxyPanel           = lazy(() => import('@/components/proxy/ProxyPanel').then(m => ({ default: m.ProxyPanel })))
-export const GrpcPanel            = lazy(() => import('@/components/grpc/GrpcPanel').then(m => ({ default: m.GrpcPanel })))
 export const BrowserDebugPanel    = lazy(() => import('@/components/browser-debug').then(m => ({ default: m.BrowserDebugPanel })))
 export const UtilsPanel           = lazy(() => import('@/components/utils/UtilsPanel').then(m => ({ default: m.UtilsPanel })))
 export const FlowsPanel           = lazy(() => import('@/components/flows/FlowsPanel').then(m => ({ default: m.FlowsPanel })))

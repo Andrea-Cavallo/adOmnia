@@ -279,6 +279,23 @@ func (a *App) SelectFolder(title string) (string, error) {
 	return path, nil
 }
 
+// SelectFile opens a native single-file picker with an optional filter ("Protocol Buffers", "*.proto") and
+// returns the path only: the file is never read here.
+func (a *App) SelectFile(title, filterLabel, pattern string) (string, error) {
+	if a.desktop == nil {
+		return "", fmt.Errorf("desktop runtime not initialized")
+	}
+	dialog := a.desktop.Dialog.OpenFile().CanChooseFiles(true).CanChooseDirectories(false).SetTitle(strings.TrimSpace(title))
+	if pattern = strings.TrimSpace(pattern); pattern != "" {
+		dialog = dialog.AddFilter(strings.TrimSpace(filterLabel), pattern)
+	}
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(path), nil
+}
+
 // maxDevLogEntries: voci al massimo per lettura, come il limite dello store dei log nel frontend.
 const maxDevLogEntries = 2000
 

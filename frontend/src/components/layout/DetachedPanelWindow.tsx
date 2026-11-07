@@ -1,4 +1,5 @@
 import { Suspense, useEffect } from 'react'
+import { isWorkspaceRail } from '@/lib/protocolModules'
 import { ArrowDownToLine } from 'lucide-react'
 import { ThemeProvider } from '@/components/themes/ThemeProvider'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
@@ -33,7 +34,7 @@ export function DetachedPanelWindow({ rail }: { rail: RailItem }) {
   const epoch = useModuleEpoch(rail)
   const sidebarCollapsed = useSettingsStore((s) => s.settings.appearance.sidebarCollapsed)
   // The API Workspace is collections + request/response: its sidebar lives outside the panel, as in the main window.
-  const showSidebar = (rail === 'collections' || rail === 'websocket') && hydrated && !sidebarCollapsed
+  const showSidebar = isWorkspaceRail(rail) && hydrated && !sidebarCollapsed
   // Links from the code (Code Studio, other windows) reach this module here.
   useEffect(() => { startModuleActionListener() }, [])
   // Closing (X, Bring back, or quitting adOmnia) first writes the edits still queued here.
@@ -67,7 +68,7 @@ export function DetachedPanelWindow({ rail }: { rail: RailItem }) {
           <div className="flex min-h-0 flex-1">
             {showSidebar && <WorkspaceSidebarColumn />}
             <div key={epoch} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              {(rail === 'collections' || rail === 'websocket') && !hydrated ? <Loading /> : <Suspense fallback={<Loading />}>{component}</Suspense>}
+              {isWorkspaceRail(rail) && !hydrated ? <Loading /> : <Suspense fallback={<Loading />}>{component}</Suspense>}
             </div>
           </div>
         </div>

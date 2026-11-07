@@ -59,12 +59,18 @@ function handlerOf(sessionId: string, service: string, method: string) {
   return report ? goHandlerFor(report, service, method) : null
 }
 
+/** The fully qualified service name the gRPC client calls: the .proto package plus the service. */
+function qualifiedService(text: string, service: string): string {
+  const pkg = /^\s*package\s+([\w.]+)\s*;/m.exec(text)?.[1]
+  return pkg && !service.includes('.') ? `${pkg}.${service}` : service
+}
+
 function callInClient(documentId: string, rpc: Pick<ProtoRpc, 'service' | 'method'>, address?: string): void {
   const document = useCodeStudioStore.getState().documents.find((item) => item.document.id === documentId)
   if (!document) return
   const name = document.document.relativePath.split('/').pop() ?? 'contract.proto'
   handoffToPanel('grpc', { kind: 'contract', id: `proto:${document.document.relativePath}`, label: name, attrs: { type: 'proto', path: document.document.relativePath } }, 'open',
-    { text: document.buffer, name, service: rpc.service, method: rpc.method, ...(address ? { address } : {}) })
+    { text: document.buffer, name, path: document.document.path, service: qualifiedService(document.buffer, rpc.service), method: rpc.method, ...(address ? { address } : {}) })
 }
 
 /** The port the debugged service listens on, once the live session has detected it (up to 10 s). */

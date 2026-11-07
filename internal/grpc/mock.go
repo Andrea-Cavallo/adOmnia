@@ -46,8 +46,9 @@ type MockRule struct {
 	Method  string `json:"method,omitempty"`
 	// Match is text the request JSON must contain; "" matches any request.
 	Match string `json:"match,omitempty"`
-	// Response is the reply JSON; for a server stream a JSON array sends one message per element.
-	Response jsonv1.RawMessage `json:"response,omitempty"`
+	// Response is the reply JSON text, placeholders filled before it is parsed; for a server stream a JSON
+	// array sends one message per element.
+	Response string `json:"response,omitempty"`
 	// Status is a gRPC code name; anything but OK fails the call with Message.
 	Status   string            `json:"status,omitempty"`
 	Message  string            `json:"message,omitempty"`
@@ -339,8 +340,8 @@ func (m *mockServer) reply(stream grpc.ServerStream, method *desc.MethodDescript
 // server stream, the empty message without a rule.
 func replyMessages(method *desc.MethodDescriptor, rule *MockRule, request string) ([]*dynamic.Message, error) {
 	body := "{}"
-	if rule != nil && len(strings.TrimSpace(string(rule.Response))) > 0 {
-		body = renderTemplate(string(rule.Response), request)
+	if rule != nil && strings.TrimSpace(rule.Response) != "" {
+		body = renderTemplate(rule.Response, request)
 	}
 	items := []jsonv1.RawMessage{jsonv1.RawMessage(body)}
 	if method.IsServerStreaming() && strings.HasPrefix(strings.TrimSpace(body), "[") {

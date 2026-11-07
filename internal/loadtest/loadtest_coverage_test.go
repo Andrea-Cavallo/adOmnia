@@ -485,7 +485,13 @@ func TestGrpcStatusCode(t *testing.T) {
 			t.Errorf("grpcStatusCode(%q) = %d, want %d", status, got, want)
 		}
 	}
-	for _, unknown := range []string{"TRANSPORT_ERROR", "HTTP_503", "", "ok"} {
+	// gRPC-Go spells codes NotFound, the spec NOT_FOUND: both are the same code.
+	for status, want := range map[string]int{"NotFound": 5, "ok": 0, "DeadlineExceeded": 4} {
+		if got := grpcStatusCode(status); got != want {
+			t.Errorf("grpcStatusCode(%q) = %d, want %d", status, got, want)
+		}
+	}
+	for _, unknown := range []string{"TRANSPORT_ERROR", "HTTP_503", ""} {
 		if got := grpcStatusCode(unknown); got != -1 {
 			t.Errorf("grpcStatusCode(%q) = %d, want -1", unknown, got)
 		}

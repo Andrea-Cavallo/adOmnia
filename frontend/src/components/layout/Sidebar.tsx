@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
-import { blankWebSocketRequest, isWebSocketRequest } from '@/lib/websocket/wsRequest'
-import { apiCollections, websocketCollections, withoutHttpNodes } from '@/lib/websocket/wsCollections'
+import { PROTOCOL_MODULES, collectionsOfModule, isWorkspaceRail, moduleOfRail, onlyModuleNodes, railOfRequest } from '@/lib/protocolModules'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore, findParentInfo } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
@@ -18,8 +17,6 @@ import { prefetchWorkspace } from '@/lib/workspacePrefetch'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
 import { WorkspaceSidebarSkeleton } from '@/components/layout/WorkspaceHydrationShell'
 
-/** A new collection item: a WebSocket connection for 'WS', an HTTP request otherwise. */
-const newRequestOf = (method: HttpMethod) => (method === 'WS' ? blankWebSocketRequest() : blankRequest(method, 'New Request'))
 
 export function Sidebar() {
   const tr = useUiTranslation()
@@ -62,22 +59,21 @@ export function Sidebar() {
   const [showRenameWorkspace, setShowRenameWorkspace] = useState(false)
   const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false)
 
-  // The WebSocket rail is its own module: it shows its own collections and
-  // never the JSON API ones.
-  const wsOnly = activeRail === 'websocket'
-  const visibleCollections = useMemo(() => {
-    const source = treePreview ?? collections
-    return wsOnly ? websocketCollections(source) : apiCollections(source)
-  }, [wsOnly, treePreview, collections])
+  // A protocol module (WebSocket, gRPC) shows its own collections and never the API ones.
+  const protocolModule = moduleOfRail(activeRail)
+  const moduleSpec = protocolModule ? PROTOCOL_MODULES[protocolModule] : null
+  const visibleCollections = useMemo(() => collectionsOfModule(treePreview ?? collections, protocolModule), [protocolModule, treePreview, collections])
+  /** A new item of the visible module: its own kind in a protocol module, an HTTP request otherwise. */
+  const newItem = (method: HttpMethod): RequestItem => (moduleSpec ? moduleSpec.blank() : blankRequest(method, 'New Request'))
 
   const handleNewRequest = (method: HttpMethod = 'GET'): string => {
-    const request = wsOnly ? blankWebSocketRequest() : newRequestOf(method)
-    const collectionId = addQuickRequest(request, wsOnly ? 'websocket' : undefined)
+    const request = newItem(method)
+    const collectionId = addQuickRequest(request, protocolModule ?? undefined)
     openTab(request, collectionId)
     return collectionId
   }
 
-  if (collapsed || (activeRail !== 'collections' && activeRail !== 'websocket')) return null
+  if (collapsed || !isWorkspaceRail(activeRail)) return null
   if (workspaceShellPhase !== 'ready') {
     return <WorkspaceSidebarSkeleton quiet={workspaceShellPhase === 'quiet'} />
   }
@@ -99,7 +95,7 @@ export function Sidebar() {
   }
 
   const handleAddRequestToFolder = (collectionId: string, parentId: string | null, method: HttpMethod = 'GET'): string | null => {
-    const req = wsOnly ? blankWebSocketRequest() : newRequestOf(method)
+    const req = newItem(method)
     addRequest(collectionId, parentId, req)
     openTab(req, collectionId)
     return parentId
@@ -141,19 +137,20 @@ export function Sidebar() {
         />
       </div>
 
-      {!wsOnly && <EndpointBrowser />}
+      {!protocolModule && <EndpointBrowser />}
 
       <CollectionTree
         key={activeWorkspaceId}
         collections={visibleCollections}
-        wsOnly={wsOnly}
+        newItem={moduleSpec ? { method: moduleSpec.method, label: moduleSpec.newLabel } : undefined}
         activeRequestId={activeRequestId}
         onOpenRequest={(request: RequestItem, collectionId: string, preview?: boolean) => {
           // Preview tree stubs carry no request contents: open the hydrated node.
           const full = useCollectionsStore.getState().hydratedRequest(request.id) ?? request
           openTab(full, collectionId, preview)
-          // A WebSocket connection belongs to its own module, so the tab strip there shows it.
-          if (isWebSocketRequest(full)) useAppStore.getState().setActiveRail('websocket')
+          // A WebSocket or gRPC item belongs to its own module, so the tab strip there shows it.
+          const rail = railOfRequest(full)
+          if (rail !== useAppStore.getState().activeRail) useAppStore.getState().setActiveRail(rail)
         }}
         onNewRequest={handleNewRequest}
         onDeleteCollection={deleteCollection}
@@ -165,7 +162,7 @@ export function Sidebar() {
         onDuplicateRequest={handleDuplicateRequest}
         onDuplicateNode={duplicateNode}
         onAddRequestToFolder={handleAddRequestToFolder}
-        onImportCollection={(collection) => importCollection(wsOnly ? withoutHttpNodes({ ...collection, scope: 'websocket' }) : collection)}
+        onImportCollection={(collection) => importCollection(protocolModule ? onlyModuleNodes({ ...collection, scope: protocolModule }, protocolModule) : collection)}
         workspaceTargets={workspaces.filter((workspace) => workspace.id !== activeWorkspaceId)}
         onMoveCollectionToWorkspace={handleMoveCollection}
         onReorderCollections={reorderCollections}
@@ -178,7 +175,7 @@ export function Sidebar() {
         placeholder={tr('Collection name…')}
         confirmLabel={tr('Create')}
         onConfirm={(name) => {
-          addCollection(name, wsOnly ? 'websocket' : undefined)
+          addCollection(name, protocolModule ?? undefined)
           setShowAddCollection(false)
         }}
         onCancel={() => setShowAddCollection(false)}

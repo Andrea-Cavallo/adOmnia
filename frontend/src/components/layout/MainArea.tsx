@@ -29,7 +29,7 @@ import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEn
 import { DropToast } from '@/components/layout/DropToast'
 import type { DropFeedback } from '@/hooks/useFileDrop'
 import { requestWithUrlInput, resolvedRequestUrl } from '@/lib/requestUrl'
-import { useNavigationTranslation, useUiTranslation } from '@/lib/uiI18n'
+import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { DetachRequest, DetachRequestAndResponse } from '@/wailsjs/go/main/App'
 import { EventsOn } from '@/wailsjs/runtime/runtime'
 import { useWorkspaceHydration, useWorkspaceHydrationShell } from '@/hooks/useWorkspaceHydration'
@@ -51,11 +51,20 @@ import { WebSocketMessagesPanel } from '@/components/websocket/WebSocketMessages
 import { useWsConnections } from '@/stores/websocketConnections'
 import { activeMessage, isWebSocketRequest, messageMode } from '@/lib/websocket/wsRequest'
 import { migrateLegacyWebSocketTab, openWebSocketTab, openWebSocketUrl } from '@/lib/websocket/openWebSocketTab'
+import { PROTOCOL_MODULES, moduleOfRail, moduleOfRequest, type ProtocolModule } from '@/lib/protocolModules'
+import { GrpcRequestBar } from '@/components/grpc/GrpcRequestBar'
+import { GrpcComposer } from '@/components/grpc/GrpcComposer'
+import { GrpcStreamPanel } from '@/components/grpc/GrpcStreamPanel'
+import { grpcSettings, isGrpcRequest } from '@/lib/grpc/grpcRequest'
+import { findMethod, rpcKind, type GrpcRpcKind } from '@/lib/grpc/grpcSchema'
+import { migrateLegacyGrpcTabs, openGrpcContract, openGrpcService, openGrpcTab } from '@/lib/grpc/openGrpcTab'
+import { grpcDescriptorsOf } from '@/stores/grpcDescriptors'
+import { useGrpcStreams } from '@/stores/grpcStreams'
 import { WEBSOCKET_HANDOFF_INTENT, useEntityHandoff } from '@/lib/entities/dispatch'
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CodeStudioPanel } from './lazyPanels'
+import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CodeStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -203,6 +212,7 @@ const METHOD_COLORS: Record<HttpMethod, string> = {
   CONNECT: 'text-warning',
   TRACE: 'text-info',
   WS: 'text-info',
+  GRPC: 'text-method-patch',
   SOAP: 'text-method-post',
 }
 
@@ -487,6 +497,36 @@ function ActiveRequestBar({
   )
 }
 
+/** A tab of the visible module: its own kind in WebSocket or gRPC, everything else (and tool tabs) in the API workspace. */
+function inProtocolModule(tab: Tab, module: ProtocolModule | null): boolean {
+  return module ? !tab.tool && moduleOfRequest(tab.request) === module : !!tab.tool || moduleOfRequest(tab.request) === null
+}
+
+function openModuleTab(module: ProtocolModule): void {
+  if (module === 'websocket') openWebSocketTab()
+  else openGrpcTab()
+}
+
+const MODULE_EMPTY: Record<ProtocolModule, { title: string; hint: string }> = {
+  websocket: { title: 'No WebSocket connection open', hint: 'Open one from the sidebar on the left or start a new connection.' },
+  grpc: { title: 'No gRPC call open', hint: 'Open one from the sidebar, or start a new call: server reflection, .proto files or a protoset.' },
+}
+
+/** The empty module: what it holds and how to start. */
+function ProtocolModuleEmpty({ module }: { module: ProtocolModule }) {
+  const tr = useUiTranslation()
+  const copy = MODULE_EMPTY[module]
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-surface-0 select-none">
+      <p className="text-[13px] font-medium text-text-3">{tr(copy.title as UiMessage)}</p>
+      <p className="max-w-sm text-center text-[11px] text-text-4">{tr(copy.hint as UiMessage)}</p>
+      <button type="button" onClick={() => openModuleTab(module)} className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover">
+        {PROTOCOL_MODULES[module].newLabel}
+      </button>
+    </div>
+  )
+}
+
 // ─── RequestWorkspace ─────────────────────────────────────────────────────────
 
 type RequestWorkspaceProps = {
@@ -494,6 +534,11 @@ type RequestWorkspaceProps = {
   standaloneTabId?: string
   /** A split detached window renders just one half of the request workflow. */
   standalonePane?: 'request' | 'response'
+  /**
+   * The rail this workspace is mounted for: the API workspace, WebSocket and gRPC are kept alive side by side,
+   * so each one must know its own module instead of reading the active rail.
+   */
+  rail?: RailItem
 }
 
 type RequestWindowSession = {
@@ -523,7 +568,7 @@ function HubPanel() {
   return <Suspense fallback={<div className="h-full bg-surface-0" />}><WelcomePanel /></Suspense>
 }
 
-export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWorkspaceProps) {
+export function RequestWorkspace({ standaloneTabId, standalonePane, rail = 'collections' }: RequestWorkspaceProps) {
   const panelActive = usePanelActiveRef()
   const workspaceHydrated = useWorkspaceHydration()
   useEffect(() => {
@@ -567,15 +612,13 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
       : allTabs.filter((tab) => (tab.workspaceId ?? activeWorkspaceId) === activeWorkspaceId && !detachedTabIds[tab.id]),
     [activeWorkspaceId, allTabs, detachedTabIds, standaloneTabId],
   )
-  // The WebSocket module has its own tab strip: it holds only WebSocket
-  // connections, while the API workspace holds every other tab.
+  // A protocol module (WebSocket, gRPC) has its own tab strip with only its own
+  // items, while the API workspace holds every other tab.
   const activeRail = useAppStore((s) => s.activeRail)
-  const wsModule = !standaloneTabId && activeRail === 'websocket'
+  const protocolModule = standaloneTabId ? null : moduleOfRail(rail)
   const moduleTabs = useMemo(
-    () => (standaloneTabId
-      ? tabs
-      : tabs.filter((tab) => (wsModule ? !tab.tool && isWebSocketRequest(tab.request) : !!tab.tool || !isWebSocketRequest(tab.request)))),
-    [standaloneTabId, tabs, wsModule],
+    () => (standaloneTabId ? tabs : tabs.filter((tab) => inProtocolModule(tab, protocolModule))),
+    [standaloneTabId, tabs, protocolModule],
   )
   const activeTabId = standaloneTabId ?? (moduleTabs.some((tab) => tab.id === selectedTabId)
     ? selectedTabId
@@ -583,18 +626,26 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   // Switching module brings its own last tab forward, so shortcuts never act on
   // a tab the visible strip does not contain.
   useEffect(() => {
-    if (standaloneTabId || !workspaceHydrated) return
-    if (activeRail !== 'collections' && activeRail !== 'websocket') return
+    // Only the workspace in front picks the tab: the hidden ones would fight over the selection.
+    if (standaloneTabId || !workspaceHydrated || activeRail !== rail) return
     if (moduleTabs.some((tab) => tab.id === selectedTabId)) return
     const next = moduleTabs[moduleTabs.length - 1]
     if (next) setActiveTab(next.id)
-  }, [activeRail, moduleTabs, selectedTabId, setActiveTab, standaloneTabId, workspaceHydrated])
+  }, [activeRail, rail, moduleTabs, selectedTabId, setActiveTab, standaloneTabId, workspaceHydrated])
   // The old WebSocket panel's saved connection becomes a tab the first time the
   // module opens with nothing of its own.
   useEffect(() => {
-    if (!wsModule || !workspaceHydrated || moduleTabs.length > 0) return
-    migrateLegacyWebSocketTab()
-  }, [wsModule, workspaceHydrated, moduleTabs.length])
+    if (!protocolModule || !workspaceHydrated || moduleTabs.length > 0) return
+    if (protocolModule === 'websocket') migrateLegacyWebSocketTab()
+    else migrateLegacyGrpcTabs()
+  }, [protocolModule, workspaceHydrated, moduleTabs.length])
+  // A .proto dropped on the app lands here: it becomes a call described by that file.
+  const pendingFileImport = useAppStore((s) => s.pendingFileImport)
+  useEffect(() => {
+    if (protocolModule !== 'grpc' || !workspaceHydrated || pendingFileImport?.kind !== 'proto') return
+    const routed = useAppStore.getState().consumeFileImport('proto')
+    if (routed?.kind === 'proto') openGrpcContract({ text: routed.text, name: routed.name })
+  }, [protocolModule, workspaceHydrated, pendingFileImport])
   const confirmBeforeClosingDirtyTabs = useSettingsStore((s) => s.settings.general.confirmBeforeClosingDirtyTabs)
 
   const environments = useEnvironmentsStore((s) => s.environments)
@@ -825,12 +876,37 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
     return connections.send(activeTab.id, message.raw, messageMode(activeTab.request, message), vars)
   }
 
-  const handleSend = () => (isWebSocketTab ? sendWebSocketMessage().then(() => undefined) : sendActive())
+  const isGrpcTab = !!activeTab && !activeTab.tool && isGrpcRequest(activeTab.request)
+  /** Unary or which stream: saved with the method, or read from the loaded schema. */
+  const grpcKind: GrpcRpcKind = isGrpcTab && activeTab
+    ? grpcSettings(activeTab.request).kind ?? rpcKind(findMethod(grpcDescriptorsOf(activeTab.id).descriptors, grpcSettings(activeTab.request).service, grpcSettings(activeTab.request).method))
+    : 'unary'
+  const grpcStreamTab = isGrpcTab && grpcKind !== 'unary'
+  const isProtocolTab = isWebSocketTab || isGrpcTab
+
+  /** A gRPC tab invokes through the shared pipeline (Response panel, history, Flows); a stream opens the stream view. */
+  const invokeGrpc = () => {
+    if (!activeTab) return Promise.resolve()
+    if (grpcKind === 'unary') return sendActive()
+    return useGrpcStreams.getState().start(activeTab.id, activeTab.request, liveVars(getResolvedVars()), grpcKind)
+  }
+
+  const handleSend = () => {
+    if (isWebSocketTab) return sendWebSocketMessage().then(() => undefined)
+    return isGrpcTab ? invokeGrpc() : sendActive()
+  }
 
   // A WebSocket found in code (Code Studio, Developer Context) opens here as a connection tab.
-  useEntityHandoff(wsModule ? 'websocket' : 'collections', (_ref, intent, payload) => {
-    if (standaloneTabId || intent !== WEBSOCKET_HANDOFF_INTENT) return false
-    if (typeof payload.url === 'string' && payload.url) openWebSocketUrl(payload.url, _ref.label || 'WebSocket')
+  useEntityHandoff(protocolModule ?? 'collections', (_ref, intent, payload) => {
+    if (standaloneTabId) return false
+    if (intent === WEBSOCKET_HANDOFF_INTENT) {
+      if (typeof payload.url === 'string' && payload.url) openWebSocketUrl(payload.url, _ref.label || 'WebSocket')
+      return true
+    }
+    if (protocolModule !== 'grpc') return false
+    // A service found in code is called by reflection at its address; a .proto opened from code describes the call.
+    if (intent === 'reflect') openGrpcService(String(payload.address ?? 'localhost:50051'), typeof payload.service === 'string' ? payload.service : _ref.attrs?.service ?? '')
+    else openGrpcContract(payload as Parameters<typeof openGrpcContract>[0])
     return true
   })
 
@@ -993,15 +1069,13 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
       const dirty = getDirtyTabsForPending(pending)
       dirty.forEach((t) => saveTab(t.id))
     }
-    const inModule = (tab: Tab) => (wsModule
-      ? !tab.tool && isWebSocketRequest(tab.request)
-      : !!tab.tool || !isWebSocketRequest(tab.request))
+    const inModule = (tab: Tab) => inProtocolModule(tab, protocolModule)
     if (pending.kind === 'single') closeTab(pending.tabId)
     else if (pending.kind === 'right') closeTabsToRight(pending.tabId, inModule)
     else if (pending.kind === 'left') closeTabsToLeft(pending.tabId, inModule)
     else closeAllTabs(inModule)
     setPendingClose(null)
-  }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs, wsModule])
+  }, [getDirtyTabsForPending, saveTab, closeTab, closeTabsToRight, closeTabsToLeft, closeAllTabs, protocolModule])
 
   // Attempt close — show dialog if there are dirty tabs
   const attemptClose = useCallback((pending: PendingClose) => {
@@ -1046,21 +1120,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   const dirtyInDialog = pendingClose ? getDirtyTabsForPending(pendingClose) : []
 
   if (moduleTabs.length === 0) {
-    if (wsModule) {
-      return (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-surface-0 select-none">
-          <p className="text-[13px] font-medium text-text-3">{tr('No WebSocket connection open')}</p>
-          <p className="text-[11px] text-text-4">{tr('Open one from the sidebar on the left or start a new connection.')}</p>
-          <button
-            type="button"
-            onClick={() => openWebSocketTab()}
-            className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
-          >
-            {tr('New WebSocket')}
-          </button>
-        </div>
-      )
-    }
+    if (protocolModule) return <ProtocolModuleEmpty module={protocolModule} />
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-2 bg-surface-0 select-none"
         onDragOver={event => { if (event.dataTransfer.types.includes(REQUEST_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
@@ -1080,7 +1140,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
   return (
     <div data-request-workspace className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
       {mockFeedback && <DropToast feedback={mockFeedback} />}
-      {parallelOpen && activeTab && !activeTab.tool && !isWebSocketTab && (
+      {parallelOpen && activeTab && !activeTab.tool && !isProtocolTab && (
         <ParallelSendPanel
           request={activeTab.request}
           vars={liveVars(getResolvedVars())}
@@ -1097,7 +1157,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
         onCloseToLeft={(id) => attemptClose({ kind: 'left', tabId: id })}
         onCloseAll={(id) => attemptClose({ kind: 'all', tabId: id })}
         onReorder={reorderTab}
-        onNewTab={wsModule ? () => openWebSocketTab() : newTab}
+        onNewTab={protocolModule ? () => openModuleTab(protocolModule) : newTab}
         onDuplicate={duplicateTab}
         onTogglePinned={togglePinned}
         onRenameTab={handleRenameTab}
@@ -1116,7 +1176,22 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
           onDelete={confirmDeleteActiveRequest}
         />
       )}
-      {activeTab && !activeTab.tool && !isWebSocketTab && showRequestPane && (
+      {activeTab && isGrpcTab && showRequestPane && (
+        <GrpcRequestBar
+          tabId={activeTab.id}
+          request={activeTab.request}
+          isDirty={activeTab.dirty}
+          vars={liveVars(getResolvedVars())}
+          hasActiveEnv={activeEnvId !== null}
+          loading={!!activeTab.loading}
+          onChange={(request) => updateRequest(activeTab.id, request)}
+          onInvoke={() => void invokeGrpc()}
+          onCancel={() => (grpcStreamTab ? useGrpcStreams.getState().cancel(activeTab.id) : handleCancel())}
+          onSave={handleSave}
+          onDelete={confirmDeleteActiveRequest}
+        />
+      )}
+      {activeTab && !activeTab.tool && !isProtocolTab && showRequestPane && (
         <ActiveRequestBar
           tabId={activeTab.id}
           request={activeTab.request}
@@ -1137,10 +1212,10 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
           onToggleRecording={requestStopRecording}
         />
       )}
-      {activeTab && !activeTab.tool && !isWebSocketTab && showRequestPane && (
+      {activeTab && !activeTab.tool && !isProtocolTab && showRequestPane && (
         <LiveRequestStrip tabId={activeTab.id} request={activeTab.request} vars={getResolvedVars()} onChange={(request) => updateRequest(activeTab.id, request)} />
       )}
-      {showRequestPane && !isWebSocketTab && <ApiToolsBar
+      {showRequestPane && !isProtocolTab && <ApiToolsBar
           activeRequest={activeTab && !activeTab.tool ? activeTab.request : null}
           onChangeRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
           onApplyRequest={(request) => activeTab && updateRequest(activeTab.id, request)}
@@ -1155,6 +1230,8 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 		  <div className="flex-1 min-h-0 overflow-hidden">
 			{isWebSocketTab ? (
 			  <WebSocketComposer key={activeTab.id} tabId={activeTab.id} request={activeTab.request} vars={liveVars(getResolvedVars())} onChange={(req) => updateRequest(activeTab.id, req)} onSend={sendWebSocketMessage} />
+			) : isGrpcTab ? (
+			  <GrpcComposer key={activeTab.id} tabId={activeTab.id} request={activeTab.request} vars={liveVars(getResolvedVars())} onChange={(req) => updateRequest(activeTab.id, req)} />
 			) : showLoadTest ? (
 			  <LoadTestDrawer request={activeTab.request} onClose={() => setShowLoadTest(false)} />
 			) : (
@@ -1173,7 +1250,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
 		  </div>
 		) : standalonePane === 'response' ? (
 		  <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-			{isWebSocketTab ? <WebSocketMessagesPanel key={activeTab.id} tabId={activeTab.id} /> : <LiveResponseFrame tabId={activeTab.id} loading={!!activeTab.loading}>
+			{isWebSocketTab ? <WebSocketMessagesPanel key={activeTab.id} tabId={activeTab.id} /> : grpcStreamTab ? <GrpcStreamPanel key={activeTab.id} tabId={activeTab.id} /> : <LiveResponseFrame tabId={activeTab.id} loading={!!activeTab.loading}>
 			<ResponsePanel
 			  key={activeTab.id}
 			  tabId={activeTab.id}
@@ -1204,6 +1281,8 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
           >
             {isWebSocketTab ? (
               <WebSocketComposer key={activeTab.id} tabId={activeTab.id} request={activeTab.request} vars={liveVars(getResolvedVars())} onChange={(req) => updateRequest(activeTab.id, req)} onSend={sendWebSocketMessage} />
+            ) : isGrpcTab ? (
+              <GrpcComposer key={activeTab.id} tabId={activeTab.id} request={activeTab.request} vars={liveVars(getResolvedVars())} onChange={(req) => updateRequest(activeTab.id, req)} />
             ) : (
             <Composer
               key={activeTab.id}
@@ -1219,7 +1298,7 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
             )}
           </div>
 
-          {showLoadTest && !isWebSocketTab ? (
+          {showLoadTest && !isProtocolTab ? (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <LoadTestDrawer
                 request={activeTab.request}
@@ -1240,6 +1319,12 @@ export function RequestWorkspace({ standaloneTabId, standalonePane }: RequestWor
               <div className="flex-1 flex min-h-0 min-w-0 flex-col overflow-hidden">
                 {isWebSocketTab ? (
                   <WebSocketMessagesPanel
+                    key={activeTab.id}
+                    tabId={activeTab.id}
+                    headerActions={<LayoutSwitcher layout={requestResponseLayout} onLayoutChange={changeRequestResponseLayout} />}
+                  />
+                ) : grpcStreamTab ? (
+                  <GrpcStreamPanel
                     key={activeTab.id}
                     tabId={activeTab.id}
                     headerActions={<LayoutSwitcher layout={requestResponseLayout} onLayoutChange={changeRequestResponseLayout} />}
@@ -1387,15 +1472,15 @@ type PanelDef = {
 
 function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
-    case 'collections': return { component: <RequestWorkspace />, titleKey: 'API Workspace' }
+    case 'collections': return { component: <RequestWorkspace rail="collections" />, titleKey: 'API Workspace' }
     case 'scenarios':   return { component: <DailyScenariosPanel />, titleKey: 'Daily Scenarios', overflow: true }
     case 'history':     return { component: <RequestHistoryPanel />,  titleKey: 'Request History', overflow: true }
-    case 'websocket':   return { component: <RequestWorkspace />,      titleKey: 'WebSocket' }
+    case 'websocket':   return { component: <RequestWorkspace rail="websocket" />, titleKey: 'WebSocket' }
     case 'sse':         return { component: <SsePanel />,             titleKey: 'SSE Client',    overflow: true }
     case 'broker':      return { component: <BrokerStudioPanel />,    titleKey: 'Broker Studio', overflow: true }
     case 'mock':        return { component: <MockPanel />,            titleKey: 'mock',      overflow: true }
     case 'proxy':       return { component: <ProxyPanel />,           titleKey: 'proxy',     overflow: true }
-    case 'grpc':        return { component: <GrpcPanel />,            titleKey: 'grpc',      overflow: true }
+    case 'grpc': return { component: <RequestWorkspace rail="grpc" />, titleKey: 'gRPC' }
     case 'browser':     return { component: <BrowserDebugPanel />,    titleKey: 'browser' }
     case 'powertools':  return { component: <UtilsPanel />,           titleKey: 'Power Tools', overflow: true }
     case 'flows':     return { component: <FlowsPanel />,              titleKey: 'flows',     overflow: true }

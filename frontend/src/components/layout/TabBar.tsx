@@ -12,6 +12,8 @@ import { openDroppedRequests } from '@/components/collections/useTreeInteraction
 import { useTabsStore } from '@/stores/tabs'
 import '@/styles/apiNothing.css'
 import { useWsConnections } from '@/stores/websocketConnections'
+import { useGrpcStreams } from '@/stores/grpcStreams'
+import { methodLabel } from '@/lib/protocolModules'
 import { wsScheme } from '@/lib/websocket/wsRequest'
 import { WS_STATUS_DOT, WS_STATUS_LABEL } from '@/components/websocket/wsStatus'
 
@@ -39,6 +41,13 @@ function WsTabStatusDot({ tabId }: { tabId: string }) {
   return <span title={WS_STATUS_LABEL[status]} className={cn('h-1.5 w-1.5 rounded-full', WS_STATUS_DOT[status])} />
 }
 
+/** A gRPC tab whose stream is running. */
+function GrpcTabStatusDot({ tabId }: { tabId: string }) {
+  const tr = useUiTranslation()
+  const running = useGrpcStreams((state) => state.byTab[tabId]?.status === 'running')
+  return running ? <span title={tr('Streaming')} className="h-1.5 w-1.5 rounded-full bg-accent motion-safe:animate-pulse" /> : null
+}
+
 const METHOD_COLORS: Record<string, string> = {
   GET: 'text-method-get',
   QUERY: 'text-info',
@@ -49,6 +58,7 @@ const METHOD_COLORS: Record<string, string> = {
   HEAD: 'text-method-head',
   OPTIONS: 'text-method-head',
   WS: 'text-info',
+  GRPC: 'text-method-patch',
 }
 
 interface ContextMenuState {
@@ -323,8 +333,9 @@ export function TabBar({ tabs, activeTabId, onSelect, onClose, onCloseToRight, o
               </span>
             ) : (
               <span className={cn('api-nothing-method pointer-events-none relative z-10 inline-flex items-center gap-1 text-[11px] font-bold shrink-0', METHOD_COLORS[tab.request.method] ?? 'text-text-3')}>
-                {tab.request.method === 'WS' ? wsScheme(tab.request.url) : tab.request.method}
+                {tab.request.method === 'WS' ? wsScheme(tab.request.url) : methodLabel(tab.request.method)}
                 {tab.request.method === 'WS' && <WsTabStatusDot tabId={tab.id} />}
+                {tab.request.method === 'GRPC' && <GrpcTabStatusDot tabId={tab.id} />}
               </span>
             )}
             {renamingTabId === tab.id && !isPinned && !tab.tool ? (
