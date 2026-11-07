@@ -1,9 +1,10 @@
 import {
-  Bug, ClipboardPaste, Copy, CopyPlus, Ellipsis, FileCode2, FilePlus, FolderOpen, FolderPlus, GitBranch, GitCompare, KeyRound, Package, Pencil, Play, Radio, Scissors, Search, Send, Trash2, Undo2, Wand2,
+  Bug, ClipboardPaste, Copy, CopyPlus, Download, Ellipsis, FileCode2, FilePlus, FolderOpen, FolderPlus, GitBranch, GitCompare, KeyRound, Package, Pencil, Play, Radio, Scissors, Search, Send, Trash2, Undo2, Wand2,
 } from 'lucide-react'
 import type { ContextMenuItem } from '@/components/ui/ContextMenu'
 import type { GoIDEFileEntry } from '@/lib/code-studio-api'
 import { isApiCollectionCandidate, isPemCandidate } from './codeStudioFileHandoffs'
+import { isPythonDependencyManifest } from '@/lib/code-studio/pythonDependencyManifest'
 
 export interface TreeMenuContext {
   /** C'è qualcosa negli appunti dell'albero da incollare. */
@@ -17,6 +18,8 @@ export interface TreeMenuContext {
   hasJava?: boolean
   /** Il progetto contiene bundle OSGi/PDE: compare il menu OSGi. */
   osgi?: boolean
+  /** Il progetto ha un'unità Python: sul manifest compare l'installazione delle dipendenze. */
+  hasPython?: boolean
   /** Percorsi modificati rispetto a HEAD, relativi alla radice del progetto. */
   changedPaths: string[]
 }
@@ -234,6 +237,14 @@ function moreItem(entry: Entry): ContextMenuItem {
   ] }
 }
 
+function pythonDependencyItems(entry: Entry, context: TreeMenuContext): ContextMenuItem[] {
+  if (!entry || entry.directory || !isPythonDependencyManifest(entry.name)) return []
+  // requirements*.txt declares a Python unit by itself; pyproject.toml only counts when
+  // the adapter detected a Python unit (a TOML file alone can belong to another tool).
+  if (entry.name === 'pyproject.toml' && !context.hasPython) return []
+  return [{ id: 'installPythonDependencies', label: 'Install Python Dependencies', icon: Download, separatorBefore: true }]
+}
+
 function handoffItems(entry: Entry): ContextMenuItem[] {
   if (!entry || entry.directory) return []
   return [
@@ -260,6 +271,7 @@ export function buildTreeMenu(entry: Entry, context: TreeMenuContext): ContextMe
     }] : []),
     ...gitItems(entry, context),
     ...osgiItem(entry, context),
+    ...pythonDependencyItems(entry, context),
     openInItem(entry),
     moreItem(entry),
     ...handoffItems(entry),

@@ -419,12 +419,12 @@ func TestHandlersRejectWrongMethod(t *testing.T) {
 
 func TestSessionLimit(t *testing.T) {
 	sidecar := newSidecar(t)
-	for i := 0; i < maxWSSessions; i++ {
+	for i := range maxWSSessions {
 		id := fmt.Sprintf("dummy-%d", i)
 		wsSessions.Store(id, &WSSession{id: id, done: make(chan struct{})})
 	}
 	t.Cleanup(func() {
-		for i := 0; i < maxWSSessions; i++ {
+		for i := range maxWSSessions {
 			wsSessions.Delete(fmt.Sprintf("dummy-%d", i))
 		}
 	})

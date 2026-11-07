@@ -3,7 +3,6 @@ package eclipsepde
 import (
 	"bytes"
 	"encoding/xml"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -131,7 +130,7 @@ func parsePluginXML(data []byte, bundle, file string) ([]ExtensionPoint, []Exten
 	for {
 		offset := decoder.InputOffset()
 		token, err := decoder.Token()
-		if err == io.EOF || err != nil {
+		if err != nil {
 			break
 		}
 		switch element := token.(type) {

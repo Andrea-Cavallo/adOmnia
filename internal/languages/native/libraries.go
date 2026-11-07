@@ -115,7 +115,7 @@ func cmakeDeclarations(text, manifest string) []Declaration {
 	}
 	for _, match := range cmakePkgModules.FindAllStringSubmatchIndex(text, -1) {
 		line := lineAt(text, match[0])
-		for _, token := range strings.Fields(text[match[2]:match[3]]) {
+		for token := range strings.FieldsSeq(text[match[2]:match[3]]) {
 			if isPkgConfigKeyword(token) {
 				continue
 			}

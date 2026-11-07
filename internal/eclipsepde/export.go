@@ -79,6 +79,16 @@ func qualified(version, qualifier string) string {
 
 var bundleVersionLine = regexp.MustCompile(`(?mi)^(Bundle-Version:[ \t]*)(\S+)`)
 
+// exportJarName builds the jar file name from a bundle/feature id and version. Both
+// are project metadata, so they are restricted to one path segment: no separators
+// and no "."/".." can escape the export folder.
+func exportJarName(id, version string) (string, error) {
+	if !safeArtifactPart.MatchString(id) || !safeArtifactPart.MatchString(version) || id == "." || id == ".." || version == "." || version == ".." {
+		return "", fmt.Errorf("invalid bundle or feature id/version %q %q", id, version)
+	}
+	return id + "_" + version + ".jar", nil
+}
+
 // exportBundle writes one bundle jar: the manifest first (JarInputStream needs it there), then the
 // bin.includes entries, "." being the classes of the output folder.
 func exportBundle(project *EclipseProject, folder, qualifier string) (name, version string, problems []Problem, err error) {
@@ -105,7 +115,10 @@ func exportBundle(project *EclipseProject, folder, qualifier string) (name, vers
 		problems = append(problems, Problem{Severity: "warning", Project: project.Name, File: "build.properties", Message: "no bin.includes: exported META-INF and the classes only"})
 	}
 	excludes := splitList(project.BuildProperties["bin.excludes"])
-	name = project.Bundle.SymbolicName + "_" + version + ".jar"
+	name, err = exportJarName(project.Bundle.SymbolicName, version)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("%s: %w", project.Name, err)
+	}
 	if err := os.MkdirAll(folder, 0o755); err != nil {
 		return "", "", nil, err
 	}
@@ -139,7 +152,7 @@ func exportBundle(project *EclipseProject, folder, qualifier string) (name, vers
 	if err := jar.Close(); err != nil {
 		return "", "", nil, err
 	}
-	if err := os.WriteFile(filepath.Join(folder, name), buffer.Bytes(), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(folder, name), buffer.Bytes(), 0o644); err != nil { // #nosec G703 -- name is validated to a single path segment by exportJarName
 		return "", "", nil, err
 	}
 	return name, version, problems, nil
@@ -267,8 +280,11 @@ func exportFeature(project *EclipseProject, folder, qualifier string, versions m
 	if err := jar.Close(); err != nil {
 		return "", nil, err
 	}
-	name := id + "_" + version + ".jar"
-	return name, problems, os.WriteFile(filepath.Join(folder, name), buffer.Bytes(), 0o644)
+	name, err := exportJarName(id, version)
+	if err != nil {
+		return "", nil, err
+	}
+	return name, problems, os.WriteFile(filepath.Join(folder, name), buffer.Bytes(), 0o644) // #nosec G703 -- name is validated to a single path segment by exportJarName
 }
 
 // PublishP2 is the command that turns an export folder into a p2 repository with the publisher of

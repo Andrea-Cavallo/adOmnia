@@ -303,16 +303,14 @@ func jsonTagName(field *ast.Field) (string, bool) {
 		return "", false
 	}
 	const prefix = `json:"`
-	start := strings.Index(raw, prefix)
-	if start < 0 {
+	_, rest, found := strings.Cut(raw, prefix)
+	if !found {
 		return "", false
 	}
-	rest := raw[start+len(prefix):]
-	end := strings.IndexByte(rest, '"')
-	if end < 0 {
+	value, _, found := strings.Cut(rest, `"`)
+	if !found {
 		return "", false
 	}
-	value := rest[:end]
 	if value == "-" {
 		return "", true
 	}

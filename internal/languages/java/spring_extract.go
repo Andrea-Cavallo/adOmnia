@@ -399,8 +399,8 @@ func bodyElementType(typ string) (string, bool) {
 			return cleanType(strings.TrimSuffix(strings.TrimPrefix(typ, prefix), ">")), true
 		}
 	}
-	if strings.HasSuffix(typ, "[]") {
-		return cleanType(strings.TrimSuffix(typ, "[]")), true
+	if element, ok := strings.CutSuffix(typ, "[]"); ok {
+		return cleanType(element), true
 	}
 	return cleanType(typ), false
 }

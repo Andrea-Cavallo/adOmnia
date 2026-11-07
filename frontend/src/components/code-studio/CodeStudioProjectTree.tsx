@@ -15,6 +15,7 @@ import { CodeStudioFileIcon } from './CodeStudioFileIcon'
 import type { GoIDEFileEntry, GoIDESession } from '@/lib/code-studio-api'
 import { isJavaOsgiProject } from '@/lib/code-studio-api'
 import { openJavaOsgi, openJavaOsgiImport, runOsgiBuild, runOsgiFramework } from './CodeStudioJavaOsgi'
+import { installPythonDependenciesForManifest } from './codeStudioPythonInstall'
 import { ContextMenu } from '@/components/ui/ContextMenu'
 import { buildTreeMarks, sameTreeMark, type CodeStudioTreeMark } from './codeStudioTreeMarks'
 import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
@@ -366,6 +367,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
       case 'generatePackage': void runPackageCommand(session, path, directory, 'generate'); break
       case 'runCurrent': onCommand('run.run'); break
       case 'debugCurrent': onCommand('debug.debug'); break
+      case 'installPythonDependencies': void installPythonDependenciesForManifest(session.id, path); break
       case 'reveal': revealPath(session.id, path); break
       case 'terminal': openTerminalIn(folder); break
       case 'openInBrowser': if (entry) void previewHtml(path); break
@@ -414,9 +416,10 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
   }
   const projectSummary = projectProfile(session.project, IDE_LANGUAGE_NAMES).summary
   const hasJava = (session.project.units ?? []).some((unit) => unit.language === 'java')
+  const hasPython = (session.project.units ?? []).some((unit) => unit.language === 'python')
   const menuEntries = useCodeStudioStore((state) => state.directoryEntries[session.id]?.[menu?.entry?.relativePath ?? ''])
   const hasMavenPom = !!menuEntries?.some((item) => !item.directory && item.name === 'pom.xml')
-  const menuContext = { hasMavenPom, canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, hasJava, osgi, changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
+  const menuContext = { hasMavenPom, canPaste, vcsAvailable, hasGoModule: (goModules(session.project)).length > 0, hasJava, hasPython, osgi, changedPaths: vcsStatus?.changes.map((change) => change.relativePath) ?? [] }
 
   return (
     <aside aria-label="Project files" className="code-studio-explorer flex h-full min-w-0 flex-col">

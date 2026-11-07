@@ -166,7 +166,7 @@ func (s *Service) downloadGradleLibrarySources(session Session, groupID, artifac
 		return nil
 	}
 	// La cache di un repository locale può stare altrove: vale il file che il task ha risolto.
-	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
 		if path, ok := strings.CutPrefix(strings.TrimSpace(line), "ADOMNIA|SOURCE|"); ok && fileExists(path) {
 			return nil
 		}

@@ -108,7 +108,7 @@ func GradleScopeName(configuration string) string {
 // ParseGradleLibrariesOutput legge le righe ADOMNIA|LIB| del task, ignorando tutto il resto dell'output.
 func ParseGradleLibrariesOutput(text string) []GradleLibraryRef {
 	refs := []GradleLibraryRef{}
-	for _, line := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
 		parts := strings.Split(strings.TrimSpace(line), "|")
 		if len(parts) != 8 || parts[0] != "ADOMNIA" || parts[1] != "LIB" {
 			continue

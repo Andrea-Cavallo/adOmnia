@@ -140,7 +140,7 @@ func distributionMetadata(path string) (name, version string, ok bool) {
 	if err != nil {
 		return "", "", false
 	}
-	for _, raw := range strings.Split(string(data), "\n") {
+	for raw := range strings.SplitSeq(string(data), "\n") {
 		line := strings.TrimSpace(strings.TrimSuffix(raw, "\r"))
 		if line == "" {
 			break
@@ -164,7 +164,7 @@ func distributionMetadata(path string) (name, version string, ok bool) {
 func packageDirectory(site, metadataDirectory, distributionName string) string {
 	var candidates []string
 	if data, err := readLimited(filepath.Join(metadataDirectory, "top_level.txt"), maxManifestBytes); err == nil {
-		for _, line := range strings.Split(string(data), "\n") {
+		for line := range strings.SplitSeq(string(data), "\n") {
 			if value := strings.TrimSpace(line); value != "" && !strings.ContainsAny(value, `/\`) {
 				candidates = append(candidates, value)
 			}

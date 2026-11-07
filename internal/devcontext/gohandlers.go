@@ -36,9 +36,7 @@ func detectHandlerDecls(rel string, fset *token.FileSet, file *ast.File, hints A
 		line := fset.Position(fn.Name.Pos()).Line
 		attrs := map[string]string{"name": fn.Name.Name, "recv": recv, "file": rel, "line": strconv.Itoa(line)}
 		params, bodyType := handlerRequest(fn)
-		for key, value := range requestParamAttrs(params) {
-			attrs[key] = value
-		}
+		maps.Copy(attrs, requestParamAttrs(params))
 		if bodyType != "" {
 			name, array := normalizeBodyType(bodyType)
 			if name != "" {
