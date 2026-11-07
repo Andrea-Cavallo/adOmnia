@@ -37,7 +37,7 @@ require (
 	github.com/ulikunitz/xz v0.5.17
 	github.com/wI2L/jsondiff v0.7.1
 	github.com/wailsapp/wails/v3 v3.1.0
-	github.com/xdg-go/scram v1.2.0
+	github.com/xdg-go/scram v1.3.0
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	github.com/zalando/go-keyring v0.2.8
 	go.etcd.io/bbolt v1.5.0
