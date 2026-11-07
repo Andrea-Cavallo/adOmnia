@@ -93,6 +93,16 @@ export function installDebugger(sessionId: string, language: string): Promise<Ex
   return GoIDEBindings.InstallDebugger(sessionId, language, true)
 }
 
+/** The command that would install a language's test runner (JUnit Console Launcher), for the confirmation. */
+export function previewTestRunnerInstall(sessionId: string, language: string) {
+  return GoIDEBindings.PreviewTestRunnerInstall(sessionId, language)
+}
+
+/** Installs a language's test runner in adOmnia's tools folder after the confirmation. */
+export function installTestRunner(sessionId: string, language: string): Promise<Execution> {
+  return GoIDEBindings.InstallTestRunner(sessionId, language, true)
+}
+
 /** Debug di un file JS/TS o di uno script del package manager con js-debug (installato in modo esplicito). */
 export function startWebDebug(request: WebDebugRequest): Promise<DebugSessionInfo> {
   return GoIDEBindings.StartWebDebug(request)

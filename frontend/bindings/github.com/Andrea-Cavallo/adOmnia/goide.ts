@@ -1286,6 +1286,15 @@ export function InstallDebugger(sessionID: string, languageID: string, confirmed
 }
 
 /**
+ * InstallTestRunner installs a language's test runner in adOmnia's tools folder after confirmation.
+ */
+export function InstallTestRunner(sessionID: string, languageID: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
+    return $Call.ByID(2275012783, sessionID, languageID, confirmed).then(($result: any) => {
+        return $$createType26($result);
+    });
+}
+
+/**
  * InstallDelve installa dlv nella cartella strumenti di adOmnia dopo conferma esplicita.
  */
 export function InstallDelve(sessionID: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
@@ -2108,6 +2117,15 @@ export function PrepareRename(sessionID: string, documentID: string, line: numbe
  */
 export function PreviewDebuggerInstall(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
     return $Call.ByID(2226808568, sessionID, languageID).then(($result: any) => {
+        return $$createType210($result);
+    });
+}
+
+/**
+ * PreviewTestRunnerInstall shows the command that installs a language's test runner (JUnit Console Launcher).
+ */
+export function PreviewTestRunnerInstall(sessionID: string, languageID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
+    return $Call.ByID(3032586483, sessionID, languageID).then(($result: any) => {
         return $$createType210($result);
     });
 }

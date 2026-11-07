@@ -2,7 +2,7 @@ import type { CodeStudioCommand } from '@/components/code-studio/codeStudioComma
 import { JAVA_LANGUAGE_ID } from '.'
 
 export type JavaLanguageCommandId =
-  | 'java.runMain' | 'java.debugMain' | 'java.runTest' | 'java.debugTest' | 'java.springBootRun'
+  | 'java.runMain' | 'java.debugMain' | 'java.runTest' | 'java.debugTest' | 'java.springBootRun' | 'java.installTestLauncher'
   | 'java.mvnCompile' | 'java.mvnTest' | 'java.mvnPackage' | 'java.mvnCleanInstall'
   | 'java.optimizeImports' | 'java.goToTest' | 'java.generate'
   | 'java.checkUpdates' | 'java.scanVulnerabilities' | 'java.selectJdk' | 'java.dependencyTree' | 'java.osgi' | 'java.osgiBuild' | 'java.osgiRun' | 'java.osgiDebug' | 'java.osgiExport' | 'java.osgiExportP2' | 'java.flowExplorer' | 'java.jvmMonitor' | 'java.springEndpoints' | 'java.springBeanGraph'
@@ -15,6 +15,7 @@ export const JAVA_LANGUAGE_COMMANDS: ReadonlyArray<CodeStudioCommand> = ([
   { id: 'java.debugMain', menu: 'java', label: 'Debug Main Class' },
   { id: 'java.runTest', menu: 'java', label: 'Run Test at Cursor' },
   { id: 'java.debugTest', menu: 'java', label: 'Debug Test at Cursor' },
+  { id: 'java.installTestLauncher', menu: 'java', label: 'Install JUnit Console Launcher (Ant, Eclipse)…' },
   { id: 'java.springBootRun', menu: 'java', label: 'Run Application (Spring Boot, Quarkus, Micronaut)' },
   { id: 'java.springEndpoints', menu: 'java', label: 'Spring Endpoints…', separatorBefore: true },
   { id: 'java.springBeanGraph', menu: 'java', label: 'Spring Bean Graph…' },

@@ -1,8 +1,5 @@
-import { confirm } from '@/lib/confirmDialog'
-import { subscribeGoIDEEvents } from '@/lib/code-studio-api'
-import { installDebugger, previewDebuggerInstall } from '@/lib/code-studio-debug-api'
-import { beginToolInstall, endToolInstall } from '@/stores/codeStudioToolInstall'
-import { studioToast } from '@/stores/codeStudioToast'
+import { installDebugger, installTestRunner, previewDebuggerInstall, previewTestRunnerInstall } from '@/lib/code-studio-debug-api'
+import { runVisibleInstall } from './codeStudioVisibleInstall'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 
 type DeclaredDebugger = { language: string; confirmLabel: string; done: string }
@@ -14,34 +11,26 @@ const DEBUGGERS = new Map<CodeStudioCommandId, DeclaredDebugger>([
 ])
 
 /** Installa il debugger di un linguaggio dichiarato: comando esatto nella conferma, output in console. */
-async function installDeclaredDebugger(sessionId: string, target: DeclaredDebugger): Promise<void> {
-  try {
-    const plan = await previewDebuggerInstall(sessionId, target.language)
-    const approved = await confirm({
-      title: plan.title,
-      message: `Command: ${plan.command}
-
-${plan.note}`,
-      confirmLabel: target.confirmLabel,
-    })
-    if (!approved) return
-    const execution = await installDebugger(sessionId, target.language)
-    beginToolInstall(sessionId, plan.task, plan.label)
-    const stop = subscribeGoIDEEvents((event) => {
-      const finished = event.type === 'run.finished' ? (event.payload as { id?: string; exitCode?: number | null; status?: string }) : null
-      if (!finished || finished.id !== execution.id) return
-      stop()
-      const succeeded = finished.exitCode === 0 || finished.status === 'exited'
-      endToolInstall(sessionId, plan.task, succeeded)
-      if (succeeded) studioToast(target.done, 'success')
-    })
-  } catch (reason) {
-    studioToast(reason instanceof Error ? reason.message : String(reason), 'info')
-  }
+function installDeclaredDebugger(sessionId: string, target: DeclaredDebugger): Promise<void> {
+  return runVisibleInstall(sessionId, {
+    preview: () => previewDebuggerInstall(sessionId, target.language),
+    install: () => installDebugger(sessionId, target.language),
+    confirmLabel: target.confirmLabel,
+    done: target.done,
+  })
 }
 
 /** Comandi dei linguaggi dichiarati. Restituisce false se il comando non appartiene a questo modulo. */
 export function runDeclaredDebuggerCommand(id: CodeStudioCommandId, sessionId: string | null): boolean {
+  if (id === 'java.installTestLauncher') {
+    if (sessionId) void runVisibleInstall(sessionId, {
+      preview: () => previewTestRunnerInstall(sessionId, 'java'),
+      install: () => installTestRunner(sessionId, 'java'),
+      confirmLabel: 'Install JUnit launcher',
+      done: 'JUnit Console Launcher installed. Run the tests of Ant and Eclipse projects from the Test panel.',
+    })
+    return true
+  }
   const target = DEBUGGERS.get(id)
   if (!target) return false
   if (sessionId) void installDeclaredDebugger(sessionId, target)

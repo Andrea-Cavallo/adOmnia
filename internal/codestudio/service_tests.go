@@ -87,6 +87,11 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 			return TestRunSnapshot{}, err
 		}
 	}
+	if id == java.ID && java.UsesServerTests(moduleDir) {
+		if options, err = s.javaServerTestOptions(session, moduleDir, options); err != nil {
+			return TestRunSnapshot{}, err
+		}
+	}
 	spec, parser, err := runner.TestCommand(idetesting.Request{Root: session.Project.RealPath, Executable: binary, WorkingDirectory: moduleDir, Environment: environment, CoverageFile: coverageFile, LanguageOptions: options})
 	if err != nil {
 		return TestRunSnapshot{}, err
