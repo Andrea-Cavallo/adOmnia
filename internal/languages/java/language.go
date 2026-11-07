@@ -19,6 +19,9 @@ const ID = "java"
 const (
 	UnitMaven  = "maven"  // cartella con pom.xml
 	UnitGradle = "gradle" // cartella con build.gradle(.kts)
+	// UnitAnt is a folder with an Ant build.xml and neither pom.xml nor build.gradle: the build of most
+	// legacy Java and Java EE projects (Eclipse Kepler era).
+	UnitAnt = "ant"
 )
 
 // Language implementa language.Language, DocumentSelector, ProjectDetector e run.SuggestionProvider.

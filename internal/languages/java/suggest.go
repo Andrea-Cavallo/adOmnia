@@ -76,7 +76,13 @@ type suggestEntry struct {
 // Suggest propone test e build dell'unità e, per Spring Boot, il run dell'applicazione. Senza wrapper né
 // Maven/Gradle nel PATH non propone nulla: una card che non si può avviare è peggio di nessuna card.
 func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.Suggestion {
-	if unit.Language != ID || (unit.Kind != UnitMaven && unit.Kind != UnitGradle) {
+	if unit.Language != ID {
+		return nil
+	}
+	if unit.Kind == UnitAnt {
+		return antSuggestions(unit)
+	}
+	if unit.Kind != UnitMaven && unit.Kind != UnitGradle {
 		return nil
 	}
 	tool, ok := resolveBuildTool(unit)

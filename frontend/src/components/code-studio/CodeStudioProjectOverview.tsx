@@ -25,6 +25,7 @@ const UNIT_KINDS: Readonly<Record<string, string>> = {
   loose: 'loose Go folder',
   maven: 'Maven',
   gradle: 'Gradle',
+  ant: 'Ant',
   node: 'Node.js app',
   static: 'static site',
 }

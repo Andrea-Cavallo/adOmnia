@@ -27,7 +27,7 @@ func ignoredDirectory(name string) bool {
 
 var gradleBuildFiles = []string{"build.gradle.kts", "build.gradle"}
 
-// DetectUnits trova i progetti Maven (pom.xml) e Gradle (build.gradle[.kts]) più esterni: i moduli di un
+// DetectUnits trova i progetti Maven (pom.xml), Gradle (build.gradle[.kts]) e Ant (build.xml) più esterni: i moduli di un
 // progetto multi-modulo appartengono al progetto che li contiene e si eseguono da lì. Non esegue nulla.
 // La scansione del disco è la stessa condivisa con gli altri linguaggi.
 func (l *Language) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {
@@ -106,14 +106,17 @@ func unitInCandidate(visit project.DirectoryVisit) (project.Unit, bool) {
 			candidate = true
 			break
 		}
-		if slices.Contains(gradleBuildFiles, name) {
+		if slices.Contains(gradleBuildFiles, name) || name == antBuildFile {
 			candidate = true
 		}
 	}
 	if !candidate {
 		return project.Unit{}, false
 	}
-	return unitIn(visit.Path)
+	if unit, ok := unitIn(visit.Path); ok {
+		return unit, true
+	}
+	return antUnitIn(visit.Path)
 }
 
 // unitIn riconosce un progetto nella cartella. Maven vince se ci sono entrambi i build file.
