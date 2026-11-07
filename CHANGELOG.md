@@ -9,6 +9,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ### Code Studio
 
 - **Ant projects.** A `build.xml` without Maven or Gradle is detected as an Ant unit; its public targets appear in Run (default target first, descriptions shown, `test`/`deploy` grouped as Test/Run), with the project JDK. First step of legacy Java EE support.
+- **Servlets and web.xml.** Servlets mapped in `web.xml` or with `@WebServlet` become Developer Context routes (one per `doGet`/`doPost`/…), so API Workspace, Mock, cURL and OpenAPI see WAR applications like Spring ones; framework dispatchers are skipped.
 
 ## [1.0.28] — 2026-11-07
 
