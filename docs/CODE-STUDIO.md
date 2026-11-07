@@ -1150,3 +1150,13 @@ Open in Log Inspector sends a clean JSONL snapshot through the entity handoff ro
 ### Run toolbar pickers
 
 Run selection and panel placement share a compact 28 px picker, visible focus, a selected checkmark, and the existing keyboard-accessible context menu. Run menu entries show command/status beneath the run label; placement uses bottom/left/right panel icons. Browser fixture verified selection, keyboard opening, Escape and focus return; native desktop rendering remains a separate acceptance check.
+
+### Rainbow brackets and HTML/XML tags
+
+Code Studio enables Monaco bracket-pair colors and nesting guides in every theme, including Go and Java. The active bracket guide is highlighted. HTML/XML tag names share a color by nesting depth; attributes retain normal syntax highlighting. HTML void elements and raw-text elements, XML namespaces, comments, processing instructions and CDATA are handled by the local tag decorator. Tag scanning is debounced by 150 ms and skipped above 1,000,000 UTF-16 code units. This is a built-in editor feature inspired by Rainbow Brackets, not installation of the JetBrains plugin or parity with all its features.
+
+Verification (2026-11-07): 8 focused tests passed; TypeScript, production frontend build and startup bundle check passed. Native desktop visual acceptance remains pending:
+
+- [ ] Open nested Go/Java brackets and HTML/XML tags in light, dark and anthracite themes; verify matching pair colors and active guides.
+- [ ] Edit nesting, switch tabs and split editors; check colors refresh without stale decorations.
+- [ ] Check Java generics separately: bracket support follows Monaco's language configuration.

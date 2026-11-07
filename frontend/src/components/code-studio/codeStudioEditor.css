@@ -255,3 +255,13 @@
 .monaco-editor .code-studio-diagnostic-line-error { background: color-mix(in srgb, var(--color-error) 7%, transparent); }
 .monaco-editor .code-studio-diagnostic-line-warning { background: color-mix(in srgb, var(--color-warning) 7%, transparent); }
 .monaco-editor .code-studio-diagnostic-line-info { background: color-mix(in srgb, var(--color-info) 7%, transparent); }
+
+/* Tag pairs share their depth color, while attribute syntax remains unchanged. */
+.monaco-editor { --rainbow-0: #ffd700; --rainbow-1: #da70d6; --rainbow-2: #4fc1ff; --rainbow-3: #8ed16a; --rainbow-4: #ff9d63; --rainbow-5: #79ddd5; }
+.monaco-editor.vs { --rainbow-0: #795e00; --rainbow-1: #9b268f; --rainbow-2: #006ab1; --rainbow-3: #39752a; --rainbow-4: #a34800; --rainbow-5: #007b75; }
+.monaco-editor .code-studio-rainbow-tag-0 { color: var(--rainbow-0) !important; }
+.monaco-editor .code-studio-rainbow-tag-1 { color: var(--rainbow-1) !important; }
+.monaco-editor .code-studio-rainbow-tag-2 { color: var(--rainbow-2) !important; }
+.monaco-editor .code-studio-rainbow-tag-3 { color: var(--rainbow-3) !important; }
+.monaco-editor .code-studio-rainbow-tag-4 { color: var(--rainbow-4) !important; }
+.monaco-editor .code-studio-rainbow-tag-5 { color: var(--rainbow-5) !important; }
