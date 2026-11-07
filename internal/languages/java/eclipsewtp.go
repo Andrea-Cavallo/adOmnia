@@ -149,8 +149,8 @@ func resolveEclipseProject(project eclipseProject, byName map[string]eclipseProj
 	for _, entry := range project.Entries {
 		switch entry.Kind {
 		case "src":
-			if strings.HasPrefix(entry.Path, "/") {
-				addProject(strings.TrimPrefix(entry.Path, "/"))
+			if name, isProject := strings.CutPrefix(entry.Path, "/"); isProject {
+				addProject(name)
 			} else if source := filepath.Join(project.Dir, filepath.FromSlash(entry.Path)); isDirectory(source) {
 				shadow.Sources = append(shadow.Sources, source)
 			}

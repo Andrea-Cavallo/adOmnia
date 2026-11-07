@@ -369,7 +369,6 @@ func prepareCatalinaBase(home, module string, httpPort int) (string, error) {
 			data = []byte(rewritten)
 		}
 		if err := os.WriteFile(filepath.Join(base, "conf", name), data, tomcatConfFileMode); err != nil { // #nosec G703 -- base is adOmnia's cache folder plus a hash, name a constant of tomcatConfFiles
-
 			return "", err
 		}
 	}
