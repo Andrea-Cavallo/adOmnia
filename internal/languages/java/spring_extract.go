@@ -16,8 +16,10 @@ var (
 		// MicroProfile/Quarkus: `@ApplicationScoped` e compagni dichiarano bean senza Spring.
 		"ApplicationScoped": "component", "RequestScoped": "component", "SessionScoped": "component",
 		"Singleton": "component", "Dependent": "component", "Named": "component",
+		// EJB 3 (Java EE): session beans are services, message-driven beans components.
+		"Stateless": "service", "Stateful": "service", "MessageDriven": "component",
 	}
-	injectAnnotations   = map[string]bool{"Autowired": true, "Inject": true, "Resource": true}
+	injectAnnotations   = map[string]bool{"Autowired": true, "Inject": true, "Resource": true, "EJB": true}
 	endpointAnnotations = map[string]bool{
 		"RequestMapping": true, "GetMapping": true, "PostMapping": true, "PutMapping": true,
 		"DeleteMapping": true, "PatchMapping": true,

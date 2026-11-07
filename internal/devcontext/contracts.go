@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/languages/java"
 )
 
 var (
@@ -20,8 +22,18 @@ func contractEntity(rel, typ string) Entity {
 		map[string]string{"type": typ, "path": rel}, Source{"contracts", rel, 1})
 }
 
-func detectContractFile(rel string, _ []byte) ([]Entity, error) {
-	return []Entity{contractEntity(rel, strings.TrimPrefix(path.Ext(rel), "."))}, nil
+func detectContractFile(rel string, data []byte) ([]Entity, error) {
+	contract := contractEntity(rel, strings.TrimPrefix(path.Ext(rel), "."))
+	if contract.Attrs["type"] == "wsdl" {
+		services, namespace := java.WSDLServices(data)
+		if len(services) > 0 {
+			contract.Attrs["services"] = strings.Join(services, ",")
+		}
+		if namespace != "" {
+			contract.Attrs["namespace"] = namespace
+		}
+	}
+	return []Entity{contract}, nil
 }
 
 func detectOpenAPI(rel string, data []byte) ([]Entity, error) {

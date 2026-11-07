@@ -93,6 +93,12 @@ async function openContract(ref: EntityRef): Promise<void> {
   handoffToPanel(rail, ref, 'open', { text, name: ref.label })
 }
 
+/** A SOAP route (JAX-WS endpoint) opens its WSDL in SOAP Studio. */
+function openRouteContract(ref: EntityRef): Promise<void> {
+  const file = ref.attrs.contract ?? ''
+  return openContract({ ...ref, kind: 'contract', label: file.split('/').pop() ?? file, attrs: { type: 'wsdl', path: file } })
+}
+
 /** Registers the v1 openers once; returns a disposer (used by HMR and tests). */
 export function registerDefaultOpeners(): () => void {
   const offs = [
@@ -139,12 +145,18 @@ export function registerDefaultOpeners(): () => void {
       run: (ref) => openInGo(ref.attrs.handlerFile, Number(ref.attrs.handlerLine) || 1, ref.sessionId),
     }),
     registerOpener('route', { intent: 'mock', title: 'Add to Mock Server', run: mockRoute }),
+    registerOpener('route', { intent: 'soap', title: 'Open in SOAP Studio', available: (ref) => !!ref.attrs.contract && !!ref.sessionId, run: openRouteContract }),
     registerOpener('service', { intent: 'baseUrl', title: 'Use as baseUrl', isDefault: true, available: (ref) => !!ref.attrs.port, run: proposeBaseUrl }),
     registerOpener('datasource', {
       intent: 'connect', title: 'Connect', isDefault: true,
       run: (ref) => handoffToPanel(DB_TYPES.has(ref.attrs.type) ? 'database' : 'broker', ref, 'connect'),
     }),
     registerOpener('contract', { intent: 'open', title: 'Open', isDefault: true, available: (ref) => !!CONTRACT_RAILS[ref.attrs.type ?? ''], run: openContract }),
+    registerOpener('contract', {
+      intent: 'implementation', title: 'Go to implementation',
+      available: (ref) => !!ref.attrs.declFile,
+      run: (ref) => openInGo(ref.attrs.declFile, Number(ref.attrs.declLine) || 1, ref.sessionId),
+    }),
     registerOpener('envvar', { intent: 'show', title: 'Show value', isDefault: true, run: showEnvVar }),
     registerOpener('table', { intent: 'query', title: 'Query in Database', isDefault: true, run: (ref) => handoffToPanel('database', ref, 'query') }),
     registerOpener('topic', { intent: 'open', title: 'Open in Broker Studio', isDefault: true, run: (ref) => handoffToPanel('broker', ref, 'open') }),

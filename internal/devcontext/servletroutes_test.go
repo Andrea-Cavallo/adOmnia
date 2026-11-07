@@ -75,8 +75,8 @@ func servletSnapshot(t *testing.T, files map[string]string) map[string]Entity {
 		groups = append(groups, entities)
 	}
 	byID := map[string]Entity{}
-	for _, e := range linkHandlers(linkServlets(merge(groups...))) {
-		if e.Kind == servletClassKind || e.Kind == servletMappingKind {
+	for _, e := range linkEntities(merge(groups...)) {
+		if e.Kind == servletClassKind || e.Kind == servletMappingKind || e.Kind == soapImplKind || e.Kind == soapMappingKind {
 			t.Fatalf("internal entity leaked into the snapshot: %+v", e)
 		}
 		byID[e.ID] = e

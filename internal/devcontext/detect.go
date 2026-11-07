@@ -33,7 +33,7 @@ func interesting(rel string) bool {
 	}
 	base := path.Base(rel)
 	switch {
-	case base == "go.mod" || base == "Cargo.toml", isDotenv(base), isCompose(base), isMakefile(base), isSpringConfig(base), isWebDescriptor(base):
+	case base == "go.mod" || base == "Cargo.toml", isDotenv(base), isCompose(base), isMakefile(base), isSpringConfig(base), isWebDescriptor(base), isSOAPEndpointConfig(base):
 		return true
 	case strings.HasSuffix(base, "_test.go"):
 		return false
@@ -73,6 +73,8 @@ func detectFile(rel string, data []byte, env map[string]string, hints AdapterHin
 		out = append(out, detectSpringConfig(rel, data)...)
 	case isWebDescriptor(base):
 		out = append(out, detectWebXML(rel, data)...)
+	case isSOAPEndpointConfig(base):
+		out = append(out, detectSOAPEndpointConfig(rel, data)...)
 	case strings.HasSuffix(base, ".go"):
 		add(detectGoFile(rel, data, hints))
 	case strings.HasSuffix(base, ".java"):
