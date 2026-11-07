@@ -4,8 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"html"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -330,6 +332,13 @@ func rewriteServerXML(data string, httpPort int) (string, error) {
 	return data, nil
 }
 
+// tomcatConfFiles are the configuration files a CATALINA_BASE needs, copied from the installation (Tomcat 7
+// to 11). A fixed list: nothing else of the installation reaches the private base.
+var tomcatConfFiles = []string{
+	"server.xml", "web.xml", "context.xml", "tomcat-users.xml", "tomcat-users.xsd", "logging.properties",
+	"catalina.properties", "catalina.policy", "jaspic-providers.xml", "jaspic-providers.xsd",
+}
+
 // prepareCatalinaBase writes <cache>/adomnia/tomcat/<module hash>: conf copied from the installation with
 // server.xml rewritten, and empty logs, temp, work and webapps.
 func prepareCatalinaBase(home, module string, httpPort int) (string, error) {
@@ -344,28 +353,28 @@ func prepareCatalinaBase(home, module string, httpPort int) (string, error) {
 			return "", fmt.Errorf("could not prepare the Tomcat folder: %w", err)
 		}
 	}
-	entries, err := os.ReadDir(filepath.Join(home, "conf"))
-	if err != nil {
-		return "", fmt.Errorf("could not read the Tomcat configuration: %w", err)
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
+	for _, name := range tomcatConfFiles {
+		data, err := os.ReadFile(filepath.Join(home, "conf", name)) // #nosec G304 -- a fixed file of the Tomcat installation the user chose
+		if errors.Is(err, fs.ErrNotExist) {
+			continue // not every Tomcat version ships every file
 		}
-		data, err := os.ReadFile(filepath.Join(home, "conf", entry.Name())) // #nosec G304 -- the Tomcat installation the user chose
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("could not read the Tomcat configuration: %w", err)
 		}
-		if entry.Name() == "server.xml" {
+		if name == "server.xml" {
 			rewritten, err := rewriteServerXML(string(data), httpPort)
 			if err != nil {
 				return "", err
 			}
 			data = []byte(rewritten)
 		}
-		if err := os.WriteFile(filepath.Join(base, "conf", filepath.Base(entry.Name())), data, tomcatConfFileMode); err != nil {
+		if err := os.WriteFile(filepath.Join(base, "conf", name), data, tomcatConfFileMode); err != nil { // #nosec G703 -- base is adOmnia's cache folder plus a hash, name a constant of tomcatConfFiles
+
 			return "", err
 		}
+	}
+	if !isFile(filepath.Join(base, "conf", "server.xml")) {
+		return "", fmt.Errorf("%s has no conf/server.xml", home)
 	}
 	return base, nil
 }
