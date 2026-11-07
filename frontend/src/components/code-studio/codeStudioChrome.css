@@ -479,6 +479,21 @@ html.dark .code-studio-root {
   outline: 1px solid var(--color-accent); outline-offset: -1px;
 }
 
+/* Directory that owns the active editor file: pinned above the tree and tinted
+   in place. A selected row keeps its own stronger selection style. */
+.code-studio-tree-active-directory:not(.code-studio-tree-row-selected) {
+  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--color-accent) 55%, transparent);
+  color: var(--color-text-1);
+}
+.code-studio-tree-active-directory .code-studio-folder-icon {
+  color: var(--color-accent);
+  fill-opacity: 0.5;
+}
+.code-studio-tree-active-trail:not(.code-studio-tree-row-selected) {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
 /* Selezione come nella sidebar delle collection: velo accent e filo a sinistra. */
 .code-studio-explorer .code-studio-tree-row-selected {
   background: color-mix(in srgb, var(--color-accent) 10%, transparent);
