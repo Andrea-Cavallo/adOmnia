@@ -15,6 +15,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **JPA, JSP and EAR.** `persistence.xml` JDBC URLs become datasources (Oracle and SQL Server included) and `@Entity` classes tables; JSP pages under the webapp are `GET` routes and open with HTML highlighting; an EAR's `application.xml` context roots prefix the routes of its web modules. *Connect* on a database datasource always opens Database Studio.
 - **Eclipse WTP projects.** Kepler Dynamic Web/EJB projects get their WTP containers resolved for JDT LS (Tomcat `lib` for the servlet and JSP APIs, `WEB-INF/lib`, dependent modules) through a shadow workspace, so the editor stops reporting `javax.servlet` as missing; Tomcat publishes their web root and the dependent modules' classes. Ant projects propose their `main` classes, run and debugged with the language server's classpath.
 - **Tests of Ant and Eclipse projects.** They fill the Test tree, run on the JUnit Console Launcher (JUnit 3/4/5) with the language server's classpath; the launcher is installed once, visibly, from the Java menu.
+- **Tomcat without CATALINA_HOME.** The Tomcat of a project is found from a shared Tomcat run configuration, the server runtime of the Eclipse workspace or the PATH, for the servlet API in the editor and for Run.
 
 ## [1.0.28] — 2026-11-07
 

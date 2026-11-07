@@ -122,7 +122,7 @@ func WriteEclipseShadowWorkspace(root, dest, catalinaHome string) (EclipseShadow
 	}
 	var shadow EclipseShadow
 	for _, project := range projects {
-		resolved, problems := resolveEclipseProject(project, byName, catalinaHome)
+		resolved, problems := resolveEclipseProject(project, byName, catalinaHome, root)
 		shadow.Problems = append(shadow.Problems, problems...)
 		if err := eclipsepde.WriteJavaShadowProject(filepath.Join(dest, project.Name), resolved); err != nil {
 			return shadow, err
@@ -133,7 +133,7 @@ func WriteEclipseShadowWorkspace(root, dest, catalinaHome string) (EclipseShadow
 }
 
 // resolveEclipseProject turns the .classpath of a project into the shadow's plain entries.
-func resolveEclipseProject(project eclipseProject, byName map[string]eclipseProject, catalinaHome string) (eclipsepde.JavaShadowProject, []string) {
+func resolveEclipseProject(project eclipseProject, byName map[string]eclipseProject, catalinaHome, root string) (eclipsepde.JavaShadowProject, []string) {
 	shadow := eclipsepde.JavaShadowProject{Name: project.Name, Level: eclipseJavaLevel(project.Dir), Encoding: eclipseEncoding(project.Dir)}
 	var problems []string
 	addLibrary := func(path string) {
@@ -163,7 +163,7 @@ func resolveEclipseProject(project eclipseProject, byName map[string]eclipseProj
 			case strings.HasPrefix(entry.Path, jreContainerPrefix):
 				// the shadow always has the JRE
 			case strings.HasPrefix(entry.Path, serverRuntimePrefix):
-				jars, err := serverRuntimeJars(catalinaHome)
+				jars, err := serverRuntimeJars(catalinaHome, root)
 				if err != nil {
 					problems = append(problems, project.Name+": "+err.Error())
 				}
@@ -212,8 +212,8 @@ func eclipseVariablePath(path string) string {
 }
 
 // serverRuntimeJars are the API jars of the Tomcat a WTP project targets: everything in CATALINA_HOME/lib.
-func serverRuntimeJars(catalinaHome string) ([]string, error) {
-	home, err := resolveCatalinaHome(catalinaHome)
+func serverRuntimeJars(catalinaHome, root string) ([]string, error) {
+	home, err := resolveCatalinaHome(catalinaHome, root)
 	if err != nil {
 		return nil, fmt.Errorf("the server runtime of the project (servlet and JSP APIs) is unknown: %w", err)
 	}

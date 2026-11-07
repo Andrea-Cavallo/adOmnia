@@ -68,14 +68,15 @@ func isWebModule(unit project.Unit) bool {
 	return false
 }
 
-// resolveCatalinaHome is the configured installation or CATALINA_HOME, checked for bin/catalina.
-func resolveCatalinaHome(configured string) (string, error) {
+// resolveCatalinaHome is the configured installation, else the Tomcat discovered around the project
+// (discoverCatalinaHome), checked for bin/catalina.
+func resolveCatalinaHome(configured, project string) (string, error) {
 	home := strings.TrimSpace(configured)
 	if home == "" {
-		home = strings.TrimSpace(os.Getenv("CATALINA_HOME"))
+		home = discoverCatalinaHome(project)
 	}
 	if home == "" {
-		return "", fmt.Errorf("set the Tomcat installation (Tomcat home) or CATALINA_HOME")
+		return "", fmt.Errorf("set the Tomcat installation (Tomcat home), CATALINA_HOME, or register Tomcat as a server runtime in the Eclipse workspace")
 	}
 	if !isFile(catalinaScript(home)) {
 		return "", fmt.Errorf("%s is not a Tomcat installation: bin/%s is missing", home, filepath.Base(catalinaScript(home)))
@@ -93,7 +94,7 @@ func catalinaScript(home string) string {
 // TomcatCommand prepares the private CATALINA_BASE and returns `catalina run` (`catalina jpda run` with a
 // debug port). module is the module folder, inside the project.
 func TomcatCommand(module string, options TomcatOptions, debugPort int, environment []string) (TomcatLaunch, error) {
-	home, err := resolveCatalinaHome(options.CatalinaHome)
+	home, err := resolveCatalinaHome(options.CatalinaHome, module)
 	if err != nil {
 		return TomcatLaunch{}, err
 	}
@@ -400,7 +401,7 @@ func tomcatSuggestion(unit project.Unit) (run.Suggestion, bool) {
 	if !isWebModule(unit) {
 		return run.Suggestion{}, false
 	}
-	if _, err := resolveCatalinaHome(""); err != nil {
+	if _, err := resolveCatalinaHome("", unit.Root); err != nil {
 		return run.Suggestion{}, false
 	}
 	options, err := json.Marshal(TomcatOptions{})

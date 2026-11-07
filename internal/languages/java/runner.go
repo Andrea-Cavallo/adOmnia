@@ -104,7 +104,7 @@ func (*Language) RunSchema(kind string) run.FieldSchema {
 		}
 	case KindTomcat:
 		schema.Fields = []run.Field{
-			{Key: "catalinaHome", Label: "Tomcat home", Type: run.FieldPath, Section: run.SectionBasic, Help: "The Tomcat installation (7 or newer). Empty = CATALINA_HOME. It is never modified: adOmnia runs it with a private CATALINA_BASE."},
+			{Key: "catalinaHome", Label: "Tomcat home", Type: run.FieldPath, Section: run.SectionBasic, Help: "The Tomcat installation (7 or newer). Empty = CATALINA_HOME, a shared Tomcat configuration, the Tomcat runtime of the Eclipse workspace, or catalina on the PATH. It is never modified: adOmnia runs it with a private CATALINA_BASE."},
 			{Key: "contextPath", Label: "Context path", Type: run.FieldText, Section: run.SectionBasic, Help: "Where the application answers, e.g. /billing. Empty = the WAR name; / = ROOT."},
 			{Key: "httpPort", Label: "HTTP port", Type: run.FieldText, Section: run.SectionBasic, Default: "8080"},
 			{Key: "webapp", Label: "Webapp folder", Type: run.FieldPath, Section: run.SectionAdvanced, Help: "The exploded WAR, relative to the module. Empty = target/<war> after mvn package, then WebContent, WebRoot, web, src/main/webapp (with target/classes or build/classes)."},
