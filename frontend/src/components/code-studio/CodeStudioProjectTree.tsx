@@ -2,9 +2,10 @@ import { useOriginTreeReveal } from './codeStudioOriginTree'
 import { goModules } from '@/lib/code-studio/goProject'
 import { projectProfile } from '@/lib/code-studio/projectProfile'
 import { unitBadges } from '@/lib/code-studio/projectUnits'
+import { activeDirectoryOf, isActiveDirectoryTrail } from '@/lib/code-studio/activeDirectory'
 import { IDE_LANGUAGE_NAMES } from '@/components/ide/languages'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
-import { Eye, EyeOff, Loader2, Minus, RefreshCw } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Minus, Pin, RefreshCw } from 'lucide-react'
 import { CodeStudioExplorerToolbar } from './CodeStudioExplorerToolbar'
 import { CodeStudioProjectNavigation } from './CodeStudioProjectNavigation'
 import { CodeStudioFolderIcon } from './CodeStudioFolderIcon'
@@ -119,14 +120,23 @@ function ShowMoreRow({ hidden, depth, onShow }: { hidden: number; depth: number;
   )
 }
 
-const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, selectedPath, onContext, onKey, onMove, dropTarget, setDropTarget, marks, directoryMarks, unitLabels }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; selectedPath: string | null; onContext: TreeContextHandler; onKey: TreeKeyHandler; onMove: TreeMoveHandler; dropTarget: string | null; setDropTarget: (path: string | null) => void; marks: TreeMarks; directoryMarks: Record<string, CodeStudioDirectoryMark>; unitLabels: Record<string, string> }) {
+const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, activePath, activeDirectory, selectedPath, onContext, onKey, onMove, dropTarget, setDropTarget, marks, directoryMarks, unitLabels }: { sessionId: string; entry: GoIDEFileEntry; depth: number; activePath: string | null; activeDirectory: string | null; selectedPath: string | null; onContext: TreeContextHandler; onKey: TreeKeyHandler; onMove: TreeMoveHandler; dropTarget: string | null; setDropTarget: (path: string | null) => void; marks: TreeMarks; directoryMarks: Record<string, CodeStudioDirectoryMark>; unitLabels: Record<string, string> }) {
   const mark = marks.get(entry.relativePath)
   const directoryMark = entry.directory ? directoryMarks[entry.relativePath] : undefined
   const unitLanguage = entry.directory ? unitLabels[entry.relativePath] : undefined
   const selected = entry.relativePath === (selectedPath ?? activePath)
+  const activeDirectoryRow = entry.directory && entry.relativePath === activeDirectory
+  const activeTrailRow = entry.directory && !activeDirectoryRow && isActiveDirectoryTrail(entry.relativePath, activeDirectory)
   const [open, setOpen] = useState(false)
   const [limit, setLimit] = useState(TREE_PAGE)
   const reveal = useOriginTreeReveal()
+  // The directory that owns the active editor file stays expanded, so the file is
+  // visible without a manual drill-down. It reopens only when the active file
+  // changes, never after the user deliberately collapses it.
+  useEffect(() => {
+    if (!entry.directory || !activePath) return
+    if (activePath === entry.relativePath || activePath.startsWith(`${entry.relativePath}/`)) setOpen(true)
+  }, [activePath, entry.directory, entry.relativePath])
   useEffect(() => {
     if (reveal.sessionId !== sessionId) return
     if (entry.directory && reveal.path.startsWith(`${entry.relativePath}/`)) { setOpen(true); setLimit(Number.MAX_SAFE_INTEGER) }
@@ -185,8 +195,8 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
           const action = treeKeyAction(event)
           if (action) { event.preventDefault(); event.stopPropagation(); onKey(entry, action) }
         }}
-        aria-current={selected ? 'true' : undefined}
-        className={`code-studio-tree-row flex h-7 w-full items-center gap-1.5 overflow-hidden rounded pr-2 text-left text-xs transition-colors ${isCut ? 'opacity-50' : ''} ${dropTarget === entry.relativePath ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''} ${selected ? 'code-studio-tree-row-selected' : `hover:bg-surface-2/60 hover:text-text-1 ${entry.ignored || (entry.directory && /^(node_modules|target|vendor|dist|build|\.git|__pycache__)$/.test(entry.name)) ? 'text-text-3' : 'text-text-2'}`}`}
+        aria-current={activeDirectoryRow ? 'location' : selected ? 'true' : undefined}
+        className={`code-studio-tree-row flex h-7 w-full items-center gap-1.5 overflow-hidden rounded pr-2 text-left text-xs transition-colors ${isCut ? 'opacity-50' : ''} ${activeDirectoryRow ? 'code-studio-tree-active-directory' : ''} ${activeTrailRow ? 'code-studio-tree-active-trail' : ''} ${dropTarget === entry.relativePath ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''} ${selected ? 'code-studio-tree-row-selected' : `hover:bg-surface-2/60 hover:text-text-1 ${entry.ignored || (entry.directory && /^(node_modules|target|vendor|dist|build|\.git|__pycache__)$/.test(entry.name)) ? 'text-text-3' : 'text-text-2'}`}`}
         style={{ paddingLeft: ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX }}
         title={`${entry.relativePath}${entry.ignored ? ' (ignored by default)' : ''}${directoryMark ? ` · ${directoryMarkLabel(directoryMark)}` : ''}${markTitle(mark)}`}
       >
@@ -207,7 +217,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
         {mark?.testFailed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-label="failed tests" />}
       </button>
       {entry.directory && open && <div role="group" className="code-studio-tree-branch" style={{ '--tree-guide-x': `${ROW_BASE_PX + (depth - 1) * ROW_INDENT_PX + 6}px` } as React.CSSProperties}>{entries?.slice(0, limit).map((child) => (
-        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} unitLabels={unitLabels} />
+        <DirectoryNode key={child.relativePath} sessionId={sessionId} entry={child} depth={depth + 1} activePath={activePath} activeDirectory={activeDirectory} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} unitLabels={unitLabels} />
       ))}</div>}
       {entry.directory && open && entries && entries.length > limit && <ShowMoreRow hidden={entries.length - limit} depth={depth + 1} onShow={() => setLimit((value) => value + TREE_PAGE)} />}
     </>
@@ -221,6 +231,7 @@ const DirectoryNode = memo(function DirectoryNode({ sessionId, entry, depth, act
     && prev.entry === next.entry
     && prev.depth === next.depth
     && prev.activePath === next.activePath
+    && prev.activeDirectory === next.activeDirectory
     && prev.selectedPath === next.selectedPath
     && prev.dropTarget === next.dropTarget
     && prev.onContext === next.onContext
@@ -251,7 +262,19 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
 
   const [collapseEpoch, setCollapseEpoch] = useState(0)
   useEffect(() => { setSelectedPath(null); setCreationFolder(''); setRootOpen(true) }, [rootKey])
-  useEffect(() => { if (activePath) { setSelectedPath(null); setCreationFolder(parentOf(activePath)) } }, [activePath])
+  useEffect(() => { if (activePath) { setSelectedPath(null); setCreationFolder(parentOf(activePath)); setRootOpen(true) } }, [activePath])
+  // The directory that owns the active editor file: the pinned breadcrumb and the
+  // tinted row both derive from it, so every navigation follows the same source.
+  const activeDirectory = useMemo(() => activeDirectoryOf(activePath), [activePath])
+  const treeRef = useRef<HTMLDivElement>(null)
+  const revealActiveDirectory = useCallback(() => {
+    if (activeDirectory === null) return
+    const target = activePath
+      ? treeRef.current?.querySelector<HTMLElement>(`[data-tree-path="${CSS.escape(activePath)}"]`)
+      : null
+    const row = target ?? treeRef.current?.querySelector<HTMLElement>(`[data-tree-path="${CSS.escape(activeDirectory)}"]`)
+    row?.scrollIntoView({ block: 'nearest' })
+  }, [activeDirectory, activePath])
 
   // Un file di dipendenza attivo è selezionato in External Libraries: qui non resta selezionato il precedente.
   useEffect(() => { if (activeExternalPath) setSelectedPath(null) }, [activeExternalPath])
@@ -422,7 +445,19 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
         <button type="button" onClick={() => updateLayout({ projectOpen: false })} aria-label="Hide Project pane" title="Hide · Alt+1" className="code-studio-icon-button h-6 w-6"><Minus size={14} /></button>
         </div>
       </div>
-      <div onFocusCapture={(event) => {
+      {activeDirectory !== null && (
+        <div className="shrink-0 border-b border-border-1 bg-surface-1/50 px-2 py-1">
+          <button type="button" onClick={revealActiveDirectory} title={`Active directory: ${session.project.name}${activeDirectory ? `/${activeDirectory}` : ''}/${activePath ?? ''} · click to reveal the file`}
+            className="flex h-6 w-full min-w-0 items-center gap-1.5 rounded px-1 text-left text-[10.5px] text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1">
+            <Pin size={11} className="shrink-0 text-accent" aria-hidden="true" />
+            <span className="shrink-0 font-medium text-text-3">{session.project.name}</span>
+            <span className="shrink-0 text-text-4">/</span>
+            <span className="min-w-0 truncate font-mono text-[10px] text-text-2">{activeDirectory || 'root'}</span>
+            <span className="ml-auto max-w-[45%] shrink-0 truncate pl-2 font-mono text-[10px] text-text-4">{activePath?.split('/').pop()}</span>
+          </button>
+        </div>
+      )}
+      <div ref={treeRef} onFocusCapture={(event) => {
         const row = (event.target as HTMLElement).closest<HTMLElement>('[role="treeitem"]')
         // Le righe delle dipendenze non sono cartelle del progetto: non spostano selezione e cartella di creazione.
         if (!row || row.dataset.treeExternal !== undefined) return
@@ -436,7 +471,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
         setDropTarget(null)
         if (source) onMove(source, '')
       }}>
-        <div role="treeitem" aria-level={1} aria-expanded={rootOpen} aria-selected={selectedPath === ''} data-tree-path="" data-tree-directory="true" tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className={`code-studio-tree-root flex h-8 items-center gap-1.5 rounded pl-1.5 pr-2 text-xs focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${selectedPath === '' ? 'code-studio-tree-row-selected' : 'hover:bg-surface-2/60'} ${dropTarget === '' ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''}`} title={session.project.rootPath}
+        <div role="treeitem" aria-level={1} aria-expanded={rootOpen} aria-selected={selectedPath === ''} aria-current={activeDirectory === '' ? 'location' : undefined} data-tree-path="" data-tree-directory="true" tabIndex={0} aria-label={`${session.project.name} project root: press Shift+F10 for actions`} className={`code-studio-tree-root flex h-8 items-center gap-1.5 rounded pl-1.5 pr-2 text-xs focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${activeDirectory === '' ? 'code-studio-tree-active-directory' : ''} ${selectedPath === '' ? 'code-studio-tree-row-selected' : 'hover:bg-surface-2/60'} ${dropTarget === '' ? 'bg-accent/10 ring-1 ring-inset ring-accent/70' : ''}`} title={session.project.rootPath}
           onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move'; setDropTarget('') }}
           onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(null) }}
           onDrop={(event) => { event.preventDefault(); event.stopPropagation(); const source = event.dataTransfer.getData('application/x-adomnia-code-studio-path'); setDropTarget(null); if (source) onMove(source, '') }}
@@ -454,7 +489,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
           <CodeStudioFolderIcon open={rootOpen} size={TREE_ICON_PX} />
           <span className="min-w-0 truncate font-medium text-text-1">{session.project.name}</span>
         </div>
-        {rootOpen && entries.slice(0, rootLimit).map((entry) => <DirectoryNode key={`${collapseEpoch}:${entry.relativePath}`} sessionId={session.id} entry={entry} depth={2} activePath={activePath} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} unitLabels={unitLabels} />)}
+        {rootOpen && entries.slice(0, rootLimit).map((entry) => <DirectoryNode key={`${collapseEpoch}:${entry.relativePath}`} sessionId={session.id} entry={entry} depth={2} activePath={activePath} activeDirectory={activeDirectory} selectedPath={selectedPath} onContext={onContext} onKey={onKey} onMove={onMove} dropTarget={dropTarget} setDropTarget={setDropTarget} marks={marks} directoryMarks={directoryMarks} unitLabels={unitLabels} />)}
         {rootOpen && entries.length > rootLimit && <ShowMoreRow hidden={entries.length - rootLimit} depth={2} onShow={() => setRootLimit((value) => value + TREE_PAGE)} />}
         {rootOpen && entries.length === 0 && <p className="px-4 py-3 text-[11px] text-text-4">This folder is empty.</p>}
         <CodeStudioExternalLibraries key={session.id} session={session} activeExternalPath={activeExternalPath} collapseEpoch={collapseEpoch} />
