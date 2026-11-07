@@ -78,12 +78,13 @@ func ExtractSources(sourcesJar, directory string) error {
 
 // extractSourceEntry scrive un file di testo del jar dentro root; salta il resto e rifiuta i percorsi che escono.
 func extractSourceEntry(entry *zip.File, root string, budget int64) (int64, error) {
+	// A name with ".." anywhere, absolute or with a drive letter never reaches the file system (Zip Slip).
+	if strings.Contains(entry.Name, "..") || strings.Contains(entry.Name, ":") || path.IsAbs(strings.ReplaceAll(entry.Name, "\\", "/")) {
+		return 0, fmt.Errorf("the sources jar contains an unsafe path: %s", entry.Name)
+	}
 	name := path.Clean(strings.ReplaceAll(entry.Name, "\\", "/"))
 	if entry.FileInfo().IsDir() || !sourceExtensions[strings.ToLower(path.Ext(name))] || strings.HasPrefix(name, "META-INF/") {
 		return 0, nil
-	}
-	if path.IsAbs(name) || name == ".." || strings.HasPrefix(name, "../") || strings.Contains(name, ":") {
-		return 0, fmt.Errorf("the sources jar contains an unsafe path: %s", entry.Name)
 	}
 	if entry.UncompressedSize64 > maxSourceFileBytes {
 		return 0, nil
@@ -92,6 +93,9 @@ func extractSourceEntry(entry *zip.File, root string, budget int64) (int64, erro
 		return 0, errors.New("the sources jar is too large to extract")
 	}
 	target := filepath.Join(root, filepath.FromSlash(name))
+	if !strings.HasPrefix(target, filepath.Clean(root)+string(os.PathSeparator)) {
+		return 0, fmt.Errorf("the sources jar contains an unsafe path: %s", entry.Name)
+	}
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return 0, err
 	}
