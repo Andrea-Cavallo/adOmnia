@@ -344,10 +344,11 @@ func (st *sessionState) snapshot(sessionID string) Snapshot {
 	return Snapshot{SessionID: sessionID, Root: st.root, Version: st.version, Entities: entities, Warnings: warnings, ScannedAt: st.scanned}
 }
 
-// linkEntities runs the cross-file links: servlets and SOAP endpoints become routes, handlers and bodies
+// linkEntities runs the cross-file links: servlets and SOAP endpoints become routes, EAR context roots
+// prefix the routes of their web modules, handlers and bodies
 // join their routes, WebSockets their handlers. Internal kinds never leave it.
 func linkEntities(merged []Entity) []Entity {
-	entities := linkHandlers(linkSOAP(linkServlets(merged)))
+	entities := linkHandlers(linkEARContextRoots(linkSOAP(linkServlets(merged))))
 	linkWebSockets(entities)
 	return entities
 }

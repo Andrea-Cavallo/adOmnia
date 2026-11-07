@@ -14,7 +14,8 @@ import { registerOpener } from './router'
 import { httpMethodForRoute, mockPathForRoute, withBaseUrl } from './routeRequest'
 import type { EntityRef } from './types'
 
-const DB_TYPES = new Set(['postgres', 'mysql', 'mongodb', 'redis'])
+/** Datasources Broker Studio opens; every other type (postgres, oracle, sqlserver…) is a database. */
+const BROKER_TYPES = new Set(['kafka', 'rabbitmq', 'nats', 'mqtt', 'jms'])
 const DEFAULT_GO_HTTP = 'http://localhost:8080'
 
 /** Senza gli slash finali: `.replace(/\/+$/, '')` con la stessa semantica ma senza backtracking quadratico. */
@@ -149,7 +150,7 @@ export function registerDefaultOpeners(): () => void {
     registerOpener('service', { intent: 'baseUrl', title: 'Use as baseUrl', isDefault: true, available: (ref) => !!ref.attrs.port, run: proposeBaseUrl }),
     registerOpener('datasource', {
       intent: 'connect', title: 'Connect', isDefault: true,
-      run: (ref) => handoffToPanel(DB_TYPES.has(ref.attrs.type) ? 'database' : 'broker', ref, 'connect'),
+      run: (ref) => handoffToPanel(BROKER_TYPES.has(ref.attrs.type) ? 'broker' : 'database', ref, 'connect'),
     }),
     registerOpener('contract', { intent: 'open', title: 'Open', isDefault: true, available: (ref) => !!CONTRACT_RAILS[ref.attrs.type ?? ''], run: openContract }),
     registerOpener('contract', {
