@@ -34,3 +34,8 @@ describe('javaDebugTargetOf', () => {
 it('debugs qualified Gradle tasks and forwards non-secret environment overrides', () => {
   expect(javaDebugTargetOf({ kind: 'command', language: 'java', programArguments: [':api:bootRun'], environment: [{ key: 'SPRING_PROFILES_ACTIVE', value: 'local' }, { key: 'TOKEN', value: 'vault:secret', secret: true }] })).toEqual({ buildArguments: [':api:bootRun'], workingDirectory: '', environment: { SPRING_PROFILES_ACTIVE: 'local' } })
 })
+
+it('debugs a module on its application server (Tomcat, WildFly)', () => {
+  expect(javaDebugTargetOf({ kind: 'tomcat', language: 'java', workingDirectory: 'web', languageOptions: { httpPort: '9090' } })).toEqual({ serverKind: 'tomcat', server: '{"httpPort":"9090"}', workingDirectory: 'web' })
+  expect(javaDebugTargetOf({ kind: 'wildfly', language: 'java', languageOptions: {} })).toEqual({ serverKind: 'wildfly', server: '{}', workingDirectory: '' })
+})

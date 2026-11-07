@@ -16,6 +16,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Eclipse WTP projects.** Kepler Dynamic Web/EJB projects get their WTP containers resolved for JDT LS (Tomcat `lib` for the servlet and JSP APIs, `WEB-INF/lib`, dependent modules) through a shadow workspace, so the editor stops reporting `javax.servlet` as missing; Tomcat publishes their web root and the dependent modules' classes. Ant projects propose their `main` classes, run and debugged with the language server's classpath.
 - **Tests of Ant and Eclipse projects.** They fill the Test tree, run on the JUnit Console Launcher (JUnit 3/4/5) with the language server's classpath; the launcher is installed once, visibly, from the Java menu.
 - **Tomcat without CATALINA_HOME.** The Tomcat of a project is found from a shared Tomcat run configuration, the server runtime of the Eclipse workspace or the PATH, for the servlet API in the editor and for Run.
+- **WildFly server.** A web module runs and debugs on a local WildFly / JBoss EAP 7+: private server base directory, the exploded WAR served in place as an unmanaged deployment, chosen port, configuration and context path (from `jboss-web.xml`), Debug with the Java debugger attached.
 
 ## [1.0.28] — 2026-11-07
 

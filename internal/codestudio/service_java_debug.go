@@ -44,9 +44,10 @@ type JavaDebugRequest struct {
 	// TestFile (relativo al progetto) e TestMethod ("" = tutta la classe) debuggano un test JUnit.
 	TestFile   string `json:"testFile,omitempty"`
 	TestMethod string `json:"testMethod,omitempty"`
-	// Tomcat is the JSON of a Tomcat run configuration's options: the module (WorkingDirectory) runs on
-	// that Tomcat with JPDA open and the debugger attaches.
-	Tomcat string `json:"tomcat,omitempty"`
+	// ServerKind ("tomcat", "wildfly") and Server (the JSON of that run configuration's options): the module
+	// (WorkingDirectory) runs on the application server with JDWP open and the debugger attaches.
+	ServerKind string `json:"serverKind,omitempty"`
+	Server     string `json:"server,omitempty"`
 	// WorkingDirectory è la cartella del programma, relativa al progetto ("" = radice).
 	WorkingDirectory string            `json:"workingDirectory,omitempty"`
 	ProgramArguments []string          `json:"programArguments,omitempty"`
@@ -74,8 +75,8 @@ func (s *Service) StartJavaDebug(request JavaDebugRequest) (DebugSessionInfo, er
 		}
 	}
 	switch {
-	case request.Tomcat != "":
-		return s.debugJavaTomcat(session, request, workingDirectory)
+	case request.ServerKind != "":
+		return s.debugJavaServer(session, request, workingDirectory)
 	case request.AttachPort != 0:
 		return s.attachJava(session, request.AttachHost, request.AttachPort, workingDirectory, nil)
 	case request.TestFile != "" || len(request.BuildArguments) > 0:
@@ -206,12 +207,9 @@ func (s *Service) debugJavaBuild(session Session, request JavaDebugRequest, work
 	return s.attachJava(session, "", port, scope, &execution)
 }
 
-// debugJavaTomcat runs the module on Tomcat in the Run console with JPDA on a free port, then attaches.
-func (s *Service) debugJavaTomcat(session Session, request JavaDebugRequest, module string) (DebugSessionInfo, error) {
-	options, err := java.TomcatOptionsOf([]byte(request.Tomcat))
-	if err != nil {
-		return DebugSessionInfo{}, err
-	}
+// debugJavaServer runs the module on its application server (Tomcat, WildFly) in the Run console with JDWP
+// on a free port, then attaches.
+func (s *Service) debugJavaServer(session Session, request JavaDebugRequest, module string) (DebugSessionInfo, error) {
 	port, err := freeLocalPort()
 	if err != nil {
 		return DebugSessionInfo{}, err
@@ -220,7 +218,7 @@ func (s *Service) debugJavaTomcat(session Session, request JavaDebugRequest, mod
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}
-	launch, err := java.TomcatCommand(module, options, port, environment)
+	launch, err := java.ServerCommand(request.ServerKind, module, []byte(request.Server), port, environment)
 	if err != nil {
 		return DebugSessionInfo{}, err
 	}

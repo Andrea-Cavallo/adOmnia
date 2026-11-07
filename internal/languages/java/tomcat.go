@@ -42,8 +42,8 @@ type TomcatOptions struct {
 	JavaHome    string   `json:"javaHome,omitempty"`
 }
 
-// TomcatLaunch is what the host runs: the command, and the URL to show.
-type TomcatLaunch struct {
+// ServerLaunch is what the host runs for an application server: the command, and the URL to show.
+type ServerLaunch struct {
 	Spec run.CommandSpec
 	URL  string
 }
@@ -93,31 +93,31 @@ func catalinaScript(home string) string {
 
 // TomcatCommand prepares the private CATALINA_BASE and returns `catalina run` (`catalina jpda run` with a
 // debug port). module is the module folder, inside the project.
-func TomcatCommand(module string, options TomcatOptions, debugPort int, environment []string) (TomcatLaunch, error) {
+func TomcatCommand(module string, options TomcatOptions, debugPort int, environment []string) (ServerLaunch, error) {
 	home, err := resolveCatalinaHome(options.CatalinaHome, module)
 	if err != nil {
-		return TomcatLaunch{}, err
+		return ServerLaunch{}, err
 	}
 	port, err := tomcatPort(options.HTTPPort)
 	if err != nil {
-		return TomcatLaunch{}, err
+		return ServerLaunch{}, err
 	}
 	webapp, err := resolveWebapp(module, options.Webapp)
 	if err != nil {
-		return TomcatLaunch{}, err
+		return ServerLaunch{}, err
 	}
 	contextPath, err := tomcatContextPath(module, options.ContextPath)
 	if err != nil {
-		return TomcatLaunch{}, err
+		return ServerLaunch{}, err
 	}
 	base, err := prepareCatalinaBase(home, module, port)
 	if err != nil {
-		return TomcatLaunch{}, err
+		return ServerLaunch{}, err
 	}
 	classes := append(classesFor(module, webapp), dependentModuleClasses(module)...)
 	descriptor := contextDescriptor(webapp, classes, tomcatMajor(home))
 	if err := writeContext(base, contextPath, descriptor); err != nil {
-		return TomcatLaunch{}, err
+		return ServerLaunch{}, err
 	}
 	arguments := []string{"run"}
 	extra := []string{"CATALINA_HOME=" + home, "CATALINA_BASE=" + base, "CATALINA_OPTS=" + strings.Join(options.VMOptions, " ")}
@@ -128,7 +128,7 @@ func TomcatCommand(module string, options TomcatOptions, debugPort int, environm
 	extra = append(extra, JavaEnvironment(options.JavaHome)...)
 	url := "http://localhost:" + strconv.Itoa(port) + strings.TrimSuffix(contextPath, "/") + "/"
 	executable := catalinaScript(home)
-	return TomcatLaunch{
+	return ServerLaunch{
 		URL: url,
 		Spec: run.CommandSpec{
 			Executable: executable, Arguments: arguments, WorkingDirectory: module,
@@ -427,6 +427,3 @@ func tomcatOptionsOf(raw []byte) (TomcatOptions, error) {
 	}
 	return options, nil
 }
-
-// TomcatOptionsOf decodes the options of a Tomcat configuration for the host (Debug).
-func TomcatOptionsOf(raw []byte) (TomcatOptions, error) { return tomcatOptionsOf(raw) }

@@ -83,6 +83,9 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 	if suggestion, ok := tomcatSuggestion(unit); ok {
 		server = append(server, suggestion)
 	}
+	if suggestion, ok := wildflySuggestion(unit); ok {
+		server = append(server, suggestion)
+	}
 	if unit.Kind == UnitAnt {
 		return append(server, antSuggestions(unit)...)
 	}

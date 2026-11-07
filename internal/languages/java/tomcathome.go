@@ -31,12 +31,12 @@ func discoverCatalinaHome(start string) string {
 	candidates := []string{os.Getenv("CATALINA_HOME")}
 	for dir, level := filepath.Clean(start), 0; start != "" && level <= discoveryParents; dir, level = filepath.Dir(dir), level+1 {
 		candidates = append(candidates, sharedTomcatHomes(filepath.Join(dir, filepath.FromSlash(sharedRunConfigurations)))...)
-		candidates = append(candidates, eclipseTomcatRuntimes(filepath.Join(dir, filepath.FromSlash(wtpServerPrefs)))...)
+		candidates = append(candidates, eclipseServerRuntimes(filepath.Join(dir, filepath.FromSlash(wtpServerPrefs)), "tomcat")...)
 		if filepath.Dir(dir) == dir {
 			break
 		}
 	}
-	candidates = append(candidates, tomcatOnPath())
+	candidates = append(candidates, installationOnPath(filepath.Base(catalinaScript(""))))
 	for _, candidate := range candidates {
 		if home := strings.TrimSpace(candidate); home != "" && isFile(catalinaScript(home)) {
 			return filepath.Clean(home)
@@ -70,8 +70,9 @@ func sharedTomcatHomes(file string) []string {
 	return homes
 }
 
-// eclipseTomcatRuntimes are the locations of the Tomcat runtimes an Eclipse workspace registered.
-func eclipseTomcatRuntimes(file string) []string {
+// eclipseServerRuntimes are the locations of the server runtimes an Eclipse workspace registered whose
+// runtime type contains one of types (tomcat, jboss, wildfly).
+func eclipseServerRuntimes(file string, types ...string) []string {
 	data, err := readLimited(file)
 	if err != nil {
 		return nil
@@ -82,8 +83,12 @@ func eclipseTomcatRuntimes(file string) []string {
 		for _, match := range wtpAttribute.FindAllSubmatch(element, -1) {
 			attributes[string(match[1])] = unescapeProperty(string(match[2]))
 		}
-		if strings.Contains(attributes["runtime-type-id"], "tomcat") && attributes["location"] != "" {
-			homes = append(homes, attributes["location"])
+		kind := strings.ToLower(attributes["runtime-type-id"])
+		for _, wanted := range types {
+			if strings.Contains(kind, wanted) && attributes["location"] != "" {
+				homes = append(homes, attributes["location"])
+				break
+			}
 		}
 	}
 	return homes
@@ -101,10 +106,10 @@ func unescapeProperty(value string) string {
 	return builder.String()
 }
 
-// tomcatOnPath is the installation of a catalina script found on the PATH.
-func tomcatOnPath() string {
-	name := filepath.Base(catalinaScript(""))
-	found, err := exec.LookPath(name)
+// installationOnPath is the installation of a server script (catalina, standalone) found on the PATH: the
+// folder above its bin.
+func installationOnPath(script string) string {
+	found, err := exec.LookPath(script)
 	if err != nil {
 		return ""
 	}
