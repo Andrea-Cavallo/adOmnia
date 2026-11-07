@@ -9,6 +9,7 @@ import { useAppStore } from '@/stores/app'
 import { useCollectionsStore } from '@/stores/collections'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { useTabsStore } from '@/stores/tabs'
+import { placeAuxiliary } from '@/lib/workspaceLayout'
 
 type RoutedToolFile = NonNullable<ReturnType<typeof useAppStore.getState>['pendingFileImport']>
 
@@ -40,7 +41,15 @@ export interface RouteOptions {
   reveal?: boolean
   /** Only when the action runs in this window: the panel never accepted a dispatch. */
   onTimeout?: () => void
+  /**
+   * Where the module appears. 'replace' (default) shows it instead of the current module;
+   * 'auxiliary' shows it as the third pane of the open split, next to code and request, and falls
+   * back to 'replace' when there is no split or the module cannot join it.
+   */
+  placement?: Placement
 }
+
+export type Placement = 'replace' | 'auxiliary'
 
 const HANDOFF_TIMEOUT_MS = 5000
 const MODULE_ACTION_EVENT = 'panelwindow:module-action'
@@ -52,6 +61,7 @@ interface ModuleActionMessage {
   rail: RailItem
   action: ModuleAction | null
   reveal: boolean
+  placement?: Placement
 }
 
 /** Bumped when a module must remount to read a handoff; the panel container keys on it. */
@@ -91,9 +101,16 @@ function deliverWhenMounted(rail: RailItem, eventName: string, detail: Record<st
   window.requestAnimationFrame(attempt)
 }
 
-function runLocally(rail: RailItem, action: ModuleAction | null, reveal: boolean, onTimeout?: () => void): void {
+/** Shows the module in this window, beside the split when asked and possible. */
+function revealHere(rail: RailItem, placement: Placement): void {
+  if (!isMainWindow()) return
+  if (placement === 'auxiliary' && useAppStore.getState().splitView && placeAuxiliary(rail)) return
+  useAppStore.getState().setActiveRail(rail)
+}
+
+function runLocally(rail: RailItem, action: ModuleAction | null, show: boolean, onTimeout?: () => void, placement: Placement = 'replace'): void {
   const alreadyShown = detachedPanelOfThisWindow() === rail || useAppStore.getState().activeRail === rail
-  if (reveal && isMainWindow()) useAppStore.getState().setActiveRail(rail)
+  if (show) revealHere(rail, placement)
   // A value read on mount reaches a panel already on screen only if it remounts.
   const remount = () => { if (alreadyShown) useModuleEpochStore.getState().bump(rail) }
   switch (action?.kind) {
@@ -124,22 +141,22 @@ function ownsHere(rail: RailItem): boolean {
  * link comes from a detached window (e.g. a Code Studio project window). With reveal the module is
  * shown and its window brought forward.
  */
-export function routeToModule(rail: RailItem, action: ModuleAction | null, { reveal = true, onTimeout }: RouteOptions = {}): void {
+export function routeToModule(rail: RailItem, action: ModuleAction | null, { reveal = true, onTimeout, placement = 'replace' }: RouteOptions = {}): void {
   usePanelWindowsStore.getState().start()
   if (ownsHere(rail)) {
-    runLocally(rail, action, reveal, onTimeout)
+    runLocally(rail, action, reveal, onTimeout, placement)
     return
   }
   const detached = usePanelWindowsStore.getState().detached.includes(rail)
-  const message: ModuleActionMessage = { target: detached ? rail : MAIN_WINDOW, rail, action, reveal }
+  const message: ModuleActionMessage = { target: detached ? rail : MAIN_WINDOW, rail, action, reveal, placement }
   void Events.Emit(MODULE_ACTION_EVENT, message)
   if (!reveal) return
   void (detached ? focusPanelWindow(rail) : AppBindings.FocusMainWindow())
 }
 
 /** Shows a module, optionally with an action, wherever it lives. */
-export function showModule(rail: RailItem, action: ModuleAction | null = null, onTimeout?: () => void): void {
-  routeToModule(rail, action, { onTimeout })
+export function showModule(rail: RailItem, action: ModuleAction | null = null, onTimeout?: () => void, placement?: Placement): void {
+  routeToModule(rail, action, { onTimeout, placement })
 }
 
 let listening = false
@@ -155,7 +172,7 @@ export function startModuleActionListener(): void {
     const message = event.data as ModuleActionMessage | null
     if (!message?.rail) return
     if ((main && message.target === MAIN_WINDOW) || (here !== null && message.target === here)) {
-      runLocally(message.rail, message.action, message.reveal !== false)
+      runLocally(message.rail, message.action, message.reveal !== false, undefined, message.placement)
     }
   })
 }

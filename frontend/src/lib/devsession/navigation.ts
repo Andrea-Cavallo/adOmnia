@@ -1,7 +1,10 @@
-import type { LiveFrame, LiveSession } from '@/lib/devsession-api'
+import type { LiveFrame, LiveQuery, LiveSession, RequestRun } from '@/lib/devsession-api'
+import { handoffToPanel } from '@/lib/entities/dispatch'
+import { requestPath, useWorkspaceFocusStore } from '@/lib/workspaceFocus'
 import { useAppStore } from '@/stores/app'
 import { useTabsStore } from '@/stores/tabs'
 import { showEntityNotice } from '@/lib/entities/notice'
+import { enterSplit, layoutBack } from '@/lib/workspaceLayout'
 
 /**
  * Opens a frame of a live session in Code Studio: the right project, file,
@@ -59,12 +62,9 @@ export async function openSplitDebugView(tabId: string, session: LiveSession | n
     showEntityNotice('The request tab was closed.')
     return
   }
+  // Remember the screen before the tab changes, so Back returns to the response it showed.
+  enterSplit()
   tabs.setActiveTab(tabId)
-  const app = useAppStore.getState()
-  app.keepPanel('codestudio')
-  app.keepPanel('collections')
-  if (app.activeRail !== 'collections' && app.activeRail !== 'codestudio') app.setActiveRail('collections')
-  app.setSplitView(true)
   if (session) {
     await openFrameInCodeStudio(session, null, { switchRail: false })
     const { useCodeStudioLspStore } = await import('@/stores/codeStudioLsp')
@@ -76,4 +76,18 @@ export async function openSplitDebugView(tabId: string, session: LiveSession | n
 export function openRunSource(run: { tabId?: string; name?: string }): void {
   if (run.tabId) return openRequestTab(run.tabId)
   useAppStore.getState().setActiveRail(run.name === 'Browser Debug' ? 'browser' : 'proxy')
+}
+
+/**
+ * Opens a statement a request ran in Database Studio. With the split open it becomes the third
+ * pane, next to the paused code and the request, and Back returns to the response; otherwise
+ * Database Studio opens the usual way with a link back to the request tab.
+ */
+export function openLiveQuery(query: LiveQuery, run?: RequestRun | null): void {
+  useWorkspaceFocusStore.getState().selectQuery(query.id)
+  const label = run ? `${run.method} ${requestPath(run.url)}` : 'live query'
+  const back = useAppStore.getState().splitView
+    ? { label: 'Back to response', run: () => { layoutBack() } }
+    : run?.tabId ? { label: 'Open request', run: () => openRequestTab(run.tabId) } : undefined
+  handoffToPanel('database', { kind: 'table', id: `sql:${query.id}`, label, attrs: {} }, 'sql', { sql: query.sql, datasource: query.datasource, back }, 'auxiliary')
 }

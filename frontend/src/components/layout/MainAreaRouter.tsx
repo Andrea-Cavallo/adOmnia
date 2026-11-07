@@ -16,6 +16,7 @@ import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 import { useSplitViewStore } from '@/lib/api-code-link/splitView'
+import { canSplitHere, isInSplit, layoutBack, useWorkspaceLayoutStore } from '@/lib/workspaceLayout'
 
 import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, GrpcPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
 
@@ -181,8 +182,16 @@ export function MainAreaRouter() {
   // (also when one is collapsed or maximized), so tabs, scroll and unsaved
   // buffers survive every layout change.
   const splitView = useAppStore((s) => s.splitView)
-  const split = splitView && (activeRail === 'collections' || activeRail === 'codestudio') && workspaceShellPhase === 'ready' && !detachedPanels.includes('collections') && !detachedPanels.includes('codestudio')
-  const [focusedPane, setFocusedPane] = useState<RailItem | null>(null)
+  const storedAuxiliary = useAppStore((s) => s.splitAuxiliary)
+  // A module open in its own window cannot also be the third pane here.
+  const auxiliary = storedAuxiliary && !detachedPanels.includes(storedAuxiliary) ? storedAuxiliary : null
+  const split = isInSplit(activeRail, splitView, auxiliary) && workspaceShellPhase === 'ready' && canSplitHere()
+  // The pane clicked last has the keyboard until another module is brought forward.
+  const [focusedClick, setFocusedClick] = useState<{ pane: RailItem; whileActive: RailItem } | null>(null)
+  const focusedPane = focusedClick?.whileActive === activeRail ? focusedClick.pane : null
+  const setFocusedPane = useCallback((pane: RailItem) => setFocusedClick({ pane, whileActive: useAppStore.getState().activeRail }), [])
+  const auxRatio = useWorkspaceLayoutStore((s) => s.auxRatio)
+  const setAuxRatio = useWorkspaceLayoutStore((s) => s.setAuxRatio)
   const [maximizedPane, setMaximizedPane] = useState<RailItem | null>(null)
   const [hiddenPane, setHiddenPane] = useState<RailItem | null>(null)
   const splitSide = useSplitViewStore((s) => s.side)
@@ -207,10 +216,27 @@ export function MainAreaRouter() {
     document.addEventListener('mousemove', move)
     document.addEventListener('mouseup', up)
   }, [setSplitRatio, splitSide])
+  const startAuxResize = useCallback((event: React.MouseEvent) => {
+    event.preventDefault()
+    const box = splitRef.current?.getBoundingClientRect()
+    if (!box) return
+    const move = (e: MouseEvent) => setAuxRatio((box.right - e.clientX) / box.width)
+    const up = () => {
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('mouseup', up)
+      document.body.style.cursor = ''
+    }
+    document.body.style.cursor = 'ew-resize'
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
+  }, [setAuxRatio])
   const closeSplit = useCallback(() => {
     setMaximizedPane(null)
     setHiddenPane(null)
-    useAppStore.getState().setSplitView(false)
+    const app = useAppStore.getState()
+    // The third pane only exists inside the split: the keyboard goes back to the request.
+    if (app.splitAuxiliary && app.activeRail === app.splitAuxiliary) app.setActiveRail('collections')
+    app.setSplitView(false)
   }, [])
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -221,7 +247,8 @@ export function MainAreaRouter() {
     if (event.defaultPrevented || target.isContentEditable || target.closest?.('.monaco-editor')) return
     if (event.altKey && event.key === 'ArrowLeft') {
       event.preventDefault()
-      goBack()
+      // A screen the coordinator changed (query beside the paused request…) comes back first.
+      if (!layoutBack()) goBack()
     }
   }, [goBack])
 
@@ -244,7 +271,7 @@ export function MainAreaRouter() {
     <main className={`flex-1 flex flex-col min-w-0 relative bg-surface-0${overflow ? ' overflow-hidden' : ''}`}>
       {split ? (
         <Suspense fallback={<div className="h-10 shrink-0 border-b border-border-1 bg-surface-1" />}>
-          <SplitViewHeader side={splitSide} maximizedPane={maximizedPane} hiddenPane={hiddenPane} onReverse={reverseSplit}
+          <SplitViewHeader side={splitSide} auxiliary={auxiliary} maximizedPane={maximizedPane} hiddenPane={hiddenPane} onReverse={reverseSplit}
             onMaximize={setMaximizedPane} onHide={setHiddenPane} onClose={closeSplit} />
         </Suspense>
       ) : workspaceHydrating
@@ -272,13 +299,15 @@ export function MainAreaRouter() {
           // The API workspace needs hydrated collections before it mounts.
           if ((rail === 'collections' || rail === 'websocket') && workspaceShellPhase !== 'ready') return null
           const code = rail === 'codestudio'
-          const solo = maximizedPane !== null || hiddenPane !== null
+          // Hiding the third pane leaves code and request side by side, not one of them alone.
+          const solo = maximizedPane !== null || (hiddenPane !== null && hiddenPane !== auxiliary)
           const active = shown && (!split || (focusedPane ?? activeRail) === rail)
           const className = !shown ? 'hidden'
             : split ? `flex flex-col min-w-0 overflow-hidden ${solo ? 'flex-1' : code ? 'shrink-0 grow-0' : 'flex-1'}`
               : 'flex-1 flex flex-col min-w-0 overflow-hidden panel-enter'
+          const codeShare = auxiliary && hiddenPane !== auxiliary ? splitRatio * (1 - auxRatio) : splitRatio
           const style = split && !solo
-            ? { order: code === (splitSide === 'code-left') ? 0 : 2, ...(code ? { flexBasis: `${splitRatio * 100}%` } : {}) }
+            ? { order: code === (splitSide === 'code-left') ? 0 : 2, ...(code ? { flexBasis: `${codeShare * 100}%` } : {}) }
             : undefined
           return (
             <PanelActiveContext.Provider key={rail} value={active}>
@@ -297,11 +326,53 @@ export function MainAreaRouter() {
             </PanelActiveContext.Provider>
           )
         })}
-        {split && !maximizedPane && hiddenPane === null && (
+        {split && !maximizedPane && (hiddenPane === null || hiddenPane === auxiliary) && (
           <div className="order-1 flex"><ResizeHandle label="Drag to resize the split view" onMouseDown={startSplitResize} withLine={false} /></div>
+        )}
+        {split && auxiliary && (
+          <SplitAuxiliaryPane rail={auxiliary} ratio={auxRatio} maximizedPane={maximizedPane} hiddenPane={hiddenPane}
+            active={(focusedPane ?? activeRail) === auxiliary} onFocus={setFocusedPane} onResize={startAuxResize} render={renderPanel} />
         )}
       </div>
     </main>
+  )
+}
+
+interface SplitAuxiliaryPaneProps {
+  rail: RailItem
+  ratio: number
+  maximizedPane: RailItem | null
+  hiddenPane: RailItem | null
+  active: boolean
+  onFocus: (rail: RailItem) => void
+  onResize: (event: React.MouseEvent) => void
+  render: (rail: RailItem) => React.ReactNode
+}
+
+/** Third pane of the split (Database, Broker, Logs), on the far side with its own resize handle. */
+function SplitAuxiliaryPane({ rail, ratio, maximizedPane, hiddenPane, active, onFocus, onResize, render }: SplitAuxiliaryPaneProps) {
+  const epoch = useModuleEpoch(rail)
+  const shown = hiddenPane !== rail && (!maximizedPane || maximizedPane === rail)
+  const solo = maximizedPane === rail
+  return (
+    <>
+      {shown && !solo && <div className="order-3 flex"><ResizeHandle label="Drag to resize the third pane" onMouseDown={onResize} withLine={false} /></div>}
+      <PanelActiveContext.Provider value={shown && active}>
+        <PanelVisibleContext.Provider value={shown}>
+          <div
+            key={`${rail}:${epoch}`}
+            className={shown ? `order-4 flex flex-col min-w-0 overflow-hidden border-l border-border-1 ${solo ? 'flex-1' : 'shrink-0 grow-0'}` : 'hidden'}
+            style={shown && !solo ? { flexBasis: `${ratio * 100}%` } : undefined}
+            inert={!shown}
+            aria-hidden={!shown}
+            onFocusCapture={() => onFocus(rail)}
+            onMouseDownCapture={() => onFocus(rail)}
+          >
+            {render(rail)}
+          </div>
+        </PanelVisibleContext.Provider>
+      </PanelActiveContext.Provider>
+    </>
   )
 }
 

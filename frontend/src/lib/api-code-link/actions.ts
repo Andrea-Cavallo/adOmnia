@@ -6,6 +6,7 @@ import { useDevContextStore } from '@/stores/devcontext'
 import type { DevSnapshot } from '@/lib/devcontext-api'
 import { linkFromCandidate, linkFromRoute, findRouteInSnapshot, endpointCandidatesForHandler, endpointCandidatesForRequest } from './resolve'
 import { useApiCodeLinkStore } from './linkStore'
+import { enterSplit } from '@/lib/workspaceLayout'
 import type { ApiCodeLink, EndpointCandidate } from './types'
 
 export interface OpenRequestInCodeStudioInput {
@@ -26,11 +27,7 @@ export interface OpenHandlerInApiInput {
 
 /** Keeps both modules mounted and shows them side by side without unmounting either. */
 export function enterApiCodeSplit(): void {
-  const app = useAppStore.getState()
-  app.keepPanel('codestudio')
-  app.keepPanel('collections')
-  if (app.activeRail !== 'collections' && app.activeRail !== 'codestudio') app.setActiveRail('collections')
-  app.setSplitView(true)
+  enterSplit()
 }
 
 /** Gives the keyboard to one side of the split, keeping both mounted. */

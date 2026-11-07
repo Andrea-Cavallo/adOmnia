@@ -623,6 +623,7 @@ WebSocket connections live in the API workspace, with the same layout as REST re
 | D11.9 | **SQL and Kafka** | SQL from the service's logs; opt-in loopback capture proxy for Postgres/MySQL; Kafka watch from the newest offset without consumer group. Open in Database / Broker Studio with the way back to the request. |
 | D11.10 | **Service drawer** | Logs (filters, Log Inspector live source) and service view: project, routes, runtime and target, databases, Kafka, logs, debugger, preferences, service name. |
 | D11.11 | **Context navigation** | Code Studio and API Workspace stay mounted; shared split (auto on breakpoint, reversible, resizable, per-pane maximize/hide, saved side and ratio) with one API ↔ code link; Ctrl+Tab context switcher; Alt+Shift+1…5 tool keys; palette commands. |
+| D11.12 | **Smart Split Workspace** | One screen for the whole flow: Database Studio, Broker Studio or Logs join the split as a third pane (query of a paused request with its connection preselected), *Back to response* / Alt+← restores the previous layout, the header shows the shared focus (project · service · route · handler · run · query) and breakpoint hits keep the visible panes in sync. Modules ask for a pane through `moduleRouting` placement, never by importing it. |
 
 ---
 
@@ -1008,7 +1009,7 @@ The standalone MCP client and its session transports have been removed. Existing
 
 ## J. CODE STUDIO (IDE)
 
-A Code Studio inside adOmnia. Projects open without running anything; local tools run only after the project is trusted. Full guide: [docs/CODE-STUDIO.md](CODE-STUDIO.md).
+A Code Studio inside adOmnia. Projects open without running anything; local tools run only after the project is trusted. Full guide: [docs/CODE-STUDIO.md](CODE-STUDIO.md). Eclipse RCP/PDE (target platforms, JDT LS, applications, extensions, dependencies, export): [docs/RCP-PDE.md](RCP-PDE.md).
 
 ### J1. Projects, Sessions & Windows
 

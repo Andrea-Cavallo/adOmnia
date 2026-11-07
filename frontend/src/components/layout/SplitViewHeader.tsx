@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, Columns2, Maximize2, Minimize2, PanelLeftClose, PanelRightClose, X } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Columns2, Columns3, Maximize2, Minimize2, PanelLeftClose, PanelRightClose, X } from 'lucide-react'
 import { TitlebarWindowControls, useWindowTitlebar } from '@/components/layout/Titlebar'
-import { useApiCodeLinkStore } from '@/lib/api-code-link/linkStore'
+import { useWorkspaceFocus } from '@/hooks/useWorkspaceFocus'
+import { describeFocus } from '@/lib/workspaceFocus'
+import { closeAuxiliary, layoutBack, useWorkspaceLayoutStore } from '@/lib/workspaceLayout'
+import { useCodeStudioStore } from '@/stores/codeStudio'
 import type { RailItem } from '@/stores/app'
+
+const PANE_NAMES: Partial<Record<RailItem, string>> = { database: 'Database Studio', broker: 'Broker Studio', loginspector: 'Logs' }
 
 export interface SplitViewHeaderProps {
   side: 'code-left' | 'code-right'
+  /** Third pane, when one is open beside code and request. */
+  auxiliary: RailItem | null
   maximizedPane: RailItem | null
   hiddenPane: RailItem | null
   onReverse: () => void
@@ -15,10 +22,13 @@ export interface SplitViewHeaderProps {
 }
 
 /** Header of the shared API ↔ code window: layout controls stay in one compact menu. */
-export function SplitViewHeader({ side, maximizedPane, hiddenPane, onReverse, onMaximize, onHide, onClose }: SplitViewHeaderProps) {
+export function SplitViewHeader({ side, auxiliary, maximizedPane, hiddenPane, onReverse, onMaximize, onHide, onClose }: SplitViewHeaderProps) {
   const titlebar = useWindowTitlebar()
-  const link = useApiCodeLinkStore((s) => s.link)
-  const stale = useApiCodeLinkStore((s) => s.stale)
+  const focus = useWorkspaceFocus()
+  const stale = !!focus.stale
+  const project = useCodeStudioStore((s) => s.sessions.find((session) => session.id === focus.sessionId)?.project.name)
+  const summary = [project, describeFocus(focus)].filter(Boolean).join(' · ')
+  const back = useWorkspaceLayoutStore((s) => s.history[s.history.length - 1])
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -32,6 +42,7 @@ export function SplitViewHeader({ side, maximizedPane, hiddenPane, onReverse, on
     return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close) }
   }, [menuOpen])
   const hidden = hiddenPane === 'codestudio' ? 'code' : hiddenPane === 'collections' ? 'api' : null
+  const auxName = auxiliary ? PANE_NAMES[auxiliary] ?? auxiliary : ''
   const run = (action: () => void) => { setMenuOpen(false); action() }
   const items = [
     { id: 'reverse', label: side === 'code-left' ? 'Move Code Studio to the Right' : 'Move Code Studio to the Left', icon: ArrowLeftRight, run: onReverse },
@@ -39,12 +50,22 @@ export function SplitViewHeader({ side, maximizedPane, hiddenPane, onReverse, on
     { id: 'max-api', label: maximizedPane === 'collections' ? 'Restore Both Panels' : 'Maximize API Workspace', icon: maximizedPane === 'collections' ? Minimize2 : Maximize2, run: () => { onHide(null); onMaximize(maximizedPane === 'collections' ? null : 'collections') } },
     { id: 'hide-code', label: hidden === 'code' ? 'Show Code Studio' : 'Hide Code Studio', icon: hidden === 'code' ? Columns2 : PanelRightClose, run: () => { onMaximize(null); onHide(hidden === 'code' ? null : 'codestudio') } },
     { id: 'hide-api', label: hidden === 'api' ? 'Show API Workspace' : 'Hide API Workspace', icon: hidden === 'api' ? Columns2 : PanelLeftClose, run: () => { onMaximize(null); onHide(hidden === 'api' ? null : 'collections') } },
+    ...(auxiliary ? [
+      { id: 'max-aux', label: maximizedPane === auxiliary ? 'Restore All Panels' : `Maximize ${auxName}`, icon: maximizedPane === auxiliary ? Minimize2 : Maximize2, run: () => { onHide(null); onMaximize(maximizedPane === auxiliary ? null : auxiliary) } },
+      { id: 'close-aux', label: `Close ${auxName}`, icon: X, run: () => { onMaximize(null); onHide(null); closeAuxiliary() } },
+    ] : []),
   ]
   return (
     <div {...titlebar.props} className={`h-10 flex items-center gap-2 pl-3 border-b border-border-1 bg-surface-1 flex-shrink-0 ${titlebar.active ? 'app-titlebar' : 'pr-3'}`}>
-      <Columns2 size={13} className="text-accent" aria-hidden="true" />
-      <span className="flex-1 truncate px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2">
-        {link ? `${link.handler || link.path} · ` : ''}Code Studio ↔ API request
+      {back && (
+        <button type="button" onClick={() => layoutBack()} title={`${back.label} (Alt + ←)`}
+          className="flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-[11px] text-text-2 transition-colors hover:bg-surface-3 hover:text-text-1">
+          <ArrowLeft size={12} aria-hidden="true" />{back.label}
+        </button>
+      )}
+      {auxiliary ? <Columns3 size={13} className="text-accent" aria-hidden="true" /> : <Columns2 size={13} className="text-accent" aria-hidden="true" />}
+      <span className="flex-1 truncate px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2" title={summary || undefined}>
+        {summary || `Code Studio ↔ API request${auxiliary ? ` ↔ ${auxName}` : ''}`}
       </span>
       {stale && <span title="The linked handler changed. Open the endpoint again to refresh the link." className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" aria-label="Stale link" />}
       {hidden && (
@@ -63,7 +84,7 @@ export function SplitViewHeader({ side, maximizedPane, hiddenPane, onReverse, on
           <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-border-2 bg-surface-2 py-1 shadow-lg shadow-black/40">
             {items.map((item, index) => (
               <button key={item.id} type="button" role="menuitem" onClick={() => run(item.run)}
-                className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-3 hover:text-text-1 ${index === 1 || index === 3 ? 'mt-1 border-t border-border-1 pt-2' : ''}`}>
+                className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] text-text-2 hover:bg-surface-3 hover:text-text-1 ${index === 1 || index === 3 || index === 5 ? 'mt-1 border-t border-border-1 pt-2' : ''}`}>
                 <item.icon size={12} className="shrink-0 text-text-3" aria-hidden="true" />
                 <span className="truncate">{item.label}</span>
               </button>
