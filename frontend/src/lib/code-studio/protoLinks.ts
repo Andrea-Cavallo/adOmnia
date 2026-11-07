@@ -1,6 +1,7 @@
 // .proto ↔ Go: the rpc declarations of a .proto text and the Go method that serves each one,
 // resolved from the architecture analysis (RegisterXServer + the server type's methods).
 import type { GoIDEArchitecture } from '@/lib/code-studio-api'
+import type { DevEntity } from '@/lib/devcontext-api'
 
 export interface ProtoRpc {
   service: string
@@ -60,6 +61,37 @@ export function goHandlerFor(report: GoIDEArchitecture, service: string, method:
     const candidates = report.functions.filter((fn) => fn.name === `${typeName}.${method}`)
     const match = candidates.find((fn) => (qualifier ? fn.package.endsWith(`/${qualifier}`) || fn.package === qualifier : fn.package === entry.package)) ?? candidates[0]
     if (match) return match
+  }
+  return null
+}
+
+/** The method that serves an rpc in any language, from a grpc entity of the Developer Context. */
+export interface RpcHandler {
+  name: string
+  language: string
+  site: { relativePath: string; line: number; column: number }
+}
+
+/** Attributes "rpc.<method>" of a grpc entity give the line of the method serving each rpc, in declFile. */
+const RPC_HANDLER_ATTR = 'rpc.'
+
+/** say_hello, SayHello and sayHello are the same rpc: tonic snake-cases the rpc name, acronyms included. */
+const rpcKey = (name: string) => name.replace(/_/g, '').toLowerCase()
+
+/**
+ * The method serving service/method according to the detected grpc entities (Rust tonic today): the entity of the
+ * service (short or fully qualified name) and its "rpc.<method>" attribute. Go uses goHandlerFor on the analysis.
+ */
+export function entityHandlerFor(entities: readonly DevEntity[], service: string, method: string): RpcHandler | null {
+  const shortName = service.split('.').pop() ?? service
+  for (const entity of entities) {
+    if (entity.kind !== 'grpc' || !entity.attrs.declFile) continue
+    const name = entity.attrs.service ?? entity.label
+    if (name.split('.').pop() !== shortName) continue
+    for (const [key, line] of Object.entries(entity.attrs)) {
+      if (!key.startsWith(RPC_HANDLER_ATTR) || rpcKey(key.slice(RPC_HANDLER_ATTR.length)) !== rpcKey(method)) continue
+      return { name: key.slice(RPC_HANDLER_ATTR.length), language: entity.attrs.language ?? '', site: { relativePath: entity.attrs.declFile, line: Number(line) || 1, column: 1 } }
+    }
   }
   return null
 }

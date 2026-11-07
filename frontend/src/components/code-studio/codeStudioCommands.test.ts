@@ -113,7 +113,7 @@ describe('Code Studio command availability', () => {
     const detached = { ...ready, detached: true }
     expect(commandAvailability('window.moveBack', detached)).toBe(true)
     expect(commandAvailability('window.openInNewWindow', detached)).toMatch(/single project/)
-    for (const id of ['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins'] as const) {
+    for (const id of ['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins', 'view.apiWorkspaceSplit'] as const) {
       expect(commandAvailability(id, detached)).toMatch(/main adOmnia window/)
     }
     expect(commandAvailability('vcs.gitStudio', detached)).toBe(true)

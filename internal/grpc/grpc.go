@@ -11,35 +11,27 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
-	"github.com/jhump/protoreflect/desc"            //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
-	"github.com/jhump/protoreflect/desc/protoparse" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
-	"github.com/jhump/protoreflect/dynamic"         //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"github.com/jhump/protoreflect/desc"    //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
+	"github.com/jhump/protoreflect/dynamic" //nolint:staticcheck // protoreflect v1 API: moving to protocompile + dynamicpb is a separate refactor
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 // --- Request / Response types ---
 
 type grpcReflectRequest struct {
-	Address        string            `json:"address"`
-	TLS            bool              `json:"tls"`
-	CACertPath     string            `json:"ca_cert_path,omitempty"`
-	ClientCertPath string            `json:"client_cert_path,omitempty"`
-	ClientKeyPath  string            `json:"client_key_path,omitempty"`
-	Metadata       map[string]string `json:"metadata,omitempty"`
+	Target   `json:",inline"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 type grpcMethodInfo struct {
@@ -63,13 +55,10 @@ type grpcReflectResponse struct {
 }
 
 type grpcDescribeRequest struct {
-	Address        string            `json:"address"`
-	TLS            bool              `json:"tls"`
-	CACertPath     string            `json:"ca_cert_path,omitempty"`
-	ClientCertPath string            `json:"client_cert_path,omitempty"`
-	ClientKeyPath  string            `json:"client_key_path,omitempty"`
-	MessageType    string            `json:"message_type"`
-	Metadata       map[string]string `json:"metadata,omitempty"`
+	Target      `json:",inline"`
+	MessageType string            `json:"message_type"`
+	Metadata    map[string]string `json:"metadata,omitempty"`
+	Descriptors *DescriptorSource `json:"descriptors,omitempty"`
 }
 
 type grpcFieldInfo struct {
@@ -105,32 +94,6 @@ type grpcEnumValue struct {
 	Number int32  `json:"number"`
 }
 
-type grpcInvokeRequest struct {
-	Address        string              `json:"address"`
-	TLS            bool                `json:"tls"`
-	CACertPath     string              `json:"ca_cert_path,omitempty"`
-	ClientCertPath string              `json:"client_cert_path,omitempty"`
-	ClientKeyPath  string              `json:"client_key_path,omitempty"`
-	Service        string              `json:"service"`
-	Method         string              `json:"method"`
-	Payload        jsonv1.RawMessage   `json:"payload"`
-	Messages       []jsonv1.RawMessage `json:"messages,omitempty"`
-	Metadata       map[string]string   `json:"metadata,omitempty"`
-	TimeoutMs      int                 `json:"timeout_ms,omitzero"`
-	// Interactive (only /grpc/stream): keep sending open; drive it with /grpc/stream/send and /close.
-	Interactive bool `json:"interactive,omitzero"`
-}
-
-type grpcInvokeResponse struct {
-	Response         any               `json:"response,omitempty"`
-	Messages         []any             `json:"messages,omitempty"`
-	Error            string            `json:"error,omitempty"`
-	Status           string            `json:"status"`
-	TimeMs           int64             `json:"time_ms"`
-	ResponseMetadata map[string]string `json:"response_metadata,omitempty"`
-	ResponseTrailers map[string]string `json:"response_trailers,omitempty"`
-}
-
 // --- Helpers ---
 
 func grpcTLSConfig(caCertPath, clientCertPath, clientKeyPath string) (*tls.Config, error) {
@@ -157,36 +120,6 @@ func grpcTLSConfig(caCertPath, clientCertPath, clientKeyPath string) (*tls.Confi
 		config.Certificates = []tls.Certificate{cert}
 	}
 	return config, nil
-}
-
-func grpcDial(address string, useTLS bool, timeout time.Duration, caCertPath, clientCertPath, clientKeyPath string) (*grpc.ClientConn, error) {
-	if address == "" || !strings.Contains(address, ":") {
-		return nil, fmt.Errorf("invalid gRPC address: %s (expected host:port)", address)
-	}
-	// The connection is established lazily by the first call, which carries its own timeout.
-	_ = timeout
-
-	var opts []grpc.DialOption
-	if useTLS {
-		tlsConfig, err := grpcTLSConfig(caCertPath, clientCertPath, clientKeyPath)
-		if err != nil {
-			return nil, err
-		}
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-	} else {
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	// NewClient connects lazily and resolves with DNS by default; "passthrough" keeps the old DialContext behaviour for host:port.
-	target := address
-	if !strings.Contains(target, "://") {
-		target = "passthrough:///" + target
-	}
-	conn, err := grpc.NewClient(target, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to dial %s: %w", address, err)
-	}
-	return conn, nil
 }
 
 func grpcReflectionClient(ctx context.Context, conn *grpc.ClientConn) *grpcreflect.Client {
@@ -449,14 +382,13 @@ func grpcReflectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
+	conn, err := connections.get(req.Target)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	ctx = outgoingContext(ctx, req.Metadata)
 
@@ -523,7 +455,7 @@ func grpcDescribeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if req.Address == "" {
+	if req.Address == "" && !req.Descriptors.offline() {
 		http.Error(w, "address required", http.StatusBadRequest)
 		return
 	}
@@ -532,21 +464,7 @@ func grpcDescribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	defer conn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	ctx = outgoingContext(ctx, req.Metadata)
-
-	refClient := grpcReflectionClient(ctx, conn)
-	defer refClient.Reset()
-
-	msgDesc, err := refClient.ResolveMessage(req.MessageType)
+	msgDesc, err := describeMessage(r.Context(), req)
 	if err != nil {
 		http.Error(w, "resolve message type: "+err.Error(), http.StatusBadGateway)
 		return
@@ -556,266 +474,6 @@ func grpcDescribeHandler(w http.ResponseWriter, r *http.Request) {
 	enums := map[string][]grpcEnumValue{}
 	collectMessageSchema(msgDesc, schemas, enums)
 	writeJSON(w, http.StatusOK, grpcDescribeResponse{Fields: schemas[msgDesc.GetFullyQualifiedName()], Schemas: schemas, Enums: enums})
-}
-
-// grpcInvokeHandler handles POST /grpc/invoke.
-// Unary and server-streaming calls use payload; client and bidi streams use messages.
-func grpcInvokeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST required", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req grpcInvokeRequest
-	if err := json.UnmarshalRead(r.Body, &req); err != nil {
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	if req.Address == "" {
-		http.Error(w, "address required", http.StatusBadRequest)
-		return
-	}
-	if req.Service == "" {
-		http.Error(w, "service required", http.StatusBadRequest)
-		return
-	}
-	if req.Method == "" {
-		http.Error(w, "method required", http.StatusBadRequest)
-		return
-	}
-
-	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
-	if err != nil {
-		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Error:  err.Error(),
-			Status: "UNAVAILABLE",
-		})
-		return
-	}
-	defer conn.Close()
-
-	timeout := 30 * time.Second
-	if req.TimeoutMs > 0 {
-		timeout = time.Duration(req.TimeoutMs) * time.Millisecond
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	ctx = outgoingContext(ctx, req.Metadata)
-
-	refClient := grpcReflectionClient(ctx, conn)
-	defer refClient.Reset()
-
-	// Resolve the service descriptor
-	svcDesc, err := refClient.ResolveService(req.Service)
-	if err != nil {
-		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Error:  "resolve service: " + err.Error(),
-			Status: "NOT_FOUND",
-		})
-		return
-	}
-
-	// Find the method
-	methodDesc := svcDesc.FindMethodByName(req.Method)
-	if methodDesc == nil {
-		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Error:  fmt.Sprintf("method %q not found in service %q", req.Method, req.Service),
-			Status: "NOT_FOUND",
-		})
-		return
-	}
-	inputPayloads := []jsonv1.RawMessage{req.Payload}
-	if methodDesc.IsClientStreaming() {
-		inputPayloads = req.Messages
-		if len(inputPayloads) == 0 {
-			inputPayloads = []jsonv1.RawMessage{req.Payload}
-		}
-	}
-	inputMessages := make([]*dynamic.Message, 0, len(inputPayloads))
-	for index, rawPayload := range inputPayloads {
-		inputMsg := dynamic.NewMessage(methodDesc.GetInputType())
-		if len(rawPayload) > 0 && string(rawPayload) != "null" {
-			if err := inputMsg.UnmarshalJSON(rawPayload); err != nil {
-				label := "payload"
-				if methodDesc.IsClientStreaming() {
-					label = fmt.Sprintf("message %d", index+1)
-				}
-				writeJSON(w, http.StatusOK, grpcInvokeResponse{
-					Error:  "unmarshal " + label + ": " + err.Error(),
-					Status: "INVALID_ARGUMENT",
-				})
-				return
-			}
-		}
-		inputMessages = append(inputMessages, inputMsg)
-	}
-
-	// Prepare output message
-	outputMsg := dynamic.NewMessage(methodDesc.GetOutputType())
-
-	// Build the full method name for invocation
-	fullMethod := fmt.Sprintf("/%s/%s", req.Service, req.Method)
-
-	// Invoke the RPC
-	start := time.Now()
-	var respHeaders metadata.MD
-	var respTrailers metadata.MD
-	if methodDesc.IsClientStreaming() || methodDesc.IsServerStreaming() {
-		streamDesc := &grpc.StreamDesc{
-			StreamName:    req.Method,
-			ServerStreams: methodDesc.IsServerStreaming(),
-			ClientStreams: methodDesc.IsClientStreaming(),
-		}
-		stream, err := conn.NewStream(ctx, streamDesc, fullMethod, grpc.Header(&respHeaders), grpc.Trailer(&respTrailers))
-		if err != nil {
-			st, _ := status.FromError(err)
-			writeJSON(w, http.StatusOK, grpcInvokeResponse{
-				Error:  st.Message(),
-				Status: st.Code().String(),
-				TimeMs: time.Since(start).Milliseconds(),
-			})
-			return
-		}
-		type streamResult struct {
-			messages []any
-			err      error
-		}
-		recvDone := make(chan streamResult, 1)
-		go func() {
-			messages := make([]any, 0)
-			for {
-				msg := dynamic.NewMessage(methodDesc.GetOutputType())
-				err := stream.RecvMsg(msg)
-				if errors.Is(err, io.EOF) {
-					recvDone <- streamResult{messages: messages}
-					return
-				}
-				if err != nil {
-					recvDone <- streamResult{messages: messages, err: err}
-					return
-				}
-				msgJSON, err := msg.MarshalJSON()
-				if err != nil {
-					recvDone <- streamResult{messages: messages, err: fmt.Errorf("marshal stream message: %w", err)}
-					return
-				}
-				var item any
-				if err := json.Unmarshal(msgJSON, &item); err != nil {
-					recvDone <- streamResult{messages: messages, err: fmt.Errorf("decode stream message: %w", err)}
-					return
-				}
-				messages = append(messages, item)
-			}
-		}()
-
-		for _, inputMsg := range inputMessages {
-			if err := stream.SendMsg(inputMsg); err != nil {
-				st, _ := status.FromError(err)
-				writeJSON(w, http.StatusOK, grpcInvokeResponse{
-					Error:  st.Message(),
-					Status: st.Code().String(),
-					TimeMs: time.Since(start).Milliseconds(),
-				})
-				return
-			}
-		}
-		if err := stream.CloseSend(); err != nil {
-			st, _ := status.FromError(err)
-			writeJSON(w, http.StatusOK, grpcInvokeResponse{
-				Error:  st.Message(),
-				Status: st.Code().String(),
-				TimeMs: time.Since(start).Milliseconds(),
-			})
-			return
-		}
-
-		result := <-recvDone
-		if result.err != nil {
-			st, ok := status.FromError(result.err)
-			statusCode := "INTERNAL"
-			errorMessage := result.err.Error()
-			if ok {
-				statusCode = st.Code().String()
-				errorMessage = st.Message()
-			}
-			writeJSON(w, http.StatusOK, grpcInvokeResponse{
-				Messages:         result.messages,
-				Error:            errorMessage,
-				Status:           statusCode,
-				TimeMs:           time.Since(start).Milliseconds(),
-				ResponseMetadata: metadataMap(respHeaders),
-				ResponseTrailers: metadataMap(respTrailers),
-			})
-			return
-		}
-
-		respMeta := make(map[string]string)
-		for k, vals := range respHeaders {
-			if len(vals) > 0 {
-				respMeta[k] = vals[0]
-			}
-		}
-		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Messages:         result.messages,
-			Status:           "OK",
-			TimeMs:           time.Since(start).Milliseconds(),
-			ResponseMetadata: respMeta,
-			ResponseTrailers: metadataMap(respTrailers),
-		})
-		return
-	}
-
-	err = conn.Invoke(ctx, fullMethod, inputMessages[0], outputMsg,
-		grpc.Header(&respHeaders),
-		grpc.Trailer(&respTrailers),
-	)
-	elapsed := time.Since(start).Milliseconds()
-
-	if err != nil {
-		st, _ := status.FromError(err)
-		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Error:            st.Message(),
-			Status:           st.Code().String(),
-			TimeMs:           elapsed,
-			ResponseMetadata: metadataMap(respHeaders),
-			ResponseTrailers: metadataMap(respTrailers),
-		})
-		return
-	}
-
-	// Marshal response to JSON
-	respJSON, err := outputMsg.MarshalJSON()
-	if err != nil {
-		writeJSON(w, http.StatusOK, grpcInvokeResponse{
-			Error:  "marshal response: " + err.Error(),
-			Status: "INTERNAL",
-			TimeMs: elapsed,
-		})
-		return
-	}
-
-	var respData any
-	// respJSON viene da MarshalJSON appena riuscito: se l'unmarshal fallisce (tipi ambigui) la
-	// risposta resta il testo grezzo invece di sparire.
-	if err := json.Unmarshal(respJSON, &respData); err != nil {
-		respData = string(respJSON)
-	}
-
-	// Collect response metadata
-	respMeta := make(map[string]string)
-	for k, vals := range respHeaders {
-		if len(vals) > 0 {
-			respMeta[k] = vals[0]
-		}
-	}
-
-	writeJSON(w, http.StatusOK, grpcInvokeResponse{
-		Response:         respData,
-		Status:           "OK",
-		TimeMs:           elapsed,
-		ResponseMetadata: respMeta,
-		ResponseTrailers: metadataMap(respTrailers),
-	})
 }
 
 func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
@@ -844,32 +502,21 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(append(data, '\n'))
 		flusher.Flush()
 	}
-	conn, err := grpcDial(req.Address, req.TLS, 10*time.Second, req.CACertPath, req.ClientCertPath, req.ClientKeyPath)
+	conn, err := connections.get(req.Target)
 	if err != nil {
 		emit(map[string]any{"type": "complete", "status": "UNAVAILABLE", "error": err.Error()})
 		return
 	}
-	defer conn.Close()
-	timeout := 30 * time.Second
+	timeout := defaultCallTimeout
 	if req.Interactive {
 		timeout = interactiveStreamTimeout
 	}
-	if req.TimeoutMs > 0 {
-		timeout = time.Duration(req.TimeoutMs) * time.Millisecond
-	}
-	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	ctx, cancel := context.WithTimeout(r.Context(), req.timeout(timeout))
 	defer cancel()
 	ctx = outgoingContext(ctx, req.Metadata)
-	refClient := grpcReflectionClient(ctx, conn)
-	defer refClient.Reset()
-	service, err := refClient.ResolveService(req.Service)
+	method, err := resolveMethod(ctx, conn, req.Descriptors, req.Service, req.Method)
 	if err != nil {
-		emit(map[string]any{"type": "complete", "status": "NOT_FOUND", "error": "resolve service: " + err.Error()})
-		return
-	}
-	method := service.FindMethodByName(req.Method)
-	if method == nil {
-		emit(map[string]any{"type": "complete", "status": "NOT_FOUND", "error": "method not found"})
+		emit(map[string]any{"type": "complete", "status": "NOT_FOUND", "error": err.Error()})
 		return
 	}
 	if req.Interactive && !method.IsClientStreaming() {
@@ -890,7 +537,7 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 	streamDesc := &grpc.StreamDesc{StreamName: req.Method, ServerStreams: method.IsServerStreaming(), ClientStreams: method.IsClientStreaming()}
 	var headers, trailers metadata.MD
 	started := time.Now()
-	stream, err := conn.NewStream(ctx, streamDesc, fmt.Sprintf("/%s/%s", req.Service, req.Method), grpc.Header(&headers), grpc.Trailer(&trailers))
+	stream, err := conn.NewStream(ctx, streamDesc, fmt.Sprintf("/%s/%s", method.GetService().GetFullyQualifiedName(), method.GetName()), grpc.Header(&headers), grpc.Trailer(&trailers))
 	if err != nil {
 		st, _ := status.FromError(err)
 		emit(map[string]any{"type": "complete", "status": st.Code().String(), "error": st.Message()})
@@ -997,114 +644,68 @@ type grpcParseProtoResponse struct {
 	Files    []string                   `json:"files,omitempty"`
 }
 
-// grpcParseProtoHandler handles POST /grpc/parse-proto
-// Parses a .proto source file and returns all services and methods found.
+// grpcParseProtoHandler handles POST /grpc/parse-proto: inline .proto sources (the import tree uploaded together).
 func grpcParseProtoHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST required", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var req grpcParseProtoRequest
-	if err := json.UnmarshalRead(r.Body, &req); err != nil {
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+	if !decodePost(w, r, &req) {
 		return
 	}
-	if req.Source == "" {
-		if len(req.Files) == 0 {
-			http.Error(w, "source or files required", http.StatusBadRequest)
-			return
-		}
+	files := maps.Clone(req.Files)
+	if files == nil {
+		files = map[string]string{}
 	}
-
-	files := map[string]string{}
-	for name, source := range req.Files {
-		if strings.TrimSpace(name) != "" {
-			files[strings.ReplaceAll(name, "\\", "/")] = source
-		}
-	}
-	if req.Source != "" && len(files) == 0 {
+	entries := req.EntryFiles
+	if req.Source != "" && (len(files) == 0 || len(entries) == 0) {
 		files["input.proto"] = req.Source
+		entries = []string{"input.proto"}
 	}
-	if req.Source != "" && len(files) > 0 && len(req.EntryFiles) == 0 {
-		files["input.proto"] = req.Source
-	}
-	entryFiles := make([]string, 0, len(req.EntryFiles))
-	for _, name := range req.EntryFiles {
-		normalized := strings.ReplaceAll(name, "\\", "/")
-		if normalized != "" {
-			entryFiles = append(entryFiles, normalized)
-		}
-	}
-	if len(entryFiles) == 0 {
-		if _, ok := files["input.proto"]; ok {
-			entryFiles = append(entryFiles, "input.proto")
-		} else {
-			for name := range files {
-				entryFiles = append(entryFiles, name)
-			}
-		}
-	}
-	if len(entryFiles) == 0 {
-		http.Error(w, "no proto entry files provided", http.StatusBadRequest)
+	if len(files) == 0 {
+		http.Error(w, "source or files required", http.StatusBadRequest)
 		return
 	}
-
-	parser := protoparse.Parser{
-		Accessor: protoparse.FileContentsFromMap(files),
-	}
-
-	fds, err := parser.ParseFiles(entryFiles...)
-	if err != nil {
-		http.Error(w, "parse proto: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	schemas, enums, fileNames := collectFileSchemas(fds)
-	writeJSON(w, http.StatusOK, grpcParseProtoResponse{
-		Services: grpcParseServicesFromFiles(fds),
-		Schemas:  schemas,
-		Enums:    enums,
-		Files:    fileNames,
-	})
+	writeDescriptors(w, DescriptorSource{Kind: SourceProto, Files: files, EntryFiles: entries})
 }
 
-// grpcParseProtosetHandler handles POST /grpc/parse-protoset
-// Parses a binary FileDescriptorSet/protoset and returns all services and methods found.
+// grpcParseProtosetHandler handles POST /grpc/parse-protoset: a compiled FileDescriptorSet, base64-encoded.
 func grpcParseProtosetHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST required", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var req grpcParseProtosetRequest
-	if err := json.UnmarshalRead(r.Body, &req); err != nil {
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+	if !decodePost(w, r, &req) {
 		return
 	}
 	if req.Base64 == "" {
 		http.Error(w, "base64 required", http.StatusBadRequest)
 		return
 	}
-	raw, err := base64.StdEncoding.DecodeString(req.Base64)
-	if err != nil {
-		http.Error(w, "decode protoset: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	var set descriptorpb.FileDescriptorSet
-	if err := proto.Unmarshal(raw, &set); err != nil {
-		http.Error(w, "parse FileDescriptorSet: "+err.Error(), http.StatusBadRequest)
-		return
-	}
+	writeDescriptors(w, DescriptorSource{Kind: SourceProtoset, ProtosetBase64: req.Base64})
+}
 
-	linked, err := desc.CreateFileDescriptorsFromSet(&set)
-	if err != nil {
-		http.Error(w, "link FileDescriptorSet: "+err.Error(), http.StatusBadRequest)
+// grpcDescriptorsHandler handles POST /grpc/descriptors: services and schemas of any offline source, also
+// .proto files and protosets on disk (what a saved call keeps: paths, not copies).
+func grpcDescriptorsHandler(w http.ResponseWriter, r *http.Request) {
+	var source DescriptorSource
+	if !decodePost(w, r, &source) {
 		return
 	}
-	fds := make([]*desc.FileDescriptor, 0, len(linked))
-	for _, fd := range linked {
-		fds = append(fds, fd)
+	writeDescriptors(w, source)
+}
+
+func decodePost(w http.ResponseWriter, r *http.Request, target any) bool {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return false
+	}
+	if err := json.UnmarshalRead(r.Body, target); err != nil {
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+func writeDescriptors(w http.ResponseWriter, source DescriptorSource) {
+	fds, err := loadDescriptorFiles(source)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	schemas, enums, fileNames := collectFileSchemas(fds)
 	writeJSON(w, http.StatusOK, grpcParseProtoResponse{
@@ -1125,4 +726,10 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/grpc/stream/close", grpcStreamCloseHandler)
 	mux.HandleFunc("/grpc/parse-proto", grpcParseProtoHandler)
 	mux.HandleFunc("/grpc/parse-protoset", grpcParseProtosetHandler)
+	mux.HandleFunc("/grpc/descriptors", grpcDescriptorsHandler)
+	mux.HandleFunc("/grpc/mock/start", grpcMockStartHandler)
+	mux.HandleFunc("/grpc/mock/stop", grpcMockStopHandler)
+	mux.HandleFunc("/grpc/mock/rules", grpcMockRulesHandler)
+	mux.HandleFunc("/grpc/mock/status", grpcMockStatusHandler)
+	mux.HandleFunc("/grpc/mock/hits/clear", grpcMockClearHitsHandler)
 }

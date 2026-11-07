@@ -29,11 +29,12 @@ const (
 	KindStdlib     = "stdlib"     // package della libreria standard importato dal progetto
 	KindEntry      = "entry"      // main, init, job, cli
 	// Flow Intelligence: il percorso di esecuzione, non solo la dipendenza.
-	KindFlow      = "flow"      // flow dichiarato (config, XML, annotazione)
-	KindSubflow   = "subflow"   // subflow richiamato da un flow
-	KindBundle    = "bundle"    // bundle OSGi/PDE
-	KindActivator = "activator" // Bundle-Activator
-	KindExternal  = "external"  // SOAP, REST, database, coda: fuori dal workspace
+	KindFlow           = "flow"            // flow dichiarato (config, XML, annotazione)
+	KindSubflow        = "subflow"         // subflow richiamato da un flow
+	KindBundle         = "bundle"          // bundle OSGi/PDE
+	KindActivator      = "activator"       // Bundle-Activator
+	KindExtensionPoint = "extension-point" // extension point di plugin.xml (registro Eclipse)
+	KindExternal       = "external"        // SOAP, REST, database, coda: fuori dal workspace
 )
 
 // Tipi di arco: From → To si legge "From <kind> To".

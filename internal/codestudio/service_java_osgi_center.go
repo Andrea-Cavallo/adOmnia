@@ -111,6 +111,16 @@ func (s *Service) JavaOsgiImpact(sessionID, name string) (*eclipsepde.Impact, er
 	return report.AnalyzeImpact(name)
 }
 
+// JavaOsgiLookupDependency is the Dependency Explorer: which bundles export the package of a
+// class, which workspace bundles use it and which use it without declaring it.
+func (s *Service) JavaOsgiLookupDependency(sessionID, query string) (*eclipsepde.DependencyLookup, error) {
+	report, err := s.JavaOsgiExplorer(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return report.LookupDependency(query), nil
+}
+
 // JavaOsgiImpactForClass resolves a class or interface of the workspace to its bundle and
 // returns the impact of changing it.
 func (s *Service) JavaOsgiImpactForClass(sessionID, class string) (*eclipsepde.Impact, error) {

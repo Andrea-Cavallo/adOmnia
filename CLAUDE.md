@@ -197,7 +197,8 @@ adomnia/
 | `ResponsePanel.tsx` | HTTP response viewer, syntax highlighting, tests, history |
 | `EnvBar.tsx` | Environment switcher, variable editor |
 | `TabBar.tsx` | Tab management, pinning, context menus |
-| `WSPanel.tsx` | WebSocket client with live messaging |
+| `websocket/WebSocket*.tsx` | WebSocket connections as API workspace tabs (`method: 'WS'`): request bar, composer, Messages panel; live sockets in `stores/websocketConnections.ts` |
+| `grpc/Grpc*.tsx` | gRPC calls (`method: 'GRPC'`) in the gRPC module: request bar, composer (Message, Metadata, Auth, Schema, TLS, Mock, Load test), Stream panel; unary calls run through `executeRequest` (`lib/grpc/sendGrpcRequest.ts`). Protocol modules (rail, tabs, collection `scope`) are described once in `lib/protocolModules.ts`. |
 | `KafkaPanel.tsx` | Kafka producer/consumer UI |
 | `MockPanel.tsx` | Mock Server Control Room: endpoint source/import, focused request scope, runtime configuration, endpoint inspector, and decision-aware traffic |
 | `ProxyPanel.tsx` | Interceptor traffic viewer, breakpoints, map local/remote |
@@ -577,6 +578,7 @@ Four files live at the root — everything else is under `docs/`:
 | `docs/adomnia-feature-catalog.en.md` | Fast complete catalog of product features and modules |
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |
 | `docs/CODE-STUDIO.md` | Code Studio guide: usage, trust model, optional tools, persistence and shortcuts |
+| `docs/RCP-PDE.md` | Eclipse RCP/PDE: target platforms, JDT LS shadow workspace, applications, extensions, Dependency Explorer, uses conflicts, p2 and export |
 | `docs/QUALITY.md` | Quality toolchain: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage |
 | `docs/JSON-V2.md` | JSON marshaling: encoding/json/v2 migration and v1 compatibility seams |
 | `docs/BUILD.md` | Build instructions for all platforms |

@@ -38,6 +38,7 @@ func mcpTools() []mcpTool {
 	}
 	collection := str("Collection folder (contains collection.json). Defaults to the server's folder or the working directory.")
 	project := str("Absolute or relative path of the Code Studio project to scan. Source is parsed statically and never executed.")
+	buildProject := str("Absolute or relative path of the project to build. Defaults to the server's workspace or the working directory.")
 	environment := map[string]any{"type": "object", "description": "Environment with name, optional id and a complete variables array. Each variable has key, value, enabled and optional secret.", "properties": map[string]any{
 		"id": str("Optional existing environment id."), "name": str("Environment file name: letters, digits, dot, underscore or hyphen."), "private": map[string]any{"type": "boolean", "description": "Private environments are not supported in shared folder collections."},
 		"variables": map[string]any{"type": "array", "items": map[string]any{"type": "object", "properties": map[string]any{"key": str("Variable name."), "value": str("Variable value."), "enabled": map[string]any{"type": "boolean"}, "secret": map[string]any{"type": "boolean", "description": "Mask this value in MCP responses while keeping it available for local runs."}}, "required": []string{"key", "value", "enabled"}}},
@@ -78,6 +79,13 @@ func mcpTools() []mcpTool {
 			"vars":       map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}, "description": "Variable overrides."},
 		}), network},
 		{"app_startup_time", "Measure CLI startup time", "Spawn a fresh adomnia mcp subprocess, send initialize and measure milliseconds until the first response (cold-start latency of the binary).", object(map[string]any{}), readOnly},
+		{"project_build_plan", "Plan the project build", "Detect the build units of a project through the same language adapters as the IDE (Gradle, Maven, Go, Cargo, npm/pnpm/yarn, Python…) and return the exact command each one would run, without executing anything. A unit whose tool is missing is reported as not runnable, with the reason.", object(map[string]any{"project": buildProject}, "project"), readOnly},
+		{"project_build", "Build the project", "Run the build of every detected unit, or only the one matching `unit`, and return status, exit code, duration and the tail of the output. Uses the project wrapper (gradlew, mvnw) when present, otherwise the tool on PATH; nothing is downloaded. One build at a time, bounded by timeoutSeconds.", object(map[string]any{
+			"project":        buildProject,
+			"unit":           str("Only build the unit whose name, kind, language or path contains this text."),
+			"task":           str("Replace the arguments of a command build (e.g. 'clean build'). Fixed-tool units such as Go and Cargo ignore it."),
+			"timeoutSeconds": map[string]any{"type": "integer", "description": "Timeout per unit in seconds (default 900, max 3600)."},
+		}, "project"), local},
 		{"performance_report", "Full performance report (Markdown)", "Run startup benchmark, collection benchmark and/or stress test then generate a complete Markdown report. Saves to outputDir if provided. Includes an IDE Code Studio checklist for manual entries. Use this as the main sprint/release performance gate.", object(map[string]any{
 			"title":      str("Report title (default: 'adOmnia Performance')."),
 			"collection": collection,
@@ -115,6 +123,9 @@ func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error)
 		Project     string            `json:"project"`
 		Name        string            `json:"name"`
 		BaseURL     string            `json:"baseUrl"`
+		Task        string            `json:"task"`
+		Unit        string            `json:"unit"`
+		TimeoutSecs int               `json:"timeoutSeconds"`
 		Request     jsonv1.RawMessage `json:"request"`
 		Environment jsonv1.RawMessage `json:"environment"`
 		Merge       bool              `json:"merge"`
@@ -178,6 +189,10 @@ func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error)
 		return s.collectionBenchmark(args.Collection, args.Runs, args.Env, args.Vars)
 	case "app_startup_time":
 		return s.appStartupTime()
+	case "project_build_plan":
+		return s.projectBuildPlan(args.Project)
+	case "project_build":
+		return s.projectBuild(args.Project, args.Task, args.TimeoutSecs, args.Unit)
 	case "performance_report":
 		return s.performanceReport(perfReportParams{
 			Title:      args.Title,

@@ -3,14 +3,12 @@ import { lazy } from 'react'
 // Shared identities for router, workspace tabs and detached consumers.
 // La Hub resta fuori dal bundle iniziale (budget di avvio): da disco locale arriva in pochi ms.
 export const WelcomePanel         = lazy(() => import('@/components/layout/WelcomePanel').then(m => ({ default: m.WelcomePanel })))
-export const WebSocketPanel       = lazy(() => import('@/components/websocket/WebSocketPanel').then(m => ({ default: m.WebSocketPanel })))
 export const RequestHistoryPanel  = lazy(() => import('@/components/history/RequestHistoryPanel').then(m => ({ default: m.RequestHistoryPanel })))
 export const DailyScenariosPanel  = lazy(() => import('@/components/scenarios/DailyScenariosPanel').then(m => ({ default: m.DailyScenariosPanel })))
 export const SsePanel             = lazy(() => import('@/components/sse/SsePanel').then(m => ({ default: m.SsePanel })))
 export const BrokerStudioPanel    = lazy(() => import('@/components/kafka/BrokerStudioPanel').then(m => ({ default: m.BrokerStudioPanel })))
 export const MockPanel            = lazy(() => import('@/components/mock/MockPanel').then(m => ({ default: m.MockPanel })))
 export const ProxyPanel           = lazy(() => import('@/components/proxy/ProxyPanel').then(m => ({ default: m.ProxyPanel })))
-export const GrpcPanel            = lazy(() => import('@/components/grpc/GrpcPanel').then(m => ({ default: m.GrpcPanel })))
 export const BrowserDebugPanel    = lazy(() => import('@/components/browser-debug').then(m => ({ default: m.BrowserDebugPanel })))
 export const UtilsPanel           = lazy(() => import('@/components/utils/UtilsPanel').then(m => ({ default: m.UtilsPanel })))
 export const FlowsPanel           = lazy(() => import('@/components/flows/FlowsPanel').then(m => ({ default: m.FlowsPanel })))

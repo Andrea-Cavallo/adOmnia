@@ -9,9 +9,11 @@ import { handoffToPanel } from '@/lib/entities/dispatch'
 import { showEntityNotice } from '@/lib/entities/notice'
 import { appendMockEndpoints, createMockEndpointFromRequest } from '@/lib/mockEndpointStore'
 import { useTabsStore } from '@/stores/tabs'
+import { useAppStore } from '@/stores/app'
+import { layoutBack } from '@/lib/workspaceLayout'
 import { cn } from '@/lib/utils'
 import { codePathFor, timeOf } from '@/stores/devSessionModel'
-import { openFrameInCodeStudio, openLocationInCodeStudio, openRequestTab } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio, openLiveQuery, openLocationInCodeStudio, openRequestTab } from '@/lib/devsession/navigation'
 import { useDevSessionStore } from '@/stores/devSession'
 import { basename } from './liveUi'
 import { replayBlocker, replayMessage } from '@/lib/devsession/replayMessage'
@@ -187,11 +189,7 @@ export function LiveQueryList({ queries, run, goSessionId }: { queries: LiveQuer
 }
 
 function openQuery(query: LiveQuery, run?: RequestRun | null) {
-  const label = run ? `${run.method} ${pathOf(run.url)}` : 'live query'
-  handoffToPanel('database', { kind: 'table', id: `sql:${query.id}`, label, attrs: {} }, 'sql', {
-    sql: query.sql,
-    back: run?.tabId ? { label: 'Open request', run: () => openRequestTab(run.tabId) } : undefined,
-  })
+  openLiveQuery(query, run)
 }
 
 /** Broker messages the request produced; each opens its topic in Broker Studio. */
@@ -274,10 +272,12 @@ function ReplayButton({ message }: { message: LiveMessage }) {
   )
 }
 
+/** Like a query: beside code and request when the split is open, with Back to the response. */
 export function openMessage(message: LiveMessage, run?: RequestRun | null) {
-  handoffToPanel('broker', { kind: 'topic', id: `topic:${message.topic}`, label: message.topic, attrs: { broker: 'kafka', partition: String(message.partition), offset: String(message.offset) } }, 'open', {
-    back: run?.tabId ? { label: 'Open request', run: () => openRequestTab(run.tabId) } : undefined,
-  })
+  const back = useAppStore.getState().splitView
+    ? { label: 'Back to response', run: () => { layoutBack() } }
+    : run?.tabId ? { label: 'Open request', run: () => openRequestTab(run.tabId) } : undefined
+  handoffToPanel('broker', { kind: 'topic', id: `topic:${message.topic}`, label: message.topic, attrs: { broker: 'kafka', partition: String(message.partition), offset: String(message.offset) } }, 'open', { back }, 'auxiliary')
 }
 
 function EmptyNote({ icon, text }: { icon: React.ReactNode; text: string }) {

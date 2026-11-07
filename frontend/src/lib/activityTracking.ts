@@ -1,5 +1,6 @@
 import { useActivityStore, IDLE_AFTER_MS, type ActivityPhase } from '@/stores/activity'
 import { useAppStore } from '@/stores/app'
+import { isInSplit, splitPanes } from '@/lib/workspaceLayout'
 import { reportActivity, removeActivity } from './activity-api'
 
 let started = false
@@ -54,7 +55,7 @@ export function startActivityTracking(): () => void {
     else if (kind === 'studio-tool') scopes = ['codestudio', ...(params.get('session') ? ['code-studio:' + params.get('session')] : [])]
     else if (kind === 'api-request') scopes = ['collections']
     else if (kind === 'swagger-editor') scopes = ['apidocs']
-    else scopes = app.splitView && ['codestudio', 'collections'].includes(app.activeRail) ? ['codestudio', 'collections'] : [app.activeRail]
+    else scopes = isInSplit(app.activeRail, app.splitView, app.splitAuxiliary) ? splitPanes(app.splitAuxiliary) : [app.activeRail]
     useActivityStore.getState().setScopes([...scopes.filter(Boolean), ...Object.keys(useActivityStore.getState().retained)])
   }
   const unsubscribe = useActivityStore.subscribe((state, previous) => {
@@ -62,7 +63,7 @@ export function startActivityTracking(): () => void {
     if (state.phase !== previous.phase || state.scopes !== previous.scopes) publish()
   })
   const offApp = useAppStore.subscribe((state, previous) => {
-    if (state.activeRail !== previous.activeRail || state.splitView !== previous.splitView) updateScopes()
+    if (state.activeRail !== previous.activeRail || state.splitView !== previous.splitView || state.splitAuxiliary !== previous.splitAuxiliary) updateScopes()
   })
   const events = ['pointerdown', 'pointermove', 'keydown', 'wheel']
   for (const type of events) window.addEventListener(type, input, { passive: true, capture: true })

@@ -23,12 +23,12 @@ function useFileCounts(sessionId: string, documentId: string, relativePath: stri
 }
 
 const SERVER_OFF_REASON = 'Live error checking is not active: the language server of this file is not running, so no errors does not mean the file is correct.'
-const OSGI_REASON = 'Live error checking does not cover OSGi bundles: the language server does not read the target platform and accepts syntax Java 6 does not have. Use Java > Build OSGi Bundles: its errors show here.'
+const OSGI_REASON = 'Live error checking of OSGi bundles needs a target platform (Java > OSGi Bundles & Target Platform) and the Java language server running. Java > Build OSGi Bundles gives the real compiler errors.'
 
 /** Perché "nessun problema" qui non vuol dire che il file è corretto; null se il controllo è attivo. */
 export function checkingOffReason(state: { osgiJavaFile: boolean; serverReady: boolean }): string | null {
-  if (state.osgiJavaFile) return OSGI_REASON
-  return state.serverReady ? null : SERVER_OFF_REASON
+  if (state.serverReady) return null
+  return state.osgiJavaFile ? OSGI_REASON : SERVER_OFF_REASON
 }
 
 function useCheckingOffReason(sessionId: string, editorLanguage: string): string | null {

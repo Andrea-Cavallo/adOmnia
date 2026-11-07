@@ -41,6 +41,10 @@ type ServerSpec struct {
 	// ChangeSignatureCommand is the workspace/executeCommand that rewrites a signature and its callers
 	// (gopls: "gopls.change_signature"); empty when the server has none.
 	ChangeSignatureCommand string
+	// Root, when set, is the folder the server is given as rootUri and only workspace folder instead of
+	// the project root: a server that cannot read the project's own metadata (JDT LS on a PDE workspace)
+	// works on a generated mirror that links the real sources. Documents keep their real URIs.
+	Root string
 }
 
 // MatchesKind reports whether kind is one of kinds or a sub-kind of one ("source.doc.x" matches "source.doc").

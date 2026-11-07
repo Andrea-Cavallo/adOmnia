@@ -48,6 +48,9 @@ interface AppState {
   /** Split Debug View: Code Studio and the API workspace side by side. */
   splitView: boolean
   setSplitView: (split: boolean) => void
+  /** Third pane of the split (Database, Broker, Logs): shown next to code and request, null when absent. */
+  splitAuxiliary: RailItem | null
+  setSplitAuxiliary: (rail: RailItem | null) => void
   queueFileImport: (file: RoutedToolFile) => void
   consumeFileImport: (kind: RoutedToolFile['kind']) => RoutedToolFile | null
   goBack: () => void
@@ -100,7 +103,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   keptPanels: [],
   splitView: false,
-  setSplitView: (split) => set({ splitView: split }),
+  // Closing the split drops its third pane too: it only exists beside code and request.
+  setSplitView: (split) => set(split ? { splitView: true } : { splitView: false, splitAuxiliary: null }),
+  splitAuxiliary: null,
+  setSplitAuxiliary: (rail) => set({ splitAuxiliary: rail }),
   keepPanel: (rail) => set((s) => (s.keptPanels.includes(rail) ? s : { keptPanels: [...s.keptPanels, rail] })),
   queueFileImport: (file) => set({ pendingFileImport: file }),
   consumeFileImport: (kind) => {

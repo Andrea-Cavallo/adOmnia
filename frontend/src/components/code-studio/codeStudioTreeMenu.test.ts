@@ -48,6 +48,17 @@ describe('buildTreeMenu', () => {
     expect(menu).not.toContain('findInFolder')
   })
 
+  it('offers installing Python dependencies only on Python manifests', () => {
+    const python = { ...context, hasPython: true }
+    for (const name of ['requirements.txt', 'api/requirements-dev.txt', 'pyproject.toml']) {
+      expect(ids(buildTreeMenu(file(name), python))).toContain('installPythonDependencies')
+    }
+    // A requirements file is a Python marker by itself; a pyproject needs a detected unit.
+    expect(ids(buildTreeMenu(file('requirements.txt'), context))).toContain('installPythonDependencies')
+    expect(ids(buildTreeMenu(file('pyproject.toml'), context))).not.toContain('installPythonDependencies')
+    expect(ids(buildTreeMenu(file('app.py'), python))).not.toContain('installPythonDependencies')
+  })
+
   it('offers the OSGi menu only on an OSGi project root and folders', () => {
     const osgiContext = { ...context, osgi: true }
     expect(ids(buildTreeMenu(null, osgiContext))).toEqual(expect.arrayContaining(['osgi', 'osgiImportPlugins', 'osgiControlCenter', 'osgiBuild', 'osgiRun']))

@@ -984,7 +984,7 @@ func initializeParams(state *lspSession) map[string]any {
 	return map[string]any{
 		"processId":             nil,
 		"clientInfo":            map[string]any{"name": "adOmnia IDE"},
-		"rootUri":               state.rootURI,
+		"rootUri":               state.serverRootURI(),
 		"workspaceFolders":      state.workspaceFolders(),
 		"initializationOptions": state.options.InitializationOptions,
 		"capabilities": map[string]any{

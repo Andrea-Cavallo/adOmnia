@@ -33,6 +33,7 @@ type Collection struct {
 	PostScript  string                     `json:"postScript,omitempty"`
 	Children    []Node                     `json:"children"`
 	OpenAPISpec string                     `json:"_openapiSpec,omitempty"`
+	Scope       string                     `json:"scope,omitempty"`
 }
 
 type Node struct {

@@ -192,18 +192,23 @@ Existing `{{variable}}` references are also linked when their current environmen
 
 ### B1. gRPC Client
 
+gRPC calls are a module with the API workspace's layout: the **gRPC** rail item shows its own collections (`scope: "grpc"`) and tab strip, and the calls are collection items with `method: "GRPC"`, saved and exported with the workspace.
+
 | # | Feature | Description |
 |---|-------------|-------------|
-| B1.1 | **Server Reflection** | Connect to a gRPC server and automatically retrieve the list of services and methods. |
-| B1.2 | **Method Discovery** | For each method: name, input type, output type, client streaming flag, server streaming flag. |
-| B1.3 | **Message Schema** | Describes a protobuf type: fields, type, number, repeated flag. |
-| B1.4 | **Unary Invoke** | Invokes a unary gRPC method with a JSON payload; timing is measured. |
-| B1.5 | **TLS Support** | TLS on/off toggle for the connection. |
-| B1.6 | **Metadata Headers** | Key-value editor for custom gRPC metadata (sent with every request). |
-| B1.7 | **Prettify Payload** | Formats JSON in the payload with indentation. |
-| B1.8 | **Connection Presets** | Save address+TLS as a local preset; chips for quick loading. |
-| B1.9 | **Streaming Invocation** | Runs server, client and bidirectional streaming calls; client/bidi streams accept ordered JSONL messages and display streamed responses. |
-| B1.10 | **Copy Response** | Copy JSON response to the clipboard. |
+| B1.1 | **Request bar** | `gRPC` badge (lock when TLS), server address with `{{variables}}` (`host:port`, `grpc://`, `grpcs://`), service/method picker grouped by service with the rpc kind, *Load services*, Save/Delete, **Invoke** (unary) or **Stream**/**Stop**. |
+| B1.2 | **Schema without reflection** | Services and messages come from server reflection, from `.proto` files on disk with import paths (like `protoc -I`), or from a protoset. Calls, streams, load tests and the mock work with any of the three; paths are saved, so edits to the `.proto` apply. |
+| B1.3 | **Message** | Saved messages (body variants) in the JSON editor with `{{variables}}`, *Example* built from the input type, field reference with types and enum values; a JSON array sends several messages on a client/bidi stream. |
+| B1.4 | **Metadata and Auth** | Metadata rows, and the request auth as metadata: Bearer, Basic, API key, OAuth 2.0 token. |
+| B1.5 | **TLS and mTLS** | TLS switch (or the `grpcs://` scheme), custom CA, client certificate and key. |
+| B1.6 | **Unary response** | The standard Response panel: JSON body, metadata and trailers as headers, `grpc-status`, timing; gRPC codes map to HTTP-like statuses (NOT_FOUND → 404) so assertions and Flows read them. |
+| B1.7 | **Streams** | Server, client and bidi streams in a Stream panel (the WebSocket message view): live messages, filters, search, inspector, JSONL export; client/bidi streams stay open, *Send* adds messages and *Close send* ends the sending side. |
+| B1.8 | **Connections** | One pooled connection per server and TLS files, reused across calls, closed after 5 idle minutes. |
+| B1.9 | **Mock server** | A local gRPC server built from the call's `.proto`/protoset: rules per method with match text, JSON reply with `{{request.field}}`, `{{$uuid}}`, `{{$now}}`, status code and message, delay; server streams reply with an array, bidi answers each message; reflection on; hit log; *Use as address*. |
+| B1.10 | **Load test** | N calls with a concurrency, p50/p95/p99, throughput and error rate, with the same schema source. |
+| B1.11 | **Code** | A Go service registered with `RegisterXServer` opens a call by reflection at its address; *Call in gRPC client* on a `.proto` rpc opens the file with its import root and the rpc selected (from Debug, pointed at the running service); a call shows *Served by Handler()* and opens the method that serves it, in Go (`RegisterXServer` type) or Rust (the `async fn` of the tonic impl); the `.proto` lens shows the same `→ handler` for both; calls to a live session carry its correlation id and traceparent. |
+| B1.12 | **Flows and scripts** | Saved gRPC calls are Flow steps (status, assertions, variables from the reply) and run pre/post scripts, through the same pipeline as HTTP. |
+| B1.13 | **Migration** | The old gRPC panel's saved connections become calls the first time the module opens; a dropped `.proto` opens a call described by it. |
 
 ---
 
@@ -233,23 +238,26 @@ Existing `{{variable}}` references are also linked when their current environmen
 
 ### B3. WebSocket Client
 
+WebSocket connections live in the API workspace, with the same layout as REST requests: they are collection items with `method: "WS"`, open as tabs and travel with the workspace export. The **WebSocket** rail item brings the WebSocket tab in front (or creates one).
+
 | # | Feature | Description |
 |---|-------------|-------------|
-| B3.1 | **Connect / Disconnect** | Open and close a WebSocket connection with a colored status indicator. |
-| B3.2 | **Authentication** | Auth support: none, Bearer token, Basic. |
-| B3.3 | **Custom Headers** | Header editor with enable/disable toggles; active header count badge. |
-| B3.4 | **Auto-Reconnect** | Automatic reconnection with configurable delay in seconds. |
-| B3.5 | **Message Mode** | Text / JSON toggle with automatic prettify. |
-| B3.6 | **Send Message** | Send button and Enter shortcut (Shift+Enter for newline). |
-| B3.7 | **Ping** | Ping button available when connected. |
-| B3.8 | **Message Log** | Displays inbound/outbound/system messages with type (message/ping/pong/close/error), timestamp, expandable JSON payload. |
-| B3.9 | **Copy Payload** | Copy the payload of a single message to the clipboard. |
-| B3.10 | **Auto-Scroll** | Automatically scrolls to the latest received message. |
-| B3.11 | **Export Conversation** | Exports the entire message session as JSONL. |
-| B3.12 | **On-Message Script** | Run in-browser JavaScript on each inbound message; execution errors shown inline. |
-| B3.13 | **Mock WebSocket Server — Start/Stop** | Starts a local mock WebSocket server on a configurable port; auto-connect button. |
+| B3.1 | **Connection bar** | Same bar as a REST request: `WS`/`WSS` badge (switching it to an HTTP method turns the tab into a REST request), URL with `{{variables}}`, Save/Delete, and **Connect / Disconnect** where REST has Send. The tab shows a live status dot. |
+| B3.2 | **Collections and tabs** | *New WebSocket* in the collections menus; one connection per tab, closed when its tab closes; saved and exported like any request. |
+| B3.3 | **Saved messages** | The *Message* section holds the connection's saved messages (body variants): JSON or text editor, add/delete/rename, Send button and Ctrl+Enter (connects first when disconnected). |
+| B3.4 | **Params and Headers** | The REST editors: query params in sync with the URL, headers with enable/disable. |
+| B3.5 | **Authentication** | The REST auth editor. Bearer and Basic go in the handshake, API Key as a header, OAuth 2.0 with a token as Bearer; the types the handshake cannot carry show a notice. |
+| B3.6 | **Settings** | Subprotocols (`Sec-WebSocket-Protocol`), auto-reconnect (up to 10 attempts) with delay, binary (Base64) payloads. |
+| B3.7 | **Messages panel** | Where REST shows the response: status and uptime, received/sent counts, timeline of inbound/outbound/system frames, filters (All/In/Out/Sys/Error), search, pause with queued count, auto-follow. |
+| B3.8 | **Inspector** | The selected frame: event, time, size, pretty JSON or hex/ASCII for binary, copy. |
+| B3.9 | **Export Conversation** | Exports the conversation as JSONL. |
+| B3.10 | **On-Message Script** | JavaScript run in a sandbox for each inbound message (`msg`); errors and returned values appear in the stream. |
+| B3.11 | **Parallel send** | Several commands (`---` separated) × copies × extra clients at once, `{{$i}}` as send index. |
+| B3.12 | **Live service** | When the URL reaches a live Go service: open or debug its handler, connection logs in the Log Inspector. |
+| B3.13 | **Mock WebSocket Server — Start/Stop** | Local mock WebSocket server; one click points the tab at it. |
 | B3.14 | **Mock WebSocket Server — Rules** | Response rules with condition type (any, exact match, contains, regex, JSONPath), JSLT-lite response (`{{.field}}`, `{{$MSG}}`, `{{$NOW}}`, `{{$UUID}}`), delay ms. |
 | B3.15 | **Mock WebSocket Server — Hit Log** | Match log with incoming message preview and generated response. |
+| B3.16 | **Migration** | The old WebSocket panel's saved connection and templates become a WebSocket tab the first time the rail item opens; the old keys stay in place. |
 
 ---
 
@@ -404,7 +412,7 @@ Existing `{{variable}}` references are also linked when their current environmen
 | # | Feature | Description |
 |---|-------------|-------------|
 | C4.1 | **HTTP Load Test** | URL, method, headers, body, concurrency (1–200), total requests (1–50,000), duration mode, timeout, ramp-up, cooldown. |
-| C4.2 | **gRPC Load Test** | Address, service, method, payload, concurrency, total requests, timeout, TLS. |
+| C4.2 | **gRPC Load Test** | From the gRPC call's *Load test* section: concurrency, total calls, timeout, TLS, and the call's schema (reflection, .proto, protoset). |
 | C4.3 | **Metriche HDR Histogram** | Distribuzione latenza: avg, min, max, P50, P75, P90, P95, P99, P99.9. Precisione ms, 3 cifre significative. |
 | C4.4 | **Timeline Chart** | Per-request timeline: elapsed, latency, status code, success/failure flag. |
 | C4.5 | **Timeline Throughput** | Bucket per-secondo: req/s e latenza media. |
@@ -612,14 +620,16 @@ Existing `{{variable}}` references are also linked when their current environmen
 | D11.1 | **Live session** | A Code Studio Run or Debug becomes a session shared by every tool: service name, PID, port (run config, printed address, new listening socket or by hand), state, paused location. |
 | D11.2 | **Debug bar** | Bottom bar in every tool except Code Studio: state, paused `file:line`, Continue / Step Over / Into / Out / Stop (F9, F8, F7, Shift+F8, Ctrl+F2), request in flight, split view, service drawer. |
 | D11.3 | **Debug Request** | Next to Send: starts or reuses the service under Delve, waits for its port or health path, sends and follows the request; PAUSED AT BREAKPOINT in the response area; Replay from a copy of the tab. |
+| D11.3a | **One-Click Debug Scenario** | *Scenarios* next to Debug: saves the request (with its assertions), environment, test-data variables, the service's Code Studio breakpoints and read-only check queries on Database Studio connections. *Run scenario* opens the request, switches environment, starts the service under the debugger, sets the breakpoints, sends, then records the evidence (status, time, body shape, assertions and script tests, code path, SQL, topics, error logs, check-query rows) and lists the differences from the previous run. Saving after a Debug run keeps that run as the baseline. |
 | D11.4 | **Linked requests** | `{{service:name}}` targets a service: Local run (follows the port), Docker Compose port or a remote URL. *Link to service* rewrites `localhost:PORT`. |
-| D11.5 | **API ↔ code** | Handler that serves a request (declaration, not the router line) with Open handler; contract drift warning against the service's OpenAPI; handler CodeLens in Code Studio (open, run, debug request, last response, history). |
+| D11.5 | **API ↔ code** | Handler that serves a request (declaration, not the router line): *Open in Code Studio* from the request bar and *Open in API Workspace* from a handler CodeLens, command, line context or Architecture Explorer. An **Endpoints** catalog in the API sidebar (project → controller/package, filterable) and generated requests from the handler: path/query/header/cookie/form parameters, JAX-RS implicit entity bodies, nested-DTO JSON examples from Spring/JAX-RS annotations or Go `json`-tagged structs, `context-path`/`root-path` prefixes, constant Go routes and wrapped/closure handlers. Resolves Go and Java routes through the Developer Context; ambiguous matches show a per-project chooser; no match falls back to a prefilled draft request. Contract drift warning against the service's OpenAPI. |
 | D11.6 | **Request Context** | Code Studio debugger tab: method, path/query params, headers with credentials masked, body, request id; Open full request. |
 | D11.7 | **Request views** | Logs, Debug, Timeline, DB and Kafka of each request plus a completion summary (status, time, code path, queries, events, logs, breakpoints) and *Mock this response*. |
 | D11.8 | **Correlation** | `X-AdOmnia-Request-ID` on API Workspace and Interceptor requests; logs, SQL and messages tied by id (certain) or by time (labelled). |
 | D11.9 | **SQL and Kafka** | SQL from the service's logs; opt-in loopback capture proxy for Postgres/MySQL; Kafka watch from the newest offset without consumer group. Open in Database / Broker Studio with the way back to the request. |
 | D11.10 | **Service drawer** | Logs (filters, Log Inspector live source) and service view: project, routes, runtime and target, databases, Kafka, logs, debugger, preferences, service name. |
-| D11.11 | **Context navigation** | Code Studio and API Workspace stay mounted; Split Debug View (auto on breakpoint); Ctrl+Tab context switcher; Alt+Shift+1…5 tool keys; palette commands. |
+| D11.11 | **Context navigation** | Code Studio and API Workspace stay mounted; shared split (auto on breakpoint, reversible, resizable, per-pane maximize/hide, saved side and ratio) with one API ↔ code link; Ctrl+Tab context switcher; Alt+Shift+1…5 tool keys; palette commands. |
+| D11.12 | **Smart Split Workspace** | One screen for the whole flow: Database Studio, Broker Studio or Logs join the split as a third pane (query of a paused request with its connection preselected), *Back to response* / Alt+← restores the previous layout, the header shows the shared focus (project · service · route · handler · run · query) and breakpoint hits keep the visible panes in sync. Modules ask for a pane through `moduleRouting` placement, never by importing it. |
 
 ---
 
@@ -998,14 +1008,14 @@ The standalone MCP client and its session transports have been removed. Existing
 | # | Feature | Description |
 |---|-------------|-------------|
 | I4.1 | **Context Servers for Agents** | One list of MCP servers (stdio or HTTP) in the milk settings, passed to Claude Code and milk (v0.7+) at every new chat session. The project AI policy gates the list: `off` sends none, `local-only` sends only stdio servers. |
-| I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). The same server reads and edits the project folder as a Code Studio workspace — `osgi_workspace`, `osgi_bundles`, `osgi_bundle`, `osgi_search`, `osgi_impact`, `osgi_diagnose`, `osgi_resolve`, `osgi_target`, plus `osgi_set_target`, `osgi_manifest_set`, `osgi_manifest_requirement`, `osgi_import_plugins`, `osgi_add_target_jars` and `workspace_read_file` / `workspace_write_file` / `workspace_list_files` with `--write` — against the same target platform the IDE uses. Writes are off by default and confined to the workspace. Per-agent switch to turn it off. |
+| I4.2 | **`adomnia mcp` Server** | Built-in stdio server handed to each agent: list and run an exported collection, and start/inspect/stop a local mock server (`mock_hits` shows what the agent's code sent). It also plans and runs the project build with the same language adapters as the IDE: `project_build_plan` (detected units, exact command, why a unit cannot run) and `project_build` (wrapper before PATH, optional `unit`/`task`, per-unit status, exit code and output tail). The same server reads and edits the project folder as a Code Studio workspace — `osgi_workspace`, `osgi_bundles`, `osgi_bundle`, `osgi_search`, `osgi_impact`, `osgi_diagnose`, `osgi_resolve`, `osgi_target`, plus `osgi_set_target`, `osgi_manifest_set`, `osgi_manifest_requirement`, `osgi_import_plugins`, `osgi_add_target_jars` and `workspace_read_file` / `workspace_write_file` / `workspace_list_files` with `--write` — against the same target platform the IDE uses. Writes are off by default and confined to the workspace. Per-agent switch to turn it off. |
 | I4.3 | **Review Agent Changes** | After a milk or Claude Code turn, the files the agent created, modified or deleted are listed above the chat and in *Tools → Review Agent Changes…*; accept or reject each change, each file or the whole turn. Rejections never overwrite a file changed after the review was shown. |
 
 ---
 
 ## J. CODE STUDIO (IDE)
 
-A Code Studio inside adOmnia. Projects open without running anything; local tools run only after the project is trusted. Full guide: [docs/CODE-STUDIO.md](CODE-STUDIO.md).
+A Code Studio inside adOmnia. Projects open without running anything; local tools run only after the project is trusted. Full guide: [docs/CODE-STUDIO.md](CODE-STUDIO.md). Eclipse RCP/PDE (target platforms, JDT LS, applications, extensions, dependencies, export): [docs/RCP-PDE.md](RCP-PDE.md).
 
 ### J1. Projects, Sessions & Windows
 
@@ -1097,6 +1107,9 @@ A Code Studio inside adOmnia. Projects open without running anything; local tool
 | J7.3 | **Code Vision and implementation markers** | Above each class, interface, enum, method, constant or package variable, Code Vision shows the usage count from JDT references (click to list them) and the git author of the latest change, with `*` for uncommitted lines; it is hidden while the buffer has unsaved changes. A gutter marker (I↓) appears on types and methods that have implementations or overrides in the project, with the count in the tooltip, and one click opens the list (or the only target). JDT LS answers `textDocument/implementation` downwards — subtypes and overridden methods — so the direction comes from the adapter (`implementedBy`), unlike gopls on concrete types. Inlay hints stay off for Java until JDT LS applies the preference in our client: no toggle that does nothing. Covered by a real-JDT-LS integration test and Vitest; desktop check `JS-2.M3`. |
 | J7.3 | **Multimodule toolchain** | The Java version required by a project is read from every module of the reactor (Maven `<modules>`, Gradle `include`), not just the root; the suggested JDK is the smallest installed one that satisfies it, the selected one (`.adomnia/java.local.json`) is shared by Run, Debug and Tests and passed to JDT LS as an execution environment. |
 | J7.4 | **Run/Test/Debug like Go** | Maven/Gradle runs, JUnit tree with per-method outcomes and class roll-up, rerun failed, Java Debug Server with stepping filters and hot swap, `quarkus:dev` attach on 5005, Spring endpoints in the Developer Context, dependency lenses and CVE scan on `pom.xml`/`build.gradle`. Verbose runs publish coalesced output so the UI stays responsive; the Run console applies terminal line semantics (`\r` redraws, chunk-split lines). |
+| J7.5 | **External Libraries (Maven / Gradle)** | Project tree node with every library the build resolves (reactor/build-wide, transitive included): Maven from the local repository, Gradle from a read-only init-script task and the Gradle cache (static fallback when the project is not trusted); browse the read-only sources extracted from the `-sources.jar`, *Download sources* via `mvn dependency:get` or a Gradle sources configuration after confirmation, *View source* lens and Ctrl+click in `pom.xml` and `build.gradle(.kts)`. |
+| J7.6 | **External Libraries (Python)** | Project tree node with every distribution installed in the unit's environment, read statically from `site-packages` (name, version, declared/transitive, dev, module); browse a package read-only; a declared package that is not installed stays visible with a note. No interpreter process. |
+| J7.7 | **External Libraries (C/C++)** | Project tree node with CMake `find_package`/`pkg_check_modules`, FetchContent/CPM, `vcpkg.json`, Conan and Meson dependencies; browse the read-only code found in `build/_deps/<name>-src` or `vcpkg_installed/<triplet>/share/<name>`, with a note for system or not-downloaded packages. |
 
 ## K. SECURITY INTELLIGENCE
 

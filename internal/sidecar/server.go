@@ -41,6 +41,8 @@ func Stop() {
 	kube.CloseAll()
 	logindex.CloseAll()
 	otlp.Shutdown()
+	igrpc.CloseConnections()
+	igrpc.StopMock()
 	if httpSidecar == nil {
 		return
 	}

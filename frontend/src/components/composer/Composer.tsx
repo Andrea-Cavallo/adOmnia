@@ -337,7 +337,7 @@ function PathParamRow({
   )
 }
 
-function ParamsSection({
+export function ParamsSection({
   request,
   onChange,
 }: {

@@ -1723,6 +1723,43 @@ func (g *GoIDE) JavaDependencyTree(sessionID, module string) ([]java.TreeNode, e
 	return g.service.JavaDependencyTree(sessionID, module)
 }
 
+// JavaLibraries elenca le librerie Java del progetto (External Libraries): per Maven legge il repository
+// locale, per Gradle il grafo risolto e la cache Gradle.
+func (g *GoIDE) JavaLibraries(sessionID string) (codestudio.JavaLibraries, error) {
+	return g.service.JavaLibraries(sessionID)
+}
+
+// JavaLibrarySource prepara il codice di una libreria Maven/Gradle dal suo jar dei sorgenti, in sola lettura.
+func (g *GoIDE) JavaLibrarySource(sessionID, groupID, artifactID, version string) (codestudio.DependencySource, error) {
+	return g.service.JavaLibrarySource(sessionID, groupID, artifactID, version)
+}
+
+// DownloadJavaLibrarySources scarica il jar dei sorgenti di una libreria (Maven o Gradle, in base al progetto).
+func (g *GoIDE) DownloadJavaLibrarySources(sessionID, groupID, artifactID, version string) error {
+	return g.service.DownloadJavaLibrarySources(sessionID, groupID, artifactID, version)
+}
+
+// PythonLibraries elenca i pacchetti installati nell'ambiente Python (External Libraries), senza eseguire
+// l'interprete: legge site-packages e i metadati delle distribuzioni.
+func (g *GoIDE) PythonLibraries(sessionID string) (codestudio.LanguageLibraries, error) {
+	return g.service.PythonLibraries(sessionID)
+}
+
+// PythonLibrarySource prepara il codice di un pacchetto Python installato, in sola lettura.
+func (g *GoIDE) PythonLibrarySource(sessionID, name string) (codestudio.DependencySource, error) {
+	return g.service.PythonLibrarySource(sessionID, name)
+}
+
+// NativeLibraries elenca le dipendenze dichiarate da un progetto C/C++ (External Libraries).
+func (g *GoIDE) NativeLibraries(sessionID string) (codestudio.LanguageLibraries, error) {
+	return g.service.NativeLibraries(sessionID)
+}
+
+// NativeLibrarySource prepara il codice di una dipendenza C/C++ trovata in FetchContent o vcpkg.
+func (g *GoIDE) NativeLibrarySource(sessionID, name, module string) (codestudio.DependencySource, error) {
+	return g.service.NativeLibrarySource(sessionID, name, module)
+}
+
 // JavaOsgiWorkspace elenca i bundle OSGi/PDE del progetto e come si risolvono sulla target platform.
 func (g *GoIDE) JavaOsgiWorkspace(sessionID string) (*eclipsepde.WorkspaceReport, error) {
 	return g.service.JavaOsgiWorkspace(sessionID)
@@ -1786,6 +1823,27 @@ func (g *GoIDE) StartJavaOsgiBuild(sessionID string) (codestudio.Execution, erro
 	return g.service.StartJavaOsgiBuild(sessionID)
 }
 
+// StartJavaOsgiDebug avvia in Equinox con JDWP i bundle (file "") o l'applicazione di un .product/.launch
+// e vi collega il debugger Java.
+func (g *GoIDE) StartJavaOsgiDebug(sessionID, file string) (codestudio.DebugSessionInfo, error) {
+	return g.service.StartJavaOsgiDebug(sessionID, file)
+}
+
+// ExportJavaOsgiBundles esporta bundle e feature come jar in dest; con publish ne fa un repository p2.
+func (g *GoIDE) ExportJavaOsgiBundles(sessionID, dest string, publish bool) (codestudio.OsgiExportResult, error) {
+	return g.service.ExportJavaOsgiBundles(sessionID, dest, publish)
+}
+
+// ListJavaOsgiApps elenca i .product e i .launch PDE che avviano un'applicazione Eclipse.
+func (g *GoIDE) ListJavaOsgiApps(sessionID string) ([]eclipsepde.AppLaunch, error) {
+	return g.service.ListJavaOsgiApps(sessionID)
+}
+
+// StartJavaOsgiApp avvia l'applicazione Eclipse di un .product o .launch.
+func (g *GoIDE) StartJavaOsgiApp(sessionID, file string) (codestudio.OsgiRunResult, error) {
+	return g.service.StartJavaOsgiApp(sessionID, file)
+}
+
 // StartJavaOsgiRun avvia i bundle in Equinox sulla JVM del progetto.
 func (g *GoIDE) StartJavaOsgiRun(sessionID string) (codestudio.OsgiRunResult, error) {
 	return g.service.StartJavaOsgiRun(sessionID)
@@ -1815,6 +1873,12 @@ func (g *GoIDE) JavaOsgiBundleDetail(sessionID, name string, depth int) (*eclips
 // JavaOsgiImpact elenca chi dipende da un bundle e cosa verificare prima di cambiarlo.
 func (g *GoIDE) JavaOsgiImpact(sessionID, name string) (*eclipsepde.Impact, error) {
 	return g.service.JavaOsgiImpact(sessionID, name)
+}
+
+// JavaOsgiLookupDependency (Dependency Explorer): chi esporta il package di una classe, chi la
+// usa e chi la usa senza dichiararla nel MANIFEST.
+func (g *GoIDE) JavaOsgiLookupDependency(sessionID, query string) (*eclipsepde.DependencyLookup, error) {
+	return g.service.JavaOsgiLookupDependency(sessionID, query)
 }
 
 // JavaOsgiImpactForClass risolve una classe o interfaccia del workspace nel suo bundle e

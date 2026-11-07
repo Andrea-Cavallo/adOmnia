@@ -84,3 +84,43 @@ func TestNoWebSocketsWithoutUpgrade(t *testing.T) {
 		t.Fatalf("got = %+v", got)
 	}
 }
+
+// The methods of a tonic impl are where a gRPC call jumps: direct `async fn`s only, not nested ones, and a
+// brace in a string or comment does not end the impl.
+func TestGrpcServiceMethodsFromTonicImpl(t *testing.T) {
+	src := `use tonic::{Request, Response, Status};
+
+#[tonic::async_trait]
+impl greeter_server::Greeter for MyGreeter {
+    type SayStreamStream = ReceiverStream<Result<HelloReply, Status>>;
+
+    async fn say_hello(&self, request: Request<HelloRequest>) -> Result<Response<HelloReply>, Status> {
+        let name = format!("{}", request.into_inner().name); // a { in a comment
+        async fn nested() {}
+        Ok(Response::new(HelloReply { message: name }))
+    }
+
+    async fn say_stream(
+        &self,
+        request: Request<HelloRequest>,
+    ) -> Result<Response<Self::SayStreamStream>, Status> {
+        todo!("}")
+    }
+}
+
+async fn outside() {}
+`
+	got := GrpcServicesInFile("src/server.rs", []byte(src))
+	if len(got) != 1 || got[0].Service != "Greeter" {
+		t.Fatalf("services = %+v", got)
+	}
+	want := []GrpcMethod{{Name: "say_hello", Line: 7}, {Name: "say_stream", Line: 13}}
+	if len(got[0].Methods) != len(want) {
+		t.Fatalf("methods = %+v, want %+v", got[0].Methods, want)
+	}
+	for index, method := range want {
+		if got[0].Methods[index] != method {
+			t.Fatalf("method %d = %+v, want %+v", index, got[0].Methods[index], method)
+		}
+	}
+}

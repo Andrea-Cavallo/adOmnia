@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 )
 
 // An OSGi/PDE workspace is not something JDT LS can model: the adapter must ask the host to leave
@@ -21,7 +23,13 @@ func TestServerIsBlockedOnAnOsgiWorkspace(t *testing.T) {
 
 	language := &Language{}
 	if reason := language.ServerBlocked(root); reason == "" {
-		t.Fatal("a Tycho/PDE workspace must block the Java language server")
+		t.Fatal("a PDE workspace without a target must block the Java language server")
+	}
+	if _, err := eclipsepde.SetTarget(root, t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	if reason := language.ServerBlocked(root); reason != "" {
+		t.Fatalf("with a target the server runs on the shadow workspace: %q", reason)
 	}
 	if reason := language.ServerBlocked(t.TempDir()); reason != "" {
 		t.Fatalf("a folder without bundles must keep the language server: %q", reason)

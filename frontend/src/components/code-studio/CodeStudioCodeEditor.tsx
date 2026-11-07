@@ -52,6 +52,7 @@ import { recordCaretPosition, useCodeStudioBookmarks } from './codeStudioNavigat
 import { openImplementationMarker, useCodeStudioImplementationMarkers } from './codeStudioImplementationMarkers'
 import { useCodeStudioContextMarkers } from './codeStudioContextMarkers'
 import { useCodeStudioCommentTags } from './codeStudioCommentTags'
+import { useCodeStudioIndentRainbow } from './codeStudioIndentRainbow'
 import { openVcsHunk, useCodeStudioVcsGutter } from './codeStudioVcsEditor'
 import { registerCodeStudioExtraLanguages } from './codeStudioExtraLanguages'
 import { installBreakpointGutter, registerCodeStudioDebugHover, useCodeStudioDebugDecorations } from './codeStudioDebugEditor'
@@ -290,6 +291,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
   useCodeStudioImplementationMarkers(editorRef, document, mountCount)
   useCodeStudioContextMarkers(editorRef, document, mountCount)
   useCodeStudioCommentTags(editorRef, document, mountCount)
+  useCodeStudioIndentRainbow(editorRef, document, mountCount)
   useCodeStudioVcsGutter(editorRef, document, mountCount)
   useCodeStudioProfileHeatDecorations(editorRef, document, mountCount)
 

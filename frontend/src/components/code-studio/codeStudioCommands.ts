@@ -23,7 +23,7 @@ export type CodeStudioCommandId =
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
   | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset' | 'view.zenMode' | 'view.stickyScroll' | 'view.fontLigatures' | 'view.previewTab' | 'view.multilineTabs' | 'view.lowResourceMode' | 'view.lowResourceOnBattery' | 'view.vimMode' | 'view.emacsMode'
-  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz' | 'view.errorHandling' | 'view.architecture' | 'view.interfaces' | 'view.goroutines' | 'view.documentation' | 'view.config' | 'view.runtimeLens' | 'code.changeImpact'
+  | 'view.quickOpen' | 'view.maximize' | 'view.maximizeEditor' | 'view.toggleProject' | 'view.toggleStructure' | 'view.toggleBottom' | 'view.toggleIgnored' | 'view.problems' | 'view.contextInspector' | 'view.profile' | 'view.trace' | 'view.sonar' | 'view.vulnerabilities' | 'view.fuzz' | 'view.errorHandling' | 'view.architecture' | 'view.interfaces' | 'view.goroutines' | 'view.documentation' | 'view.config' | 'view.runtimeLens' | 'view.apiWorkspaceSplit' | 'code.changeImpact'
   | 'nav.declaration' | 'nav.typeDeclaration' | 'nav.implementation' | 'nav.usages' | 'nav.fileStructure' | 'nav.symbol' | 'nav.findInFiles'
   | 'nav.recentLocations' | 'nav.lastEdit' | 'nav.gotoTest' | 'code.generate' | 'nav.callHierarchy' | 'nav.typeHierarchy' | 'nav.nextProblem' | 'nav.previousProblem'
   | 'nav.superMethod' | 'nav.back' | 'nav.forward' | 'nav.toggleBookmark' | 'nav.bookmarks'
@@ -38,7 +38,7 @@ export type CodeStudioCommandId =
   | 'debug.stop' | 'debug.restart' | 'view.debug' | 'debug.attach' | 'debug.remote'
   | 'debug.viewBreakpoints' | 'debug.runToCursor' | 'debug.muteBreakpoints'
   | 'vcs.commit' | 'vcs.history' | 'vcs.lineHistory' | 'vcs.annotate' | 'vcs.resolveConflicts' | 'vcs.gitStudio'
-  | 'tools.services' | 'tools.httpRequest' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
+  | 'tools.services' | 'tools.httpRequest' | 'tools.openInApiWorkspace' | 'tools.plugins' | 'tools.extensions' | 'tools.aiHub' | 'tools.copilot' | 'tools.copilotChat' | 'tools.milkChat' | 'tools.claudeChat' | 'tools.reviewAgentChanges' | 'tools.copilotCompletions' | 'tools.dependencyGraph' | 'tools.adrLinks' | 'tools.runtimeEnrichment'
   | 'help.shortcuts'
 
 export type CodeStudioMenuId = 'file' | 'edit' | 'view' | 'navigate' | 'code' | 'go' | 'java' | 'python' | 'rust' | 'run' | 'tools' | 'git' | 'help'
@@ -152,6 +152,7 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'view.splitRight', menu: 'view', label: 'Split Right', binding: { key: '\\', mod: true }, separatorBefore: true },
   { id: 'view.splitDown', menu: 'view', label: 'Split Down' },
   { id: 'view.unsplit', menu: 'view', label: 'Unsplit' },
+  { id: 'view.apiWorkspaceSplit', menu: 'view', label: 'Show API Workspace Beside', separatorBefore: true },
   { id: 'view.toggleIgnored', menu: 'view', label: 'Show Ignored Folders', separatorBefore: true },
   { id: 'nav.searchEverywhere', menu: 'navigate', label: 'Search Everywhere', binding: { key: 'k', mod: true } },
   { id: 'nav.declaration', menu: 'navigate', label: 'Declaration', binding: { key: 'b', mod: true }, editorOwned: true },
@@ -260,6 +261,7 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'run.configure', menu: 'run', label: 'Edit Run Configuration…', separatorBefore: true },
   { id: 'tools.services', menu: 'tools', label: 'Project Services: Docker Lab, Database, Broker…' },
   { id: 'tools.httpRequest', menu: 'tools', label: 'Open HTTP Route in API Client' },
+  { id: 'tools.openInApiWorkspace', menu: 'tools', label: 'Open Handler in API Workspace' },
   { id: 'tools.plugins', menu: 'tools', label: 'Plugins Listening to Code Studio Events', separatorBefore: true },
   { id: 'tools.extensions', menu: 'tools', label: 'IDE Extensions…' },
   { id: 'tools.aiHub', menu: 'tools', label: 'Open AI Assistant', binding: { key: '2', alt: true }, separatorBefore: true },
@@ -429,7 +431,7 @@ function runAvailability(context: CodeStudioCommandContext): true | string {
 }
 
 /** Calcola se un comando è eseguibile nello stato corrente e, se no, perché. */
-const MAIN_WINDOW_ONLY = new Set<CodeStudioCommandId>(['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins'])
+const MAIN_WINDOW_ONLY = new Set<CodeStudioCommandId>(['file.openProject', 'file.newProject', 'tools.services', 'tools.httpRequest', 'tools.plugins', 'view.apiWorkspaceSplit'])
 
 function windowAvailability(id: CodeStudioCommandId, context: CodeStudioCommandContext): true | string | null {
   if (context.detached && MAIN_WINDOW_ONLY.has(id)) return 'Available in the main adOmnia window'
@@ -467,7 +469,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
     return id === 'preview.openFile' && !context.hasEditor ? 'Open an HTML file first' : true
   }
   if (id === 'java.selectJdk' || id === 'java.jvmMonitor' || id === 'java.springEndpoints' || id === 'java.springBeanGraph') return true
-  if (id === 'java.dependencyTree' || id === 'java.osgi' || id === 'java.osgiBuild' || id === 'java.osgiRun') return context.authorized ? true : NOT_TRUSTED
+  if (id === 'java.dependencyTree' || id === 'java.osgi' || id === 'java.osgiBuild' || id === 'java.osgiRun' || id === 'java.osgiDebug' || id === 'java.osgiExport' || id === 'java.osgiExportP2') return context.authorized ? true : NOT_TRUSTED
   if (id.startsWith('java.')) {
     if (/^java\.(run|debug|spring|mvn)/.test(id)) return context.authorized ? true : NOT_TRUSTED
     return context.hasEditor ? true : 'Open a Java file first'
@@ -507,12 +509,14 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
     case 'file.reopenClosed': return context.hasClosedDocuments ? true : 'No recently closed tabs'
     case 'file.localHistory': return context.hasEditor ? true : 'Open a file first'
     case 'tools.httpRequest': return context.hasEditor ? true : 'Open a Go file with route registrations first'
+    case 'tools.openInApiWorkspace': return context.hasEditor ? true : 'Open a handler first'
     case 'vcs.commit': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.vcsChanges > 0 ? true : 'No local changes to commit'
     case 'vcs.resolveConflicts': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.vcsConflicts > 0 ? true : 'No conflicted files'
     case 'vcs.history':
     case 'vcs.lineHistory':
     case 'vcs.annotate': return !context.vcsAvailable ? 'The project is not in a Git repository' : context.hasEditor ? true : 'Open a file first'
     case 'view.unsplit': return context.split ? true : 'The editor is not split'
+    case 'view.apiWorkspaceSplit': return context.hasSession ? true : NO_PROJECT
     case 'go.toolchains':
     case 'go.detect': return context.authorized ? true : NOT_TRUSTED
     case 'go.tidy': return context.running ? 'Wait for the active process to finish' : runAvailability(context)

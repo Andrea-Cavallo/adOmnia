@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useAppStore, type RailItem } from '@/stores/app'
 import { useDevSessionStore } from '@/stores/devSession'
 import { liveSessions } from '@/stores/devSessionModel'
-import { openSplitDebugView } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio, openSplitDebugView } from '@/lib/devsession/navigation'
+import { isAuxiliaryPane, isInSplit, placeAuxiliary } from '@/lib/workspaceLayout'
+import { useTabsStore } from '@/stores/tabs'
 import { ContextSwitcher } from './ContextSwitcher'
 import { ServiceLogsDrawer } from './ServiceLogsDrawer'
 
@@ -20,6 +22,16 @@ export const TOOL_SHORTCUTS: Array<{ code: string; rail: RailItem; label: string
  * switcher, the service logs drawer and the automatic Split Debug View when
  * a request sent from the API workspace stops at a breakpoint.
  */
+/**
+ * Synchronize: a new breakpoint hit while the split is open brings its request tab and its paused
+ * frame forward in the panes already on screen, without opening anything else.
+ */
+function followBreakpoint(tabId: string, session: Parameters<typeof openFrameInCodeStudio>[0] | null): void {
+  const tabs = useTabsStore.getState()
+  if (tabs.tabs.some((tab) => tab.id === tabId) && tabs.activeTabId !== tabId) tabs.setActiveTab(tabId)
+  if (session) void openFrameInCodeStudio(session, null, { switchRail: false })
+}
+
 export function DevSessionHost() {
   const [logsSession, setLogsSession] = useState<string | null>(null)
 
@@ -33,8 +45,13 @@ export function DevSessionHost() {
         const live = liveSessions(useDevSessionStore.getState())
         if (live.length) return setLogsSession(live[live.length - 1].id)
       }
-      useAppStore.getState().setSplitView(false)
-      useAppStore.getState().setActiveRail(target.rail)
+      const app = useAppStore.getState()
+      // Inside the split a shortcut moves the keyboard to its pane, or adds Database/Broker/Logs
+      // as the third pane: it never throws away the screen the developer built.
+      if (isInSplit(target.rail, app.splitView, app.splitAuxiliary)) return app.setActiveRail(target.rail)
+      if (app.splitView && isAuxiliaryPane(target.rail) && placeAuxiliary(target.rail)) return
+      app.setSplitView(false)
+      app.setActiveRail(target.rail)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -61,12 +78,14 @@ export function DevSessionHost() {
       if (!run?.tabId || run.hits.length <= (before?.hits.length ?? 0)) continue
       const app = useAppStore.getState()
       if (app.activeRail === 'collections' && !app.splitView) void openSplitDebugView(run.tabId, state.sessions[run.sessionId] ?? null)
+      else if (app.splitView) followBreakpoint(run.tabId, state.sessions[run.sessionId] ?? null)
     }
   }), [])
 
-  // A split view without anything live to debug has no purpose.
-  useEffect(() => useDevSessionStore.subscribe((state) => {
-    if (useAppStore.getState().splitView && !liveSessions(state).some((s) => s.kind === 'debug')) useAppStore.getState().setSplitView(false)
+  // The Split Debug View closes when its debugger ends; a split opened for other reasons stays.
+  useEffect(() => useDevSessionStore.subscribe((state, previous) => {
+    const debugging = (model: typeof state) => liveSessions(model).some((s) => s.kind === 'debug')
+    if (useAppStore.getState().splitView && debugging(previous) && !debugging(state)) useAppStore.getState().setSplitView(false)
   }), [])
 
   return (

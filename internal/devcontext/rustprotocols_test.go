@@ -29,6 +29,21 @@ impl Greeter for MyGreeter {
 	}
 }
 
+// Each rpc method of a tonic impl is an attribute of the service entity: the gRPC client opens it.
+func TestDetectRustGrpcCarriesRpcHandlers(t *testing.T) {
+	src := []byte(`#[tonic::async_trait]
+impl Greeter for MyGreeter {
+    async fn say_hello(&self, request: Request<HelloRequest>) -> Result<Response<HelloReply>, Status> {
+        todo!()
+    }
+}
+`)
+	entities := detectRustGrpc("src/main.rs", src)
+	if len(entities) != 1 || entities[0].Attrs[RPCHandlerAttrPrefix+"say_hello"] != "3" || entities[0].Attrs["declFile"] != "src/main.rs" {
+		t.Fatalf("entities = %+v", entities)
+	}
+}
+
 // Gli handler WebSocket e SSE devono diventare entità websocket con il percorso della route.
 func TestDetectRustWebSocket(t *testing.T) {
 	src := []byte(`async fn ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {

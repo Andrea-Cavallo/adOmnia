@@ -131,6 +131,7 @@ func unitIn(directory string) (project.Unit, bool) {
 
 // pomInfo è la parte del pom.xml che serve a riconoscere il progetto.
 type pomInfo struct {
+	GroupID    string `xml:"groupId"`
 	ArtifactID string `xml:"artifactId"`
 	Parent     struct {
 		GroupID    string `xml:"groupId"`
@@ -144,6 +145,7 @@ type pomInfo struct {
 		GroupID    string `xml:"groupId"`
 		ArtifactID string `xml:"artifactId"`
 	} `xml:"build>plugins>plugin"`
+	Modules []string `xml:"modules>module"`
 }
 
 const maxManifestBytes = 1 << 20

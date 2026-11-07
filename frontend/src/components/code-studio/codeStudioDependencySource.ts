@@ -69,10 +69,13 @@ function relativeToRoot(root: string, path: string): string {
 function goModSourceTarget(source: GoIDEDependencySource, sessionId: string, file: string): Omit<StudioLocation, 'uri'> | null {
   if (!source.directory || !file) return null
   const path = `${source.directory}/${normalizePath(file)}`
-  if (source.relativeDir) {
+  // Il codice di terze parti dentro il progetto (FetchContent, vcpkg) resta in sola lettura: non è
+  // codice dell'utente anche se vive sotto la stessa radice.
+  const thirdParty = source.kind === 'native-dependency' || source.kind === 'python-site-packages'
+  if (!thirdParty && source.relativeDir) {
     return { path, relativePath: joinRelative(source.relativeDir, file), external: false, targetSessionId: sessionId, range: FIRST_LINE }
   }
-  const owner = ownerSessionOf(source.directory)
+  const owner = thirdParty ? null : ownerSessionOf(source.directory)
   if (owner) {
     return { path, relativePath: relativeToRoot(owner.root, path), external: false, targetSessionId: owner.id, range: FIRST_LINE }
   }
@@ -86,7 +89,7 @@ export function goModSourceLocation(source: GoIDEDependencySource, sessionId: st
 }
 
 /** Apre un file del sorgente di una dipendenza; null se il sorgente non ha quel file. */
-export function openGoModSourceFile(source: GoIDEDependencySource, sessionId: string, file: string): Omit<StudioLocation, 'uri'> | null {
+export function openDependencySourceFile(source: GoIDEDependencySource, sessionId: string, file: string): Omit<StudioLocation, 'uri'> | null {
   const target = goModSourceTarget(source, sessionId, file)
   if (target) navigateToLocation(target)
   return target
@@ -150,7 +153,7 @@ export async function openGoModDependencySource(document: GoIDEEditorDocument, m
   const sessionId = document.document.sessionId
   const source = await ensureGoModDependencySource(sessionId, goModDirectoryOf(document), modulePath)
   if (!source) return
-  const location = openGoModSourceFile(source, sessionId, entryFileOf(source))
+  const location = openDependencySourceFile(source, sessionId, entryFileOf(source))
   if (!location) return
   // Un file esterno lo rivela External Libraries quando diventa attivo; uno di progetto l'albero del progetto.
   if (location.external) useCodeStudioStore.getState().updateLayout({ projectOpen: true })

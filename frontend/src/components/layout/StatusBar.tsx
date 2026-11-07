@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Moon, Palette, Sun } from 'lucide-react'
 import { useTabsStore } from '@/stores/tabs'
 import { useAppStore } from '@/stores/app'
@@ -9,11 +9,13 @@ import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { AccentColorSetting } from '@/components/settings/AccentColorSetting'
 import { useSettingsStore } from '@/stores/settings'
-import { ResourceStatus } from './ResourceStatus'
 import { luminance, validAccent } from '@/lib/accentPalette'
 import { ANTHRACITE_THEME_ID } from '@/lib/anthracitePalette'
 
 const BASE_PRESETS = { dark: ['#000000', '#0B1020', '#111827', '#1C1917'], light: ['#FFFFFF', '#F8FAFC', '#FAF7F0', '#EEF2F7'] } as const
+// Resource sampling and its exporters are not needed for the first frame: keep
+// them out of the startup graph and mount them a tick later.
+const ResourceStatus = lazy(() => import('./ResourceStatus').then((module) => ({ default: module.ResourceStatus })))
 
 const quickButton = (active: unknown) => cn('h-6 px-2 gap-1.5 flex items-center justify-center rounded transition-colors', active ? 'bg-surface-3 text-accent' : 'text-text-4 hover:bg-surface-3 hover:text-text-2')
 
@@ -102,7 +104,7 @@ export function StatusBar() {
   return (
     <footer className="flex h-7 items-center justify-between border-t border-border-1 bg-surface-1 px-2.5 text-[10px] text-text-3 select-none">
       <div className="flex items-center gap-3">
-        <ResourceStatus />
+        <Suspense fallback={null}><ResourceStatus /></Suspense>
         {!inIDE && response && !response.error && (
           <>
             <span className={response.status >= 400 ? 'text-error' : response.status >= 200 ? 'text-success' : 'text-text-3'}>

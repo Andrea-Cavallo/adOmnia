@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Bug, Code2, Database, MessageSquare, ScrollText, Send } from 'lucide-react'
 import type { LiveSession, RequestRun } from '@/lib/devsession-api'
-import { handoffToPanel } from '@/lib/entities/dispatch'
 import { openMessage } from './LiveRequestViews'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 import { useDevSessionStore } from '@/stores/devSession'
 import { primarySession } from '@/stores/devSessionModel'
-import { openFrameInCodeStudio, openRequestTab, openRunSource } from '@/lib/devsession/navigation'
+import { openFrameInCodeStudio, openLiveQuery, openRunSource } from '@/lib/devsession/navigation'
 import { basename } from './liveUi'
 
 interface FlowItem { id: string; icon: ReactNode; title: string; detail: string; open: () => void }
@@ -31,7 +30,7 @@ export function flowItems(session: LiveSession | null, run: RequestRun | null, o
     if (query) {
       items.push({
         id: 'db', icon: <Database size={14} />, title: query.sql.split(/\s+/).slice(0, 4).join(' '), detail: query.datasource || 'SQL of this request',
-        open: () => handoffToPanel('database', { kind: 'table', id: `sql:${query.id}`, label: `${run.method} ${pathOf(run.url)}`, attrs: {} }, 'sql', { sql: query.sql, back: { label: 'Open request', run: () => openRequestTab(run.tabId) } }),
+        open: () => openLiveQuery(query, run),
       })
     }
     const message = state.messages.filter((m) => m.requestRunId === run.id).slice(-1)[0]

@@ -33,6 +33,9 @@ func workspaceFolderRoots(projectRoot string, units []project.Unit, languageID s
 
 // workspaceFolders is the LSP `workspaceFolders` value: the unit roots, or the project root alone.
 func (state *lspSession) workspaceFolders() []map[string]any {
+	if root := state.options.Root; root != "" {
+		return []map[string]any{{"uri": lsp.FileURI(root), "name": filepath.Base(root)}}
+	}
 	if len(state.folders) == 0 {
 		return []map[string]any{{"uri": state.rootURI, "name": state.name}}
 	}
@@ -41,4 +44,12 @@ func (state *lspSession) workspaceFolders() []map[string]any {
 		folders = append(folders, map[string]any{"uri": lsp.FileURI(root), "name": filepath.Base(root)})
 	}
 	return folders
+}
+
+// serverRootURI is the rootUri of initialize: the spec's own root when it has one.
+func (state *lspSession) serverRootURI() string {
+	if root := state.options.Root; root != "" {
+		return lsp.FileURI(root)
+	}
+	return state.rootURI
 }
