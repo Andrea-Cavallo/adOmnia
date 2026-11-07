@@ -81,6 +81,9 @@ func MainCommandWith(module string, options MainOptions, programArguments []stri
 	}
 	unit, ok := unitIn(module)
 	if !ok {
+		if _, isAnt := antUnitIn(module); isAnt || len(EclipseSourceFolders(module)) > 0 {
+			return "", nil, "", nil, fmt.Errorf("Ant and Eclipse projects run their classes with the classpath of the Java language server: wait for it to be ready (status bar), then press Run again")
+		}
 		return "", nil, "", nil, fmt.Errorf("no pom.xml or build.gradle in %s", filepath.ToSlash(module))
 	}
 	tool, ok := resolveBuildTool(unit)

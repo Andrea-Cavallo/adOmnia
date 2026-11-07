@@ -95,8 +95,54 @@ func writeShadowProject(dir, name string, project *EclipseProject, sources []str
 		}
 		entries = append(entries, shadowEntry{Kind: "src", Path: "/" + element.Path, CombineAccessRules: "false"})
 	}
-	entries = append(entries, shadowEntry{Kind: "output", Path: "bin"})
+	level := "1." + strconv.Itoa(shadowLevel(project))
+	return writeShadowFiles(dir, name, links, entries, level, project.BuildProperties["javacDefaultEncoding.."])
+}
 
+// JavaShadowProject is a plain Java project for JDT LS that links real source folders: the shape of
+// every shadow project, PDE bundles and Eclipse WTP projects alike.
+type JavaShadowProject struct {
+	Name string
+	// Sources are absolute source folders, linked as src0, src1…
+	Sources []string
+	// Libraries are absolute jars or class folders.
+	Libraries []string
+	// Projects are the names of other shadow projects this one depends on.
+	Projects []string
+	// Containers are classpath containers JDT LS resolves itself (JUnit); the JRE is always added.
+	Containers []string
+	// Level is the Java level ("1.8", "11"), raised to what JDT LS compiles by the caller.
+	Level    string
+	Encoding string
+}
+
+// WriteJavaShadowProject writes one shadow project in dir; files that did not change are left alone.
+func WriteJavaShadowProject(dir string, project JavaShadowProject) error {
+	if err := os.MkdirAll(filepath.Join(dir, ".settings"), 0o755); err != nil {
+		return fmt.Errorf("cannot create the JDT LS project of %s: %w", project.Name, err)
+	}
+	links := make([]shadowLink, 0, len(project.Sources))
+	entries := make([]shadowEntry, 0, len(project.Sources)+len(project.Libraries)+len(project.Projects)+2)
+	for index, source := range project.Sources {
+		link := "src" + strconv.Itoa(index)
+		links = append(links, shadowLink{Name: link, Type: 2, Location: filepath.ToSlash(source)})
+		entries = append(entries, shadowEntry{Kind: "src", Path: link})
+	}
+	entries = append(entries, shadowEntry{Kind: "con", Path: "org.eclipse.jdt.launching.JRE_CONTAINER"})
+	for _, container := range project.Containers {
+		entries = append(entries, shadowEntry{Kind: "con", Path: container})
+	}
+	for _, library := range project.Libraries {
+		entries = append(entries, shadowEntry{Kind: "lib", Path: filepath.ToSlash(library)})
+	}
+	for _, dependency := range project.Projects {
+		entries = append(entries, shadowEntry{Kind: "src", Path: "/" + dependency, CombineAccessRules: "false"})
+	}
+	return writeShadowFiles(dir, project.Name, links, entries, project.Level, project.Encoding)
+}
+
+func writeShadowFiles(dir, name string, links []shadowLink, entries []shadowEntry, level, encoding string) error {
+	entries = append(entries, shadowEntry{Kind: "output", Path: "bin"})
 	description, err := xml.MarshalIndent(shadowDescription{Name: name, Natures: []string{"org.eclipse.jdt.core.javanature"}, Builders: []shadowBuilder{{Name: "org.eclipse.jdt.core.javabuilder"}}, Links: links}, "", "\t")
 	if err != nil {
 		return err
@@ -105,12 +151,11 @@ func writeShadowProject(dir, name string, project *EclipseProject, sources []str
 	if err != nil {
 		return err
 	}
-	level := "1." + strconv.Itoa(shadowLevel(project))
 	prefs := "eclipse.preferences.version=1\n" +
 		"org.eclipse.jdt.core.compiler.compliance=" + level + "\n" +
 		"org.eclipse.jdt.core.compiler.source=" + level + "\n" +
 		"org.eclipse.jdt.core.compiler.codegen.targetPlatform=" + level + "\n"
-	if encoding := project.BuildProperties["javacDefaultEncoding.."]; encoding != "" {
+	if encoding != "" {
 		prefs += "encoding/<project>=" + encoding + "\n"
 	}
 	files := map[string][]byte{
@@ -124,6 +169,11 @@ func writeShadowProject(dir, name string, project *EclipseProject, sources []str
 		}
 	}
 	return nil
+}
+
+// RemoveStaleShadowProjects deletes the shadow projects of dest that are not in keep.
+func RemoveStaleShadowProjects(dest string, keep []string) error {
+	return removeStaleShadowProjects(dest, keep)
 }
 
 // shadowLevel is the bundle's Java level, raised to what JDT LS compiles.

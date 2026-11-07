@@ -111,7 +111,8 @@ func TomcatCommand(module string, options TomcatOptions, debugPort int, environm
 	if err != nil {
 		return TomcatLaunch{}, err
 	}
-	descriptor := contextDescriptor(webapp, classesFor(module, webapp), tomcatMajor(home))
+	classes := append(classesFor(module, webapp), dependentModuleClasses(module)...)
+	descriptor := contextDescriptor(webapp, classes, tomcatMajor(home))
 	if err := writeContext(base, contextPath, descriptor); err != nil {
 		return TomcatLaunch{}, err
 	}
@@ -161,6 +162,10 @@ func resolveWebapp(module, configured string) (string, error) {
 			return exploded, nil
 		}
 	}
+	// A WTP project declares its web root (.settings/org.eclipse.wst.common.component).
+	if root := webRootOf(module); isDirectory(filepath.Join(root, "WEB-INF")) {
+		return root, nil
+	}
 	for _, candidate := range webappCandidates {
 		if path := filepath.Join(module, filepath.FromSlash(candidate)); isDirectory(filepath.Join(path, "WEB-INF")) {
 			return path, nil
@@ -169,14 +174,46 @@ func resolveWebapp(module, configured string) (string, error) {
 	return "", fmt.Errorf("no exploded WAR in the module: build it (mvn package, the Ant dist target) or set the webapp folder")
 }
 
-// classesFor is the compiled output a source webapp needs (WebContent has no WEB-INF/classes in Eclipse).
-func classesFor(module, webapp string) string {
+// classesFor is the compiled output a source webapp needs (WebContent has no WEB-INF/classes in Eclipse):
+// the Eclipse output folder of the project, else the usual build folders.
+func classesFor(module, webapp string) []string {
 	if isDirectory(filepath.Join(webapp, "WEB-INF", "classes")) {
-		return ""
+		return nil
+	}
+	if output := eclipseOutputFolder(module); output != "" {
+		return []string{output}
 	}
 	for _, candidate := range classesCandidates {
 		if path := filepath.Join(module, filepath.FromSlash(candidate)); isDirectory(path) {
-			return path
+			return []string{path}
+		}
+	}
+	return nil
+}
+
+// dependentModuleClasses are the compiled outputs of the projects a WTP module deploys with it (utility
+// and EJB projects next to it in the workspace): WTP would package them in WEB-INF/lib.
+func dependentModuleClasses(module string) []string {
+	var folders []string
+	for _, name := range dependentModules(module) {
+		if output := eclipseOutputFolder(filepath.Join(filepath.Dir(module), name)); output != "" {
+			folders = append(folders, output)
+		}
+	}
+	return folders
+}
+
+// eclipseOutputFolder is the existing output folder of an Eclipse project (.classpath kind="output").
+func eclipseOutputFolder(projectDir string) string {
+	project, ok := readEclipseProject(projectDir)
+	if !ok {
+		return ""
+	}
+	for _, entry := range project.Entries {
+		if entry.Kind == "output" {
+			if folder := filepath.Join(projectDir, filepath.FromSlash(entry.Path)); isDirectory(folder) {
+				return folder
+			}
 		}
 	}
 	return ""
@@ -227,17 +264,21 @@ func contextFileName(contextPath string) string {
 
 // contextDescriptor publishes the exploded WAR in place, reloadable, adding the compiled classes of a
 // source webapp: VirtualWebappLoader on Tomcat 7, a PreResources set from Tomcat 8.
-func contextDescriptor(webapp, classes string, major int) string {
+func contextDescriptor(webapp string, classes []string, major int) string {
 	var builder strings.Builder
 	builder.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
 	builder.WriteString(`<!-- Written by adOmnia for this run: the project is published in place. -->` + "\n")
 	builder.WriteString(`<Context docBase="` + html.EscapeString(webapp) + `" reloadable="true">` + "\n")
-	if classes != "" {
-		if major > 0 && major < 8 {
-			builder.WriteString(`  <Loader className="org.apache.catalina.loader.VirtualWebappLoader" virtualClasspath="` + html.EscapeString(classes) + `"/>` + "\n")
-		} else {
-			builder.WriteString(`  <Resources><PreResources className="org.apache.catalina.webresources.DirResourceSet" base="` + html.EscapeString(classes) + `" webAppMount="/WEB-INF/classes"/></Resources>` + "\n")
+	switch {
+	case len(classes) == 0:
+	case major > 0 && major < 8:
+		builder.WriteString(`  <Loader className="org.apache.catalina.loader.VirtualWebappLoader" virtualClasspath="` + html.EscapeString(strings.Join(classes, ";")) + `"/>` + "\n")
+	default:
+		builder.WriteString("  <Resources>\n")
+		for _, folder := range classes {
+			builder.WriteString(`    <PreResources className="org.apache.catalina.webresources.DirResourceSet" base="` + html.EscapeString(folder) + `" webAppMount="/WEB-INF/classes"/>` + "\n")
 		}
+		builder.WriteString("  </Resources>\n")
 	}
 	builder.WriteString("</Context>\n")
 	return builder.String()
