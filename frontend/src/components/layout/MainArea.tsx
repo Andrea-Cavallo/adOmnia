@@ -45,6 +45,7 @@ import { LiveResponseFrame } from '@/components/devsession/LiveResponseFrame'
 import { LiveRequestStrip } from '@/components/devsession/LiveRequestStrip'
 import { RequestCodeLinkButton } from '@/components/devsession/RequestCodeLinkButton'
 import { DebugRequestButton } from '@/components/devsession/DebugRequestButton'
+import { DebugScenariosButton } from '@/components/devsession/DebugScenariosButton'
 import { WebSocketRequestBar } from '@/components/websocket/WebSocketRequestBar'
 import { WebSocketComposer } from '@/components/websocket/WebSocketComposer'
 import { WebSocketMessagesPanel } from '@/components/websocket/WebSocketMessagesPanel'
@@ -472,6 +473,7 @@ function ActiveRequestBar({
         </button>
 
           <DebugRequestButton url={request.url} onDebug={onDebug} />
+          <DebugScenariosButton tabId={tabId} request={request} />
           </div>
         </details>
 

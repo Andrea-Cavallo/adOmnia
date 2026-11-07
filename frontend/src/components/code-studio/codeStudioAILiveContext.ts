@@ -17,7 +17,7 @@ const LIVE_TIMEOUT_MS = 5000
 const MAX_TABLES = 40
 const MAX_TOPICS = 8
 
-async function sidecarPost<T>(path: string, body: unknown): Promise<T> {
+export async function sidecarPost<T>(path: string, body: unknown): Promise<T> {
   const url = serverUrl(await GetServerPort(), path)
   if (!url) throw new Error('Backend not ready')
   const controller = new AbortController()
