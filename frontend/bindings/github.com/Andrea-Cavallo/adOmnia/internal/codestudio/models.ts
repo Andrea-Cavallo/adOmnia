@@ -2957,6 +2957,12 @@ export class JavaDebugRequest {
     "testMethod"?: string;
 
     /**
+     * Tomcat is the JSON of a Tomcat run configuration's options: the module (WorkingDirectory) runs on
+     * that Tomcat with JPDA open and the debugger attaches.
+     */
+    "tomcat"?: string;
+
+    /**
      * WorkingDirectory è la cartella del programma, relativa al progetto ("" = radice).
      */
     "workingDirectory"?: string;

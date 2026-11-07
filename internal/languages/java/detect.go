@@ -136,9 +136,13 @@ func unitIn(directory string) (project.Unit, bool) {
 type pomInfo struct {
 	GroupID    string `xml:"groupId"`
 	ArtifactID string `xml:"artifactId"`
+	Version    string `xml:"version"`
+	Packaging  string `xml:"packaging"`
+	FinalName  string `xml:"build>finalName"`
 	Parent     struct {
 		GroupID    string `xml:"groupId"`
 		ArtifactID string `xml:"artifactId"`
+		Version    string `xml:"version"`
 	} `xml:"parent"`
 	Dependencies []struct {
 		GroupID    string `xml:"groupId"`
@@ -162,6 +166,21 @@ func readPom(path string) pomInfo {
 	// Un pom malformato resta un progetto: i campi letti prima dell'errore valgono comunque.
 	_ = xml.Unmarshal(data, &pom)
 	return pom
+}
+
+// warName is the folder `mvn package` explodes the WAR into: finalName, else artifactId-version.
+func (p pomInfo) warName() string {
+	if p.FinalName != "" && !strings.Contains(p.FinalName, "$") {
+		return p.FinalName
+	}
+	version := p.Version
+	if version == "" {
+		version = p.Parent.Version // a module inherits the version of its parent
+	}
+	if version == "" || strings.Contains(version, "$") {
+		return p.ArtifactID
+	}
+	return p.ArtifactID + "-" + version
 }
 
 // usesSpringBoot è vero se il pom ha il parent, una dipendenza o il plugin di Spring Boot.

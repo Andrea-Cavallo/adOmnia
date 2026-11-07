@@ -23,6 +23,8 @@ export interface JavaDebugTarget {
   attachHost?: string
   attachPort?: number
   buildArguments?: string[]
+  /** JSON of the Tomcat options: the module runs on Tomcat with JPDA and the debugger attaches. */
+  tomcat?: string
   workingDirectory: string
   programArguments?: string[]
   vmArguments?: string[]
@@ -47,6 +49,7 @@ export function javaDebugTargetOf(config: JavaDebugConfiguration): JavaDebugTarg
     if (!Number.isInteger(attachPort) || attachPort < 1 || attachPort > 65535) return null
     return { attachHost: String(options.host ?? '127.0.0.1').trim() || '127.0.0.1', attachPort, workingDirectory }
   }
+  if (config.kind === 'tomcat') return { tomcat: JSON.stringify(options), workingDirectory }
   const programArguments = [...(config.programArguments ?? [])]
   const environment = Object.fromEntries((config.environment ?? []).filter((entry) => entry.key && !entry.secret).map((entry) => [entry.key, entry.value ?? '']))
   const environmentOverride = Object.keys(environment).length ? { environment } : {}

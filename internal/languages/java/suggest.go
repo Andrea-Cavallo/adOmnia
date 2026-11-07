@@ -79,15 +79,19 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 	if unit.Language != ID {
 		return nil
 	}
+	var server []run.Suggestion
+	if suggestion, ok := tomcatSuggestion(unit); ok {
+		server = append(server, suggestion)
+	}
 	if unit.Kind == UnitAnt {
-		return antSuggestions(unit)
+		return append(server, antSuggestions(unit)...)
 	}
 	if unit.Kind != UnitMaven && unit.Kind != UnitGradle {
 		return nil
 	}
 	tool, ok := resolveBuildTool(unit)
 	if !ok {
-		return nil
+		return server
 	}
 	var entries []suggestEntry
 	if unit.Kind == UnitMaven {
@@ -145,7 +149,7 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 			},
 		})
 	}
-	return suggestions
+	return append(server, suggestions...)
 }
 
 // mainEntries propone una configurazione "main" per ogni classe con `main` trovata nei moduli. Le app Spring
