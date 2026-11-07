@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -138,12 +140,6 @@ func (s *WSSession) closeConn() {
 
 // ── Session management ───────────────────────────────────────────────────────
 
-type wsSessionInfo struct {
-	SessionID string `json:"sessionId"`
-	CreatedAt int64  `json:"createdAt"`
-	Clients   int    `json:"clients"`
-}
-
 var wsReaperOnce sync.Once
 
 func ensureWSReaper() {
@@ -178,42 +174,6 @@ func WsShutdown() {
 	})
 }
 
-// WsListHandler lists all active WebSocket sessions (GET /ws/list).
-func WsListHandler(w http.ResponseWriter, r *http.Request) {
-	sessions := make([]wsSessionInfo, 0)
-	wsSessions.Range(func(key, value any) bool {
-		sess := value.(*WSSession)
-		sess.clientsMu.Lock()
-		clientCount := len(sess.clients)
-		sess.clientsMu.Unlock()
-		sessions = append(sessions, wsSessionInfo{
-			SessionID: sess.id,
-			CreatedAt: sess.createdAt,
-			Clients:   clientCount,
-		})
-		return true
-	})
-	w.Header().Set("Content-Type", "application/json")
-	_ = jsonutil.MarshalWrite(w, sessions)
-}
-
-// WsCloseAllHandler closes every active WebSocket session (POST /ws/close-all).
-func WsCloseAllHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	count := 0
-	wsSessions.Range(func(key, value any) bool {
-		sess := value.(*WSSession)
-		sess.closeConn()
-		count++
-		return true
-	})
-	w.Header().Set("Content-Type", "application/json")
-	_ = jsonutil.MarshalWrite(w, map[string]any{"closed": count})
-}
-
 // ── Read pump ────────────────────────────────────────────────────────────────
 
 func wsReadPump(sess *WSSession) {
@@ -242,17 +202,14 @@ func wsReadPump(sess *WSSession) {
 			return
 		}
 		sess.touch()
-		evType := "message"
-		if mt == websocket.PongMessage {
-			evType = "pong"
-		}
+		// Control frames (ping/pong/close) are handled inside ReadMessage.
 		isBinary := mt == websocket.BinaryMessage
 		content := string(data)
 		if isBinary {
 			content = base64.StdEncoding.EncodeToString(data)
 		}
 		sess.broadcast(WSEvent{
-			Type:      evType,
+			Type:      "message",
 			Direction: "inbound",
 			Content:   content,
 			Timestamp: time.Now().UnixMilli(),
@@ -271,6 +228,15 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 	var req WSConnectRequest
 	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		httputil.JSONError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	req.URL = strings.TrimSpace(req.URL)
+	if req.URL == "" {
+		httputil.JSONError(w, "url required", http.StatusBadRequest)
+		return
+	}
+	if parsed, err := url.Parse(req.URL); err != nil || (parsed.Scheme != "ws" && parsed.Scheme != "wss") {
+		httputil.JSONError(w, "invalid url: ws:// or wss:// required", http.StatusBadRequest)
 		return
 	}
 
@@ -330,10 +296,6 @@ func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sess := val.(*WSSession)
 
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -343,6 +305,14 @@ func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan WSEvent, 64)
 	sess.addClient(ch)
 	defer sess.removeClient(ch)
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	// Send the response headers now: EventSource fires onopen, and a caller
+	// that waits for the response knows frames can no longer be missed.
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
 
 	for {
 		select {
@@ -467,6 +437,4 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/ws/send", wsSendHandler)
 	mux.HandleFunc("/ws/ping", wsPingHandler)
 	mux.HandleFunc("/ws/stream", wsStreamHandler)
-	mux.HandleFunc("/ws/list", WsListHandler)
-	mux.HandleFunc("/ws/close-all", WsCloseAllHandler)
 }

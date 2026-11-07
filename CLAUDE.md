@@ -577,6 +577,7 @@ Four files live at the root — everything else is under `docs/`:
 | `docs/adomnia-feature-catalog.en.md` | Fast complete catalog of product features and modules |
 | `docs/ISSUES.md` | Open bugs, missing features, and completion status — the active work queue |
 | `docs/CODE-STUDIO.md` | Code Studio guide: usage, trust model, optional tools, persistence and shortcuts |
+| `docs/RCP-PDE.md` | Eclipse RCP/PDE: target platforms, JDT LS shadow workspace, applications, extensions, Dependency Explorer, uses conflicts, p2 and export |
 | `docs/QUALITY.md` | Quality toolchain: golangci-lint, govulncheck, SonarQube/SonarCloud, coverage |
 | `docs/JSON-V2.md` | JSON marshaling: encoding/json/v2 migration and v1 compatibility seams |
 | `docs/BUILD.md` | Build instructions for all platforms |

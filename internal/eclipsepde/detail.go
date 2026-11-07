@@ -20,6 +20,10 @@ type BundleDetail struct {
 	ServiceComponents []ServiceComponent  `json:"serviceComponents"`
 	Impact            *Impact             `json:"impact,omitempty"`
 	Graph             *FocusGraph         `json:"graph,omitempty"`
+	// ExtensionPoints are the points the bundle declares, with the workspace bundles extending them;
+	// Extensions are the ones it contributes in plugin.xml, each class linked to its source.
+	ExtensionPoints []ExtensionPoint `json:"extensionPoints"`
+	Extensions      []Extension      `json:"extensions"`
 	// Manifest is the main section of the manifest, for the "raw" view.
 	Manifest map[string]string `json:"manifest"`
 }
@@ -43,6 +47,21 @@ func (r *ExplorerReport) Detail(name string, depth int) (*BundleDetail, error) {
 		Diagnostics:       []Diagnostic{},
 		ServiceComponents: []ServiceComponent{},
 		Manifest:          map[string]string{},
+		ExtensionPoints:   []ExtensionPoint{},
+		Extensions:        []Extension{},
+	}
+	if r.extensions != nil {
+		for _, point := range r.extensions.Points {
+			if point.Bundle == entry.Bundle.SymbolicName {
+				detail.ExtensionPoints = append(detail.ExtensionPoints, point)
+			}
+		}
+		sort.Slice(detail.ExtensionPoints, func(i, j int) bool { return detail.ExtensionPoints[i].ID < detail.ExtensionPoints[j].ID })
+		for _, extension := range r.extensions.Extensions {
+			if extension.Bundle == entry.Bundle.SymbolicName {
+				detail.Extensions = append(detail.Extensions, extension)
+			}
+		}
 	}
 	for _, diagnostic := range r.Diagnostics {
 		if diagnostic.Bundle == entry.Bundle.SymbolicName {

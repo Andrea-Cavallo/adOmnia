@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/stores/app'
-import { blankWebSocketRequest } from '@/lib/websocket/wsRequest'
+import { blankWebSocketRequest, isWebSocketRequest } from '@/lib/websocket/wsRequest'
+import { apiCollections, websocketCollections, withoutHttpNodes } from '@/lib/websocket/wsCollections'
 import { useSettingsStore } from '@/stores/settings'
 import { useCollectionsStore, findParentInfo } from '@/stores/collections'
 import { useTabsStore } from '@/stores/tabs'
 import { CollectionTree } from '@/components/collections/CollectionTree'
+import { EndpointBrowser } from '@/components/collections/EndpointBrowser'
 import { blankRequest, uid } from '@/lib/types'
 import type { HttpMethod, RequestItem } from '@/lib/types'
 import { Prompt } from '@/components/ui/prompt'
@@ -60,14 +62,22 @@ export function Sidebar() {
   const [showRenameWorkspace, setShowRenameWorkspace] = useState(false)
   const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false)
 
+  // The WebSocket rail is its own module: it shows its own collections and
+  // never the JSON API ones.
+  const wsOnly = activeRail === 'websocket'
+  const visibleCollections = useMemo(() => {
+    const source = treePreview ?? collections
+    return wsOnly ? websocketCollections(source) : apiCollections(source)
+  }, [wsOnly, treePreview, collections])
+
   const handleNewRequest = (method: HttpMethod = 'GET'): string => {
-    const request = newRequestOf(method)
-    const collectionId = addQuickRequest(request)
+    const request = wsOnly ? blankWebSocketRequest() : newRequestOf(method)
+    const collectionId = addQuickRequest(request, wsOnly ? 'websocket' : undefined)
     openTab(request, collectionId)
     return collectionId
   }
 
-  if (collapsed || activeRail !== 'collections') return null
+  if (collapsed || (activeRail !== 'collections' && activeRail !== 'websocket')) return null
   if (workspaceShellPhase !== 'ready') {
     return <WorkspaceSidebarSkeleton quiet={workspaceShellPhase === 'quiet'} />
   }
@@ -89,7 +99,7 @@ export function Sidebar() {
   }
 
   const handleAddRequestToFolder = (collectionId: string, parentId: string | null, method: HttpMethod = 'GET'): string | null => {
-    const req = newRequestOf(method)
+    const req = wsOnly ? blankWebSocketRequest() : newRequestOf(method)
     addRequest(collectionId, parentId, req)
     openTab(req, collectionId)
     return parentId
@@ -131,14 +141,19 @@ export function Sidebar() {
         />
       </div>
 
+      {!wsOnly && <EndpointBrowser />}
+
       <CollectionTree
         key={activeWorkspaceId}
-        collections={treePreview ?? collections}
+        collections={visibleCollections}
+        wsOnly={wsOnly}
         activeRequestId={activeRequestId}
         onOpenRequest={(request: RequestItem, collectionId: string, preview?: boolean) => {
           // Preview tree stubs carry no request contents: open the hydrated node.
           const full = useCollectionsStore.getState().hydratedRequest(request.id) ?? request
           openTab(full, collectionId, preview)
+          // A WebSocket connection belongs to its own module, so the tab strip there shows it.
+          if (isWebSocketRequest(full)) useAppStore.getState().setActiveRail('websocket')
         }}
         onNewRequest={handleNewRequest}
         onDeleteCollection={deleteCollection}
@@ -150,7 +165,7 @@ export function Sidebar() {
         onDuplicateRequest={handleDuplicateRequest}
         onDuplicateNode={duplicateNode}
         onAddRequestToFolder={handleAddRequestToFolder}
-        onImportCollection={importCollection}
+        onImportCollection={(collection) => importCollection(wsOnly ? withoutHttpNodes({ ...collection, scope: 'websocket' }) : collection)}
         workspaceTargets={workspaces.filter((workspace) => workspace.id !== activeWorkspaceId)}
         onMoveCollectionToWorkspace={handleMoveCollection}
         onReorderCollections={reorderCollections}
@@ -163,7 +178,7 @@ export function Sidebar() {
         placeholder={tr('Collection name…')}
         confirmLabel={tr('Create')}
         onConfirm={(name) => {
-          addCollection(name)
+          addCollection(name, wsOnly ? 'websocket' : undefined)
           setShowAddCollection(false)
         }}
         onCancel={() => setShowAddCollection(false)}

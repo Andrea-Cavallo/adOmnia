@@ -516,6 +516,17 @@ export class SpringEndpoint {
     "startColumn"?: number;
     "endColumn"?: number;
 
+    /**
+     * Params sono i valori letti dalla richiesta: path, query, header, cookie.
+     */
+    "params"?: SpringParam[];
+
+    /**
+     * BodyType è il DTO di @RequestBody (o il body JAX-RS), senza generici.
+     */
+    "bodyType"?: string;
+    "bodyArray"?: boolean;
+
     /** Creates a new SpringEndpoint instance. */
     constructor($$source: Partial<SpringEndpoint> = {}) {
         if (!("method" in $$source)) {
@@ -538,7 +549,11 @@ export class SpringEndpoint {
      * Creates a new SpringEndpoint instance from a string or object.
      */
     static createFrom($$source: any = {}): SpringEndpoint {
+        const $$createField10_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("params" in $$parsedSource) {
+            $$parsedSource["params"] = $$createField10_0($$parsedSource["params"]);
+        }
         return new SpringEndpoint($$parsedSource as Partial<SpringEndpoint>);
     }
 }
@@ -612,13 +627,13 @@ export class SpringIndex {
      * Creates a new SpringIndex instance from a string or object.
      */
     static createFrom($$source: any = {}): SpringIndex {
-        const $$createField1_0 = $$createType4;
-        const $$createField2_0 = $$createType6;
-        const $$createField3_0 = $$createType8;
-        const $$createField4_0 = $$createType10;
-        const $$createField5_0 = $$createType12;
-        const $$createField6_0 = $$createType14;
-        const $$createField7_0 = $$createType16;
+        const $$createField1_0 = $$createType6;
+        const $$createField2_0 = $$createType8;
+        const $$createField3_0 = $$createType10;
+        const $$createField4_0 = $$createType12;
+        const $$createField5_0 = $$createType14;
+        const $$createField6_0 = $$createType16;
+        const $$createField7_0 = $$createType18;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("properties" in $$parsedSource) {
             $$parsedSource["properties"] = $$createField1_0($$parsedSource["properties"]);
@@ -739,6 +754,41 @@ export class SpringMetadataReport {
     static createFrom($$source: any = {}): SpringMetadataReport {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new SpringMetadataReport($$parsedSource as Partial<SpringMetadataReport>);
+    }
+}
+
+/**
+ * SpringParam è un parametro della richiesta dichiarato dalla firma del metodo.
+ */
+export class SpringParam {
+    "name": string;
+
+    /**
+     * path | query | header | cookie
+     */
+    "in": string;
+    "type"?: string;
+    "required"?: boolean;
+    "default"?: string;
+
+    /** Creates a new SpringParam instance. */
+    constructor($$source: Partial<SpringParam> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("in" in $$source)) {
+            this["in"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SpringParam instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SpringParam {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SpringParam($$parsedSource as Partial<SpringParam>);
     }
 }
 
@@ -977,17 +1027,19 @@ export class VersionInfo {
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = MyBatisLink.createFrom;
 const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = SpringProperty.createFrom;
+const $$createType3 = SpringParam.createFrom;
 const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = SpringValue.createFrom;
+const $$createType5 = SpringProperty.createFrom;
 const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = SpringPropertyReference.createFrom;
+const $$createType7 = SpringValue.createFrom;
 const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = SpringDiagnostic.createFrom;
+const $$createType9 = SpringPropertyReference.createFrom;
 const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = SpringBean.createFrom;
+const $$createType11 = SpringDiagnostic.createFrom;
 const $$createType12 = $Create.Array($$createType11);
-const $$createType13 = SpringInjection.createFrom;
+const $$createType13 = SpringBean.createFrom;
 const $$createType14 = $Create.Array($$createType13);
-const $$createType15 = SpringEndpoint.createFrom;
+const $$createType15 = SpringInjection.createFrom;
 const $$createType16 = $Create.Array($$createType15);
+const $$createType17 = SpringEndpoint.createFrom;
+const $$createType18 = $Create.Array($$createType17);

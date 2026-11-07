@@ -206,6 +206,8 @@ export interface Collection {
   name: string
   color?: string
   children: TreeNode[]
+  /** Dedicated to the WebSocket module: never shown in the API workspace. Absent for API collections. */
+  scope?: 'websocket'
   _openapiSpec?: string
 }
 

@@ -3,7 +3,7 @@ import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/a
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
-import type { BundleDetail, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
+import type { AppLaunch as OsgiAppLaunch, BundleDetail, DependencyLookup, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import type { Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Path as FlowPath, RuntimeEvidence as FlowRuntimeEvidence, Trace as FlowTrace } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Call, Events } from '@wailsio/runtime'
@@ -967,10 +967,32 @@ export function listJavaLibraries(sessionId: string): CancellablePromise<JavaLib
 export function resolveJavaLibrarySource(sessionId: string, groupId: string, artifactId: string, version: string): CancellablePromise<GoIDEDependencySource> {
   return GoIDEBindings.JavaLibrarySource(sessionId, groupId, artifactId, version)
 }
-
 /** Scarica il jar dei sorgenti di una libreria (mvn dependency:get): lancia Maven e va in rete. */
 export async function downloadJavaLibrarySources(sessionId: string, groupId: string, artifactId: string, version: string): Promise<void> {
   return GoIDEBindings.DownloadJavaLibrarySources(sessionId, groupId, artifactId, version)
+}
+
+export type LanguageLibraries = Awaited<ReturnType<typeof GoIDEBindings.PythonLibraries>>
+export type LanguageLibrary = LanguageLibraries['libraries'][number]
+
+/** I pacchetti installati nell'ambiente Python (External Libraries), letti da site-packages: nessun processo. */
+export function listPythonLibraries(sessionId: string): CancellablePromise<LanguageLibraries> {
+  return GoIDEBindings.PythonLibraries(sessionId)
+}
+
+/** Il codice di un pacchetto Python installato, in sola lettura. */
+export function resolvePythonLibrarySource(sessionId: string, name: string): CancellablePromise<GoIDEDependencySource> {
+  return GoIDEBindings.PythonLibrarySource(sessionId, name)
+}
+
+/** Le dipendenze dichiarate da un progetto C/C++ (External Libraries), solo dai manifest. */
+export function listNativeLibraries(sessionId: string): CancellablePromise<LanguageLibraries> {
+  return GoIDEBindings.NativeLibraries(sessionId)
+}
+
+/** Il codice di una dipendenza C/C++ trovata in FetchContent o vcpkg, in sola lettura. */
+export function resolveNativeLibrarySource(sessionId: string, name: string, module: string): CancellablePromise<GoIDEDependencySource> {
+  return GoIDEBindings.NativeLibrarySource(sessionId, name, module)
 }
 
 /** Bundle OSGi/PDE del progetto e come si risolvono sulla target platform attiva (legge solo i manifest). */
@@ -1031,6 +1053,24 @@ export async function startJavaOsgiRun(sessionId: string): Promise<string[]> {
   return result.problems ?? []
 }
 
+export type { OsgiAppLaunch }
+
+/** Esporta bundle e feature come jar in dest; con publish il publisher p2 del target ne fa un repository. */
+export async function exportJavaOsgiBundles(sessionId: string, dest: string, publish: boolean) {
+  return GoIDEBindings.ExportJavaOsgiBundles(sessionId, dest, publish)
+}
+
+/** I .product e i .launch PDE che avviano un'applicazione Eclipse. */
+export async function listJavaOsgiApps(sessionId: string): Promise<OsgiAppLaunch[]> {
+  return (await GoIDEBindings.ListJavaOsgiApps(sessionId)) ?? []
+}
+
+/** Avvia l'applicazione di un .product/.launch; restituisce i problemi del lancio. */
+export async function startJavaOsgiApp(sessionId: string, file: string): Promise<string[]> {
+  const result = await GoIDEBindings.StartJavaOsgiApp(sessionId, file)
+  return result.problems ?? []
+}
+
 /** OSGi Control Center: bundle del workspace e della target platform, Activator, start level, diagnostica. */
 export async function getJavaOsgiExplorer(sessionId: string): Promise<ExplorerReport | null> {
   return GoIDEBindings.JavaOsgiExplorer(sessionId)
@@ -1054,6 +1094,11 @@ export async function getJavaOsgiBundleDetail(sessionId: string, name: string, d
 /** Dependency Impact Analyzer: chi dipende da un bundle e cosa verificare prima di cambiarlo. */
 export async function getJavaOsgiImpact(sessionId: string, name: string): Promise<Impact | null> {
   return GoIDEBindings.JavaOsgiImpact(sessionId, name)
+}
+
+/** Dependency Explorer: chi fornisce una classe/package, chi la usa e cosa manca nei MANIFEST. */
+export async function lookupJavaOsgiDependency(sessionId: string, query: string): Promise<DependencyLookup | null> {
+  return GoIDEBindings.JavaOsgiLookupDependency(sessionId, query)
 }
 
 /** Impatto di una classe o interfaccia del workspace (risolta nel suo bundle). */

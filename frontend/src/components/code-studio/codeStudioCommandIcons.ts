@@ -9,7 +9,7 @@ import {
   PackageOpen, PackagePlus, PackageSearch, Paintbrush, PanelBottom, PanelRight, PanelTop, Pencil, Pin, Play, Plug,
   Radar, Redo2, RefreshCw, Send, Repeat, Replace, RotateCcw, Rows2, Save, SaveAll, ScanSearch, Search, SearchCode, Server,
   Settings2, ShieldCheck, Sparkles, Square, SquareDashed, SquareTerminal, StepForward, Terminal, TextCursorInput, Trash2,
-  Type, Undo2, Unplug, Wand2, WandSparkles, Workflow, Wrench, X, Zap, type LucideIcon, ArrowUpToLine, Boxes, Eraser, Flame, Focus, Ligature, ZoomIn, ZoomOut, PenLine, ShieldAlert, CircleSlash
+  Type, Undo2, Unplug, Wand2, WandSparkles, Workflow, Wrench, X, Zap, type LucideIcon, ArrowUpToLine, ArrowUpRight, Boxes, Eraser, Flame, Focus, Ligature, ZoomIn, ZoomOut, PenLine, ShieldAlert, CircleSlash
 } from 'lucide-react'
 import { GoGopherIcon } from './GoGopherIcon'
 import type { CodeStudioCommandId, CodeStudioMenuId } from './codeStudioCommands'
@@ -243,6 +243,7 @@ export const CODE_STUDIO_COMMAND_ICONS: Partial<Record<CodeStudioCommandId, Code
 
   'tools.services': icon(Server),
   'tools.httpRequest': icon(Send),
+  'tools.openInApiWorkspace': icon(ArrowUpRight),
   'tools.plugins': icon(Plug),
   'tools.aiHub': icon(Sparkles),
   'tools.copilot': icon(Sparkles),

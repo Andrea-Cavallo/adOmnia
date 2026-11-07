@@ -1,6 +1,7 @@
 import { getRunSuggestions } from '@/lib/code-studio-api'
 import { javaCounterpartPaths, javaGoalSuggestion, javaTargetAtLine, mavenModuleFor } from '@/lib/code-studio/javaCommands'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
+import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { usePomStore } from '@/stores/codeStudioPom'
 import { studioToast } from '@/stores/codeStudioToast'
@@ -10,6 +11,7 @@ import { runCodeStudioEditorCommand } from './codeStudioEditorRegistry'
 import { openJavaJdkDialog } from './CodeStudioJavaJdk'
 import { openJavaDependencyTree } from './CodeStudioJavaTree'
 import { openJavaOsgi, runOsgiBuild, runOsgiFramework } from './CodeStudioJavaOsgi'
+import { exportOsgiBundles } from './CodeStudioJavaOsgiApps'
 import { openFlowExplorer } from './CodeStudioFlowExplorer'
 import { openJavaJvmMonitor } from './CodeStudioJavaJvm'
 import { openSpringBeanGraph } from './CodeStudioSpringGraph'
@@ -84,6 +86,9 @@ export function runJavaCommand(
     case 'java.flowExplorer': openFlowExplorer(sessionId); return true
     case 'java.osgiBuild': runOsgiBuild(sessionId); return true
     case 'java.osgiRun': runOsgiFramework(sessionId); return true
+    case 'java.osgiDebug': void useCodeStudioDebugStore.getState().startOsgi(sessionId); return true
+    case 'java.osgiExport': void exportOsgiBundles(sessionId, false); return true
+    case 'java.osgiExportP2': void exportOsgiBundles(sessionId, true); return true
     case 'java.springEndpoints': openSpringEndpoints(sessionId); void useSpringStore.getState().refresh(sessionId); return true
     case 'java.springBeanGraph': openSpringBeanGraph(sessionId); return true
     case 'java.dependencyTree': {

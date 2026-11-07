@@ -71,6 +71,13 @@ describe('workspace tree projection', () => {
     expect(request?.bodies[0].raw).toBe('{"amount":1}')
     expect(request?.headers[0].key).toBe('X-Trace')
   })
+
+  it('keeps the WebSocket scope in the tree projection', () => {
+    const [collection] = projectTree([{ id: 'ws-1', name: 'Realtime', scope: 'websocket', children: [] }])
+    expect(collection.scope).toBe('websocket')
+    const [api] = projectTree([{ id: 'api-1', name: 'API', children: [] }])
+    expect(api.scope).toBeUndefined()
+  })
 })
 
 describe('structured workspace payload', () => {

@@ -64,6 +64,11 @@ export function startGoIDEJavaDebug(request: JavaDebugRequest): Promise<DebugSes
   return GoIDEBindings.StartJavaDebug(request)
 }
 
+/** Debug dei bundle OSGi: Equinox con JDWP in attesa, il debugger Java vi si collega. */
+export function startJavaOsgiDebug(sessionId: string, file = ''): Promise<DebugSessionInfo> {
+  return GoIDEBindings.StartJavaOsgiDebug(sessionId, file)
+}
+
 /** Debug di uno script, di un modulo o di test pytest con debugpy (serve nel progetto o nell'interprete). */
 export function startPythonDebug(request: PythonDebugRequest): Promise<DebugSessionInfo> {
   return GoIDEBindings.StartPythonDebug(request)

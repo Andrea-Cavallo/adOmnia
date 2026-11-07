@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -173,40 +176,163 @@ func (s *Service) afterOsgiStep(session Session, jvm java.JDK, plan *eclipsepde.
 
 // StartJavaOsgiRun starts the bundles in Equinox on the project JVM, without Maven or an Eclipse launcher.
 func (s *Service) StartJavaOsgiRun(sessionID string) (OsgiRunResult, error) {
+	_, result, err := s.startOsgiFramework(sessionID, 0, "")
+	return result, err
+}
+
+// ListJavaOsgiApps lists the `.product` and PDE `.launch` files that start an Eclipse application.
+func (s *Service) ListJavaOsgiApps(sessionID string) ([]eclipsepde.AppLaunch, error) {
 	root, err := s.trustedOsgiRoot(sessionID)
 	if err != nil {
-		return OsgiRunResult{}, err
+		return nil, err
+	}
+	return eclipsepde.ListAppLaunches(root)
+}
+
+// StartJavaOsgiApp starts the Eclipse application of a `.product` or `.launch` (relative to the project).
+func (s *Service) StartJavaOsgiApp(sessionID, file string) (OsgiRunResult, error) {
+	if strings.TrimSpace(file) == "" {
+		return OsgiRunResult{}, errors.New("choose a .product or .launch file")
+	}
+	_, result, err := s.startOsgiFramework(sessionID, 0, file)
+	return result, err
+}
+
+// StartJavaOsgiDebug starts the bundles in Equinox waiting on a JDWP port and attaches the Java
+// debugger: breakpoints in the bundles' sources work because JDT LS sees them through the shadow
+// workspace. If the attach fails the JVM is stopped, otherwise it would wait for a debugger forever.
+// file is a `.product`/`.launch` to debug that application, "" for the bundles in the framework.
+func (s *Service) StartJavaOsgiDebug(sessionID, file string) (DebugSessionInfo, error) {
+	session, err := s.session(sessionID)
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	if status := s.lsp.Status(session.ID, java.ID); status.State != LanguageServerReady {
+		if _, err := s.StartProvidedLanguageServer(sessionID, java.ID); err != nil {
+			return DebugSessionInfo{}, fmt.Errorf("the Java language server is needed to debug the bundles: %w", err)
+		}
+	}
+	port, err := freeLocalPort()
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	session, result, err := s.startOsgiFramework(sessionID, port, file)
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), javaDebugResolveTimeout)
+	defer cancel()
+	address, err := s.startJavaDebugServer(ctx, session)
+	if err == nil {
+		var info DebugSessionInfo
+		if info, err = s.openJavaDebugAdapter(session, java.DebugOptions{Address: address, AttachHost: "127.0.0.1", AttachPort: port}, session.Project.RealPath); err == nil {
+			return info, nil
+		}
+	}
+	_ = s.processes.Stop(result.Execution.ID) // best effort: the JVM is suspended waiting for us
+	return DebugSessionInfo{}, err
+}
+
+// OsgiExportResult is an export, plus the p2 publisher run when a repository was asked for.
+type OsgiExportResult struct {
+	Export  *eclipsepde.ExportResult `json:"export"`
+	Publish *Execution               `json:"publish,omitempty"`
+}
+
+// ExportJavaOsgiBundles writes the compiled bundles and the features as jars into dest; with publish
+// the target's p2 publisher then turns the folder into a p2 repository, in the Run console.
+func (s *Service) ExportJavaOsgiBundles(sessionID, dest string, publish bool) (OsgiExportResult, error) {
+	root, err := s.trustedOsgiRoot(sessionID)
+	if err != nil {
+		return OsgiExportResult{}, err
+	}
+	dest = strings.TrimSpace(dest)
+	if dest == "" || !filepath.IsAbs(dest) {
+		return OsgiExportResult{}, errors.New("choose an export folder")
+	}
+	exported, err := eclipsepde.ExportBundles(root, dest, time.Now())
+	if err != nil {
+		return OsgiExportResult{}, err
+	}
+	result := OsgiExportResult{Export: exported}
+	if !publish {
+		return result, nil
 	}
 	session, err := s.session(sessionID)
 	if err != nil {
-		return OsgiRunResult{}, err
+		return result, err
 	}
 	jvm, err := s.osgiJVM(session)
 	if err != nil {
-		return OsgiRunResult{}, err
+		return result, err
 	}
-	launch, err := eclipsepde.PrepareLaunch(root, eclipsepde.LaunchJVM{Major: jvm.Major, Arch: jvm.Arch})
+	launch, err := eclipsepde.PublishP2(root, dest)
 	if err != nil {
-		return OsgiRunResult{}, err
+		return result, err
 	}
 	environment, err := s.executionEnvironment(session.ID, java.ID, nil)
 	if err != nil {
-		return OsgiRunResult{}, err
+		return result, err
 	}
 	execution, err := s.processes.Start(CommandSpec{
 		SessionID: session.ID, Kind: osgiRunKind, Executable: jvm.Binary, Arguments: launch.Arguments,
-		WorkingDirectory: launch.Directory, Environment: environment,
-		DisplayCommand: "equinox on Java " + jvm.Version,
+		WorkingDirectory: launch.Directory, Environment: environment, DisplayCommand: "p2 publisher on Java " + jvm.Version,
 	})
 	if err != nil {
-		return OsgiRunResult{}, err
+		return result, err
+	}
+	result.Publish = &execution
+	return result, nil
+}
+
+// startOsgiFramework launches Equinox in the Run console: the workspace bundles, or the application
+// of appFile (a .product/.launch). A debugPort above zero opens JDWP on it.
+func (s *Service) startOsgiFramework(sessionID string, debugPort int, appFile string) (Session, OsgiRunResult, error) {
+	root, err := s.trustedOsgiRoot(sessionID)
+	if err != nil {
+		return Session{}, OsgiRunResult{}, err
+	}
+	session, err := s.session(sessionID)
+	if err != nil {
+		return Session{}, OsgiRunResult{}, err
+	}
+	jvm, err := s.osgiJVM(session)
+	if err != nil {
+		return Session{}, OsgiRunResult{}, err
+	}
+	target := eclipsepde.LaunchJVM{Major: jvm.Major, Arch: jvm.Arch}
+	var launch *eclipsepde.Launch
+	display := "equinox on Java " + jvm.Version
+	if appFile == "" {
+		launch, err = eclipsepde.PrepareLaunch(root, target)
+	} else {
+		launch, err = eclipsepde.PrepareAppLaunch(root, target, filepath.ToSlash(appFile))
+		display = path.Base(filepath.ToSlash(appFile)) + " on Java " + jvm.Version
+	}
+	if err != nil {
+		return Session{}, OsgiRunResult{}, err
+	}
+	if debugPort > 0 {
+		launch.WithDebugger(debugPort)
+		display += " (debug)"
+	}
+	environment, err := s.executionEnvironment(session.ID, java.ID, nil)
+	if err != nil {
+		return Session{}, OsgiRunResult{}, err
+	}
+	execution, err := s.processes.Start(CommandSpec{
+		SessionID: session.ID, Kind: osgiRunKind, Executable: jvm.Binary, Arguments: launch.Arguments,
+		WorkingDirectory: launch.Directory, Environment: environment, DisplayCommand: display,
+	})
+	if err != nil {
+		return Session{}, OsgiRunResult{}, err
 	}
 	s.rememberRunRequest(execution.ID, RunRequest{SessionID: session.ID, Kind: osgiRunKind})
 	result := OsgiRunResult{Execution: execution, Problems: []string{}}
 	for _, problem := range launch.Problems {
 		result.Problems = append(result.Problems, problem.String())
 	}
-	return result, nil
+	return session, result, nil
 }
 
 // JavaOsgiWorkspace elenca i bundle OSGi/PDE del progetto e come si risolvono sulla target platform attiva.

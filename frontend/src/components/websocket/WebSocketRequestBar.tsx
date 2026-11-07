@@ -8,15 +8,13 @@ import { VarHighlightInput } from '@/components/ui/VarHighlightInput'
 import { requestWithUrlInput, resolvedRequestUrl } from '@/lib/requestUrl'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
-import type { HttpMethod, RequestItem } from '@/lib/types'
+import type { RequestItem } from '@/lib/types'
 import { connectPayload, wsScheme } from '@/lib/websocket/wsRequest'
 import { emptyConnection, useWsConnections } from '@/stores/websocketConnections'
 import { LiveWebSocketHandler } from './LiveWebSocketHandler'
 
 const IDLE = emptyConnection()
 const SAVED_FLASH_MS = 1000
-/** WS first; the HTTP methods turn the tab back into a REST request. */
-const PROTOCOLS: HttpMethod[] = ['WS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
 export function WebSocketRequestBar({ tabId, request, isDirty, vars, hasActiveEnv, onChange, onSave, onDelete }: {
   tabId: string
@@ -67,16 +65,14 @@ export function WebSocketRequestBar({ tabId, request, isDirty, vars, hasActiveEn
         <span className="truncate">{request.name}</span>
       </div>
       <div className="flex min-w-0 items-center gap-2">
-        <select
-          value={request.method}
-          onChange={(event) => onChange({ ...request, method: event.target.value as HttpMethod })}
-          disabled={open}
-          title={open ? 'Disconnect to change the protocol' : 'Protocol'}
-          aria-label={'Protocol'}
-          className="api-method h-[var(--ui-control-h)] w-[90px] rounded-md border border-border-2 bg-surface-2 px-2 font-mono text-[12px] font-bold text-info outline-none transition-colors focus:border-accent disabled:opacity-80"
+        <div
+          role="status"
+          title={'WebSocket connection'}
+          aria-label={'Protocol: WebSocket'}
+          className="api-method flex h-[var(--ui-control-h)] w-[90px] items-center justify-center rounded-md border border-border-2 bg-surface-2 font-mono text-[12px] font-bold text-info"
         >
-          {PROTOCOLS.map((method) => <option key={method} value={method}>{method === 'WS' ? scheme : method}</option>)}
-        </select>
+          {scheme}
+        </div>
 
         <div className="api-url h-[var(--ui-control-h)] min-w-0 flex-1 overflow-hidden rounded-md border border-border-2 bg-surface-2 transition-colors focus-within:border-accent">
           <VarHighlightInput

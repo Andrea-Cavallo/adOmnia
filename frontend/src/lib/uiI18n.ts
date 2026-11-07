@@ -183,6 +183,14 @@ export const ITALIAN_UI_MESSAGES = {
   'At least one workspace is required': 'È richiesta almeno un’area di lavoro',
   'Delete workspace': 'Elimina area di lavoro',
   'New Collection': 'Nuova raccolta',
+  'Endpoints': 'Endpoint',
+  'Refresh endpoints': 'Aggiorna endpoint',
+  'Filter endpoints…': 'Filtra endpoint…',
+  'Filter endpoints': 'Filtra endpoint',
+  'Clear filter': 'Cancella filtro',
+  'Open a project in Code Studio to browse its endpoints.': 'Apri un progetto in Code Studio per sfogliarne gli endpoint.',
+  'No HTTP endpoints detected in the open projects.': 'Nessun endpoint HTTP rilevato nei progetti aperti.',
+  'Showing the first 400 endpoints; refine the filter.': 'Mostrati i primi 400 endpoint; affina il filtro.',
   'Collection name…': 'Nome raccolta…',
   'Create': 'Crea',
   'New Workspace': 'Nuova area di lavoro',
@@ -1041,6 +1049,8 @@ export const ITALIAN_UI_MESSAGES = {
   'Connect': 'Connetti',
   'Message': 'Messaggio',
   'New WebSocket': 'Nuovo WebSocket',
+  'No WebSocket connection open': 'Nessuna connessione WebSocket aperta',
+  'Open one from the sidebar on the left or start a new connection.': 'Aprine una dalla barra a sinistra oppure avvia una nuova connessione.',
 } as const
 
 export type UiMessage = keyof typeof ITALIAN_UI_MESSAGES

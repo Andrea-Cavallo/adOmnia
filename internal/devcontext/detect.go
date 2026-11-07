@@ -33,7 +33,7 @@ func interesting(rel string) bool {
 	}
 	base := path.Base(rel)
 	switch {
-	case base == "go.mod" || base == "Cargo.toml", isDotenv(base), isCompose(base), isMakefile(base):
+	case base == "go.mod" || base == "Cargo.toml", isDotenv(base), isCompose(base), isMakefile(base), isSpringConfig(base):
 		return true
 	case strings.HasSuffix(base, "_test.go"):
 		return false
@@ -69,6 +69,8 @@ func detectFile(rel string, data []byte, env map[string]string, hints AdapterHin
 		add(detectGoMod(rel, data))
 	case base == "Cargo.toml":
 		add(detectCargoToml(rel, data))
+	case isSpringConfig(base):
+		out = append(out, detectSpringConfig(rel, data)...)
 	case strings.HasSuffix(base, ".go"):
 		add(detectGoFile(rel, data, hints))
 	case strings.HasSuffix(base, ".java"):

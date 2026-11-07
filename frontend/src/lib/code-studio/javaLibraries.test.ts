@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { JavaLibrary } from '@/lib/code-studio-api'
-import { dependencyBlockAt, findLibrary, libraryOfSourcesPath, shortGroup } from './javaLibraries'
+import {
+  dependencyBlockAt, findLibrary, isJavaBuildConfig, javaBuildLabel, javaBuildTools, libraryOfSourcesPath, moduleOfBuildFile, shortGroup,
+} from './javaLibraries'
 
 const library = (groupId: string, artifactId: string, version: string, modules: string[] = ['']): JavaLibrary => ({ groupId, artifactId, version, direct: true, modules, downloaded: true, sources: true })
 
@@ -46,5 +48,31 @@ describe('javaLibraries', () => {
   it('shortens long groups', () => {
     expect(shortGroup('org.springframework.boot')).toBe('springframework.boot')
     expect(shortGroup('junit')).toBe('junit')
+  })
+
+  describe('Gradle projects', () => {
+    it('recognises every build file that changes the dependencies', () => {
+      for (const path of ['pom.xml', 'build.gradle', 'build.gradle.kts', 'app/build.gradle.kts', 'settings.gradle', 'gradle/libs.versions.toml', 'gradle.properties']) {
+        expect(isJavaBuildConfig(path), path).toBe(true)
+      }
+      expect(isJavaBuildConfig('src/main/java/App.java')).toBe(false)
+      expect(isJavaBuildConfig('build.gradle.kts.bak')).toBe(false)
+    })
+
+    it('gives the module directory of a Gradle build file', () => {
+      expect(moduleOfBuildFile('build.gradle')).toBe('')
+      expect(moduleOfBuildFile('build.gradle.kts')).toBe('')
+      expect(moduleOfBuildFile('app/build.gradle')).toBe('app')
+      expect(moduleOfBuildFile('services/api/build.gradle.kts')).toBe('services/api')
+      expect(moduleOfBuildFile('core/pom.xml')).toBe('core')
+    })
+
+    it('labels the build tools of the project', () => {
+      expect(javaBuildTools([{ language: 'java', kind: 'gradle' }])).toEqual(['gradle'])
+      expect(javaBuildTools([{ language: 'java', kind: 'maven' }, { language: 'java', kind: 'gradle' }])).toEqual(['maven', 'gradle'])
+      expect(javaBuildTools([{ language: 'go', kind: 'module' }])).toEqual([])
+      expect(javaBuildLabel(['gradle'])).toBe('Gradle')
+      expect(javaBuildLabel(['maven', 'gradle'])).toBe('Maven · Gradle')
+    })
   })
 })

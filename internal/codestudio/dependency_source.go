@@ -232,7 +232,9 @@ func dependencySourceFiles(root string) []DependencySourceFile {
 // e documentazione, senza artefatti di build.
 func dependencySourceName(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".go", ".mod", ".md", ".java", ".kt", ".scala", ".groovy":
+	case ".go", ".mod", ".md", ".java", ".kt", ".scala", ".groovy",
+		".py", ".pyi", ".pyx", ".pxd", ".toml", ".cfg", ".ini", ".txt", ".json", ".yaml", ".yml",
+		".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh", ".hxx", ".inl", ".ipp", ".inc", ".cmake", ".def":
 		return true
 	}
 	upper := strings.ToUpper(name)
@@ -247,7 +249,7 @@ func dependencySourceName(name string) bool {
 // dependencyEntryFile sceglie il file da aprire per primo: doc.go, poi main.go, poi il package
 // della radice, infine qualsiasi sorgente o il go.mod del modulo.
 func dependencyEntryFile(root string, files []DependencySourceFile) string {
-	for _, preferred := range []string{"doc.go", "main.go"} {
+	for _, preferred := range []string{"doc.go", "main.go", "__init__.py"} {
 		for _, file := range files {
 			if file.Path == preferred {
 				return filepath.Join(root, filepath.FromSlash(file.Path))
