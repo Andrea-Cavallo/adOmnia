@@ -22,6 +22,9 @@ func TestMCPBuildToolsAreRegistered(t *testing.T) {
 // A Gradle project without gradlew and without gradle on PATH must still produce a plan: the
 // unit is detected and the reason says what is missing, instead of failing the call.
 func TestMCPBuildPlanReportsAMissingTool(t *testing.T) {
+	// The build tools are looked up in PATH: an empty one makes "missing" true on every machine, CI runners
+	// included (they ship gradle and mvn).
+	t.Setenv("PATH", t.TempDir())
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "build.gradle"), []byte("// build"), 0o644); err != nil {
 		t.Fatal(err)
