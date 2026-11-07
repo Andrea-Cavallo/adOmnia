@@ -126,6 +126,7 @@ export {
     NavigationEntry,
     NewFile,
     OpenDocument,
+    OsgiExportResult,
     OsgiImportResult,
     OsgiRunResult,
     OsgiTychoResult,

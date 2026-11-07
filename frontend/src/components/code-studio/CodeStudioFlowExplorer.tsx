@@ -31,6 +31,7 @@ const KIND_STYLE: Record<string, string> = {
   type: 'text-text-2',
   bundle: 'text-warning',
   activator: 'text-warning',
+  'extension-point': 'text-info',
   service: 'text-success',
   external: 'text-danger',
   endpoint: 'text-success',

@@ -16,6 +16,7 @@ export {
     SpringIndex,
     SpringInjection,
     SpringMetadataReport,
+    SpringParam,
     SpringProperty,
     SpringPropertyReference,
     SpringValue,

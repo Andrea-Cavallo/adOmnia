@@ -1823,6 +1823,27 @@ func (g *GoIDE) StartJavaOsgiBuild(sessionID string) (codestudio.Execution, erro
 	return g.service.StartJavaOsgiBuild(sessionID)
 }
 
+// StartJavaOsgiDebug avvia in Equinox con JDWP i bundle (file "") o l'applicazione di un .product/.launch
+// e vi collega il debugger Java.
+func (g *GoIDE) StartJavaOsgiDebug(sessionID, file string) (codestudio.DebugSessionInfo, error) {
+	return g.service.StartJavaOsgiDebug(sessionID, file)
+}
+
+// ExportJavaOsgiBundles esporta bundle e feature come jar in dest; con publish ne fa un repository p2.
+func (g *GoIDE) ExportJavaOsgiBundles(sessionID, dest string, publish bool) (codestudio.OsgiExportResult, error) {
+	return g.service.ExportJavaOsgiBundles(sessionID, dest, publish)
+}
+
+// ListJavaOsgiApps elenca i .product e i .launch PDE che avviano un'applicazione Eclipse.
+func (g *GoIDE) ListJavaOsgiApps(sessionID string) ([]eclipsepde.AppLaunch, error) {
+	return g.service.ListJavaOsgiApps(sessionID)
+}
+
+// StartJavaOsgiApp avvia l'applicazione Eclipse di un .product o .launch.
+func (g *GoIDE) StartJavaOsgiApp(sessionID, file string) (codestudio.OsgiRunResult, error) {
+	return g.service.StartJavaOsgiApp(sessionID, file)
+}
+
 // StartJavaOsgiRun avvia i bundle in Equinox sulla JVM del progetto.
 func (g *GoIDE) StartJavaOsgiRun(sessionID string) (codestudio.OsgiRunResult, error) {
 	return g.service.StartJavaOsgiRun(sessionID)
@@ -1852,6 +1873,12 @@ func (g *GoIDE) JavaOsgiBundleDetail(sessionID, name string, depth int) (*eclips
 // JavaOsgiImpact elenca chi dipende da un bundle e cosa verificare prima di cambiarlo.
 func (g *GoIDE) JavaOsgiImpact(sessionID, name string) (*eclipsepde.Impact, error) {
 	return g.service.JavaOsgiImpact(sessionID, name)
+}
+
+// JavaOsgiLookupDependency (Dependency Explorer): chi esporta il package di una classe, chi la
+// usa e chi la usa senza dichiararla nel MANIFEST.
+func (g *GoIDE) JavaOsgiLookupDependency(sessionID, query string) (*eclipsepde.DependencyLookup, error) {
+	return g.service.JavaOsgiLookupDependency(sessionID, query)
 }
 
 // JavaOsgiImpactForClass risolve una classe o interfaccia del workspace nel suo bundle e

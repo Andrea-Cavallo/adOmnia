@@ -469,7 +469,7 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
     return id === 'preview.openFile' && !context.hasEditor ? 'Open an HTML file first' : true
   }
   if (id === 'java.selectJdk' || id === 'java.jvmMonitor' || id === 'java.springEndpoints' || id === 'java.springBeanGraph') return true
-  if (id === 'java.dependencyTree' || id === 'java.osgi' || id === 'java.osgiBuild' || id === 'java.osgiRun') return context.authorized ? true : NOT_TRUSTED
+  if (id === 'java.dependencyTree' || id === 'java.osgi' || id === 'java.osgiBuild' || id === 'java.osgiRun' || id === 'java.osgiDebug' || id === 'java.osgiExport' || id === 'java.osgiExportP2') return context.authorized ? true : NOT_TRUSTED
   if (id.startsWith('java.')) {
     if (/^java\.(run|debug|spring|mvn)/.test(id)) return context.authorized ? true : NOT_TRUSTED
     return context.hasEditor ? true : 'Open a Java file first'

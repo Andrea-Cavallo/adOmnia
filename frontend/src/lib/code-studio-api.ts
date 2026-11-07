@@ -3,7 +3,7 @@ import type { EnvironmentPlan } from '../../bindings/github.com/Andrea-Cavallo/a
 import type { JVMHeapSample, JVMProcess, MainClassInfo, MyBatisIndex, PomDependency, SpringEndpoint, TreeNode, SpringIndex, SpringMetadataReport, VersionInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/java/models'
 import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/languages/rust/models'
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
-import type { BundleDetail, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
+import type { AppLaunch as OsgiAppLaunch, BundleDetail, DependencyLookup, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import type { Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Path as FlowPath, RuntimeEvidence as FlowRuntimeEvidence, Trace as FlowTrace } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Call, Events } from '@wailsio/runtime'
@@ -1053,6 +1053,24 @@ export async function startJavaOsgiRun(sessionId: string): Promise<string[]> {
   return result.problems ?? []
 }
 
+export type { OsgiAppLaunch }
+
+/** Esporta bundle e feature come jar in dest; con publish il publisher p2 del target ne fa un repository. */
+export async function exportJavaOsgiBundles(sessionId: string, dest: string, publish: boolean) {
+  return GoIDEBindings.ExportJavaOsgiBundles(sessionId, dest, publish)
+}
+
+/** I .product e i .launch PDE che avviano un'applicazione Eclipse. */
+export async function listJavaOsgiApps(sessionId: string): Promise<OsgiAppLaunch[]> {
+  return (await GoIDEBindings.ListJavaOsgiApps(sessionId)) ?? []
+}
+
+/** Avvia l'applicazione di un .product/.launch; restituisce i problemi del lancio. */
+export async function startJavaOsgiApp(sessionId: string, file: string): Promise<string[]> {
+  const result = await GoIDEBindings.StartJavaOsgiApp(sessionId, file)
+  return result.problems ?? []
+}
+
 /** OSGi Control Center: bundle del workspace e della target platform, Activator, start level, diagnostica. */
 export async function getJavaOsgiExplorer(sessionId: string): Promise<ExplorerReport | null> {
   return GoIDEBindings.JavaOsgiExplorer(sessionId)
@@ -1076,6 +1094,11 @@ export async function getJavaOsgiBundleDetail(sessionId: string, name: string, d
 /** Dependency Impact Analyzer: chi dipende da un bundle e cosa verificare prima di cambiarlo. */
 export async function getJavaOsgiImpact(sessionId: string, name: string): Promise<Impact | null> {
   return GoIDEBindings.JavaOsgiImpact(sessionId, name)
+}
+
+/** Dependency Explorer: chi fornisce una classe/package, chi la usa e cosa manca nei MANIFEST. */
+export async function lookupJavaOsgiDependency(sessionId: string, query: string): Promise<DependencyLookup | null> {
+  return GoIDEBindings.JavaOsgiLookupDependency(sessionId, query)
 }
 
 /** Impatto di una classe o interfaccia del workspace (risolta nel suo bundle). */

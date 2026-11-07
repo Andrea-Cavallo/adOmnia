@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Activity, AlertTriangle, Boxes, Bug, ChevronDown, ChevronRight, CircleDot, FileCode2, FolderOpen, FolderPlus, Hammer,
+  Activity, AlertTriangle, AppWindow, Boxes, Bug, ChevronDown, ChevronRight, CircleDot, FileCode2, FolderOpen, FolderPlus, Hammer,
   Info, Layers, Link2, ListTree, Loader2, Package, Play, RefreshCw, Search, Trash2, X,
 } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
@@ -15,6 +15,10 @@ import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
 import { useCodeStudioStore } from '@/stores/codeStudio'
 import { studioToast } from '@/stores/codeStudioToast'
 import { CodeStudioJavaOsgiP2 } from './CodeStudioJavaOsgiP2'
+import { useCodeStudioDebugStore } from '@/stores/codeStudioDebug'
+import { CodeStudioJavaOsgiApps, exportOsgiBundles } from './CodeStudioJavaOsgiApps'
+import { ExtensionsSection } from './CodeStudioJavaOsgiExtensions'
+import { CodeStudioJavaOsgiDependencies } from './CodeStudioJavaOsgiDependencies'
 import type {
   ActivatorInfo, BundleDetail, BundleRow, Consumer, Diagnostic, ExplorerReport, FocusGraph, RuntimeSnapshot, SearchHit, TargetComparison,
 } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
@@ -136,7 +140,7 @@ function announceBuildOutcome(outcome: OsgiBuildEvent): void {
   if (outcome.errors > 0) useCodeStudioLspStore.getState().showToolWindow('problems')
 }
 
-type Tab = 'bundles' | 'graph' | 'activators' | 'diagnose' | 'runtime' | 'target'
+type Tab = 'bundles' | 'graph' | 'activators' | 'diagnose' | 'runtime' | 'apps' | 'dependencies' | 'target'
 type Filter = 'all' | 'issues' | 'resolved' | 'lazy' | 'installed' | 'active'
 
 /** Quante righe disegna il navigator: oltre, la ricerca è la strada (500+ bundle restano veloci). */
@@ -399,6 +403,7 @@ function DetailPanel({ detail, loading, onDepth, depth, onToggleBreakpoint }: Re
           ))}
         </section>
       )}
+      <ExtensionsSection detail={detail} />
       <ImpactSection detail={detail} />
       {(row.notes ?? []).length > 0 && (
         <section aria-label="Notes" className="border-t border-border-1 px-3 py-1.5">
@@ -953,11 +958,13 @@ export function CodeStudioJavaOsgi() {
           <button type="button" className="gs-btn gs-btn-icon shrink-0" disabled={busy} onClick={refresh} title="Re-read manifests, target index and diagnostics" aria-label="Refresh the Control Center"><RefreshCw size={13} /></button>
           <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiBuild(sessionId); setSessionId(null) } }} title="Compile with the Eclipse compiler of the target, on the project JVM (Java > Select JDK)"><Hammer size={13} /> Build</button>
           <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiFramework(sessionId); setSessionId(null) } }} title="Start the compiled bundles in Equinox, on the project JVM"><Play size={13} /> Run</button>
+          <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { void useCodeStudioDebugStore.getState().startOsgi(sessionId); setSessionId(null) } }} title="Start the compiled bundles in Equinox waiting for the debugger: breakpoints in the bundles stop there"><Bug size={13} /> Debug</button>
+          <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) void exportOsgiBundles(sessionId, false) }} title="Export the compiled bundles and the features as jars (bin.includes, qualifier applied). Java › Export OSGi Bundles as p2 Repository also publishes them"><Package size={13} /> Export…</button>
           <button type="button" className="gs-btn shrink-0" disabled={busy} onClick={() => { void importPlugins() }} title="Import plug-in projects from this machine: they are copied under plugins/ so several repositories compile together"><FolderPlus size={13} /> Import…</button>
         </div>
         {report && <SummaryCards report={report} filter={filter} onFilter={setFilter} />}
         <div className="flex items-center gap-1 border-b border-border-1 px-2">
-          {([['bundles', 'Bundles', ListTree], ['graph', 'Graph', Link2], ['activators', 'Activators', Bug], ['diagnose', `Diagnose${diagnostics.length > 0 ? ` (${diagnostics.filter((item) => item.severity !== 'info').length})` : ''}`, AlertTriangle], ['runtime', `Runtime${report?.runtime ? ` · ${report.summary.active}` : ''}`, Activity], ['target', 'Target', Layers]] as Array<[Tab, string, typeof Boxes]>).map(([key, label, Icon]) => (
+          {([['bundles', 'Bundles', ListTree], ['graph', 'Graph', Link2], ['activators', 'Activators', Bug], ['diagnose', `Diagnose${diagnostics.length > 0 ? ` (${diagnostics.filter((item) => item.severity !== 'info').length})` : ''}`, AlertTriangle], ['runtime', `Runtime${report?.runtime ? ` · ${report.summary.active}` : ''}`, Activity], ['apps', 'Applications', AppWindow], ['dependencies', 'Dependencies', Package], ['target', 'Target', Layers]] as Array<[Tab, string, typeof Boxes]>).map(([key, label, Icon]) => (
             <button key={key} type="button" onClick={() => setTab(key)} className={`flex items-center gap-1 border-b-2 px-2 py-1.5 text-[11px] ${tab === key ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-2'}`}>
               <Icon size={12} /> {label}
             </button>
@@ -1054,6 +1061,8 @@ export function CodeStudioJavaOsgi() {
             onStop={stopRuntime}
           />
         )}
+        {tab === 'dependencies' && sessionId && <CodeStudioJavaOsgiDependencies sessionId={sessionId} onSelectBundle={(name) => { setSelected(name); setTab('bundles') }} />}
+        {tab === 'apps' && sessionId && <CodeStudioJavaOsgiApps sessionId={sessionId} onLaunched={() => setSessionId(null)} />}
         {tab === 'target' && report && sessionId && (
           <>
             <TargetPanel report={report} targetPath={report.targetPath} onTarget={applyTarget} onReload={reindex} sessionId={sessionId} onCompare={(path) => { void compareJavaOsgiTarget(sessionId, path).then((next) => { setComparison(next); if (!next) setError('The comparison returned no data') }).catch((reason: unknown) => setError(messageOf(reason))) }} onAddJar={() => { void addJar() }} />

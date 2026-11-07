@@ -17,21 +17,21 @@ import (
 	"time"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/netpolicy"
+	"github.com/ulikunitz/xz"
 )
 
 // Limits of what a p2 repository may send: Kepler's largest content.jar is 2.4 MB
 // (36 MB of XML), a bundle rarely exceeds 50 MB.
 const (
-	maxP2MetadataBytes   = 256 << 20
-	maxP2ArtifactBytes   = 512 << 20
-	maxP2CompositeDepth  = 6
-	p2RequestTimeout     = 5 * time.Minute
-	p2NetworkCategory    = "eclipse-p2"
-	p2NamespaceIU        = "org.eclipse.equinox.p2.iu"
-	p2NamespaceBundle    = "osgi.bundle"
-	p2NamespacePackage   = "java.package"
-	p2ClassifierBundle   = "osgi.bundle"
-	p2FilesUnsupportedXZ = "content.xml.xz"
+	maxP2MetadataBytes  = 256 << 20
+	maxP2ArtifactBytes  = 512 << 20
+	maxP2CompositeDepth = 6
+	p2RequestTimeout    = 5 * time.Minute
+	p2NetworkCategory   = "eclipse-p2"
+	p2NamespaceIU       = "org.eclipse.equinox.p2.iu"
+	p2NamespaceBundle   = "osgi.bundle"
+	p2NamespacePackage  = "java.package"
+	p2ClassifierBundle  = "osgi.bundle"
 )
 
 // errP2NotFound marks a repository file that does not exist (the next variant is tried).
@@ -143,8 +143,8 @@ func childURL(parent, child string) string {
 	return strings.TrimRight(resolved.String(), "/")
 }
 
-// readRepositoryFile fetches `<name>.jar` (the compressed form, tried first as
-// p2 does) or `<name>.xml`. errP2NotFound means neither exists.
+// readRepositoryFile fetches `<name>.jar`, `<name>.xml.xz` (the only form of many recent
+// Eclipse repositories) or `<name>.xml`. errP2NotFound means none exists.
 func readRepositoryFile(ctx context.Context, fetcher p2Fetcher, repository, name string) ([]byte, error) {
 	data, err := fetcher.fetch(ctx, repository+"/"+name+".jar", maxP2MetadataBytes)
 	if err == nil {
@@ -153,7 +153,26 @@ func readRepositoryFile(ctx context.Context, fetcher p2Fetcher, repository, name
 	if !errors.Is(err, errP2NotFound) {
 		return nil, err
 	}
+	data, err = fetcher.fetch(ctx, repository+"/"+name+".xml.xz", maxP2MetadataBytes)
+	if err == nil {
+		return xmlFromXZ(data, name+".xml.xz")
+	}
+	if !errors.Is(err, errP2NotFound) {
+		return nil, err
+	}
 	return fetcher.fetch(ctx, repository+"/"+name+".xml", maxP2MetadataBytes)
+}
+
+func xmlFromXZ(data []byte, name string) ([]byte, error) {
+	reader, err := xz.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("%s is not valid xz: %w", name, err)
+	}
+	var buffer bytes.Buffer
+	if err := copyBounded(&buffer, reader, maxP2MetadataBytes, name); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
 }
 
 func xmlFromJar(data []byte, entry string) ([]byte, error) {
@@ -258,13 +277,8 @@ func walkP2Repository(ctx context.Context, fetcher p2Fetcher, repository, kind s
 	return problems, err
 }
 
-// missingRepositoryError tells apart "not a p2 repository" from "only the .xz
-// form", which this reader does not decompress.
-func missingRepositoryError(ctx context.Context, fetcher p2Fetcher, repository, kind string) error {
-	if kind == "Content" {
-		if _, err := fetcher.fetch(ctx, repository+"/"+p2FilesUnsupportedXZ, 1); err == nil || !errors.Is(err, errP2NotFound) {
-			return fmt.Errorf("%s publishes only %s, which is not supported yet: mirror it to a folder or use a repository with content.jar", repository, p2FilesUnsupportedXZ)
-		}
-	}
-	return fmt.Errorf("%s is not a p2 repository (no %s.jar or %s.xml)", repository, strings.ToLower(kind), strings.ToLower(kind))
+// missingRepositoryError says the location is not a p2 repository.
+func missingRepositoryError(_ context.Context, _ p2Fetcher, repository, kind string) error {
+	name := strings.ToLower(kind)
+	return fmt.Errorf("%s is not a p2 repository (no %s.jar, %s.xml.xz or %s.xml)", repository, name, name, name)
 }

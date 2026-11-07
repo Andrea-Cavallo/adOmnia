@@ -10,7 +10,8 @@ describe('checkingOffReason', () => {
     expect(checkingOffReason({ osgiJavaFile: false, serverReady: false })).toContain('not running')
   })
 
-  it('never trusts the server on an OSGi bundle, and points to the build', () => {
-    expect(checkingOffReason({ osgiJavaFile: true, serverReady: true })).toContain('Build OSGi Bundles')
+  it('trusts the server on an OSGi bundle once it runs on the target, and explains the target when it does not', () => {
+    expect(checkingOffReason({ osgiJavaFile: true, serverReady: true })).toBeNull()
+    expect(checkingOffReason({ osgiJavaFile: true, serverReady: false })).toContain('target platform')
   })
 })
