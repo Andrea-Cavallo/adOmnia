@@ -1,17 +1,24 @@
 import { monaco, type Monaco } from '@/lib/monacoRef'
-import { dependencyStatuses, isBuildFile, updateEdit, type PomDependencyStatus } from '@/lib/code-studio/pomInsights'
+import { dependencyStatuses, isBuildFile, isGradleFile, updateEdit, type PomDependencyStatus } from '@/lib/code-studio/pomInsights'
+import { getPomDependencies } from '@/lib/code-studio-api'
 import { usePomStore, type PomState } from '@/stores/codeStudioPom'
 import type { GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useCodeStudioStore } from '@/stores/codeStudio'
-import { documentForModel } from './codeStudioLanguageFeatures'
+import { documentForModel, rememberLocations } from './codeStudioLanguageFeatures'
+import { dependencyBlockAt, moduleOfBuildFile } from '@/lib/code-studio/javaLibraries'
+import { entryFileOf, goModSourceLocation } from './codeStudioDependencySource'
+import { ensureJavaLibrarySource, openJavaLibrarySource, resolvedLibrary } from './codeStudioJavaLibrarySource'
 import { editorModelUri } from './codeStudioModelUri'
 
-const LANGUAGES = ['xml', 'kotlin'] // pom.xml, build.gradle(.kts): gli altri file di questi linguaggi non hanno lens
+const LANGUAGES = ['xml', 'groovy', 'kotlin'] // pom.xml, build.gradle (Groovy), build.gradle.kts (Kotlin)
 const MARKER_OWNER = 'adomnia-pom'
 const CHECK_COMMAND = 'codeStudio.pomCheckUpdates'
 const SCAN_COMMAND = 'codeStudio.pomScan'
 const UPDATE_COMMAND = 'codeStudio.pomUpdate'
 const NEXT_PROBLEM_COMMAND = 'editor.action.marker.next'
+const VIEW_SOURCE_COMMAND = 'codeStudio.pomViewSource'
+/** Le sezioni del pom il cui artefatto è una libreria del build, con codice da leggere. */
+const LIBRARY_SECTIONS = new Set(['dependencies', 'dependencyManagement'])
 
 const EMPTY_STATE: PomState = { dependencies: [], versions: [], findings: [], checkingUpdates: false, scanning: false, updatesCheckedAt: '', scannedAt: '', error: '' }
 
@@ -75,6 +82,46 @@ function toolbarLenses(documentId: string, state: PomState, scannable: boolean):
   const summary = summaryLens(documentId, state)
   if (summary) lenses.push({ range: lensRange(1), command: { id: NEXT_PROBLEM_COMMAND, title: summary, tooltip: 'Go to the next problem' } })
   return lenses
+}
+
+/** Solo un build file Java: pom.xml, build.gradle o build.gradle.kts. */
+const isPom = (relativePath: string) => /(^|\/)pom\.xml$/i.test(relativePath)
+
+/** Un file il cui blocco di dipendenza può aprire il codice della libreria. */
+const isLibraryBuildFile = (relativePath: string) => isPom(relativePath) || isGradleFile(relativePath)
+
+function viewSourceLens(document: GoIDEEditorDocument, status: PomDependencyStatus): Monaco.languages.CodeLens[] {
+  const dependency = status.dependency
+  if (!isLibraryBuildFile(document.document.relativePath) || !LIBRARY_SECTIONS.has(dependency.section)) return []
+  // In Gradle solo le dipendenze vere: platform/BOM e plugin non hanno un progetto di sorgenti da leggere.
+  if (isGradleFile(document.document.relativePath) && dependency.section !== 'dependencies') return []
+  return [{ range: lensRange(dependency.line), command: { id: VIEW_SOURCE_COMMAND, title: '{ } View source', tooltip: `Open the source code of ${status.key} (read-only)`, arguments: [document.document.sessionId, dependency.groupId, dependency.artifactId, moduleOfBuildFile(document.document.relativePath)] } }]
+}
+
+/** Ctrl+click / F12 su una dipendenza del build file: il file d'ingresso dei suoi sorgenti. */
+async function pomDefinition(model: Monaco.editor.ITextModel, position: Monaco.Position): Promise<Monaco.languages.Location[] | null> {
+  const document = documentForModel(model)
+  if (!document || !isLibraryBuildFile(document.document.relativePath)) return null
+  const sessionId = document.document.sessionId
+  let groupId = ''
+  let artifactId = ''
+  if (isPom(document.document.relativePath)) {
+    const block = dependencyBlockAt(model.getValue(), position.lineNumber)
+    if (!block) return null
+    groupId = block.groupId
+    artifactId = block.artifactId
+  } else {
+    // Gradle: le coordinate vengono dallo stesso parser delle lens (testo dell'editor, nessun tool).
+    const dependencies = await getPomDependencies(sessionId, model.getValue())
+    const dependency = dependencies.find((item) => item.line === position.lineNumber && item.section === 'dependencies')
+    if (!dependency) return null
+    groupId = dependency.groupId
+    artifactId = dependency.artifactId
+  }
+  const library = await resolvedLibrary(sessionId, groupId, artifactId, moduleOfBuildFile(document.document.relativePath))
+  const source = library && await ensureJavaLibrarySource(sessionId, library)
+  const location = source && goModSourceLocation(source, sessionId, entryFileOf(source))
+  return location ? rememberLocations([location]) : null
 }
 
 function dependencyLenses(documentId: string, status: PomDependencyStatus): Monaco.languages.CodeLens[] {
@@ -172,6 +219,10 @@ export function registerCodeStudioPom(): void {
     const document = documentById(documentId)
     if (document) void usePomStore.getState().scanVulnerabilities(documentId, document.document.sessionId, document.document.path, document.document.relativePath)
   })
+  monaco.editor.registerCommand(VIEW_SOURCE_COMMAND, (_accessor, sessionId: string, groupId: string, artifactId: string, module: string) => {
+    void resolvedLibrary(sessionId, groupId, artifactId, module).then((library) => (library ? openJavaLibrarySource(sessionId, library) : undefined))
+  })
+  monaco.languages.registerDefinitionProvider(['xml', 'groovy', 'kotlin'], { provideDefinition: (model, position) => pomDefinition(model, position) })
   monaco.editor.registerCommand(UPDATE_COMMAND, (_accessor, documentId: string, line: number, version: string) => applyPomUpdate(documentId, line, version))
 
   const changed = new monaco.Emitter<Monaco.languages.CodeLensProvider>()
@@ -186,7 +237,7 @@ export function registerCodeStudioPom(): void {
         parsedContent.set(documentId, text)
         void usePomStore.getState().refreshDependencies(documentId, document.document.sessionId, text)
       }
-      const lenses = [...toolbarLenses(documentId, stateOf(documentId), isBuildFile(document.document.relativePath)), ...statusesOf(documentId).flatMap((status) => dependencyLenses(documentId, status))]
+      const lenses = [...toolbarLenses(documentId, stateOf(documentId), isBuildFile(document.document.relativePath)), ...statusesOf(documentId).flatMap((status) => [...viewSourceLens(document, status), ...dependencyLenses(documentId, status)])]
       return { lenses, dispose: () => undefined }
     },
   }

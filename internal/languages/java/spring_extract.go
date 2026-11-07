@@ -3,6 +3,7 @@ package java
 import (
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 )
 
@@ -294,16 +295,114 @@ func endpointsOf(sources []javaSource) []SpringEndpoint {
 				if value := jaxRsMediaOf(member, "Consumes"); value != "" {
 					consumes = value
 				}
+				params, bodyType, bodyArray := endpointRequestShape(member, isJaxRsMethod[annotation.Name], method)
 				endpoints = append(endpoints, SpringEndpoint{
 					Method: method, Path: joinPath(base, path),
 					Class: decl.Name, Member: member.Name, File: source.File,
 					Produces: produces, Consumes: consumes,
 					Line: annotation.Line, StartColumn: annotation.StartColumn, EndColumn: annotation.EndColumn,
+					Params: params, BodyType: bodyType, BodyArray: bodyArray,
 				})
 			}
 		}
 	}
 	return endpoints
+}
+
+// endpointRequestShape reads the method parameters: path/query/header/cookie/
+// form values and the request body. Spring and JAX-RS names are both accepted;
+// JAX-RS takes an unannotated parameter as the request entity.
+func endpointRequestShape(member javaMember, jaxRs bool, method string) ([]SpringParam, string, bool) {
+	var params []SpringParam
+	bodyType := ""
+	bodyArray := false
+	for _, param := range member.Params {
+		typ := cleanType(param.Type)
+		bound := false
+		for _, annotation := range param.Annotations {
+			switch annotation.Name {
+			case "PathVariable", "PathParam":
+				bound = true
+				name := annotationString(annotation.Args, "value", "name")
+				if name == "" {
+					name = param.Name
+				}
+				params = append(params, SpringParam{Name: name, In: "path", Type: typ, Required: true})
+			case "RequestParam", "QueryParam":
+				bound = true
+				name := annotationString(annotation.Args, "value", "name")
+				if name == "" {
+					name = param.Name
+				}
+				params = append(params, SpringParam{Name: name, In: "query", Type: typ, Required: !strings.Contains(annotation.Args, "required = false"), Default: annotationString(annotation.Args, "defaultValue")})
+			case "RequestHeader", "HeaderParam":
+				bound = true
+				name := annotationString(annotation.Args, "value", "name")
+				if name == "" {
+					name = param.Name
+				}
+				params = append(params, SpringParam{Name: name, In: "header", Type: typ, Required: !strings.Contains(annotation.Args, "required = false"), Default: annotationString(annotation.Args, "defaultValue")})
+			case "CookieValue", "CookieParam":
+				bound = true
+				name := annotationString(annotation.Args, "value", "name")
+				if name == "" {
+					name = param.Name
+				}
+				params = append(params, SpringParam{Name: name, In: "cookie", Type: typ, Required: !strings.Contains(annotation.Args, "required = false"), Default: annotationString(annotation.Args, "defaultValue")})
+			case "FormParam":
+				bound = true
+				name := annotationString(annotation.Args, "value", "name")
+				if name == "" {
+					name = param.Name
+				}
+				params = append(params, SpringParam{Name: name, In: "form", Type: typ})
+			case "RequestBody":
+				bound = true
+				element, array := bodyElementType(param.Type)
+				bodyType, bodyArray = element, array
+			case "BeanParam", "MatrixParam":
+				bound = true // a composite we do not expand automatically
+			}
+		}
+		if jaxRs && method != "GET" && method != "HEAD" && method != "OPTIONS" && !bound && !isJaxRsContextType(typ) && bodyType == "" {
+			element, array := bodyElementType(param.Type)
+			bodyType, bodyArray = element, array
+		}
+	}
+	// Spring MVC estrae il body anche da un parametro non annotato di tipo DTO
+	// quando il metodo non ne dichiara altri: non lo facciamo, per non inventare.
+	sort.Slice(params, func(i, j int) bool {
+		if params[i].In != params[j].In {
+			return params[i].In < params[j].In
+		}
+		return params[i].Name < params[j].Name
+	})
+	return params, bodyType, bodyArray
+}
+
+// isJaxRsContextType lists parameters injected by the runtime, never the entity.
+func isJaxRsContextType(typ string) bool {
+	switch typ {
+	case "UriInfo", "HttpHeaders", "SecurityContext", "Request", "Response", "Session",
+		"HttpServletRequest", "HttpServletResponse", "ServletRequest", "ServletResponse",
+		"WebRequest", "WebRequestContext":
+		return true
+	}
+	return false
+}
+
+// bodyElementType strips a Java collection wrapper: `List<Order>` → (`Order`, true).
+func bodyElementType(typ string) (string, bool) {
+	typ = strings.TrimSpace(typ)
+	for _, prefix := range []string{"List<", "Set<", "Collection<", "Iterable<", "ArrayList<", "HashSet<"} {
+		if strings.HasPrefix(typ, prefix) && strings.HasSuffix(typ, ">") {
+			return cleanType(strings.TrimSuffix(strings.TrimPrefix(typ, prefix), ">")), true
+		}
+	}
+	if element, ok := strings.CutSuffix(typ, "[]"); ok {
+		return cleanType(element), true
+	}
+	return cleanType(typ), false
 }
 
 // jaxRsPathOf è il percorso del metodo in JAX-RS: l'annotation `@Path` sul metodo.

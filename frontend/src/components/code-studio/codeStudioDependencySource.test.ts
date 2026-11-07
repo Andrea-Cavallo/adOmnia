@@ -10,7 +10,7 @@ vi.mock('@/lib/confirmDialog', () => ({ confirm: vi.fn() }))
 vi.mock('./codeStudioQuickActions', () => ({ goModDirectoryOf: () => '' }))
 vi.mock('./codeStudioNavigation', () => ({ navigateToLocation: vi.fn() }))
 
-import { entryFileOf, goModDependencyAt, goModSourceLocation, openGoModSourceFile } from './codeStudioDependencySource'
+import { entryFileOf, goModDependencyAt, goModSourceLocation, openDependencySourceFile } from './codeStudioDependencySource'
 import { navigateToLocation } from './codeStudioNavigation'
 import * as monacoRef from '@/lib/monacoRef'
 
@@ -48,13 +48,13 @@ describe('entryFileOf', () => {
   })
 })
 
-describe('openGoModSourceFile', () => {
+describe('openDependencySourceFile', () => {
   it('opens a file from the tree before Monaco is loaded', () => {
     fixture.state.sessions = []
     const loaded = monacoRef.monaco
     ;(monacoRef as { monaco: unknown }).monaco = undefined
     try {
-      expect(openGoModSourceFile(source(), 's1', 'pkg/a.go')).toMatchObject({ external: true, path: 'C:/mod/cache/example.com/lib@v1.0.0/pkg/a.go' })
+      expect(openDependencySourceFile(source(), 's1', 'pkg/a.go')).toMatchObject({ external: true, path: 'C:/mod/cache/example.com/lib@v1.0.0/pkg/a.go' })
       expect(navigateToLocation).toHaveBeenCalledTimes(1)
     } finally {
       ;(monacoRef as { monaco: unknown }).monaco = loaded

@@ -21,6 +21,7 @@ func detectGoFile(rel string, data []byte, hints AdapterHints) ([]Entity, error)
 	out = append(out, detectLiterals(rel, fset, file, hints)...)
 	out = append(out, detectProtocols(rel, fset, file)...)
 	out = append(out, detectHandlerDecls(rel, fset, file, hints)...)
+	out = append(out, detectBodyDecls(rel, fset, file)...)
 	return out, nil
 }
 

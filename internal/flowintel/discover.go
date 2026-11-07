@@ -458,6 +458,7 @@ func applyOSGi(builder *graph.Builder, root string, discovery *Discovery) {
 			}
 		}
 	}
+	applyExtensions(builder, ws)
 	// Propagate the bundle of a type to its methods and to the flows around them, so the UI can
 	// group a trace by bundle without walking the contains edges again.
 	bundleOfType := map[string]string{}
@@ -486,6 +487,26 @@ func applyOSGi(builder *graph.Builder, root string, discovery *Discovery) {
 					builder.Annotate(node.ID, "bundle", candidate.Attrs["bundle"])
 					break
 				}
+			}
+		}
+	}
+}
+
+// applyExtensions adds the plugin.xml registry: a bundle refers to the points it extends, and a
+// point starts the classes its extensions name (the platform instantiates them), so a view or a
+// handler is an entry of the execution graph like an Activator.
+func applyExtensions(builder *graph.Builder, ws *eclipsepde.Workspace) {
+	registry := eclipsepde.BuildExtensionRegistry(ws, nil)
+	for _, extension := range registry.Extensions {
+		if extension.Point == "" {
+			continue
+		}
+		pointID := "extpoint:" + extension.Point
+		builder.Node(graph.Node{ID: pointID, Kind: graph.KindExtensionPoint, Label: extension.Point, Attrs: map[string]string{"bundle": registry.Points[extension.Point].Bundle}})
+		builder.EdgeWithConfidence("bundle:"+extension.Bundle, pointID, graph.EdgeRefers, extension.File, graph.ConfidenceDeclared)
+		for _, class := range extension.Classes {
+			if typeID := "type:" + class.Class; builder.Has(typeID) {
+				builder.EdgeWithConfidence(pointID, typeID, graph.EdgeStarts, extension.File, graph.ConfidenceDeclared)
 			}
 		}
 	}

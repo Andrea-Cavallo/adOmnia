@@ -5,12 +5,13 @@ import { useAppStore } from '@/stores/app'
 import type { RailItem } from '@/stores/app'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useCodeStudioStore } from '@/stores/codeStudio'
-import { showModule } from '@/lib/moduleRouting'
+import { showModule, routeToModule } from '@/lib/moduleRouting'
 import { detachedPanelOfThisWindow } from '@/lib/panel-windows-api'
-import { handoffToPanel } from './dispatch'
+import { requestForEndpoint } from '@/lib/api-code-link/endpointRequest'
+import { WEBSOCKET_HANDOFF_INTENT, handoffToPanel } from './dispatch'
 import { showEntityNotice } from './notice'
 import { registerOpener } from './router'
-import { httpMethodForRoute, mockPathForRoute, requestUrlForRoute, withBaseUrl } from './routeRequest'
+import { httpMethodForRoute, mockPathForRoute, withBaseUrl } from './routeRequest'
 import type { EntityRef } from './types'
 
 const DB_TYPES = new Set(['postgres', 'mysql', 'mongodb', 'redis'])
@@ -51,7 +52,7 @@ async function openInGo(file: string, line: number, sessionId?: string): Promise
 }
 
 function sendRoute(ref: EntityRef): void {
-  const request = { ...blankRequest(httpMethodForRoute(ref.attrs.method ?? 'GET'), ref.label), url: requestUrlForRoute(ref.attrs.path ?? '/') }
+  const request = requestForEndpoint({ attrs: ref.attrs, label: ref.label })
   showModule('collections', { kind: 'open-request', request })
 }
 
@@ -121,9 +122,21 @@ export function registerDefaultOpeners(): () => void {
     registerOpener('symbol', { intent: 'open', title: 'Open in gO', isDefault: true, run: (ref) => openInGo(ref.source!.file, ref.source!.line, ref.sessionId) }),
     registerOpener('route', { intent: 'send', title: 'Send in API Client', isDefault: true, run: sendRoute }),
     registerOpener('route', {
+      intent: 'workspace', title: 'Open in API Workspace',
+      available: (ref) => !!ref.sessionId && (!!ref.attrs.declFile || !!ref.source),
+      run: (ref) => routeToModule('collections', {
+        kind: 'api-code-handler',
+        sessionId: ref.sessionId!,
+        file: ref.attrs.declFile ?? ref.source?.file ?? '',
+        line: Number(ref.attrs.declLine) || ref.source?.line || 1,
+        routeId: ref.id,
+        fallback: { method: ref.attrs.method ?? 'GET', path: ref.attrs.path ?? '/', label: ref.label },
+      }),
+    }),
+    registerOpener('route', {
       intent: 'handler', title: 'Go to handler',
       available: (ref) => !!ref.attrs.handlerFile,
-      run: (ref) => openInGo(ref.attrs.handlerFile, Number(ref.attrs.handlerLine) || 1),
+      run: (ref) => openInGo(ref.attrs.handlerFile, Number(ref.attrs.handlerLine) || 1, ref.sessionId),
     }),
     registerOpener('route', { intent: 'mock', title: 'Add to Mock Server', run: mockRoute }),
     registerOpener('service', { intent: 'baseUrl', title: 'Use as baseUrl', isDefault: true, available: (ref) => !!ref.attrs.port, run: proposeBaseUrl }),
@@ -142,7 +155,7 @@ export function registerDefaultOpeners(): () => void {
     registerOpener('websocket', {
       intent: 'connect', title: 'Open in WebSocket client', isDefault: true,
       available: (ref) => !!ref.attrs.url || !!ref.attrs.path,
-      run: (ref) => handoffToPanel('websocket', ref, 'connect', { url: websocketUrlFor(ref, useEnvironmentsStore.getState().getResolvedVars().baseUrl) }),
+      run: (ref) => handoffToPanel('websocket', ref, WEBSOCKET_HANDOFF_INTENT, { url: websocketUrlFor(ref, useEnvironmentsStore.getState().getResolvedVars().baseUrl) }),
     }),
   ]
   return () => offs.forEach((off) => off())

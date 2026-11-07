@@ -74,6 +74,76 @@ export class ActivatorInfo {
 }
 
 /**
+ * AppLaunch is what a `.product` or a PDE `.launch` declares about starting an Eclipse application:
+ * which application or product, which bundles (listed, or through features) and which arguments.
+ */
+export class AppLaunch {
+    /**
+     * Name is the file name without extension; File is relative to the workspace root.
+     */
+    "name": string;
+    "file": string;
+
+    /**
+     * Kind is "product" or "launch".
+     */
+    "kind": string;
+    "application"?: string;
+    "product"?: string;
+
+    /**
+     * Plugins and Features are the declared roots; empty both means "the workspace bundles".
+     */
+    "plugins"?: string[];
+    "features"?: string[];
+
+    /**
+     * VMArguments go before -jar, ProgramArguments after the framework options.
+     */
+    "vmArguments"?: string[];
+    "programArguments"?: string[];
+
+    /** Creates a new AppLaunch instance. */
+    constructor($$source: Partial<AppLaunch> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("file" in $$source)) {
+            this["file"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AppLaunch instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AppLaunch {
+        const $$createField5_0 = $$createType0;
+        const $$createField6_0 = $$createType0;
+        const $$createField7_0 = $$createType0;
+        const $$createField8_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("plugins" in $$parsedSource) {
+            $$parsedSource["plugins"] = $$createField5_0($$parsedSource["plugins"]);
+        }
+        if ("features" in $$parsedSource) {
+            $$parsedSource["features"] = $$createField6_0($$parsedSource["features"]);
+        }
+        if ("vmArguments" in $$parsedSource) {
+            $$parsedSource["vmArguments"] = $$createField7_0($$parsedSource["vmArguments"]);
+        }
+        if ("programArguments" in $$parsedSource) {
+            $$parsedSource["programArguments"] = $$createField8_0($$parsedSource["programArguments"]);
+        }
+        return new AppLaunch($$parsedSource as Partial<AppLaunch>);
+    }
+}
+
+/**
  * BundleChange is a bundle present in both targets at different versions.
  */
 export class BundleChange {
@@ -123,6 +193,13 @@ export class BundleDetail {
     "graph"?: FocusGraph | null;
 
     /**
+     * ExtensionPoints are the points the bundle declares, with the workspace bundles extending them;
+     * Extensions are the ones it contributes in plugin.xml, each class linked to its source.
+     */
+    "extensionPoints": ExtensionPoint[];
+    "extensions": Extension[];
+
+    /**
      * Manifest is the main section of the manifest, for the "raw" view.
      */
     "manifest": { [_ in string]?: string };
@@ -147,6 +224,12 @@ export class BundleDetail {
         if (!("serviceComponents" in $$source)) {
             this["serviceComponents"] = [];
         }
+        if (!("extensionPoints" in $$source)) {
+            this["extensionPoints"] = [];
+        }
+        if (!("extensions" in $$source)) {
+            this["extensions"] = [];
+        }
         if (!("manifest" in $$source)) {
             this["manifest"] = {};
         }
@@ -158,16 +241,18 @@ export class BundleDetail {
      * Creates a new BundleDetail instance from a string or object.
      */
     static createFrom($$source: any = {}): BundleDetail {
-        const $$createField0_0 = $$createType0;
-        const $$createField2_0 = $$createType2;
-        const $$createField3_0 = $$createType4;
-        const $$createField4_0 = $$createType5;
+        const $$createField0_0 = $$createType1;
+        const $$createField2_0 = $$createType3;
+        const $$createField3_0 = $$createType5;
+        const $$createField4_0 = $$createType0;
         const $$createField5_0 = $$createType7;
         const $$createField6_0 = $$createType9;
         const $$createField7_0 = $$createType11;
         const $$createField8_0 = $$createType13;
         const $$createField9_0 = $$createType15;
-        const $$createField10_0 = $$createType16;
+        const $$createField10_0 = $$createType17;
+        const $$createField11_0 = $$createType19;
+        const $$createField12_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("row" in $$parsedSource) {
             $$parsedSource["row"] = $$createField0_0($$parsedSource["row"]);
@@ -196,8 +281,14 @@ export class BundleDetail {
         if ("graph" in $$parsedSource) {
             $$parsedSource["graph"] = $$createField9_0($$parsedSource["graph"]);
         }
+        if ("extensionPoints" in $$parsedSource) {
+            $$parsedSource["extensionPoints"] = $$createField10_0($$parsedSource["extensionPoints"]);
+        }
+        if ("extensions" in $$parsedSource) {
+            $$parsedSource["extensions"] = $$createField11_0($$parsedSource["extensions"]);
+        }
         if ("manifest" in $$parsedSource) {
-            $$parsedSource["manifest"] = $$createField10_0($$parsedSource["manifest"]);
+            $$parsedSource["manifest"] = $$createField12_0($$parsedSource["manifest"]);
         }
         return new BundleDetail($$parsedSource as Partial<BundleDetail>);
     }
@@ -309,11 +400,11 @@ export class BundleRow {
      * Creates a new BundleRow instance from a string or object.
      */
     static createFrom($$source: any = {}): BundleRow {
-        const $$createField19_0 = $$createType5;
-        const $$createField20_0 = $$createType5;
-        const $$createField21_0 = $$createType5;
-        const $$createField26_0 = $$createType4;
-        const $$createField27_0 = $$createType5;
+        const $$createField19_0 = $$createType0;
+        const $$createField20_0 = $$createType0;
+        const $$createField21_0 = $$createType0;
+        const $$createField26_0 = $$createType5;
+        const $$createField27_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("exportedPackages" in $$parsedSource) {
             $$parsedSource["exportedPackages"] = $$createField19_0($$parsedSource["exportedPackages"]);
@@ -377,8 +468,8 @@ export class BundleStatus {
      * Creates a new BundleStatus instance from a string or object.
      */
     static createFrom($$source: any = {}): BundleStatus {
-        const $$createField5_0 = $$createType4;
-        const $$createField6_0 = $$createType5;
+        const $$createField5_0 = $$createType5;
+        const $$createField6_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("missing" in $$parsedSource) {
             $$parsedSource["missing"] = $$createField5_0($$parsedSource["missing"]);
@@ -423,8 +514,8 @@ export class BundleVersion {
      * Creates a new BundleVersion instance from a string or object.
      */
     static createFrom($$source: any = {}): BundleVersion {
-        const $$createField2_0 = $$createType5;
-        const $$createField3_0 = $$createType5;
+        const $$createField2_0 = $$createType0;
+        const $$createField3_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("versions" in $$parsedSource) {
             $$parsedSource["versions"] = $$createField2_0($$parsedSource["versions"]);
@@ -510,12 +601,113 @@ export class Consumer {
      * Creates a new Consumer instance from a string or object.
      */
     static createFrom($$source: any = {}): Consumer {
-        const $$createField8_0 = $$createType5;
+        const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("services" in $$parsedSource) {
             $$parsedSource["services"] = $$createField8_0($$parsedSource["services"]);
         }
         return new Consumer($$parsedSource as Partial<Consumer>);
+    }
+}
+
+/**
+ * DependencyConsumer is one workspace bundle that declares or uses the package.
+ */
+export class DependencyConsumer {
+    "bundle": string;
+
+    /**
+     * Via is Import-Package, Require-Bundle, or empty when the manifest does not declare it.
+     */
+    "via"?: string;
+    "requirement"?: string;
+
+    /**
+     * Provider is the bundle the resolver wires it to ("name version").
+     */
+    "provider"?: string;
+
+    /**
+     * File and Line are the first import of the class/package in the bundle's sources.
+     */
+    "file"?: string;
+    "line"?: number;
+
+    /**
+     * Problem explains why this consumer fails at runtime; empty when it is fine.
+     */
+    "problem"?: string;
+
+    /** Creates a new DependencyConsumer instance. */
+    constructor($$source: Partial<DependencyConsumer> = {}) {
+        if (!("bundle" in $$source)) {
+            this["bundle"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DependencyConsumer instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DependencyConsumer {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DependencyConsumer($$parsedSource as Partial<DependencyConsumer>);
+    }
+}
+
+/**
+ * DependencyLookup answers "where does this class come from?" for an OSGi workspace: the
+ * bundles that export its package, the workspace bundles that use it, how each one gets
+ * it, and which ones use it without declaring it (a ClassNotFoundException at runtime).
+ */
+export class DependencyLookup {
+    "query": string;
+    "package": string;
+    "class"?: string;
+    "jre": boolean;
+    "providers": PackageProvider[];
+    "consumers": DependencyConsumer[];
+    "missing": number;
+
+    /** Creates a new DependencyLookup instance. */
+    constructor($$source: Partial<DependencyLookup> = {}) {
+        if (!("query" in $$source)) {
+            this["query"] = "";
+        }
+        if (!("package" in $$source)) {
+            this["package"] = "";
+        }
+        if (!("jre" in $$source)) {
+            this["jre"] = false;
+        }
+        if (!("providers" in $$source)) {
+            this["providers"] = [];
+        }
+        if (!("consumers" in $$source)) {
+            this["consumers"] = [];
+        }
+        if (!("missing" in $$source)) {
+            this["missing"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DependencyLookup instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DependencyLookup {
+        const $$createField4_0 = $$createType22;
+        const $$createField5_0 = $$createType24;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("providers" in $$parsedSource) {
+            $$parsedSource["providers"] = $$createField4_0($$parsedSource["providers"]);
+        }
+        if ("consumers" in $$parsedSource) {
+            $$parsedSource["consumers"] = $$createField5_0($$parsedSource["consumers"]);
+        }
+        return new DependencyLookup($$parsedSource as Partial<DependencyLookup>);
     }
 }
 
@@ -541,7 +733,8 @@ export class Diagnostic {
     /**
      * Kind is the machine-readable rule: missing-requirement, version-conflict, bree,
      * singleton-duplicate, orphan-fragment, platform-filter, duplicate-bundle,
-     * transitive-requirement, resolved-lazy, not-started.
+     * transitive-requirement, resolved-lazy, not-started, uses-conflict,
+     * unknown-extension-point, missing-extension-class.
      */
     "kind": string;
     "title": string;
@@ -591,10 +784,10 @@ export class Diagnostic {
      * Creates a new Diagnostic instance from a string or object.
      */
     static createFrom($$source: any = {}): Diagnostic {
-        const $$createField7_0 = $$createType5;
-        const $$createField8_0 = $$createType5;
-        const $$createField10_0 = $$createType5;
-        const $$createField13_0 = $$createType5;
+        const $$createField7_0 = $$createType0;
+        const $$createField8_0 = $$createType0;
+        const $$createField10_0 = $$createType0;
+        const $$createField13_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("evidence" in $$parsedSource) {
             $$parsedSource["evidence"] = $$createField7_0($$parsedSource["evidence"]);
@@ -684,12 +877,12 @@ export class ExplorerReport {
      * Creates a new ExplorerReport instance from a string or object.
      */
     static createFrom($$source: any = {}): ExplorerReport {
-        const $$createField6_0 = $$createType17;
-        const $$createField7_0 = $$createType18;
-        const $$createField8_0 = $$createType19;
+        const $$createField6_0 = $$createType25;
+        const $$createField7_0 = $$createType26;
+        const $$createField8_0 = $$createType27;
         const $$createField9_0 = $$createType7;
-        const $$createField10_0 = $$createType21;
-        const $$createField11_0 = $$createType23;
+        const $$createField10_0 = $$createType29;
+        const $$createField11_0 = $$createType31;
         const $$createField12_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("summary" in $$parsedSource) {
@@ -797,6 +990,181 @@ export class ExplorerSummary {
 }
 
 /**
+ * ExportResult is what an export wrote: a folder with plugins/ and features/, the layout of an
+ * Eclipse installation, of a dropins folder and of the input of the p2 publisher.
+ */
+export class ExportResult {
+    "folder": string;
+    "bundles": string[];
+    "features": string[];
+    "problems": Problem[];
+
+    /**
+     * Qualifier is what replaced ".qualifier" in the versions.
+     */
+    "qualifier": string;
+
+    /** Creates a new ExportResult instance. */
+    constructor($$source: Partial<ExportResult> = {}) {
+        if (!("folder" in $$source)) {
+            this["folder"] = "";
+        }
+        if (!("bundles" in $$source)) {
+            this["bundles"] = [];
+        }
+        if (!("features" in $$source)) {
+            this["features"] = [];
+        }
+        if (!("problems" in $$source)) {
+            this["problems"] = [];
+        }
+        if (!("qualifier" in $$source)) {
+            this["qualifier"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ExportResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ExportResult {
+        const $$createField1_0 = $$createType0;
+        const $$createField2_0 = $$createType0;
+        const $$createField3_0 = $$createType29;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("bundles" in $$parsedSource) {
+            $$parsedSource["bundles"] = $$createField1_0($$parsedSource["bundles"]);
+        }
+        if ("features" in $$parsedSource) {
+            $$parsedSource["features"] = $$createField2_0($$parsedSource["features"]);
+        }
+        if ("problems" in $$parsedSource) {
+            $$parsedSource["problems"] = $$createField3_0($$parsedSource["problems"]);
+        }
+        return new ExportResult($$parsedSource as Partial<ExportResult>);
+    }
+}
+
+/**
+ * Extension is an <extension> a workspace bundle contributes: the point it extends and the
+ * classes it names, each with its line in plugin.xml and, when found, its source file.
+ */
+export class Extension {
+    "point": string;
+    "id"?: string;
+    "bundle": string;
+    "file": string;
+    "line": number;
+    "classes"?: ExtensionClass[];
+
+    /** Creates a new Extension instance. */
+    constructor($$source: Partial<Extension> = {}) {
+        if (!("point" in $$source)) {
+            this["point"] = "";
+        }
+        if (!("bundle" in $$source)) {
+            this["bundle"] = "";
+        }
+        if (!("file" in $$source)) {
+            this["file"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Extension instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Extension {
+        const $$createField5_0 = $$createType33;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("classes" in $$parsedSource) {
+            $$parsedSource["classes"] = $$createField5_0($$parsedSource["classes"]);
+        }
+        return new Extension($$parsedSource as Partial<Extension>);
+    }
+}
+
+/**
+ * ExtensionClass is a class an extension names (class="…", the part before ':' of class="x:data").
+ */
+export class ExtensionClass {
+    "attribute": string;
+    "class": string;
+    "line": number;
+
+    /**
+     * Source is the .java file of the class in the bundle, relative to the workspace ("" when elsewhere).
+     */
+    "source"?: string;
+
+    /** Creates a new ExtensionClass instance. */
+    constructor($$source: Partial<ExtensionClass> = {}) {
+        if (!("attribute" in $$source)) {
+            this["attribute"] = "";
+        }
+        if (!("class" in $$source)) {
+            this["class"] = "";
+        }
+        if (!("line" in $$source)) {
+            this["line"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ExtensionClass instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ExtensionClass {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ExtensionClass($$parsedSource as Partial<ExtensionClass>);
+    }
+}
+
+/**
+ * ExtensionPoint is an <extension-point> a bundle declares in plugin.xml.
+ */
+export class ExtensionPoint {
+    "id": string;
+    "name"?: string;
+    "bundle": string;
+
+    /**
+     * Contributors are the workspace bundles that extend it (filled for workspace points).
+     */
+    "contributors"?: string[];
+
+    /** Creates a new ExtensionPoint instance. */
+    constructor($$source: Partial<ExtensionPoint> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("bundle" in $$source)) {
+            this["bundle"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ExtensionPoint instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ExtensionPoint {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("contributors" in $$parsedSource) {
+            $$parsedSource["contributors"] = $$createField3_0($$parsedSource["contributors"]);
+        }
+        return new ExtensionPoint($$parsedSource as Partial<ExtensionPoint>);
+    }
+}
+
+/**
  * FocusEdge is one requirement between two nodes of the focused graph.
  */
 export class FocusEdge {
@@ -891,8 +1259,8 @@ export class FocusGraph {
      * Creates a new FocusGraph instance from a string or object.
      */
     static createFrom($$source: any = {}): FocusGraph {
-        const $$createField2_0 = $$createType25;
-        const $$createField3_0 = $$createType27;
+        const $$createField2_0 = $$createType35;
+        const $$createField3_0 = $$createType37;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("nodes" in $$parsedSource) {
             $$parsedSource["nodes"] = $$createField2_0($$parsedSource["nodes"]);
@@ -1023,15 +1391,15 @@ export class Impact {
      * Creates a new Impact instance from a string or object.
      */
     static createFrom($$source: any = {}): Impact {
-        const $$createField4_0 = $$createType5;
-        const $$createField5_0 = $$createType5;
-        const $$createField6_0 = $$createType5;
-        const $$createField7_0 = $$createType5;
-        const $$createField8_0 = $$createType29;
-        const $$createField9_0 = $$createType29;
-        const $$createField10_0 = $$createType31;
-        const $$createField11_0 = $$createType5;
-        const $$createField12_0 = $$createType5;
+        const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType0;
+        const $$createField6_0 = $$createType0;
+        const $$createField7_0 = $$createType0;
+        const $$createField8_0 = $$createType39;
+        const $$createField9_0 = $$createType39;
+        const $$createField10_0 = $$createType41;
+        const $$createField11_0 = $$createType0;
+        const $$createField12_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("exportedPackages" in $$parsedSource) {
             $$parsedSource["exportedPackages"] = $$createField4_0($$parsedSource["exportedPackages"]);
@@ -1091,8 +1459,8 @@ export class LooseJarResult {
      * Creates a new LooseJarResult instance from a string or object.
      */
     static createFrom($$source: any = {}): LooseJarResult {
-        const $$createField1_0 = $$createType5;
-        const $$createField2_0 = $$createType5;
+        const $$createField1_0 = $$createType0;
+        const $$createField2_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("imported" in $$parsedSource) {
             $$parsedSource["imported"] = $$createField1_0($$parsedSource["imported"]);
@@ -1143,8 +1511,8 @@ export class MissingDependency {
      * Creates a new MissingDependency instance from a string or object.
      */
     static createFrom($$source: any = {}): MissingDependency {
-        const $$createField4_0 = $$createType5;
-        const $$createField5_0 = $$createType5;
+        const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("available" in $$parsedSource) {
             $$parsedSource["available"] = $$createField4_0($$parsedSource["available"]);
@@ -1187,7 +1555,7 @@ export class P2DownloadResult {
      * Creates a new P2DownloadResult instance from a string or object.
      */
     static createFrom($$source: any = {}): P2DownloadResult {
-        const $$createField3_0 = $$createType5;
+        const $$createField3_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("problems" in $$parsedSource) {
             $$parsedSource["problems"] = $$createField3_0($$parsedSource["problems"]);
@@ -1239,12 +1607,48 @@ export class P2Preview {
      * Creates a new P2Preview instance from a string or object.
      */
     static createFrom($$source: any = {}): P2Preview {
-        const $$createField3_0 = $$createType5;
+        const $$createField3_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("repositories" in $$parsedSource) {
             $$parsedSource["repositories"] = $$createField3_0($$parsedSource["repositories"]);
         }
         return new P2Preview($$parsedSource as Partial<P2Preview>);
+    }
+}
+
+/**
+ * PackageProvider is one bundle exporting the package.
+ */
+export class PackageProvider {
+    "symbolicName": string;
+    "version": string;
+    "source": string;
+    "exportVersion": string;
+
+    /** Creates a new PackageProvider instance. */
+    constructor($$source: Partial<PackageProvider> = {}) {
+        if (!("symbolicName" in $$source)) {
+            this["symbolicName"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("exportVersion" in $$source)) {
+            this["exportVersion"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PackageProvider instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PackageProvider {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PackageProvider($$parsedSource as Partial<PackageProvider>);
     }
 }
 
@@ -1384,8 +1788,8 @@ export class RuntimeService {
      * Creates a new RuntimeService instance from a string or object.
      */
     static createFrom($$source: any = {}): RuntimeService {
-        const $$createField4_0 = $$createType16;
-        const $$createField5_0 = $$createType5;
+        const $$createField4_0 = $$createType20;
+        const $$createField5_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("properties" in $$parsedSource) {
             $$parsedSource["properties"] = $$createField4_0($$parsedSource["properties"]);
@@ -1458,10 +1862,10 @@ export class RuntimeSnapshot {
      * Creates a new RuntimeSnapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): RuntimeSnapshot {
-        const $$createField5_0 = $$createType33;
-        const $$createField6_0 = $$createType35;
-        const $$createField7_0 = $$createType36;
-        const $$createField8_0 = $$createType5;
+        const $$createField5_0 = $$createType43;
+        const $$createField6_0 = $$createType45;
+        const $$createField7_0 = $$createType46;
+        const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("bundles" in $$parsedSource) {
             $$parsedSource["bundles"] = $$createField5_0($$parsedSource["bundles"]);
@@ -1576,8 +1980,8 @@ export class ServiceComponent {
      * Creates a new ServiceComponent instance from a string or object.
      */
     static createFrom($$source: any = {}): ServiceComponent {
-        const $$createField2_0 = $$createType5;
-        const $$createField3_0 = $$createType5;
+        const $$createField2_0 = $$createType0;
+        const $$createField3_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("services" in $$parsedSource) {
             $$parsedSource["services"] = $$createField2_0($$parsedSource["services"]);
@@ -1642,10 +2046,10 @@ export class TargetComparison {
      * Creates a new TargetComparison instance from a string or object.
      */
     static createFrom($$source: any = {}): TargetComparison {
-        const $$createField5_0 = $$createType38;
-        const $$createField6_0 = $$createType38;
-        const $$createField7_0 = $$createType40;
-        const $$createField8_0 = $$createType21;
+        const $$createField5_0 = $$createType48;
+        const $$createField6_0 = $$createType48;
+        const $$createField7_0 = $$createType50;
+        const $$createField8_0 = $$createType29;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("added" in $$parsedSource) {
             $$parsedSource["added"] = $$createField5_0($$parsedSource["added"]);
@@ -1821,8 +2225,8 @@ export class WorkspaceReport {
      * Creates a new WorkspaceReport instance from a string or object.
      */
     static createFrom($$source: any = {}): WorkspaceReport {
-        const $$createField6_0 = $$createType42;
-        const $$createField7_0 = $$createType21;
+        const $$createField6_0 = $$createType52;
+        const $$createField7_0 = $$createType29;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("bundles" in $$parsedSource) {
             $$parsedSource["bundles"] = $$createField6_0($$parsedSource["bundles"]);
@@ -1835,12 +2239,12 @@ export class WorkspaceReport {
 }
 
 // Private type creation functions
-const $$createType0 = BundleRow.createFrom;
-const $$createType1 = Wire.createFrom;
-const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = MissingDependency.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $Create.Array($Create.Any);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = BundleRow.createFrom;
+const $$createType2 = Wire.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = MissingDependency.createFrom;
+const $$createType5 = $Create.Array($$createType4);
 const $$createType6 = Diagnostic.createFrom;
 const $$createType7 = $Create.Array($$createType6);
 const $$createType8 = ActivatorInfo.createFrom;
@@ -1851,30 +2255,40 @@ const $$createType12 = Impact.createFrom;
 const $$createType13 = $Create.Nullable($$createType12);
 const $$createType14 = FocusGraph.createFrom;
 const $$createType15 = $Create.Nullable($$createType14);
-const $$createType16 = $Create.Map($Create.Any, $Create.Any);
-const $$createType17 = ExplorerSummary.createFrom;
-const $$createType18 = $Create.Array($$createType0);
-const $$createType19 = $Create.Array($$createType8);
-const $$createType20 = Problem.createFrom;
-const $$createType21 = $Create.Array($$createType20);
-const $$createType22 = RuntimeSnapshot.createFrom;
-const $$createType23 = $Create.Nullable($$createType22);
-const $$createType24 = FocusNode.createFrom;
-const $$createType25 = $Create.Array($$createType24);
-const $$createType26 = FocusEdge.createFrom;
-const $$createType27 = $Create.Array($$createType26);
-const $$createType28 = Consumer.createFrom;
+const $$createType16 = ExtensionPoint.createFrom;
+const $$createType17 = $Create.Array($$createType16);
+const $$createType18 = Extension.createFrom;
+const $$createType19 = $Create.Array($$createType18);
+const $$createType20 = $Create.Map($Create.Any, $Create.Any);
+const $$createType21 = PackageProvider.createFrom;
+const $$createType22 = $Create.Array($$createType21);
+const $$createType23 = DependencyConsumer.createFrom;
+const $$createType24 = $Create.Array($$createType23);
+const $$createType25 = ExplorerSummary.createFrom;
+const $$createType26 = $Create.Array($$createType1);
+const $$createType27 = $Create.Array($$createType8);
+const $$createType28 = Problem.createFrom;
 const $$createType29 = $Create.Array($$createType28);
-const $$createType30 = TestImpact.createFrom;
-const $$createType31 = $Create.Array($$createType30);
-const $$createType32 = RuntimeBundle.createFrom;
+const $$createType30 = RuntimeSnapshot.createFrom;
+const $$createType31 = $Create.Nullable($$createType30);
+const $$createType32 = ExtensionClass.createFrom;
 const $$createType33 = $Create.Array($$createType32);
-const $$createType34 = RuntimeService.createFrom;
+const $$createType34 = FocusNode.createFrom;
 const $$createType35 = $Create.Array($$createType34);
-const $$createType36 = $Create.Map($Create.Any, $$createType5);
-const $$createType37 = BundleVersion.createFrom;
-const $$createType38 = $Create.Array($$createType37);
-const $$createType39 = BundleChange.createFrom;
-const $$createType40 = $Create.Array($$createType39);
-const $$createType41 = BundleStatus.createFrom;
-const $$createType42 = $Create.Array($$createType41);
+const $$createType36 = FocusEdge.createFrom;
+const $$createType37 = $Create.Array($$createType36);
+const $$createType38 = Consumer.createFrom;
+const $$createType39 = $Create.Array($$createType38);
+const $$createType40 = TestImpact.createFrom;
+const $$createType41 = $Create.Array($$createType40);
+const $$createType42 = RuntimeBundle.createFrom;
+const $$createType43 = $Create.Array($$createType42);
+const $$createType44 = RuntimeService.createFrom;
+const $$createType45 = $Create.Array($$createType44);
+const $$createType46 = $Create.Map($Create.Any, $$createType0);
+const $$createType47 = BundleVersion.createFrom;
+const $$createType48 = $Create.Array($$createType47);
+const $$createType49 = BundleChange.createFrom;
+const $$createType50 = $Create.Array($$createType49);
+const $$createType51 = BundleStatus.createFrom;
+const $$createType52 = $Create.Array($$createType51);

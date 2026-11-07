@@ -22,7 +22,7 @@ export const THIRD_PARTY_LICENSES: ReadonlyArray<{ license: string; packages: re
   {
     license: 'BSD-3-Clause',
     packages: [
-      'filippo.io/age', 'github.com/digitorus/pdf', 'github.com/fsnotify/fsnotify', 'github.com/miekg/dns', 'github.com/romshark/jscan', 'github.com/shirou/gopsutil/v4',
+      'filippo.io/age', 'github.com/digitorus/pdf', 'github.com/ulikunitz/xz', 'github.com/fsnotify/fsnotify', 'github.com/miekg/dns', 'github.com/romshark/jscan', 'github.com/shirou/gopsutil/v4',
       'golang.org/x/exp', 'golang.org/x/mod', 'golang.org/x/net', 'golang.org/x/sync', 'golang.org/x/sys', 'golang.org/x/tools', 'google.golang.org/protobuf', 'modernc.org/sqlite', 'software.sslmate.com/src/go-pkcs12',
     ],
   },

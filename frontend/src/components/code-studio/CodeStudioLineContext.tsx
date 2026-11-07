@@ -119,7 +119,7 @@ export function CodeStudioLineContext({ session, document }: { session: GoIDESes
             <p className="font-mono text-text-1">{route.name}</p>
             {route.handler && <p className="text-text-3">handler <SiteLink site={route.handlerSite ?? undefined} label={route.handler} /></p>}
             <div className="flex flex-wrap gap-1">
-              {route.kind === 'http' && route.site.relativePath === relativePath && <Action onClick={() => openHttpRouteAt(document, route.site.line)} title="Create a prefilled request in the API client">Open in API Client</Action>}
+              {route.kind === 'http' && route.site.relativePath === relativePath && <Action onClick={() => openHttpRouteAt(document, route.site.line)} title="Open the matching request beside the code in the API workspace">Open in API Workspace</Action>}
               {route.site.relativePath !== relativePath && <Action onClick={() => openArchSite(route.site)}>Registration</Action>}
             </div>
             {matching.length > 0 ? matching.map((run) => (

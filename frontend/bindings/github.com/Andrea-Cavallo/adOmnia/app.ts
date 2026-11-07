@@ -487,6 +487,14 @@ export function ScheduleUpdateOnExit(enable: boolean): $CancellablePromise<updat
     });
 }
 
+/**
+ * SelectFile opens a native single-file picker with an optional filter ("Protocol Buffers", "*.proto") and
+ * returns the path only: the file is never read here.
+ */
+export function SelectFile(title: string, filterLabel: string, pattern: string): $CancellablePromise<string> {
+    return $Call.ByID(2427571203, title, filterLabel, pattern);
+}
+
 export function SelectFolder(title: string): $CancellablePromise<string> {
     return $Call.ByID(237181597, title);
 }

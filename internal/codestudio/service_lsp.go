@@ -129,6 +129,8 @@ func (s *Service) externalRoots(session Session) []string {
 	if info, detected := s.toolchain.LastDetected(session.ID); detected {
 		roots = append(roots, info.GOROOT, info.GOMODCACHE)
 	}
+	roots = append(roots, s.pythonExternalRoots(session)...)
+	roots = append(roots, s.nativeExternalRoots(session)...)
 	return roots
 }
 

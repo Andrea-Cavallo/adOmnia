@@ -6,15 +6,16 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 )
 
-// ServerBlocked implements language.ServerBlocker. Eclipse JDT LS runs on a modern JVM and has no
-// PDE: it cannot read a target platform, its compiler refuses anything below Java 8, and it does
-// not know the PDE natures. On a Tycho/PDE workspace it therefore reports "Compiling for Java
-// version '1.6' is no longer supported" for every file (plus removed APIs such as Pack200 and
-// "Unknown referenced nature: org.eclipse.pde.PluginNature") even though the project is fine: the
-// OSGi engine compiles those bundles with the ECJ of the target on the project JVM.
+// ServerBlocked implements language.ServerBlocker. Eclipse JDT LS has no PDE: it cannot read a target
+// platform and does not know the PDE natures. On a PDE workspace it is therefore given a shadow
+// workspace (eclipsepde.WriteShadowWorkspace) built from the active target, never the real metadata;
+// without a target there is no classpath to give it, and it stays stopped with the reason.
 func (*Language) ServerBlocked(projectRoot string) string {
 	if eclipsepde.HasBundles(projectRoot) {
-		return "PDE workspace: live Java checking is off — the Java language server has no PDE support (it cannot read the target platform) and refuses Java below 8, so it would report false errors. Use Java → Build OSGi Bundles for the real compiler errors."
+		if eclipsepde.HasActiveTarget(projectRoot) {
+			return ""
+		}
+		return "PDE workspace without a target platform: live Java checking needs one to know what the bundles import. Choose it in Java → OSGi Bundles & Target Platform."
 	}
 	// The same limit applies outside OSGi: JDT LS supports 1.8 and newer only. A project that
 	// declares 1.6/1.7 (Maven compiler.source/target/release or Gradle sourceCompatibility) is

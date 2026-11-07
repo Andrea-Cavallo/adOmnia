@@ -120,6 +120,20 @@ type SpringEndpoint struct {
 	Line        int    `json:"line,omitzero"`
 	StartColumn int    `json:"startColumn,omitzero"`
 	EndColumn   int    `json:"endColumn,omitzero"`
+	// Params sono i valori letti dalla richiesta: path, query, header, cookie.
+	Params []SpringParam `json:"params,omitempty"`
+	// BodyType è il DTO di @RequestBody (o il body JAX-RS), senza generici.
+	BodyType  string `json:"bodyType,omitempty"`
+	BodyArray bool   `json:"bodyArray,omitzero"`
+}
+
+// SpringParam è un parametro della richiesta dichiarato dalla firma del metodo.
+type SpringParam struct {
+	Name     string `json:"name"`
+	In       string `json:"in"` // path | query | header | cookie
+	Type     string `json:"type,omitempty"`
+	Required bool   `json:"required,omitempty"`
+	Default  string `json:"default,omitempty"`
 }
 
 // SpringIndex è tutto ciò che si sa di un progetto Spring senza eseguirlo.

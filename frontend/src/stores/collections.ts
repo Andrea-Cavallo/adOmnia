@@ -75,13 +75,13 @@ interface CollectionsState {
   deleteWorkspace: (id: string) => Promise<string | null>
   setActiveWorkspace: (id: string) => Promise<boolean>
   moveCollectionToWorkspace: (collectionId: string, targetWorkspaceId: string) => Promise<boolean>
-  addCollection: (name: string) => Collection
+  addCollection: (name: string, scope?: Collection['scope']) => Collection
   deleteCollection: (id: string) => void
   renameCollection: (id: string, name: string) => void
   updateCollection: (id: string, patch: Partial<Collection>) => void
   addFolder: (collectionId: string, parentId: string | null, name: string) => void
   addRequest: (collectionId: string, parentId: string | null, request: RequestItem) => void
-  addQuickRequest: (request: RequestItem) => string
+  addQuickRequest: (request: RequestItem, scope?: Collection['scope']) => string
   deleteNode: (collectionId: string, nodeId: string) => void
   renameNode: (collectionId: string, nodeId: string, name: string) => void
   updateRequest: (collectionId: string, request: RequestItem) => void
@@ -97,6 +97,11 @@ export const DEFAULT_WORKSPACE_ID = 'workspace-default'
 // versioned collection format while the sidebar presents them at workspace root.
 export const QUICK_REQUESTS_COLLECTION_ID = '__adomnia-quick-requests__'
 const QUICK_REQUESTS_COLLECTION_NAME = 'Quick Requests'
+/** The hidden quick collection of each protocol module: its quick requests never mix with the API ones. */
+const QUICK_COLLECTIONS: Record<NonNullable<Collection['scope']>, { id: string; name: string }> = {
+  websocket: { id: '__adomnia-quick-websockets__', name: 'WebSocket Quick Requests' },
+  grpc: { id: '__adomnia-quick-grpc__', name: 'gRPC Quick Calls' },
+}
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace'
 const COLLECTIONS_INDEX_VERSION = 3
 const pendingWorkspaceSaves = new Set<string>()
@@ -683,9 +688,9 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => {
     return true
   },
 
-  addCollection: (name) => {
+  addCollection: (name, scope) => {
     get().hydrateNow()
-    const col: Collection = { id: uid(), name, children: [] }
+    const col: Collection = { id: uid(), name, children: [], ...(scope ? { scope } : {}) }
     set((s) => ({ collections: [...s.collections, col] }))
     get().save()
     return col
@@ -734,26 +739,27 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => {
     get().save()
   },
 
-  addQuickRequest: (request) => {
+  addQuickRequest: (request, scope) => {
     get().hydrateNow()
+    const { id, name } = scope ? QUICK_COLLECTIONS[scope] : { id: QUICK_REQUESTS_COLLECTION_ID, name: QUICK_REQUESTS_COLLECTION_NAME }
     set((s) => {
-      const quickCollection = s.collections.find((collection) => collection.id === QUICK_REQUESTS_COLLECTION_ID)
+      const quickCollection = s.collections.find((collection) => collection.id === id)
       if (quickCollection) {
         return {
-          collections: s.collections.map((collection) => collection.id === QUICK_REQUESTS_COLLECTION_ID
+          collections: s.collections.map((collection) => collection.id === id
             ? { ...collection, children: [...collection.children, request] }
             : collection),
         }
       }
       return {
         collections: [
-          { id: QUICK_REQUESTS_COLLECTION_ID, name: QUICK_REQUESTS_COLLECTION_NAME, children: [request] },
+          { id, name, children: [request], ...(scope ? { scope } : {}) },
           ...s.collections,
         ],
       }
     })
     get().save()
-    return QUICK_REQUESTS_COLLECTION_ID
+    return id
   },
 
   deleteNode: (collectionId, nodeId) => {

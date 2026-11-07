@@ -5,7 +5,7 @@ import { subscribeGoIDEEvents, type GoIDEEvent } from '@/lib/code-studio-api'
 import {
   detectGoIDEDelve, evaluateGoIDEDebug, getGoIDEDebugGoroutines, getGoIDEDebugScopes, getGoIDEDebugStack, getGoIDEDebugVariables, installGoIDEDelve,
   listGoIDEBreakpoints, listGoIDEDebugThreads, listGoIDEExceptionBreakpoints, listGoIDEFunctionBreakpoints, runGoIDEDebugToCursor, setGoIDEBreakpoints,
-  setGoIDEExceptionBreakpoints, setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, startNativeDebug, startPythonDebug, startRustDebug, startWebDebug, stepGoIDEDebug, stopGoIDEDebug,
+  setGoIDEExceptionBreakpoints, setGoIDEFunctionBreakpoints, startGoIDEDebug, startGoIDEJavaDebug, startJavaOsgiDebug, startNativeDebug, startPythonDebug, startRustDebug, startWebDebug, stepGoIDEDebug, stopGoIDEDebug,
   type GoIDEBreakpoint, type GoIDEBreakpointState, type GoIDEExceptionBreakpoints, type GoIDEExceptionBreakpointSettings, type GoIDEFunctionBreakpoints, type GoIDEFunctionBreakpointSettings, type GoIDEDebugFrame, type GoIDEDebugOutput, type GoIDEDebugRequest, type GoIDEDebugScope,
   type GoIDEDebugSession, type GoIDEJavaDebugRequest, type GoIDEPythonDebugRequest, type GoIDERustDebugRequest, type GoIDENativeDebugRequest, type GoIDEWebDebugRequest, type GoIDEDebugStepAction, type GoIDEGoroutineOverview, type GoIDEDelveInfo, type GoIDEDebugThread, type GoIDEDebugVariable, type GoIDEFileBreakpoints,
 } from '@/lib/code-studio-debug-api'
@@ -62,6 +62,10 @@ export interface GoIDEDebugView {
   request: GoIDEDebugRequest | null
   /** Richiesta di una sessione Java: serve al riavvio, che per Java non passa da Delve. */
   javaRequest?: GoIDEJavaDebugRequest | null
+  /** Sessione OSGi (Equinox con JDWP): il riavvio rilancia il framework. */
+  osgiSessionId?: string
+  /** .product/.launch della sessione OSGi ('' = i bundle nel framework). */
+  osgiFile?: string
   /** Richiesta di una sessione Python (debugpy): serve al riavvio, che non passa da Delve. */
   pythonRequest?: GoIDEPythonDebugRequest | null
   rustRequest?: GoIDERustDebugRequest | null
@@ -107,6 +111,8 @@ interface GoIDEDebugState {
   error: string | null
   start: (request: GoIDEDebugRequest) => Promise<void>
   startJava: (request: GoIDEJavaDebugRequest) => Promise<void>
+  /** Debug dei bundle OSGi: Equinox parte in attesa del debugger, che si collega da solo. */
+  startOsgi: (sessionId: string, file?: string) => Promise<void>
   startRust: (request: GoIDERustDebugRequest) => Promise<void>
   startNative: (request: GoIDENativeDebugRequest) => Promise<void>
   startPython: (request: GoIDEPythonDebugRequest) => Promise<void>
@@ -420,6 +426,24 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
       }
     },
 
+    startOsgi: async (sessionId, file = '') => {
+      ensureSubscribed((event) => get().handleEvent(event))
+      set({ error: null })
+      try {
+        if (!await useCodeStudioStore.getState().saveAllDocuments(sessionId)) return
+        const info = await startJavaOsgiDebug(sessionId, file)
+        set((state) => ({
+          debuggers: { ...pruneFinished(state.debuggers, sessionId), [info.id]: { ...(state.debuggers[info.id] ?? emptyView(info)), osgiSessionId: sessionId, osgiFile: file } },
+          activeBySession: { ...state.activeBySession, [sessionId]: info.id },
+        }))
+        useCodeStudioStore.getState().updateLayout({ bottomOpen: true })
+        useCodeStudioLspStore.getState().showToolWindow('debug')
+      } catch (error) {
+        set({ error: errorMessage(error) })
+        useCodeStudioStore.setState({ error: errorMessage(error) })
+      }
+    },
+
     startPython: async (request) => {
       ensureSubscribed((event) => get().handleEvent(event))
       set({ error: null })
@@ -502,13 +526,14 @@ export const useCodeStudioDebugStore = create<GoIDEDebugState>((set, get) => {
 
     restart: async (debugId) => {
       const view = get().debuggers[debugId]
-      if (!view?.request && !view?.javaRequest && !view?.pythonRequest && !view?.rustRequest && !view?.nativeRequest && !view?.webRequest) return
+      if (!view?.request && !view?.javaRequest && !view?.osgiSessionId && !view?.pythonRequest && !view?.rustRequest && !view?.nativeRequest && !view?.webRequest) return
       if (view.info.state !== 'terminated') await get().stop(debugId)
       if (view.webRequest) await get().startWeb(view.webRequest)
       else if (view.rustRequest) await get().startRust(view.rustRequest)
       else if (view.nativeRequest) await get().startNative(view.nativeRequest)
       else if (view.pythonRequest) await get().startPython(view.pythonRequest)
       else if (view.javaRequest) await get().startJava(view.javaRequest)
+      else if (view.osgiSessionId) await get().startOsgi(view.osgiSessionId, view.osgiFile)
       else if (view.request) await get().start(view.request)
     },
 

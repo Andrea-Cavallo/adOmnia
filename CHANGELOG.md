@@ -6,6 +6,45 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.28] — 2026-11-07
+
+Release notes: [docs/releases/v1.0.28.md](docs/releases/v1.0.28.md).
+
+### gRPC
+
+- **gRPC is a module with the API workspace's layout.** Calls are collection items (*New gRPC call*) in their own collections and tab strip: a request bar with address, service/method picker and Invoke/Stream, sections for Message, Metadata, Auth, Schema, TLS, Settings, Mock and Load test, the standard Response panel for unary calls and a live Stream panel for server, client and bidi streams. Calls are saved, exported with the workspace and take `{{variables}}`. The old gRPC panel is gone; its saved connections move into the module.
+- **No reflection needed.** A call can be described by `.proto` files on disk (with import paths) or a protoset; invoke, streams, load tests and the mock all use it.
+- **gRPC mock server** built from the `.proto`: rules per method, templated replies (`{{request.field}}`), status codes, delays, streams, reflection on.
+- **Pooled connections**, one per server and TLS files, reused across calls.
+- **Linked to code.** A Go service or a `.proto` rpc in Code Studio opens a call; a call shows *Served by Handler()* and opens the Go method or, for Rust, the `async fn` of the tonic impl; the `.proto` lens shows the same handler for both.
+- **Flows and scripts.** Saved gRPC calls are Flow steps (status, assertions, variables from the reply) and run pre/post scripts.
+
+### WebSocket
+
+- **WebSocket is a module with the REST layout.** A connection is a collection item (*New WebSocket*) in the WebSocket module's own collections and tabs: request bar with `WS`/`WSS` and Connect/Disconnect, sections for saved messages, Params, Headers, Auth, Settings, Script, Mock and Parallel, and a Messages panel with filters, search, pause, export and an inspector. The old panel's connection and templates move into a tab the first time you open WebSocket.
+
+### API workspace
+
+- **Smart Split Workspace.** One screen for API, code and data: the split keeps code and request side by side and adds a third pane (Database Studio, Broker Studio, Logs) beside them; *Back to response* and Alt+← return to the previous screen. The split header shows the shared focus: project, service, route, handler, request and run.
+- **API ↔ code link.** A request opens the handler that serves it and the endpoint browser lists the endpoints of the open projects; Go and Spring request bodies are filled from the code.
+- **One-Click Debug Scenario.** Save a Debug Request with its environment, test data, breakpoints and check queries, run it again in one click and see what changed since the last run: status, time, body shape, assertions, code path, SQL, topics, error logs and query rows.
+
+### Code Studio
+
+- **External Libraries for Maven, Gradle, Python and native projects**, like Go: the libraries the build resolves, transitive ones included, with their sources to browse read-only. Maven sources come from the `-sources.jar` (*Download sources* runs the exact Maven command); in a pom.xml, *View source* and Ctrl+click on a `<dependency>` open the library's code.
+- **Java RCP/PDE.** JDT LS works on PDE workspaces through a shadow workspace once a target platform is chosen; Eclipse applications (`.product`, `.launch`) run and debug from the OSGi Control Center; `plugin.xml` extensions and extension points with diagnostics; a Dependency Explorer for classes and packages; uses-constraint conflicts, export and p2.
+- **Active directory pin.** A breadcrumb above the Project tree names the folder of the active file, tints its path and scrolls to the file.
+- **Indent rainbow** in Python and YAML files.
+
+### MCP
+
+- **Project build tools.** `project_build_plan` and `project_build` plan and run the build of every unit through the language adapters (project wrappers first), with status, exit code, duration and output; nothing is downloaded.
+
+### Fixes
+
+- Translations of the endpoint browser and the WebSocket empty state in Chinese, Japanese and Russian, and `github.com/ulikunitz/xz` in Settings > About licenses.
+- The gRPC load test reads gRPC status names in either spelling (`NOT_FOUND`, `NotFound`).
+
 ## [1.0.27] — 2026-11-05
 
 Release notes: [docs/releases/v1.0.27.md](docs/releases/v1.0.27.md).

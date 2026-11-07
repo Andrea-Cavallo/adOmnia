@@ -498,6 +498,22 @@ export const RU_UI_MESSAGES_B: Partial<Record<UiMessage, string>> = {
   "Dark base color": "Базовый цвет тёмной темы",
   "White base color": "Базовый цвет светлой темы",
   "Base color": "Базовый цвет",
+  "Endpoints": "Эндпоинты",
+  "Refresh endpoints": "Обновить эндпоинты",
+  "Filter endpoints…": "Фильтр эндпоинтов…",
+  "Filter endpoints": "Фильтр эндпоинтов",
+  "Clear filter": "Сбросить фильтр",
+  "Open a project in Code Studio to browse its endpoints.": "Откройте проект в Code Studio, чтобы просмотреть его эндпоинты.",
+  "No HTTP endpoints detected in the open projects.": "В открытых проектах не найдено HTTP-эндпоинтов.",
+  "Showing the first 400 endpoints; refine the filter.": "Показаны первые 400 эндпоинтов; уточните фильтр.",
+  "No WebSocket connection open": "Нет открытых WebSocket-соединений",
+  "Open one from the sidebar on the left or start a new connection.": "Откройте соединение на боковой панели слева или создайте новое.",
+  "Streaming": "Потоковая передача",
+  "Connection": "Соединение",
+  "Disconnect": "Отключить",
+  "Connect": "Подключить",
+  "Message": "Сообщение",
+  "New WebSocket": "Новый WebSocket",
 }
 
 /** Navigation labels (rail, feature groups, welcome surfaces). */

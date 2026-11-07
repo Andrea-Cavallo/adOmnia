@@ -1,5 +1,7 @@
 import type { RequestItem, ResponseData, ScriptRunResult } from '@/lib/types'
 import { sendRequest } from '@/lib/sendRequest'
+import { isGrpcRequest } from '@/lib/grpc/grpcRequest'
+import { sendGrpcRequest } from '@/lib/grpc/sendGrpcRequest'
 import { runRequestScript } from '@/lib/scriptRuntime'
 import { useFlowRecorderStore } from '@/stores/flowRecorder'
 
@@ -45,7 +47,8 @@ export async function executeRequest(
     }
   }
 
-  const response = await sendRequest(request, nextVars, opts)
+  // A gRPC call goes through the sidecar's gRPC client; scripts, recording and Flows see the same ResponseData.
+  const response = isGrpcRequest(request) ? await sendGrpcRequest(request, nextVars, opts?.signal) : await sendRequest(request, nextVars, opts)
 
   const post = await runRequestScript(request.scripts?.post, { request, vars: nextVars, response, phase: 'post' })
   if (post) {

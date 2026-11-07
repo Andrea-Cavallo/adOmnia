@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/lsp"
 )
 
@@ -115,8 +116,17 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 	if err := os.MkdirAll(data, 0o755); err != nil {
 		return lsp.ServerSpec{}, fmt.Errorf("could not prepare the JDT LS workspace: %w", err)
 	}
+	// A PDE workspace is mirrored for JDT LS: plain Java projects linking the real sources, with the
+	// target bundles on the classpath. Regenerated at every start, so a changed manifest is read again.
+	var serverRoot string
+	if eclipsepde.HasBundles(root) {
+		serverRoot = filepath.Join(toolsRoot, "jdtls-pde", workspaceKey(root))
+		if _, err := eclipsepde.WriteShadowWorkspace(root, serverRoot); err != nil {
+			return lsp.ServerSpec{}, fmt.Errorf("could not prepare the PDE workspace for JDT LS: %w", err)
+		}
+	}
 	return lsp.ServerSpec{
-		Language: ID, Name: info.Name, Binary: info.Binary,
+		Language: ID, Name: info.Name, Binary: info.Binary, Root: serverRoot,
 		Arguments: []string{
 			"-Declipse.application=org.eclipse.jdt.ls.core.id1", "-Dosgi.bundles.defaultStartLevel=4",
 			"-Declipse.product=org.eclipse.jdt.ls.core.product", "-Dlog.level=NONE", "-Xmx1G",

@@ -39,6 +39,7 @@ import {
   type DbConnection, type DbDriver, type DbResult, type HistoryItem, type QueryTab, type QueryWorkspaceState, type SchemaColumn, type SchemaItem,
   upsertConnectionFromRef,
 } from './dbShared'
+import { connectionForDatasource } from './datasourceMatch'
 import {
   clearDatabaseConnectionSecrets,
   hydrateDatabaseConnections,
@@ -332,7 +333,12 @@ export function DatabasePanel() {
       setTabs((current) => [...current, tab])
       setActiveTabId(tab.id)
       const back = payload.back as { label: string; run: () => void } | undefined
-      showEntityNotice(`Query from ${ref.label}. Pick the service's connection, then run it.`, back)
+      // The capture proxy knows which server the statement went to: reuse the saved connection to it.
+      const known = connectionForDatasource(connections, typeof payload.datasource === 'string' ? payload.datasource : undefined)
+      if (known) setActiveId(known.id)
+      showEntityNotice(known
+        ? `Query from ${ref.label} on "${known.name}". Review it, then run it.`
+        : `Query from ${ref.label}. Pick the service's connection, then run it.`, back)
       return true
     }
     if (intent === 'query') {

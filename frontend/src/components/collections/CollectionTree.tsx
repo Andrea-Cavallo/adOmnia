@@ -19,8 +19,10 @@ import {
   Upload,
   UploadCloud,
   X,
+  Cable,
 } from 'lucide-react'
 import type { Collection, FolderItem, HttpMethod, RequestItem, TreeNode } from '@/lib/types'
+import { methodLabel } from '@/lib/protocolModules'
 import { cn } from '@/lib/utils'
 import { useUiTranslation } from '@/lib/uiI18n'
 import { Prompt } from '@/components/ui/prompt'
@@ -39,6 +41,9 @@ import type { CollectionExportJob } from '@/lib/collectionExport.worker'
 
 interface CollectionTreeProps {
   collections: Collection[]
+  /** The WebSocket module: only WebSocket requests exist here, so HTTP actions are hidden. */
+  /** In a protocol module: the one kind of item its menus create ("New WebSocket", "New gRPC call"). */
+  newItem?: { method: HttpMethod; label: string }
   activeRequestId: string | null
   onOpenRequest: (request: RequestItem, collectionId: string, preview?: boolean) => void
   onNewRequest: (method?: HttpMethod) => string | null
@@ -67,7 +72,8 @@ const METHOD_COLORS: Record<string, string> = {
   DELETE: 'text-method-delete',
   HEAD: 'text-method-head',
   OPTIONS: 'text-method-head',
-  WS: 'text-warning',
+  WS: 'text-info',
+  GRPC: 'text-method-patch',
   SOAP: 'text-info',
 }
 
@@ -381,7 +387,7 @@ function TreeNodeRow({
             <Folder size={13} className="shrink-0 text-text-3" />
           </>
         ) : (
-          <span className={cn('w-12 shrink-0 pr-1 text-[9px] font-mono font-bold', METHOD_COLORS[(node as RequestItem).method] ?? 'text-text-3')}>{(node as RequestItem).method}</span>
+          <span className={cn('w-12 shrink-0 pr-1 text-[9px] font-mono font-bold', METHOD_COLORS[(node as RequestItem).method] ?? 'text-text-3')}>{methodLabel((node as RequestItem).method)}</span>
         )}
         {editingId === node.id ? (
           <InlineEdit
@@ -444,6 +450,7 @@ function TreeNodeRow({
 
 export function CollectionTree({
   collections,
+  newItem,
   activeRequestId,
   onOpenRequest,
   onNewRequest,
@@ -890,10 +897,10 @@ export function CollectionTree({
         </button>
         <button
           onClick={() => {
-            const collectionId = onNewRequest()
+            const collectionId = onNewRequest(newItem?.method)
             if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
           }}
-          title={tr('New request')}
+          title={newItem ? newItem.label : tr('New request')}
           className="grid h-6 w-6 place-items-center rounded text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
         >
           <Plus size={14} />
@@ -1107,11 +1114,16 @@ export function CollectionTree({
         <div ref={menuRef} className="fixed z-50 max-h-[70vh] w-52 overflow-y-auto rounded-md border border-border-1 bg-surface-1 py-1 shadow-xl" style={{ left: menuPos?.left ?? context.x, top: menuPos?.top ?? context.y, visibility: menuPos ? 'visible' : 'hidden' }}>
           {context.kind === 'panel' && (
             <>
-              <MenuButton onClick={() => {
+              {!newItem && <MenuButton onClick={() => {
                 const collectionId = onNewRequest()
                 if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
                 setContext(null)
-              }}><Plus size={12} /> {tr('New Request')}</MenuButton>
+              }}><Plus size={12} /> {tr('New Request')}</MenuButton>}
+              {newItem && <MenuButton onClick={() => {
+                const collectionId = onNewRequest(newItem.method)
+                if (collectionId) setOpenIds((current) => new Set(current).add(collectionId))
+                setContext(null)
+              }}><Cable size={12} /> {newItem.label}</MenuButton>}
               <MenuButton onClick={() => { onAddCollection(); setContext(null) }}><FolderPlus size={12} /> {tr('New Collection')}</MenuButton>
               <MenuButton onClick={() => { fileInputRef.current?.click(); setContext(null) }}><Upload size={12} /> {tr('Import file')}</MenuButton>
               <MenuButton onClick={() => { exportAll('adomnia'); setContext(null) }}><Download size={12} /> {tr('Export all collections')}</MenuButton>
@@ -1129,7 +1141,8 @@ export function CollectionTree({
               <MenuButton onClick={() => { onImportCollection(cloneCollection(context.collection)); setContext(null) }}><Copy size={12} /> {tr('Duplicate')}</MenuButton>
               <MenuButton onClick={() => { setCollectionFolder({ collectionId: context.collection.id }); setContext(null) }}><FolderOpen size={12} /> {tr('Collection folder...')}</MenuButton>
               <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collection.id, parentId: null }); setContext(null) }}><FolderPlus size={12} /> {tr('New Folder')}</MenuButton>
-              <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>
+              {!newItem && <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>}
+              {newItem && <MenuButton onClick={() => { onAddRequestToFolder(context.collection.id, null, newItem.method); setContext(null) }}><Cable size={12} /> {newItem.label}</MenuButton>}
               {workspaceTargets.length > 0 && (
                 <div className="border-t border-border-1 py-1">
                   <div className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-4">{tr('Move to workspace')}</div>
@@ -1155,7 +1168,8 @@ export function CollectionTree({
               <MenuButton onClick={() => { setEditingId(context.node.id); setContext(null) }}><Copy size={12} /> {tr('Rename')}</MenuButton>
               <MenuButton onClick={() => { onDuplicateNode(context.collectionId, context.node.id); setContext(null) }}><Copy size={12} /> {tr('Duplicate')}</MenuButton>
               <MenuButton onClick={() => { setFolderPrompt({ collectionId: context.collectionId, parentId: context.node.id }); setContext(null) }}><FolderPlus size={12} /> {tr('New Subfolder')}</MenuButton>
-              <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id); setOpenIds((s) => { const n = new Set(s); n.add(context.node.id); return n }); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>
+              {!newItem && <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id); setOpenIds((s) => { const n = new Set(s); n.add(context.node.id); return n }); setContext(null) }}><Plus size={12} /> {tr('New Request')}</MenuButton>}
+              {newItem && <MenuButton onClick={() => { onAddRequestToFolder(context.collectionId, context.node.id, newItem.method); setOpenIds((s) => { const n = new Set(s); n.add(context.node.id); return n }); setContext(null) }}><Cable size={12} /> {newItem.label}</MenuButton>}
               {contextExportMenu(context)}
               <MenuButton danger onClick={() => { setDeleteTarget(context); setContext(null) }}><Trash2 size={12} /> {tr('Delete')}</MenuButton>
             </>

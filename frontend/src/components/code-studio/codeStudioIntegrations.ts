@@ -97,8 +97,20 @@ export function configuredDatabaseHandoff(
   }
 }
 
-/** Apre la route come nuova richiesta nel client API di adOmnia; la richiesta è una bozza da salvare dove si vuole. */
-export function openRouteInApiClient(route: CodeStudioHttpRoute, source: string, origin: string): void {
+/** Apre la route come richiesta nel client API; con la posizione del sorgente apre il nuovo split Code Studio ↔ API. */
+export function openRouteInApiClient(route: CodeStudioHttpRoute, source: string, origin: string, location?: { sessionId: string; file: string; line: number }): void {
+  if (location) {
+    const label = `${route.anyMethod ? '' : `${route.method} `}${route.path}`.trim()
+    void import('@/lib/devsession/codeToApi').then(({ runHandlerAction }) => runHandlerAction(location.sessionId, {
+      id: `draft:${location.file}:${location.line}`,
+      kind: 'route',
+      label,
+      attrs: { method: route.anyMethod ? 'ANY' : route.method, path: route.path },
+      sources: [{ detector: 'buffer', file: location.file, line: location.line }],
+      confidence: 'inferred',
+    }, 'open'))
+    return
+  }
   const baseUrl = resolveGoBaseUrl(source, useEnvironmentsStore.getState().getResolvedVars())
   const requestSettings = useSettingsStore.getState().settings.requests
   const request = { ...requestFromRoute(route, baseUrl, origin), timeout: requestSettings.defaultTimeoutMs, followRedirects: requestSettings.followRedirects }

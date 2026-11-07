@@ -972,6 +972,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
       case 'view.splitRight': return store.setSplit('right')
       case 'view.splitDown': return store.setSplit('down')
       case 'view.unsplit': return store.setSplit(null)
+      case 'view.apiWorkspaceSplit': return void import('@/lib/api-code-link/actions').then((module) => module.restoreApiCodeSplit())
       case 'view.quickOpen': return store.setQuickOpen(true)
       case 'view.maximize': return toggleCodeStudioMaximized()
       case 'view.maximizeEditor': return store.toggleEditorMaximized()

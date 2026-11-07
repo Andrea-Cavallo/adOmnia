@@ -34,6 +34,7 @@ require (
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/tidwall/gjson v1.20.0
 	github.com/tidwall/sjson v1.2.5
+	github.com/ulikunitz/xz v0.5.17
 	github.com/wI2L/jsondiff v0.7.1
 	github.com/wailsapp/wails/v3 v3.1.0
 	github.com/xdg-go/scram v1.2.0

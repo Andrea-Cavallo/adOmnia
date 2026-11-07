@@ -19,7 +19,8 @@ type Diagnostic struct {
 	Severity string `json:"severity"` // error | warning | info
 	// Kind is the machine-readable rule: missing-requirement, version-conflict, bree,
 	// singleton-duplicate, orphan-fragment, platform-filter, duplicate-bundle,
-	// transitive-requirement, resolved-lazy, not-started.
+	// transitive-requirement, resolved-lazy, not-started, uses-conflict,
+	// unknown-extension-point, missing-extension-class.
 	Kind           string   `json:"kind"`
 	Title          string   `json:"title"`
 	Cause          string   `json:"cause"`
@@ -72,6 +73,7 @@ func Diagnose(input DiagnosisInput) []Diagnostic {
 		var resolution *Resolution
 		if input.HasTarget {
 			resolution = resolver.Resolve(entry)
+			out = append(out, usesConflicts(resolution, manifestPath(root, proj))...)
 		}
 
 		// A platform filter selects the bundle for one OS/architecture. A project that ships a

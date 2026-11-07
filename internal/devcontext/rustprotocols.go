@@ -7,6 +7,10 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/languages/rust"
 )
 
+// RPCHandlerAttrPrefix names the attributes of a grpc entity that locate the method serving each rpc in
+// declFile: "rpc.say_hello" = "42". The method name is the language's own (say_hello for SayHello).
+const RPCHandlerAttrPrefix = "rpc."
+
 // detectRustGrpc: i servizi tonic diventano entità grpc come quelle Go e dei `.proto`, così il
 // pannello gRPC e il Mock leggono gli stessi servizi a prescindere dal linguaggio.
 func detectRustGrpc(rel string, data []byte) []Entity {
@@ -30,6 +34,11 @@ func detectRustGrpc(rel string, data []byte) []Entity {
 		}
 		if ref.Proto != "" {
 			attrs["proto"] = ref.Proto
+		}
+		// One attribute per rpc method (rpc.say_hello = its line): a gRPC call jumps to the method that serves
+		// it, whatever the language, by reading the entity.
+		for _, method := range ref.Methods {
+			attrs[RPCHandlerAttrPrefix+method.Name] = strconv.Itoa(method.Line)
 		}
 		out = append(out, entity("grpc", name, name, ConfidenceInferred, attrs, Source{"rustgrpc", rel, ref.Line}))
 	}

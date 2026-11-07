@@ -101,6 +101,7 @@ type ExplorerReport struct {
 	plan                 StartLevelPlan
 	executionEnvironment string
 	resolverEE           string
+	extensions           *ExtensionRegistry
 }
 
 // BuildExplorer reads the workspace and the target platform and builds the Plugin
@@ -155,6 +156,8 @@ func BuildExplorer(root string, jvmMajor int) (*ExplorerReport, error) {
 	}
 
 	diagnostics := Diagnose(DiagnosisInput{Workspace: ws, Index: report.merged, JVM: jvmMajor, Plan: report.plan, HasTarget: report.HasTarget})
+	report.extensions = BuildExtensionRegistry(ws, report.index)
+	diagnostics = append(diagnostics, extensionDiagnostics(ws, report.extensions)...)
 	report.Diagnostics = diagnostics
 	issues := map[string]int{}
 	for _, diagnostic := range diagnostics {

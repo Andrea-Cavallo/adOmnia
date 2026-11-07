@@ -23,15 +23,49 @@ var (
 func detectRoutes(rel string, fset *token.FileSet, file *ast.File, hints AdapterHints) []Entity {
 	var out []Entity
 	methods := routeMethodVerbs(hints)
+	literals := packageStringLiterals(file)
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Body == nil {
 			continue
 		}
-		w := &routeWalker{rel: rel, fset: fset, methods: methods, prefixes: map[string]string{}, consumed: map[ast.Node]bool{}}
+		w := &routeWalker{rel: rel, fset: fset, methods: methods, prefixes: map[string]string{}, consumed: map[ast.Node]bool{}, literals: copyLiterals(literals)}
 		w.walk(fn.Body)
 		out = append(out, w.out...)
 	}
+	return out
+}
+
+// packageStringLiterals resolves package-level `const`/`var` string values, so
+// routes registered with a named base path are still discovered.
+func packageStringLiterals(file *ast.File) map[string]string {
+	out := map[string]string{}
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || (gen.Tok != token.CONST && gen.Tok != token.VAR) {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			value, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for index, name := range value.Names {
+				if index >= len(value.Values) {
+					continue
+				}
+				if text, ok := stringLit(value.Values[index]); ok {
+					out[name.Name] = text
+				}
+			}
+		}
+	}
+	return out
+}
+
+func copyLiterals(source map[string]string) map[string]string {
+	out := make(map[string]string, len(source))
+	maps.Copy(out, source)
 	return out
 }
 
@@ -56,6 +90,7 @@ type routeWalker struct {
 	fset     *token.FileSet
 	methods  map[string]string
 	prefixes map[string]string
+	literals map[string]string
 	consumed map[ast.Node]bool
 	out      []Entity
 }
@@ -64,12 +99,61 @@ func (w *routeWalker) walk(root ast.Node) {
 	ast.Inspect(root, func(n ast.Node) bool {
 		switch node := n.(type) {
 		case *ast.AssignStmt:
+			w.trackLiterals(node)
 			w.trackGroup(node)
+		case *ast.DeclStmt:
+			w.trackDecl(node)
 		case *ast.CallExpr:
 			return w.call(node)
 		}
 		return true
 	})
+}
+
+// stringArg resolves a string literal or a named const/var in scope.
+func (w *routeWalker) stringArg(expr ast.Expr) (string, bool) {
+	if id, ok := expr.(*ast.Ident); ok {
+		if value, known := w.literals[id.Name]; known {
+			return value, true
+		}
+	}
+	return stringLit(expr)
+}
+
+func (w *routeWalker) trackLiterals(assign *ast.AssignStmt) {
+	if len(assign.Lhs) != len(assign.Rhs) {
+		return
+	}
+	for index, lhs := range assign.Lhs {
+		id, ok := lhs.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		if value, ok := stringLit(assign.Rhs[index]); ok {
+			w.literals[id.Name] = value
+		}
+	}
+}
+
+func (w *routeWalker) trackDecl(decl *ast.DeclStmt) {
+	gen, ok := decl.Decl.(*ast.GenDecl)
+	if !ok || (gen.Tok != token.CONST && gen.Tok != token.VAR) {
+		return
+	}
+	for _, spec := range gen.Specs {
+		value, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		for index, name := range value.Names {
+			if index >= len(value.Values) {
+				continue
+			}
+			if text, ok := stringLit(value.Values[index]); ok {
+				w.literals[name.Name] = text
+			}
+		}
+	}
 }
 
 func (w *routeWalker) trackGroup(assign *ast.AssignStmt) {
@@ -100,7 +184,7 @@ func (w *routeWalker) trackGroup(assign *ast.AssignStmt) {
 		return
 	}
 	base := w.prefixOf(sel.X)
-	lit, ok := stringLit(call.Args[0])
+	lit, ok := w.stringArg(call.Args[0])
 	if !ok || base == unknownPrefix {
 		w.prefixes[lhs.Name] = unknownPrefix
 		return
@@ -134,13 +218,13 @@ func (w *routeWalker) call(call *ast.CallExpr) bool {
 		if !ok || (innerSel.Sel.Name != "HandleFunc" && innerSel.Sel.Name != "Handle") || len(inner.Args) < 2 {
 			return true
 		}
-		p, ok := stringLit(inner.Args[0])
+		p, ok := w.stringArg(inner.Args[0])
 		if !ok {
 			return true
 		}
 		w.consumed[inner] = true
 		for _, arg := range args {
-			if method, ok := stringLit(arg); ok {
+			if method, ok := w.stringArg(arg); ok {
 				w.emit(method, w.prefixOf(innerSel.X), p, inner.Args[1], inner)
 			}
 		}
@@ -150,7 +234,7 @@ func (w *routeWalker) call(call *ast.CallExpr) bool {
 			return true
 		}
 		prefix := w.prefixOf(sel.X)
-		if p, ok := stringLit(args[0]); ok && prefix != unknownPrefix {
+		if p, ok := w.stringArg(args[0]); ok && prefix != unknownPrefix {
 			prefix += p
 		} else {
 			prefix = unknownPrefix
@@ -165,7 +249,7 @@ func (w *routeWalker) call(call *ast.CallExpr) bool {
 		w.prefixes = saved
 		return false
 	case (name == "HandleFunc" || name == "Handle") && len(args) >= 2:
-		pattern, ok := stringLit(args[0])
+		pattern, ok := w.stringArg(args[0])
 		if !ok {
 			return true
 		}
@@ -175,12 +259,12 @@ func (w *routeWalker) call(call *ast.CallExpr) bool {
 		}
 		w.emit(method, w.prefixOf(sel.X), p, args[1], call)
 	case w.methods[name] != "" && len(args) >= 2:
-		if p, ok := stringLit(args[0]); ok {
+		if p, ok := w.stringArg(args[0]); ok {
 			w.emit(w.methods[name], w.prefixOf(sel.X), p, args[1], call)
 		}
 	case (name == "Method" || name == "MethodFunc") && len(args) >= 3:
-		method, ok1 := stringLit(args[0])
-		p, ok2 := stringLit(args[1])
+		method, ok1 := w.stringArg(args[0])
+		p, ok2 := w.stringArg(args[1])
 		if ok1 && ok2 {
 			w.emit(method, w.prefixOf(sel.X), p, args[2], call)
 		}

@@ -24,7 +24,7 @@ import (
 // version is echoed when known, otherwise the newest is offered and the client decides.
 var mcpProtocolVersions = []string{"2025-06-18", "2025-03-26", "2024-11-05"}
 
-const mcpServerInstructions = "adOmnia exposes local API collections and Code Studio project routes: generate collections from statically detected routes; create, update and delete requests and environments; run tests with saved variables; and drive a local mock server. It also analyzes and edits Code Studio workspaces: OSGi/PDE bundles, the active target platform, dependency resolution and impact (osgi_*), plus reading and writing files inside the project (workspace_*; writes need --write). Source is parsed and never executed by route scans. Secrets in requests and environments are always masked in responses."
+const mcpServerInstructions = "adOmnia exposes local API collections and Code Studio project routes: generate collections from statically detected routes; create, update and delete requests and environments; run tests with saved variables; and drive a local mock server. It also plans and runs the build of a project with the same language adapters as the IDE (project_build_plan, project_build), using the project wrapper or the tool on PATH. It analyzes and edits Code Studio workspaces: OSGi/PDE bundles, the active target platform, dependency resolution and impact (osgi_*), plus reading and writing files inside the project (workspace_*; writes need --write). Source is parsed and never executed by route scans. Secrets in requests and environments are always masked in responses."
 
 // JSON-RPC error codes.
 const (

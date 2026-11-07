@@ -4,7 +4,6 @@ import { documented, projectContract } from '@/lib/devsession/contractDrift'
 import { substVars } from '@/lib/substVars'
 import type { RequestItem } from '@/lib/types'
 import { liveVars } from '@/lib/devsession/liveRequest'
-import { openLocationInCodeStudio } from '@/lib/devsession/navigation'
 import { useRouteForRequest } from '@/lib/devsession/useRouteForRequest'
 import { useDevSessionStore, useLiveCore } from '@/stores/devSession'
 import { linkedService, liveSessions, sessionForRequest, type ServiceTarget } from '@/stores/devSessionModel'
@@ -21,7 +20,7 @@ export function linkUrlToService(url: string, service: string): string {
  * Under the URL bar: which service the request talks to (Local run, Docker,
  * DEV…) and which Go handler serves it. Hidden when neither is known.
  */
-export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { tabId: string; request: RequestItem; vars: Record<string, string>; onChange: (request: RequestItem) => void }) {
+export function LiveRequestStrip({ tabId, request, vars, onChange }: { tabId: string; request: RequestItem; vars: Record<string, string>; onChange: (request: RequestItem) => void }) {
   const tr = useUiTranslation()
   useLiveCore()
   const state = useDevSessionStore((current) => current)
@@ -35,7 +34,7 @@ export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { t
   const route = useRouteForRequest(request.method, matchable ? resolved : '', session?.goSessionId)
   useEffect(() => {
     const onGoToHandler = () => {
-      if (route) void openLocationInCodeStudio(route.goSessionId, { function: route.name, relativePath: route.file, line: route.line })
+      if (route) void import('@/lib/api-code-link/actions').then((module) => module.showLinkedRoute(route.goSessionId, route.route))
     }
     document.addEventListener('adomnia:go-to-handler', onGoToHandler)
     return () => document.removeEventListener('adomnia:go-to-handler', onGoToHandler)
@@ -77,7 +76,7 @@ export function LiveRequestStrip({ tabId: _tabId, request, vars, onChange }: { t
           <span className="api-dot-label">HANDLER</span>
           <span className="truncate font-mono text-text-2">{route.name}</span>
           <span className="shrink-0 font-mono text-text-4">{basename(route.file)}:{route.line}</span>
-          <button type="button" onClick={() => void openLocationInCodeStudio(route.goSessionId, { function: route.name, relativePath: route.file, line: route.line })}
+          <button type="button" onClick={() => void import('@/lib/api-code-link/actions').then((module) => module.showLinkedRoute(route.goSessionId, route.route, tabId))}
             title={tr('Open in Code Studio')}
             aria-label={tr('Open in Code Studio')}
             className="api-handler-open flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent">

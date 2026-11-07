@@ -1,23 +1,26 @@
 import { useEffect, useRef } from 'react'
-import { showModule } from '@/lib/moduleRouting'
+import { showModule, type Placement } from '@/lib/moduleRouting'
 import type { RailItem } from '@/stores/app'
 import { showEntityNotice } from './notice'
 import type { EntityRef } from './types'
 
 export const ENTITY_HANDOFF_EVENT = 'adomnia:entity-handoff'
+/** A WebSocket entity handed to the API workspace, which opens it as a connection tab. */
+export const WEBSOCKET_HANDOFF_INTENT = 'open-websocket'
 
 /**
  * Show a panel and deliver an event once it is mounted, in the window where the panel lives: the
  * event is re-dispatched every frame until a listener sets detail.handled, for at most 5 s.
  */
-export function dispatchToPanel(rail: RailItem, eventName: string, detail: Record<string, unknown> = {}, onTimeout?: () => void): void {
-  showModule(rail, { kind: 'dispatch', eventName, detail }, onTimeout)
+export function dispatchToPanel(rail: RailItem, eventName: string, detail: Record<string, unknown> = {}, onTimeout?: () => void, placement?: Placement): void {
+  showModule(rail, { kind: 'dispatch', eventName, detail }, onTimeout, placement)
 }
 
-export function handoffToPanel(rail: RailItem, ref: EntityRef, intent: string, payload: Record<string, unknown> = {}): void {
+/** `placement: 'auxiliary'` keeps the open split and adds the panel as its third pane. */
+export function handoffToPanel(rail: RailItem, ref: EntityRef, intent: string, payload: Record<string, unknown> = {}, placement?: Placement): void {
   dispatchToPanel(rail, ENTITY_HANDOFF_EVENT, { rail, ref, intent, payload }, () => {
     showEntityNotice(`The ${rail} panel did not accept ${ref.label} in time. Try again once it has loaded.`)
-  })
+  }, placement)
 }
 
 /**

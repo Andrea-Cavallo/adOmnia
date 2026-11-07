@@ -72,6 +72,28 @@ func fresh(r chi.Router) {
 	}
 }
 
+func TestDetectRoutesResolvesConstPathsAndPrefixes(t *testing.T) {
+	got := routesOf(t, `package api
+
+import "github.com/gin-gonic/gin"
+
+const base = "/api"
+const users = "/users"
+
+func register(r *gin.Engine) {
+	v1 := r.Group(base)
+	v1.GET(users, listUsers)
+	local := "/admin"
+	v1.POST(local, createAdmin)
+}
+`)
+	for _, id := range []string{"route:GET /api/users", "route:POST /api/admin"} {
+		if _, ok := got[id]; !ok {
+			t.Errorf("missing %s in %v", id, keys(got))
+		}
+	}
+}
+
 func keys(m map[string]Entity) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
