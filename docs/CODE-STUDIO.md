@@ -1152,6 +1152,10 @@ Open in Log Inspector sends a clean JSONL snapshot through the entity handoff ro
 
 Run selection and panel placement share a compact 28 px picker, visible focus, a selected checkmark, and the existing keyboard-accessible context menu. Run menu entries show command/status beneath the run label; placement uses bottom/left/right panel icons. Browser fixture verified selection, keyboard opening, Escape and focus return; native desktop rendering remains a separate acceptance check.
 
+### Comment colors (Better Comments)
+
+Comments get a color by kind, in every language: `TODO` / `HACK` / `XXX` orange on a soft orange background, `!` / `ALERT` / `FIXME` / `BUG` / `WARNING` red, `?` / `QUESTION` blue, `*` / `IMPORTANT` green on a soft green background, `NOTE` / `INFO` teal, and commented-out code written with four slashes (`//// oldCall()`) struck through in grey. Plain comments keep the theme color. The tag is the first word after the comment marker. Line comments (`//`, `#` for YAML/shell/Python/properties, `--` for SQL/Lua), block comments (`/* … */`, each line of a Javadoc block, its ` * ` continuation included) and markup comments (`<!-- … -->` in HTML, XML, JSP, Markdown) are recognised; markers inside strings, `///` doc comments and `//go:` directives are not. Colors have dark and light variants (CSS variables `--comment-*` in `codeStudioEditor.css`). Scanning is debounced by 300 ms and skipped above 20,000 lines.
+
 ### Rainbow brackets and HTML/XML tags
 
 Code Studio enables Monaco bracket-pair colors and nesting guides in every theme, including Go and Java. The active bracket guide is highlighted. HTML/XML tag names share a color by nesting depth; attributes retain normal syntax highlighting. HTML void elements and raw-text elements, XML namespaces, comments, processing instructions and CDATA are handled by the local tag decorator. Tag scanning is debounced by 150 ms and skipped above 1,000,000 UTF-16 code units. This is a built-in editor feature inspired by Rainbow Brackets, not installation of the JetBrains plugin or parity with all its features.

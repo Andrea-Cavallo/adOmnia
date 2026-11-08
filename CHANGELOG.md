@@ -8,6 +8,7 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Code Studio
 
+- **Comment colors (Better Comments).** TODO orange with background, `!`/ALERT red, `?`/QUESTION blue, `*`/IMPORTANT green with background, NOTE teal, `////` commented-out code struck through; now also in block comments, Javadoc, SQL `--` and `<!-- -->`.
 - **Ant projects.** A `build.xml` without Maven or Gradle is detected as an Ant unit; its public targets appear in Run (default target first, descriptions shown, `test`/`deploy` grouped as Test/Run), with the project JDK. First step of legacy Java EE support.
 - **Servlets and web.xml.** Servlets mapped in `web.xml` or with `@WebServlet` become Developer Context routes (one per `doGet`/`doPost`/…), so API Workspace, Mock, cURL and OpenAPI see WAR applications like Spring ones; framework dispatchers are skipped.
 - **Tomcat server.** A web module runs and debugs on a local Tomcat (7+) like an Eclipse WTP server: private `CATALINA_BASE`, the exploded WAR published in place (Maven `target/<war>`, Eclipse `WebContent` with `build/classes`), chosen port and context path, Debug with JPDA and the Java debugger attached.
