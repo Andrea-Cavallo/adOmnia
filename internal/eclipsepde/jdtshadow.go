@@ -96,7 +96,7 @@ func writeShadowProject(dir, name string, project *EclipseProject, sources []str
 		entries = append(entries, shadowEntry{Kind: "src", Path: "/" + element.Path, CombineAccessRules: "false"})
 	}
 	level := "1." + strconv.Itoa(shadowLevel(project))
-	return writeShadowFiles(dir, name, links, entries, level, project.BuildProperties["javacDefaultEncoding.."])
+	return writeShadowFiles(dir, name, links, entries, shadowFiles{level: level, encoding: project.BuildProperties["javacDefaultEncoding.."]})
 }
 
 // JavaShadowProject is a plain Java project for JDT LS that links real source folders: the shape of
@@ -114,6 +114,9 @@ type JavaShadowProject struct {
 	// Level is the Java level ("1.8", "11"), raised to what JDT LS compiles by the caller.
 	Level    string
 	Encoding string
+	// Output is the real output folder the project declares (absolute): JDT LS compiles there, so a server
+	// publishing it (Tomcat) sees every saved change. Empty = the shadow's own bin.
+	Output string
 }
 
 // WriteJavaShadowProject writes one shadow project in dir; files that did not change are left alone.
@@ -138,11 +141,30 @@ func WriteJavaShadowProject(dir string, project JavaShadowProject) error {
 	for _, dependency := range project.Projects {
 		entries = append(entries, shadowEntry{Kind: "src", Path: "/" + dependency, CombineAccessRules: "false"})
 	}
-	return writeShadowFiles(dir, project.Name, links, entries, project.Level, project.Encoding)
+	output := "bin"
+	if project.Output != "" {
+		if err := os.MkdirAll(project.Output, 0o755); err != nil {
+			return fmt.Errorf("cannot create the output folder of %s: %w", project.Name, err)
+		}
+		output = "output"
+		links = append(links, shadowLink{Name: output, Type: 2, Location: filepath.ToSlash(project.Output)})
+	}
+	return writeShadowFiles(dir, project.Name, links, entries, shadowFiles{level: project.Level, encoding: project.Encoding, output: output})
 }
 
-func writeShadowFiles(dir, name string, links []shadowLink, entries []shadowEntry, level, encoding string) error {
-	entries = append(entries, shadowEntry{Kind: "output", Path: "bin"})
+// shadowFiles are the per-project settings of the shadow's metadata files.
+type shadowFiles struct {
+	level, encoding string
+	output          string // project-relative output folder, "bin" when empty
+}
+
+func writeShadowFiles(dir, name string, links []shadowLink, entries []shadowEntry, settings shadowFiles) error {
+	output := settings.output
+	if output == "" {
+		output = "bin"
+	}
+	level, encoding := settings.level, settings.encoding
+	entries = append(entries, shadowEntry{Kind: "output", Path: output})
 	description, err := xml.MarshalIndent(shadowDescription{Name: name, Natures: []string{"org.eclipse.jdt.core.javanature"}, Builders: []shadowBuilder{{Name: "org.eclipse.jdt.core.javabuilder"}}, Links: links}, "", "\t")
 	if err != nil {
 		return err

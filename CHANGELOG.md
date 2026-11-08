@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Code Studio
+
+- **Saved changes reach Tomcat.** For Eclipse WTP projects the Java language server compiles into the output folder the `.classpath` declares (e.g. `build/classes`), which Tomcat publishes: no Ant build needed between an edit and a reload.
+
 ## [1.0.29] — 2026-11-08
 
 Release notes: [docs/releases/v1.0.29.md](docs/releases/v1.0.29.md).

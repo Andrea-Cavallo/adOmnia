@@ -134,7 +134,7 @@ func WriteEclipseShadowWorkspace(root, dest, catalinaHome string) (EclipseShadow
 
 // resolveEclipseProject turns the .classpath of a project into the shadow's plain entries.
 func resolveEclipseProject(project eclipseProject, byName map[string]eclipseProject, catalinaHome, root string) (eclipsepde.JavaShadowProject, []string) {
-	shadow := eclipsepde.JavaShadowProject{Name: project.Name, Level: eclipseJavaLevel(project.Dir), Encoding: eclipseEncoding(project.Dir)}
+	shadow := eclipsepde.JavaShadowProject{Name: project.Name, Level: eclipseJavaLevel(project.Dir), Encoding: eclipseEncoding(project.Dir), Output: declaredOutput(project)}
 	var problems []string
 	addLibrary := func(path string) {
 		if path != "" && fileOrFolderExists(path) && !slices.Contains(shadow.Libraries, path) {
@@ -311,4 +311,18 @@ func EclipseSourceFolders(projectDir string) []string {
 		}
 	}
 	return folders
+}
+
+// declaredOutput is the output folder the project's .classpath declares (absolute), inside the project:
+// JDT LS compiles into it like Eclipse did, so Tomcat (which publishes it) runs the code being edited.
+func declaredOutput(project eclipseProject) string {
+	for _, entry := range project.Entries {
+		if entry.Kind != "output" || strings.TrimSpace(entry.Path) == "" {
+			continue
+		}
+		if folder := containedDirectory(project.Dir, project.Dir, entry.Path); folder != "" {
+			return folder
+		}
+	}
+	return ""
 }
