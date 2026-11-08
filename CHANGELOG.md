@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.29] — 2026-11-08
+
+Release notes: [docs/releases/v1.0.29.md](docs/releases/v1.0.29.md).
+
 ### Code Studio
 
 - **Comment colors (Better Comments).** TODO orange with background, `!`/ALERT red, `?`/QUESTION blue, `*`/IMPORTANT green with background, NOTE teal, `////` commented-out code struck through; now also in block comments, Javadoc, SQL `--` and `<!-- -->`.
@@ -18,6 +22,12 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Tests of Ant and Eclipse projects.** They fill the Test tree, run on the JUnit Console Launcher (JUnit 3/4/5) with the language server's classpath; the launcher is installed once, visibly, from the Java menu.
 - **Tomcat without CATALINA_HOME.** The Tomcat of a project is found from a shared Tomcat run configuration, the server runtime of the Eclipse workspace or the PATH, for the servlet API in the editor and for Run.
 - **WildFly server.** A web module runs and debugs on a local WildFly / JBoss EAP 7+: private server base directory, the exploded WAR served in place as an unmanaged deployment, chosen port, configuration and context path (from `jboss-web.xml`), Debug with the Java debugger attached.
+- **Rainbow brackets and HTML/XML tags.** Bracket pairs are colored by depth in every theme, with the active pair's guide highlighted; HTML/XML tag names share a color by nesting depth.
+
+### Dependencies and fixes
+
+- `github/codeql-action` 4.39.2, `github.com/xdg-go/scram` 1.3.0, `oxlint` 1.92.0, `tailwindcss` and `@tailwindcss/postcss` 4.3.5 (one Tailwind version in the build again), `vite` 8.3.6, `@vitejs/plugin-react` 6.2.1, `vitest` 5.1.0.
+- The HTML/XML tag colorizer no longer risks exponential backtracking on a hostile `<!DOCTYPE [...]>` (CodeQL).
 
 ## [1.0.28] — 2026-11-07
 

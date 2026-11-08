@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md` (local planning note; the published status is [ISSUES.md](ISSUES.md)). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.0.29 — Java enterprise legacy, comment colors
+
+[Release notes](releases/v1.0.29.md). Ant, servlets, Tomcat, WildFly, JAX-WS, JPA, JSP, EAR and Eclipse WTP projects are covered by automated tests; native acceptance in the desktop app remains manual.
+
 ## v1.0.28 — gRPC and WebSocket modules, Smart Split Workspace, Java libraries
 
 [Release notes](releases/v1.0.28.md). gRPC calls against real servers are covered by automated tests; native acceptance of the new modules on every platform remains manual.
