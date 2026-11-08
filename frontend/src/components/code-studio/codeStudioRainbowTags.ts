@@ -9,7 +9,7 @@ export function rainbowTagRanges(text: string, html: boolean): RainbowTagRange[]
   if (text.length > 1_000_000) return []
   const result: RainbowTagRange[] = []
   const stack: { name: string; level: number }[] = []
-  const tokens = /<!--[\s\S]*?(?:-->|$)|<!\[CDATA\[[\s\S]*?(?:\]\]>|$)|<\?[\s\S]*?(?:\?>|$)|<!DOCTYPE(?:[^>"'\[]|"[^"]*"|'[^']*'|\[[\s\S]*?\])*>|<\/?([A-Za-z_][\w:.-]*)(?=[\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>/gi
+  const tokens = /<!--[\s\S]*?(?:-->|$)|<!\[CDATA\[[\s\S]*?(?:\]\]>|$)|<\?[\s\S]*?(?:\?>|$)|<!DOCTYPE(?:[^>"'\[]|"[^"]*"|'[^']*'|\[[^\]]*\])*>|<\/?([A-Za-z_][\w:.-]*)(?=[\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>/gi
   let raw: string | null = null
   for (const token of text.matchAll(tokens)) {
     if (!token[1]) continue

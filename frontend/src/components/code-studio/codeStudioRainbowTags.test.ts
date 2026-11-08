@@ -21,3 +21,10 @@ describe('rainbow HTML/XML tag pairs', () => {
     expect(rainbowTagRanges(' '.repeat(1_000_001), true)).toEqual([])
   })
 })
+
+it('scans a hostile DOCTYPE in linear time', () => {
+  const started = performance.now()
+  rainbowTagRanges('<!doctype[' + ']['.repeat(50_000), false)
+  expect(performance.now() - started).toBeLessThan(1000)
+  expect(rainbowTagRanges('<!DOCTYPE note [<!ELEMENT note (to)>]><note><to/></note>', false).map((tag) => tag.level)).toEqual([0, 1, 0])
+})
