@@ -91,6 +91,19 @@ A plug-in or feature listed but present in neither the workspace nor the target 
 
 **Debug** starts the same launch with JDWP on a free loopback port and `suspend=y`, then attaches the Java debugger. Breakpoints in the real bundle sources stop, including `Activator.start`.
 
+## JUnit Plug-in Tests
+
+In a PDE workspace with a target platform, running a test file from the Test panel (or *Run Test at Cursor*) runs it as a **JUnit Plug-in Test**, the way PDE does: Equinox starts the test bundle, the PDE test runtime and everything they require, headless (`org.eclipse.pde.junit.runtime.coretestapplication`), on the project JVM chosen in *Java → Select JDK*. The classes are loaded through the bundle's class loader; a test **fragment** is loaded through its host (`-testpluginname` is the host), so it sees the host's internals. Eclipse's RemoteTestRunner reports every test over a local port and adOmnia fills the shared Test tree with it: pass, fail with the stack trace, `@Ignore` as skipped. A whole class, several classes of the same bundle, or one method run this way.
+
+Requirements and limits:
+
+- the target must contain `org.eclipse.pde.junit.runtime`, `org.eclipse.jdt.junit.runtime`, `org.eclipse.jdt.junit4.runtime` and `org.junit` (an Eclipse SDK target has them); otherwise the run says which are missing;
+- the bundles must be built first (*Java → Build OSGi Bundles*), as for Run;
+- tests run headless: UI tests that need a workbench (`uitestapplication`) are not supported yet;
+- one bundle per run; coverage is not available.
+
+In a Tycho build, the test bundles (`eclipse-test-plugin`) run with `mvn verify`, because tycho-surefire runs in the `integration-test` phase; their reports fill the same tree.
+
 ## Extensions: `plugin.xml` / `fragment.xml`
 
 The bundle detail includes:

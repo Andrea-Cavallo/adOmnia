@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/language"
 	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 
@@ -207,6 +208,9 @@ func (s *Service) testLanguageOptions(session Session, id, moduleDir string, req
 		if options, err = jsonutil.Marshal(request); err != nil {
 			return nil, err
 		}
+	}
+	if id == java.ID && eclipsepde.HasBundles(session.Project.RealPath) && eclipsepde.HasActiveTarget(session.Project.RealPath) {
+		return s.javaPluginTestOptions(session, options)
 	}
 	if id == java.ID && java.UsesServerTests(moduleDir) {
 		return s.javaServerTestOptions(session, moduleDir, options)

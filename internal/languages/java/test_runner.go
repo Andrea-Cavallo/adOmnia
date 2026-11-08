@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/run"
 	idetesting "github.com/Andrea-Cavallo/adOmnia/internal/ide/testing"
 )
@@ -23,6 +25,9 @@ type TestOptions struct {
 	ClassPaths []string `json:"classPaths,omitempty"`
 	JavaExec   string   `json:"javaExec,omitempty"`
 	Launcher   string   `json:"launcher,omitempty"`
+	// PluginTest is set by the host for a PDE workspace with a target: the tests run inside Equinox
+	// (JUnit Plug-in Test) on this JVM.
+	PluginTest *PluginTestJVM `json:"pluginTest,omitempty"`
 }
 
 const maxTestClasses = 64
@@ -42,6 +47,9 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 		if err := json.Unmarshal(request.LanguageOptions, &options); err != nil {
 			return run.CommandSpec{}, nil, fmt.Errorf("invalid test options: %w", err)
 		}
+	}
+	if options.PluginTest != nil {
+		return pluginTestCommand(request, options)
 	}
 	unit, ok := unitIn(request.WorkingDirectory)
 	if !ok {
@@ -64,6 +72,9 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	}
 	executable := tool.resolve(unit)
 	arguments := testArguments(unit.Kind, classes, options.Run)
+	if unit.Kind == UnitMaven && runsTychoTests(request, unit, options.Packages) {
+		arguments = withGoal(arguments, "test", "verify")
+	}
 	if options.Coverage {
 		var coverageErr error
 		if arguments, coverageErr = withCoverage(unit.Kind, arguments); coverageErr != nil {
@@ -161,4 +172,43 @@ func withCoverage(kind string, arguments []string) ([]string, error) {
 		return append([]string{"-I", script}, arguments...), nil
 	}
 	return jacocoMavenArguments(arguments), nil
+}
+
+// tychoTestPackaging is the packaging of a Tycho test bundle: tycho-surefire runs it in integration-test,
+// so `mvn test` would run nothing and the tests need `verify`.
+const tychoTestPackaging = "eclipse-test-plugin"
+
+// runsTychoTests reports whether the selected tests (or, with none, the unit) belong to Tycho test bundles.
+func runsTychoTests(request idetesting.Request, unit project.Unit, files []string) bool {
+	if len(files) == 0 {
+		return readPom(unit.Manifest).usesGroup("org.eclipse.tycho") && reactorHasPackaging(unit.Root, tychoTestPackaging)
+	}
+	for _, file := range files {
+		module, ok := ModuleOf(unit.Root, filepath.Join(request.WorkingDirectory, filepath.FromSlash(file)))
+		if ok && readPom(filepath.Join(module, "pom.xml")).Packaging == tychoTestPackaging {
+			return true
+		}
+	}
+	return false
+}
+
+// reactorHasPackaging looks for a module with the packaging among the reactor's direct modules.
+func reactorHasPackaging(root, packaging string) bool {
+	for _, module := range readPom(filepath.Join(root, "pom.xml")).Modules {
+		if readPom(filepath.Join(root, filepath.FromSlash(module), "pom.xml")).Packaging == packaging {
+			return true
+		}
+	}
+	return false
+}
+
+// withGoal replaces a lifecycle goal of the Maven arguments.
+func withGoal(arguments []string, from, to string) []string {
+	out := slices.Clone(arguments)
+	for index, argument := range out {
+		if argument == from {
+			out[index] = to
+		}
+	}
+	return out
 }
