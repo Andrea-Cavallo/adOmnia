@@ -48,6 +48,12 @@ describe('buildTreeMenu', () => {
     expect(menu).not.toContain('findInFolder')
   })
 
+  it('offers decompiling a jar or war, nothing else', () => {
+    expect(ids(buildTreeMenu(file('lib/legacy-core.jar'), context))).toContain('decompileJar')
+    expect(ids(buildTreeMenu(file('dist/billing.WAR'), context))).toContain('decompileJar')
+    expect(ids(buildTreeMenu(file('src/Main.java'), context))).not.toContain('decompileJar')
+  })
+
   it('offers installing Python dependencies only on Python manifests', () => {
     const python = { ...context, hasPython: true }
     for (const name of ['requirements.txt', 'api/requirements-dev.txt', 'pyproject.toml']) {

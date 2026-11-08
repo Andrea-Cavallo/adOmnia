@@ -167,6 +167,7 @@ import { nativeDebugTargetOf } from '@/lib/code-studio/nativeDebug'
 import { webDebugTargetOf } from '@/lib/code-studio/webDebug'
 import { runRustCommand } from './codeStudioRustCommands'
 import { runDeclaredDebuggerCommand } from './codeStudioDeclaredDebuggerCommands'
+import { runJavaToolCommand } from './codeStudioJavaToolCommands'
 import { runWebCommand } from './codeStudioWebCommands'
 import { confirm } from '@/lib/confirmDialog'
 import { useShallow } from 'zustand/react/shallow'
@@ -944,6 +945,7 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (id === 'rust.attach') return setAttachMode('attach-rust')
     if (runRustCommand(id, activeSession?.id ?? null)) return
     if (runDeclaredDebuggerCommand(id, activeSession?.id ?? null)) return
+    if (runJavaToolCommand(id, activeSession?.id ?? null)) return
     if (runWebCommand(id, activeSession?.id ?? null)) return
     if (runDebugCommand(id, activeSession?.id ?? null, configuredDebugRequest, configuredJavaDebugRequest, configuredPythonDebugRequest, configuredRustDebugRequest, configuredWebDebugRequest, configuredNativeDebugRequest)) return
     if (id === 'file.localHistory') return setLocalHistoryOpen(true)

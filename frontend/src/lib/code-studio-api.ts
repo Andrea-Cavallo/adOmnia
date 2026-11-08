@@ -967,6 +967,20 @@ export function listJavaLibraries(sessionId: string): CancellablePromise<JavaLib
 export function resolveJavaLibrarySource(sessionId: string, groupId: string, artifactId: string, version: string): CancellablePromise<GoIDEDependencySource> {
   return GoIDEBindings.JavaLibrarySource(sessionId, groupId, artifactId, version)
 }
+/** Decompila un .jar (relativo al progetto o assoluto) con Vineflower in una cache in sola lettura. */
+export function decompileJavaJar(sessionId: string, jar: string): CancellablePromise<GoIDEDependencySource> {
+  return GoIDEBindings.DecompileJavaJar(sessionId, jar)
+}
+
+/** Il comando esatto che installa il decompilatore Java, per la conferma. */
+export function previewJavaDecompilerInstall(sessionId: string) {
+  return GoIDEBindings.PreviewJavaDecompilerInstall(sessionId)
+}
+
+/** Installa Vineflower nella cartella strumenti dopo la conferma. */
+export function installJavaDecompiler(sessionId: string) {
+  return GoIDEBindings.InstallJavaDecompiler(sessionId, true)
+}
 /** Scarica il jar dei sorgenti di una libreria (mvn dependency:get): lancia Maven e va in rete. */
 export async function downloadJavaLibrarySources(sessionId: string, groupId: string, artifactId: string, version: string): Promise<void> {
   return GoIDEBindings.DownloadJavaLibrarySources(sessionId, groupId, artifactId, version)

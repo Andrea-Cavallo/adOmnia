@@ -1734,6 +1734,21 @@ func (g *GoIDE) JavaLibrarySource(sessionID, groupID, artifactID, version string
 	return g.service.JavaLibrarySource(sessionID, groupID, artifactID, version)
 }
 
+// DecompileJavaJar decompiles a .jar into a read-only cache and describes it like library sources.
+func (g *GoIDE) DecompileJavaJar(sessionID, jar string) (codestudio.DependencySource, error) {
+	return g.service.DecompileJavaJar(sessionID, jar)
+}
+
+// PreviewJavaDecompilerInstall shows the command that installs the Java decompiler (Vineflower).
+func (g *GoIDE) PreviewJavaDecompilerInstall(sessionID string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewJavaDecompilerInstall(sessionID)
+}
+
+// InstallJavaDecompiler installs Vineflower in adOmnia's tools folder after confirmation.
+func (g *GoIDE) InstallJavaDecompiler(sessionID string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallJavaDecompiler(sessionID, confirmed)
+}
+
 // DownloadJavaLibrarySources scarica il jar dei sorgenti di una libreria (Maven o Gradle, in base al progetto).
 func (g *GoIDE) DownloadJavaLibrarySources(sessionID, groupID, artifactID, version string) error {
 	return g.service.DownloadJavaLibrarySources(sessionID, groupID, artifactID, version)

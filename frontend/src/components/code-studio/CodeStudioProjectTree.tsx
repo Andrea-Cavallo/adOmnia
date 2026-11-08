@@ -22,6 +22,7 @@ import { useCodeStudioVCSStore } from '@/stores/codeStudioVcs'
 import { useCodeStudioTestsStore } from '@/stores/codeStudioTests'
 import { openPemInPowerTools, openEnterpriseFile, sendFileToApiWorkspace } from './codeStudioFileHandoffs'
 import { createGitignore, deletePathWithConfirm, parentOf, revealPath, type GitignoreTemplate } from './codeStudioFileActions'
+import { decompileJarInTree } from './codeStudioJavaDecompile'
 import { buildTreeMenu, treeKeyAction } from './codeStudioTreeMenu'
 import { openHtmlWithLivePreview } from './codeStudioPreviewCommands'
 import { copyReference, findInFiles, findInFolder, moveTreePath, openInSplit, openTerminalIn, pasteInto, previewHtml, repairIde, replaceInFiles, runPackageCommand, runTreeGitAction, useCodeStudioTreeClipboard } from './codeStudioTreeActions'
@@ -398,6 +399,7 @@ export const CodeStudioProjectTree = memo(function CodeStudioProjectTree({ sessi
       case 'osgiRun': runOsgiFramework(session.id); break
       case 'sendToApi': void sendFileToApiWorkspace(session.id, path); break
       case 'soapTools': void openEnterpriseFile(session.id, path, 'soap'); break
+      case 'decompileJar': void decompileJarInTree(session.id, path); break
       case 'soapSecurity': void openEnterpriseFile(session.id, path, 'security'); break
       case 'xmlTools': void openEnterpriseFile(session.id, path, 'xml'); break
       case 'mtlsTools': void openEnterpriseFile(session.id, path, 'mtls'); break

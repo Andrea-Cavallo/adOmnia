@@ -109,6 +109,10 @@ func (s *Service) JavaLibrarySource(sessionID, groupID, artifactID, version stri
 	if !java.SourcesExtracted(directory) {
 		sourcesJar := s.gradleSourcesJar(session, groupID, artifactID, version)
 		if !fileExists(sourcesJar) {
+			// No sources published or downloaded: with the decompiler installed, the classes are read back.
+			if decompiled, ok := s.decompiledLibrary(session, groupID, artifactID, version); ok {
+				return describeDependencyDirectory(session.Project, source, decompiled, "java-decompiled"), nil
+			}
 			source.Reason = "the sources of this library are not in the local Maven repository or the Gradle cache yet"
 			return source, nil
 		}

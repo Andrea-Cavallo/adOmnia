@@ -8,6 +8,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ### Code Studio
 
+- **Java decompiler.** Vineflower, installed once from the Java menu with a visible command, decompiles a `.jar`/`.war` of the project (*Decompile (Java)* in the tree) into a read-only cache, and libraries without a sources jar open decompiled in External Libraries.
+
 - **Saved changes reach Tomcat.** For Eclipse WTP projects the Java language server compiles into the output folder the `.classpath` declares (e.g. `build/classes`), which Tomcat publishes: no Ant build needed between an edit and a reload.
 - **JUnit Plug-in Tests.** In a PDE workspace with a target, test files run inside Equinox like PDE's JUnit Plug-in Test (headless test application, fragments loaded through their host); Eclipse's RemoteTestRunner reports fill the Test tree. Tycho `eclipse-test-plugin` modules run with `mvn verify`.
 
