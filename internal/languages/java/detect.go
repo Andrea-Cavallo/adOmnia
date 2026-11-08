@@ -27,7 +27,7 @@ func ignoredDirectory(name string) bool {
 
 var gradleBuildFiles = []string{"build.gradle.kts", "build.gradle"}
 
-// DetectUnits trova i progetti Maven (pom.xml) e Gradle (build.gradle[.kts]) più esterni: i moduli di un
+// DetectUnits trova i progetti Maven (pom.xml), Gradle (build.gradle[.kts]) e Ant (build.xml) più esterni: i moduli di un
 // progetto multi-modulo appartengono al progetto che li contiene e si eseguono da lì. Non esegue nulla.
 // La scansione del disco è la stessa condivisa con gli altri linguaggi.
 func (l *Language) DetectUnits(ctx context.Context, root string) ([]project.Unit, error) {
@@ -106,14 +106,17 @@ func unitInCandidate(visit project.DirectoryVisit) (project.Unit, bool) {
 			candidate = true
 			break
 		}
-		if slices.Contains(gradleBuildFiles, name) {
+		if slices.Contains(gradleBuildFiles, name) || name == antBuildFile {
 			candidate = true
 		}
 	}
 	if !candidate {
 		return project.Unit{}, false
 	}
-	return unitIn(visit.Path)
+	if unit, ok := unitIn(visit.Path); ok {
+		return unit, true
+	}
+	return antUnitIn(visit.Path)
 }
 
 // unitIn riconosce un progetto nella cartella. Maven vince se ci sono entrambi i build file.
@@ -133,9 +136,13 @@ func unitIn(directory string) (project.Unit, bool) {
 type pomInfo struct {
 	GroupID    string `xml:"groupId"`
 	ArtifactID string `xml:"artifactId"`
+	Version    string `xml:"version"`
+	Packaging  string `xml:"packaging"`
+	FinalName  string `xml:"build>finalName"`
 	Parent     struct {
 		GroupID    string `xml:"groupId"`
 		ArtifactID string `xml:"artifactId"`
+		Version    string `xml:"version"`
 	} `xml:"parent"`
 	Dependencies []struct {
 		GroupID    string `xml:"groupId"`
@@ -159,6 +166,21 @@ func readPom(path string) pomInfo {
 	// Un pom malformato resta un progetto: i campi letti prima dell'errore valgono comunque.
 	_ = xml.Unmarshal(data, &pom)
 	return pom
+}
+
+// warName is the folder `mvn package` explodes the WAR into: finalName, else artifactId-version.
+func (p pomInfo) warName() string {
+	if p.FinalName != "" && !strings.Contains(p.FinalName, "$") {
+		return p.FinalName
+	}
+	version := p.Version
+	if version == "" {
+		version = p.Parent.Version // a module inherits the version of its parent
+	}
+	if version == "" || strings.Contains(version, "$") {
+		return p.ArtifactID
+	}
+	return p.ArtifactID + "-" + version
 }
 
 // usesSpringBoot è vero se il pom ha il parent, una dipendenza o il plugin di Spring Boot.

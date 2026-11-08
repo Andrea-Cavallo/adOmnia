@@ -17,13 +17,19 @@ const (
 )
 
 // RunKinds implementa run.Runner.
-func (*Language) RunKinds() []string { return []string{KindMain, KindAttach, KindMaven} }
+func (*Language) RunKinds() []string {
+	return []string{KindMain, KindAttach, KindMaven, KindTomcat, KindWildFly}
+}
 
 // CommandSpec implementa run.Runner: la working directory della richiesta è il modulo (cartella con
 // pom.xml o build.gradle) che contiene la classe.
 func (*Language) CommandSpec(request run.Request) (run.CommandSpec, error) {
 	if request.Kind == KindMaven {
 		return mavenCommand(request)
+	}
+	if request.Kind == KindTomcat || request.Kind == KindWildFly {
+		launch, err := ServerCommand(request.Kind, request.WorkingDirectory, request.LanguageOptions, 0, request.Environment)
+		return launch.Spec, err
 	}
 
 	if request.Kind == KindAttach {
@@ -52,6 +58,30 @@ func (*Language) ValidateRunConfiguration(config run.Configuration) error {
 			return fmt.Errorf("enter a main class and valid VM options")
 		}
 		return options.validate()
+	case KindTomcat:
+		options, err := tomcatOptionsOf(config.LanguageOptions)
+		if err != nil {
+			return err
+		}
+		if _, err := tomcatPort(options.HTTPPort); err != nil {
+			return err
+		}
+		if options.ContextPath != "" {
+			if _, err := tomcatContextPath("", options.ContextPath); err != nil {
+				return err
+			}
+		}
+	case KindWildFly:
+		options, err := wildflyOptionsOf(config.LanguageOptions)
+		if err != nil {
+			return err
+		}
+		if _, err := tomcatPort(options.HTTPPort); err != nil {
+			return err
+		}
+		if options.Config != "" && !configNamePattern.MatchString(options.Config) {
+			return fmt.Errorf("%q is not a standalone configuration (standalone.xml, standalone-full.xml…)", options.Config)
+		}
 	case KindAttach:
 		var options struct {
 			Host string `json:"host"`
@@ -80,6 +110,25 @@ func (*Language) RunSchema(kind string) run.FieldSchema {
 			{Key: "mainClass", Label: "Main class", Type: run.FieldText, Section: run.SectionBasic, Required: true, Help: "Qualified name, e.g. it.acme.App. Working directory = the Maven/Gradle module that contains it."},
 			{Key: "vmOptions", Label: "VM options", Type: run.FieldList, Section: run.SectionBasic, Help: "-Xmx512m -Dspring.profiles.active=dev"},
 			{Key: "javaHome", Label: "JDK home", Type: run.FieldPath, Section: run.SectionAdvanced, Help: "Empty = the project JDK (Java menu > Select JDK), then JAVA_HOME / PATH. Debug uses the same JDK."},
+		}
+	case KindTomcat:
+		schema.Fields = []run.Field{
+			{Key: "catalinaHome", Label: "Tomcat home", Type: run.FieldPath, Section: run.SectionBasic, Help: "The Tomcat installation (7 or newer). Empty = CATALINA_HOME, a shared Tomcat configuration, the Tomcat runtime of the Eclipse workspace, or catalina on the PATH. It is never modified: adOmnia runs it with a private CATALINA_BASE."},
+			{Key: "contextPath", Label: "Context path", Type: run.FieldText, Section: run.SectionBasic, Help: "Where the application answers, e.g. /billing. Empty = the WAR name; / = ROOT."},
+			{Key: "httpPort", Label: "HTTP port", Type: run.FieldText, Section: run.SectionBasic, Default: "8080"},
+			{Key: "webapp", Label: "Webapp folder", Type: run.FieldPath, Section: run.SectionAdvanced, Help: "The exploded WAR, relative to the module. Empty = target/<war> after mvn package, then WebContent, WebRoot, web, src/main/webapp (with target/classes or build/classes)."},
+			{Key: "vmOptions", Label: "VM options", Type: run.FieldList, Section: run.SectionAdvanced, Help: "CATALINA_OPTS, e.g. -Xmx1g -Dapp.env=dev"},
+			{Key: "javaHome", Label: "JDK home", Type: run.FieldPath, Section: run.SectionAdvanced, Help: "Empty = the project JDK. Debug uses the same JDK."},
+		}
+	case KindWildFly:
+		schema.Fields = []run.Field{
+			{Key: "jbossHome", Label: "WildFly home", Type: run.FieldPath, Section: run.SectionBasic, Help: "The WildFly or JBoss EAP 7+ installation. Empty = JBOSS_HOME, the WildFly runtime of the Eclipse workspace, or standalone on the PATH. It is never modified: adOmnia runs it with a private server base directory."},
+			{Key: "contextPath", Label: "Context path", Type: run.FieldText, Section: run.SectionBasic, Help: "Empty = WEB-INF/jboss-web.xml, else the WAR name; / = ROOT."},
+			{Key: "httpPort", Label: "HTTP port", Type: run.FieldText, Section: run.SectionBasic, Default: "8080"},
+			{Key: "config", Label: "Configuration", Type: run.FieldText, Section: run.SectionAdvanced, Default: "standalone.xml", Help: "standalone-full.xml for JMS and the full Java EE profile."},
+			{Key: "webapp", Label: "Webapp folder", Type: run.FieldPath, Section: run.SectionAdvanced, Help: "A complete exploded WAR (with WEB-INF/classes), relative to the module. Empty = target/<war> after mvn package, then the WTP web root."},
+			{Key: "vmOptions", Label: "VM options", Type: run.FieldList, Section: run.SectionAdvanced, Help: "JAVA_OPTS: they replace the defaults of standalone.conf."},
+			{Key: "javaHome", Label: "JDK home", Type: run.FieldPath, Section: run.SectionAdvanced, Help: "Empty = the project JDK. Debug uses the same JDK."},
 		}
 	case KindAttach:
 		schema.Fields = []run.Field{

@@ -119,10 +119,18 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 	// A PDE workspace is mirrored for JDT LS: plain Java projects linking the real sources, with the
 	// target bundles on the classpath. Regenerated at every start, so a changed manifest is read again.
 	var serverRoot string
-	if eclipsepde.HasBundles(root) {
+	switch {
+	case eclipsepde.HasBundles(root):
 		serverRoot = filepath.Join(toolsRoot, "jdtls-pde", workspaceKey(root))
 		if _, err := eclipsepde.WriteShadowWorkspace(root, serverRoot); err != nil {
 			return lsp.ServerSpec{}, fmt.Errorf("could not prepare the PDE workspace for JDT LS: %w", err)
+		}
+	case HasEclipseWebProjects(root):
+		// Eclipse WTP projects (Kepler Dynamic Web, EJB, EAR): the server runtime and Web App Libraries
+		// containers become jars in a shadow workspace, so javax.servlet resolves.
+		serverRoot = filepath.Join(toolsRoot, "jdtls-wtp", workspaceKey(root))
+		if _, err := WriteEclipseShadowWorkspace(root, serverRoot, ""); err != nil {
+			return lsp.ServerSpec{}, fmt.Errorf("could not prepare the Eclipse web projects for JDT LS: %w", err)
 		}
 	}
 	return lsp.ServerSpec{

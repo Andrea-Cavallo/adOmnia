@@ -44,6 +44,12 @@ type DebuggerInstaller interface {
 	DebuggerInstallPlan(toolsRoot string) (lsp.InstallPlan, error)
 }
 
+// TestRunnerInstaller describes how to install the test runner an adapter needs outside a build tool (the
+// JUnit Console Launcher for Ant and Eclipse projects). Same rule: an explicit, visible install action.
+type TestRunnerInstaller interface {
+	TestRunnerInstallPlan(toolsRoot string) (lsp.InstallPlan, error)
+}
+
 // UnitServers è la capability di un linguaggio il cui language server va avviato una volta per
 // unità invece di una volta per progetto. Serve quando l'unità porta con sé il proprio ambiente
 // (un interprete o un venv per servizio, una toolchain per modulo): un solo server multi-root

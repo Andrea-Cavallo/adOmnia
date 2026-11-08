@@ -200,12 +200,23 @@ const CODE_STUDIO_LIGHT_COLORS: monaco.editor.IColors = {
   'editor.lineHighlightBorder': '#00000000',
 }
 
+function rainbowBracketColors(light: boolean): monaco.editor.IColors {
+  const palette = light
+    ? ['#795e00', '#9b268f', '#006ab1', '#39752a', '#a34800', '#007b75']
+    : ['#ffd700', '#da70d6', '#4fc1ff', '#8ed16a', '#ff9d63', '#79ddd5']
+  return Object.fromEntries(palette.flatMap((color, index) => [
+    [`editorBracketHighlight.foreground${index + 1}`, color],
+    [`editorBracketPairGuide.background${index + 1}`, `${color}40`],
+    [`editorBracketPairGuide.activeBackground${index + 1}`, color],
+  ]))
+}
+
 /** Temi di Code Studio: colori di adOmnia sullo sfondo delle isole, più le regole per i semantic tokens. */
 export function applyCodeStudioMonacoThemes(m: typeof monaco): void {
   applyAdomniaMonacoTheme(m)
   const anthracite = anthraciteActive()
-  m.editor.defineTheme(CODE_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: [...GO_SEMANTIC_RULES_DARK, ...codeStudioSyntaxRules(false), ...(anthracite ? ANTHRACITE_SYNTAX_RULES : [])], colors: { ...CODE_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark'), ...codeStudioGutterColors(false), ...(anthracite ? ANTHRACITE_EDITOR_COLORS : {}) } })
-  m.editor.defineTheme(CODE_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: [...GO_SEMANTIC_RULES_LIGHT, ...codeStudioSyntaxRules(true)], colors: { ...CODE_STUDIO_LIGHT_COLORS, ...liveSurface('light', true), ...editorAccent('light'), ...codeStudioGutterColors(true) } })
+  m.editor.defineTheme(CODE_STUDIO_THEMES.dark, { base: 'vs-dark', inherit: true, rules: [...GO_SEMANTIC_RULES_DARK, ...codeStudioSyntaxRules(false), ...(anthracite ? ANTHRACITE_SYNTAX_RULES : [])], colors: { ...CODE_STUDIO_DARK_COLORS, ...liveSurface('dark', true), ...editorAccent('dark'), ...codeStudioGutterColors(false), ...rainbowBracketColors(false), ...(anthracite ? ANTHRACITE_EDITOR_COLORS : {}) } })
+  m.editor.defineTheme(CODE_STUDIO_THEMES.light, { base: 'vs', inherit: true, rules: [...GO_SEMANTIC_RULES_LIGHT, ...codeStudioSyntaxRules(true)], colors: { ...CODE_STUDIO_LIGHT_COLORS, ...liveSurface('light', true), ...editorAccent('light'), ...codeStudioGutterColors(true), ...rainbowBracketColors(true) } })
 }
 
 useSettingsStore.subscribe((state, previous) => {

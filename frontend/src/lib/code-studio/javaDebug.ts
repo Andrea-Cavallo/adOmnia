@@ -23,6 +23,9 @@ export interface JavaDebugTarget {
   attachHost?: string
   attachPort?: number
   buildArguments?: string[]
+  /** An application server (tomcat, wildfly) and the JSON of its options: the module runs there with JDWP. */
+  serverKind?: string
+  server?: string
   workingDirectory: string
   programArguments?: string[]
   vmArguments?: string[]
@@ -47,6 +50,7 @@ export function javaDebugTargetOf(config: JavaDebugConfiguration): JavaDebugTarg
     if (!Number.isInteger(attachPort) || attachPort < 1 || attachPort > 65535) return null
     return { attachHost: String(options.host ?? '127.0.0.1').trim() || '127.0.0.1', attachPort, workingDirectory }
   }
+  if (config.kind === 'tomcat' || config.kind === 'wildfly') return { serverKind: config.kind, server: JSON.stringify(options), workingDirectory }
   const programArguments = [...(config.programArguments ?? [])]
   const environment = Object.fromEntries((config.environment ?? []).filter((entry) => entry.key && !entry.secret).map((entry) => [entry.key, entry.value ?? '']))
   const environmentOverride = Object.keys(environment).length ? { environment } : {}

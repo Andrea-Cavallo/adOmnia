@@ -2051,6 +2051,16 @@ func (g *GoIDE) InstallDebugger(sessionID, languageID string, confirmed bool) (c
 	return g.service.InstallDebugger(sessionID, languageID, confirmed)
 }
 
+// PreviewTestRunnerInstall shows the command that installs a language's test runner (JUnit Console Launcher).
+func (g *GoIDE) PreviewTestRunnerInstall(sessionID, languageID string) (codestudio.ServerInstallPreview, error) {
+	return g.service.PreviewTestRunnerInstall(sessionID, languageID)
+}
+
+// InstallTestRunner installs a language's test runner in adOmnia's tools folder after confirmation.
+func (g *GoIDE) InstallTestRunner(sessionID, languageID string, confirmed bool) (codestudio.Execution, error) {
+	return g.service.InstallTestRunner(sessionID, languageID, confirmed)
+}
+
 // StartWebDebug avvia il debug JS/TS con js-debug: un file del progetto o lo script del package manager.
 func (g *GoIDE) StartWebDebug(request codestudio.WebDebugRequest) (codestudio.DebugSessionInfo, error) {
 	return g.service.StartWebDebug(request)

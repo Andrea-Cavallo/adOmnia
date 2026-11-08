@@ -15,8 +15,6 @@ import { Editor, type BeforeMount, type OnMount } from '@monaco-editor/react'
 import { CODE_STUDIO_THEMES, applyCodeStudioMonacoThemes, configureMonacoLoader, monaco } from '@/lib/monacoSetup'
 import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudio'
 import { useSettingsStore } from '@/stores/settings'
-import { useThemesStore } from '@/stores/themes'
-import { ANTHRACITE_THEME_ID } from '@/lib/anthracitePalette'
 import { registerCodeStudioEditor } from './codeStudioEditorRegistry'
 import { installCodeStudioEditorActions } from './codeStudioEditorActions'
 import { installCodeStudioAIActions } from './codeStudioAIActionsRunner'
@@ -53,6 +51,7 @@ import { openImplementationMarker, useCodeStudioImplementationMarkers } from './
 import { useCodeStudioContextMarkers } from './codeStudioContextMarkers'
 import { useCodeStudioCommentTags } from './codeStudioCommentTags'
 import { useCodeStudioIndentRainbow } from './codeStudioIndentRainbow'
+import { useCodeStudioRainbowTags } from './codeStudioRainbowTags'
 import { openVcsHunk, useCodeStudioVcsGutter } from './codeStudioVcsEditor'
 import { registerCodeStudioExtraLanguages } from './codeStudioExtraLanguages'
 import { installBreakpointGutter, registerCodeStudioDebugHover, useCodeStudioDebugDecorations } from './codeStudioDebugEditor'
@@ -152,7 +151,6 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
   const checkActiveDocument = useCodeStudioStore((state) => state.checkActiveDocument)
   const revealLocation = useCodeStudioStore((state) => state.revealLocation)
   const clearRevealLocation = useCodeStudioStore((state) => state.clearRevealLocation)
-  const anthracite = useThemesStore((state) => state.activeThemeId === ANTHRACITE_THEME_ID)
   const semanticHighlighting = useCodeStudioLspStore((state) => heavyFeatureEnabled(state, 'semanticHighlighting'))
   const inlayHints = useCodeStudioLspStore((state) => heavyFeatureEnabled(state, 'inlayHints'))
   const stickyScrollPref = useCodeStudioLspStore((state) => heavyFeatureEnabled(state, 'stickyScroll'))
@@ -292,6 +290,7 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
   useCodeStudioContextMarkers(editorRef, document, mountCount)
   useCodeStudioCommentTags(editorRef, document, mountCount)
   useCodeStudioIndentRainbow(editorRef, document, mountCount)
+  useCodeStudioRainbowTags(mountedEditor)
   useCodeStudioVcsGutter(editorRef, document, mountCount)
   useCodeStudioProfileHeatDecorations(editorRef, document, mountCount)
 
@@ -391,10 +390,8 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
         showFoldingControls: 'always',
         lineNumbersMinChars: 3,
         wrappingIndent: 'indent',
-        // Parentesi monocromatiche: il colore resta alla sintassi, si evidenzia solo la coppia sotto il cursore.
-        // Il tema antracite è l'eccezione: colora le parentesi per profondità.
-        bracketPairColorization: { enabled: anthracite },
-        guides: { bracketPairs: false, indentation: true, highlightActiveIndentation: true },
+        bracketPairColorization: { enabled: true, independentColorPoolPerBracketType: false },
+        guides: { bracketPairs: true, highlightActiveBracketPair: true, indentation: true, highlightActiveIndentation: true },
         matchBrackets: 'always',
         scrollBeyondLastLine: false,
         // Monaco owns scrolling: its device classifier preserves continuous input.

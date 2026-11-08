@@ -16,14 +16,14 @@ func detectJavaFile(rel string, data []byte) []Entity {
 	if !hasType && !bytes.Contains(data, []byte("Mapping")) && !bytes.Contains(data, []byte("@Path")) && !bytes.Contains(data, []byte("@GET")) {
 		return nil // cheap exit: most sources are not controllers or DTOs
 	}
-	var out []Entity
+	out := append(append(detectServlets(rel, data), detectJavaEnterprise(rel, data)...), detectJPAEntities(rel, data)...)
 	if bytes.Contains(data, []byte("Mapping")) || bytes.Contains(data, []byte("@Path")) || bytes.Contains(data, []byte("@GET")) {
 		out = append(out, javaRoutes(rel, data)...)
 	}
 	// Controllers/services are not request DTOs: skipping them keeps the scan
 	// close to its previous cost in large Java projects.
 	component := false
-	for _, marker := range []string{"@RestController", "@Controller", "@Service", "@Repository", "@Configuration", "@Component", "@Path"} {
+	for _, marker := range []string{"@RestController", "@Controller", "@Service", "@Repository", "@Configuration", "@Component", "@Path", "Servlet", "WebService", "MessageDriven", "Stateless", "Stateful", "@Entity"} {
 		if bytes.Contains(data, []byte(marker)) {
 			component = true
 			break

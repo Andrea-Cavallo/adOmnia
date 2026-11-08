@@ -18,6 +18,11 @@ type TestOptions struct {
 	Run      string   `json:"run"`
 	// Coverage esegue i test con l'agente JaCoCo; il report si legge a fine run (JaCoCoReports).
 	Coverage bool `json:"coverage"`
+	// ClassPaths, JavaExec and Launcher are set by the host for Ant and Eclipse projects: the classpath and
+	// JDK the Java language server resolved, and the installed JUnit Console Launcher.
+	ClassPaths []string `json:"classPaths,omitempty"`
+	JavaExec   string   `json:"javaExec,omitempty"`
+	Launcher   string   `json:"launcher,omitempty"`
 }
 
 const maxTestClasses = 64
@@ -40,6 +45,9 @@ func (*Language) TestCommand(request idetesting.Request) (run.CommandSpec, idete
 	}
 	unit, ok := unitIn(request.WorkingDirectory)
 	if !ok {
+		if UsesServerTests(request.WorkingDirectory) {
+			return serverTestCommand(request, options)
+		}
 		return run.CommandSpec{}, nil, fmt.Errorf("no pom.xml or build.gradle in %s", filepath.ToSlash(request.WorkingDirectory))
 	}
 	classes, err := testClasses(request, options)

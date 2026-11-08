@@ -76,12 +76,25 @@ type suggestEntry struct {
 // Suggest propone test e build dell'unità e, per Spring Boot, il run dell'applicazione. Senza wrapper né
 // Maven/Gradle nel PATH non propone nulla: una card che non si può avviare è peggio di nessuna card.
 func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.Suggestion {
-	if unit.Language != ID || (unit.Kind != UnitMaven && unit.Kind != UnitGradle) {
+	if unit.Language != ID {
+		return nil
+	}
+	var server []run.Suggestion
+	if suggestion, ok := tomcatSuggestion(unit); ok {
+		server = append(server, suggestion)
+	}
+	if suggestion, ok := wildflySuggestion(unit); ok {
+		server = append(server, suggestion)
+	}
+	if unit.Kind == UnitAnt {
+		return append(server, antSuggestions(unit)...)
+	}
+	if unit.Kind != UnitMaven && unit.Kind != UnitGradle {
 		return nil
 	}
 	tool, ok := resolveBuildTool(unit)
 	if !ok {
-		return nil
+		return server
 	}
 	var entries []suggestEntry
 	if unit.Kind == UnitMaven {
@@ -139,7 +152,7 @@ func (*Language) Suggest(_ context.Context, _ string, unit project.Unit) []run.S
 			},
 		})
 	}
-	return suggestions
+	return append(server, suggestions...)
 }
 
 // mainEntries propone una configurazione "main" per ogni classe con `main` trovata nei moduli. Le app Spring

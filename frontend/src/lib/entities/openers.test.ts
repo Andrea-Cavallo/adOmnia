@@ -7,7 +7,8 @@ vi.mock('@/stores/environments', () => ({ useEnvironmentsStore: { getState: vi.f
 vi.mock('@/stores/codeStudio', () => ({ useCodeStudioStore: { getState: vi.fn() } }))
 vi.mock('@/stores/tabs', () => ({ useTabsStore: { getState: vi.fn() } }))
 
-import { grpcTargetAddress, websocketUrlFor } from './openers'
+import { grpcTargetAddress, registerDefaultOpeners, websocketUrlFor } from './openers'
+import { actionsFor } from './router'
 
 describe('code → protocol openers', () => {
   it('turns a gRPC listen address into a callable target', () => {
@@ -22,5 +23,15 @@ describe('code → protocol openers', () => {
     expect(websocketUrlFor(server, 'https://api.local:8443/')).toBe('wss://api.local:8443/ws/chat')
     expect(websocketUrlFor(server, undefined)).toBe('ws://localhost:8080/ws/chat')
     expect(websocketUrlFor({ ...server, attrs: { role: 'client', url: 'ws://feed:9000/x' } }, 'http://ignored')).toBe('ws://feed:9000/x')
+  })
+
+  it('links a WSDL to its JAX-WS implementation and a SOAP route to SOAP Studio', () => {
+    const off = registerDefaultOpeners()
+    const contract = { kind: 'contract' as const, id: 'contract:orders.wsdl', label: 'orders.wsdl', attrs: { type: 'wsdl', path: 'orders.wsdl', declFile: 'OrderEndpoint.java', declLine: '7' } }
+    expect(actionsFor(contract).map((action) => action.intent)).toContain('implementation')
+    const route = { kind: 'route' as const, id: 'route:POST /orders', label: 'POST /orders', sessionId: 's1', attrs: { method: 'POST', path: '/orders', contract: 'orders.wsdl' } }
+    expect(actionsFor(route).map((action) => action.intent)).toContain('soap')
+    expect(actionsFor({ ...route, attrs: { method: 'GET', path: '/x' } }).map((action) => action.intent)).not.toContain('soap')
+    off()
   })
 })

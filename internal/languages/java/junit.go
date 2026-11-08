@@ -65,6 +65,9 @@ type reportParser struct {
 	// since scarta i report di esecuzioni precedenti rimasti in target/ o build/.
 	since time.Time
 	done  bool
+	// reportsDir is set when the reports are not the build's (the JUnit launcher): they are read when the
+	// process exits, and cleanup (their temporary folder) is removed then.
+	reportsDir, cleanup string
 }
 
 func newReportParser(root, unitRoot string) *reportParser {
@@ -73,8 +76,21 @@ func newReportParser(root, unitRoot string) *reportParser {
 
 func (p *reportParser) Parse([]byte) (idetesting.Event, bool) { return idetesting.Event{}, false }
 
+// Finish implements idetesting.Finisher: the launcher's reports are complete when it exits.
+func (p *reportParser) Finish() []idetesting.Event {
+	if p.done || p.reportsDir == "" {
+		return nil
+	}
+	p.done = true
+	events := p.events(findReports(p.reportsDir, p.since))
+	if p.cleanup != "" {
+		_ = os.RemoveAll(p.cleanup) // a temporary folder of this run only
+	}
+	return events
+}
+
 func (p *reportParser) ParseAll(line []byte) []idetesting.Event {
-	if p.done || !buildEnd.Match(bytes.TrimSpace(line)) {
+	if p.done || p.reportsDir != "" || !buildEnd.Match(bytes.TrimSpace(line)) {
 		return nil
 	}
 	p.done = true

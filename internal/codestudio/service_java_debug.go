@@ -44,6 +44,10 @@ type JavaDebugRequest struct {
 	// TestFile (relativo al progetto) e TestMethod ("" = tutta la classe) debuggano un test JUnit.
 	TestFile   string `json:"testFile,omitempty"`
 	TestMethod string `json:"testMethod,omitempty"`
+	// ServerKind ("tomcat", "wildfly") and Server (the JSON of that run configuration's options): the module
+	// (WorkingDirectory) runs on the application server with JDWP open and the debugger attaches.
+	ServerKind string `json:"serverKind,omitempty"`
+	Server     string `json:"server,omitempty"`
 	// WorkingDirectory è la cartella del programma, relativa al progetto ("" = radice).
 	WorkingDirectory string            `json:"workingDirectory,omitempty"`
 	ProgramArguments []string          `json:"programArguments,omitempty"`
@@ -71,6 +75,8 @@ func (s *Service) StartJavaDebug(request JavaDebugRequest) (DebugSessionInfo, er
 		}
 	}
 	switch {
+	case request.ServerKind != "":
+		return s.debugJavaServer(session, request, workingDirectory)
 	case request.AttachPort != 0:
 		return s.attachJava(session, request.AttachHost, request.AttachPort, workingDirectory, nil)
 	case request.TestFile != "" || len(request.BuildArguments) > 0:
@@ -199,6 +205,37 @@ func (s *Service) debugJavaBuild(session Session, request JavaDebugRequest, work
 		scope = java.GradleTaskModule(module, arguments)
 	}
 	return s.attachJava(session, "", port, scope, &execution)
+}
+
+// debugJavaServer runs the module on its application server (Tomcat, WildFly) in the Run console with JDWP
+// on a free port, then attaches.
+func (s *Service) debugJavaServer(session Session, request JavaDebugRequest, module string) (DebugSessionInfo, error) {
+	port, err := freeLocalPort()
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	environment, err := s.executionEnvironment(session.ID, java.ID, request.Environment)
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	launch, err := java.ServerCommand(request.ServerKind, module, []byte(request.Server), port, environment)
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	listening := newListenWatcher()
+	execution, err := s.processes.Start(CommandSpec{
+		SessionID: session.ID, Kind: "run", Executable: launch.Spec.Executable, Arguments: launch.Spec.Arguments,
+		WorkingDirectory: module, Environment: launch.Spec.Environment, DisplayCommand: launch.Spec.DisplayCommand,
+		OutputTap: listening.tap, OnExit: func(Execution) { listening.finish() },
+	})
+	if err != nil {
+		return DebugSessionInfo{}, err
+	}
+	if err := listening.wait(port, javaDebugBuildTimeout); err != nil {
+		_ = s.processes.Stop(execution.ID)
+		return DebugSessionInfo{}, err
+	}
+	return s.attachJava(session, "", port, module, &execution)
 }
 
 // openJavaDebugAdapter collega il DebugManager generico all'endpoint DAP del Java Debug Server.

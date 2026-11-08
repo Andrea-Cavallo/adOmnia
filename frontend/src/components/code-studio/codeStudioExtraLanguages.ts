@@ -222,6 +222,8 @@ export function registerCodeStudioExtraLanguages(): void {
   monaco.languages.setLanguageConfiguration('groovy', { comments: { lineComment: '//', blockComment: ['/*', '*/'] }, brackets: [['{', '}'], ['[', ']'], ['(', ')']] })
   monaco.languages.register({ id: 'cmake', extensions: ['.cmake'], filenames: ['CMakeLists.txt', 'CMakeCache.txt'] })
   monaco.languages.setLanguageConfiguration('cmake', { comments: { lineComment: '#', blockComment: ['#[[', ']]'] }, brackets: [['(', ')']] })
+  // JSP and tag files are HTML with <% %> scriptlets: HTML highlighting reads them well, no server needed.
+  monaco.languages.register({ id: 'html', extensions: ['.jsp', '.jspf', '.jspx', '.tag', '.tagx'] })
   monaco.languages.register({ id: 'vue', extensions: ['.vue'] })
   monaco.languages.setLanguageConfiguration('vue', { comments: { blockComment: ['<!--', '-->'] } })
   monaco.languages.register({ id: 'svelte', extensions: ['.svelte'] })

@@ -80,12 +80,9 @@ func (s *Service) StartTests(request TestRunRequest) (TestRunSnapshot, error) {
 	if err != nil {
 		return TestRunSnapshot{}, err
 	}
-	options := request.LanguageOptions
-	if len(options) == 0 {
-		options, err = jsonutil.Marshal(request)
-		if err != nil {
-			return TestRunSnapshot{}, err
-		}
+	options, err := s.testLanguageOptions(session, id, moduleDir, request)
+	if err != nil {
+		return TestRunSnapshot{}, err
 	}
 	spec, parser, err := runner.TestCommand(idetesting.Request{Root: session.Project.RealPath, Executable: binary, WorkingDirectory: moduleDir, Environment: environment, CoverageFile: coverageFile, LanguageOptions: options})
 	if err != nil {
@@ -199,4 +196,20 @@ func (s *Service) ListTestRuns(sessionID string) ([]TestRunSnapshot, error) {
 		return nil, err
 	}
 	return s.tests.List(SessionID(sessionID)), nil
+}
+
+// testLanguageOptions are the adapter options of a test run: the request's own, else the request itself;
+// Ant and Eclipse modules add the classpath the Java language server resolves.
+func (s *Service) testLanguageOptions(session Session, id, moduleDir string, request TestRunRequest) ([]byte, error) {
+	options := []byte(request.LanguageOptions)
+	if len(options) == 0 {
+		var err error
+		if options, err = jsonutil.Marshal(request); err != nil {
+			return nil, err
+		}
+	}
+	if id == java.ID && java.UsesServerTests(moduleDir) {
+		return s.javaServerTestOptions(session, moduleDir, options)
+	}
+	return options, nil
 }

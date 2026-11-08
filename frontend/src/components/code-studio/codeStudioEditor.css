@@ -237,10 +237,25 @@
 .code-studio-console-line { content-visibility: auto; contain-intrinsic-size: auto 21px; }
 
 /* Better Comments: TODO arancio, FIXME/BUG/! rosso, NOTE/? blu, * importante. Colori dai token di stato del tema. */
-.monaco-editor .code-studio-comment-todo { color: var(--color-warning) !important; font-style: normal; }
-.monaco-editor .code-studio-comment-fixme { color: var(--color-error) !important; font-style: normal; font-weight: 600; }
-.monaco-editor .code-studio-comment-note { color: var(--color-info) !important; font-style: normal; }
-.monaco-editor .code-studio-comment-important { color: var(--color-accent) !important; font-style: normal; font-weight: 700; }
+/* Better Comments: each kind of comment has its own color; TODO and IMPORTANT also get a soft background. */
+.monaco-editor {
+  --comment-todo: #ff9f43; --comment-todo-bg: rgba(255, 159, 67, 0.16);
+  --comment-alert: #ff5c6c; --comment-question: #4fa8ff;
+  --comment-important: #8bd16a; --comment-important-bg: rgba(139, 209, 106, 0.14);
+  --comment-note: #3fd0c9; --comment-strike: #6e7681;
+}
+.monaco-editor.vs {
+  --comment-todo: #a65200; --comment-todo-bg: rgba(255, 159, 67, 0.2);
+  --comment-alert: #c4122b; --comment-question: #0b5cad;
+  --comment-important: #2f7a1f; --comment-important-bg: rgba(84, 168, 52, 0.16);
+  --comment-note: #00737a; --comment-strike: #8c959f;
+}
+.monaco-editor .code-studio-comment-todo { color: var(--comment-todo) !important; background: var(--comment-todo-bg); border-radius: 2px; font-style: normal; font-weight: 600; }
+.monaco-editor .code-studio-comment-alert { color: var(--comment-alert) !important; font-style: normal; font-weight: 600; }
+.monaco-editor .code-studio-comment-question { color: var(--comment-question) !important; font-style: normal; }
+.monaco-editor .code-studio-comment-important { color: var(--comment-important) !important; background: var(--comment-important-bg); border-radius: 2px; font-style: normal; font-weight: 700; }
+.monaco-editor .code-studio-comment-note { color: var(--comment-note) !important; font-style: normal; }
+.monaco-editor .code-studio-comment-strike { color: var(--comment-strike) !important; text-decoration: line-through; }
 /* Indent rainbow (Python, YAML): una fascia per livello, tinte leggere che reggono temi chiari e scuri. */
 .monaco-editor .code-studio-indent-rainbow-0 { background-color: rgba(255, 255, 64, 0.08); }
 .monaco-editor .code-studio-indent-rainbow-1 { background-color: rgba(127, 255, 127, 0.08); }
@@ -255,3 +270,13 @@
 .monaco-editor .code-studio-diagnostic-line-error { background: color-mix(in srgb, var(--color-error) 7%, transparent); }
 .monaco-editor .code-studio-diagnostic-line-warning { background: color-mix(in srgb, var(--color-warning) 7%, transparent); }
 .monaco-editor .code-studio-diagnostic-line-info { background: color-mix(in srgb, var(--color-info) 7%, transparent); }
+
+/* Tag pairs share their depth color, while attribute syntax remains unchanged. */
+.monaco-editor { --rainbow-0: #ffd700; --rainbow-1: #da70d6; --rainbow-2: #4fc1ff; --rainbow-3: #8ed16a; --rainbow-4: #ff9d63; --rainbow-5: #79ddd5; }
+.monaco-editor.vs { --rainbow-0: #795e00; --rainbow-1: #9b268f; --rainbow-2: #006ab1; --rainbow-3: #39752a; --rainbow-4: #a34800; --rainbow-5: #007b75; }
+.monaco-editor .code-studio-rainbow-tag-0 { color: var(--rainbow-0) !important; }
+.monaco-editor .code-studio-rainbow-tag-1 { color: var(--rainbow-1) !important; }
+.monaco-editor .code-studio-rainbow-tag-2 { color: var(--rainbow-2) !important; }
+.monaco-editor .code-studio-rainbow-tag-3 { color: var(--rainbow-3) !important; }
+.monaco-editor .code-studio-rainbow-tag-4 { color: var(--rainbow-4) !important; }
+.monaco-editor .code-studio-rainbow-tag-5 { color: var(--rainbow-5) !important; }

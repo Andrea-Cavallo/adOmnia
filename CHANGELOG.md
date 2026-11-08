@@ -6,6 +6,19 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Code Studio
+
+- **Comment colors (Better Comments).** TODO orange with background, `!`/ALERT red, `?`/QUESTION blue, `*`/IMPORTANT green with background, NOTE teal, `////` commented-out code struck through; now also in block comments, Javadoc, SQL `--` and `<!-- -->`.
+- **Ant projects.** A `build.xml` without Maven or Gradle is detected as an Ant unit; its public targets appear in Run (default target first, descriptions shown, `test`/`deploy` grouped as Test/Run), with the project JDK. First step of legacy Java EE support.
+- **Servlets and web.xml.** Servlets mapped in `web.xml` or with `@WebServlet` become Developer Context routes (one per `doGet`/`doPost`/…), so API Workspace, Mock, cURL and OpenAPI see WAR applications like Spring ones; framework dispatchers are skipped.
+- **Tomcat server.** A web module runs and debugs on a local Tomcat (7+) like an Eclipse WTP server: private `CATALINA_BASE`, the exploded WAR published in place (Maven `target/<war>`, Eclipse `WebContent` with `build/classes`), chosen port and context path, Debug with JPDA and the Java debugger attached.
+- **JAX-WS and EJB.** `@WebService` endpoints become SOAP routes (URL from `sun-jaxws.xml`, CXF or `/<serviceName>`) with their operations; the WSDL opens the class that serves it and the route opens the WSDL in SOAP Studio. `@MessageDriven` destinations become JMS topic entities; session beans and `@EJB` join the Java bean index.
+- **JPA, JSP and EAR.** `persistence.xml` JDBC URLs become datasources (Oracle and SQL Server included) and `@Entity` classes tables; JSP pages under the webapp are `GET` routes and open with HTML highlighting; an EAR's `application.xml` context roots prefix the routes of its web modules. *Connect* on a database datasource always opens Database Studio.
+- **Eclipse WTP projects.** Kepler Dynamic Web/EJB projects get their WTP containers resolved for JDT LS (Tomcat `lib` for the servlet and JSP APIs, `WEB-INF/lib`, dependent modules) through a shadow workspace, so the editor stops reporting `javax.servlet` as missing; Tomcat publishes their web root and the dependent modules' classes. Ant projects propose their `main` classes, run and debugged with the language server's classpath.
+- **Tests of Ant and Eclipse projects.** They fill the Test tree, run on the JUnit Console Launcher (JUnit 3/4/5) with the language server's classpath; the launcher is installed once, visibly, from the Java menu.
+- **Tomcat without CATALINA_HOME.** The Tomcat of a project is found from a shared Tomcat run configuration, the server runtime of the Eclipse workspace or the PATH, for the servlet API in the editor and for Run.
+- **WildFly server.** A web module runs and debugs on a local WildFly / JBoss EAP 7+: private server base directory, the exploded WAR served in place as an unmanaged deployment, chosen port, configuration and context path (from `jboss-web.xml`), Debug with the Java debugger attached.
+
 ## [1.0.28] — 2026-11-07
 
 Release notes: [docs/releases/v1.0.28.md](docs/releases/v1.0.28.md).

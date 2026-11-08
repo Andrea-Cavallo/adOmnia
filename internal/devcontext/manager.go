@@ -340,9 +340,17 @@ func (st *sessionState) snapshot(sessionID string) Snapshot {
 		groups = append(groups, st.files[rel].Entities)
 		warnings = append(warnings, st.files[rel].Warnings...)
 	}
-	entities := linkHandlers(merge(groups...))
-	linkWebSockets(entities)
+	entities := linkEntities(merge(groups...))
 	return Snapshot{SessionID: sessionID, Root: st.root, Version: st.version, Entities: entities, Warnings: warnings, ScannedAt: st.scanned}
+}
+
+// linkEntities runs the cross-file links: servlets and SOAP endpoints become routes, EAR context roots
+// prefix the routes of their web modules, handlers and bodies
+// join their routes, WebSockets their handlers. Internal kinds never leave it.
+func linkEntities(merged []Entity) []Entity {
+	entities := linkHandlers(linkEARContextRoots(linkSOAP(linkServlets(merged))))
+	linkWebSockets(entities)
+	return entities
 }
 
 func walkInteresting(ctx context.Context, root string, visit func(rel string, mod time.Time)) error {

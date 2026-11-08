@@ -2957,6 +2957,13 @@ export class JavaDebugRequest {
     "testMethod"?: string;
 
     /**
+     * ServerKind ("tomcat", "wildfly") and Server (the JSON of that run configuration's options): the module
+     * (WorkingDirectory) runs on the application server with JDWP open and the debugger attaches.
+     */
+    "serverKind"?: string;
+    "server"?: string;
+
+    /**
      * WorkingDirectory è la cartella del programma, relativa al progetto ("" = radice).
      */
     "workingDirectory"?: string;
