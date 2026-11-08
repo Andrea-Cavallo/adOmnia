@@ -25,6 +25,8 @@ const (
 	libraryDecompiled  = "maven-decompiled"
 	decompiledMarker   = ".adomnia-decompiled"
 	maxDecompiledBytes = 512 << 20 // a jar this large is decompiled by hand, not on a click
+	// DecompilerMinJava is the oldest JVM that runs Vineflower 1.10 (its classes are Java 11 bytecode).
+	DecompilerMinJava = 11
 )
 
 var (
@@ -75,6 +77,18 @@ func DecompiledLibraryDirectory(cacheRoot, groupID, artifactID, version string) 
 // Decompiled reports whether a cache folder holds a finished decompilation.
 func Decompiled(directory string) bool {
 	return SourcesExtracted(directory) && isFile(filepath.Join(directory, decompiledMarker))
+}
+
+// DecompilerJVM picks the JVM that runs Vineflower: the project JDK when it is recent enough, else the
+// oldest installed JDK that is. A Java 6 or 8 project still decompiles, with a modern JDK next to it.
+func DecompilerJVM(project JDK, installed []JDK) (JDK, error) {
+	if project.Binary != "" && project.Major >= DecompilerMinJava {
+		return project, nil
+	}
+	if jdk, ok := PickJDK(installed, DecompilerMinJava); ok && jdk.Binary != "" {
+		return jdk, nil
+	}
+	return JDK{}, fmt.Errorf("the decompiler needs Java %d or newer next to the project JDK: install one, e.g. Eclipse Temurin 21", DecompilerMinJava)
 }
 
 // DecompileJob is one run of Vineflower: java -jar vineflower.jar <jar> <staging>.

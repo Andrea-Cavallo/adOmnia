@@ -93,20 +93,21 @@ func (s *Service) decompiledLibrary(session Session, groupID, artifactID, versio
 	return directory, true
 }
 
-// decompileInto runs Vineflower on the project JDK (else the detected one) and fills the cache folder once.
+// decompileInto runs Vineflower on a JVM it supports (the project JDK when recent enough) and fills the
+// cache folder once.
 func (s *Service) decompileInto(session Session, jar, directory string) error {
 	if java.Decompiled(directory) {
 		return nil
 	}
-	javaBinary := java.DetectJDK().Binary
+	var project java.JDK
 	if home := java.ProjectJavaHome(session.Project.RealPath); home != "" {
-		if jdk, ok := java.InspectJDK(home, "project"); ok {
-			javaBinary = jdk.Binary
-		}
+		project, _ = java.InspectJDK(home, "project")
 	}
-	if javaBinary == "" {
-		return errors.New("the decompiler needs a JDK: Java → Select JDK")
+	jvm, err := java.DecompilerJVM(project, append(java.DiscoverJDKs(), java.DetectJDK()))
+	if err != nil {
+		return err
 	}
+	javaBinary := jvm.Binary
 	job, err := java.NewDecompileJob(javaBinary, java.DecompilerJar(s.toolsRoot), jar, directory)
 	if err != nil {
 		return err

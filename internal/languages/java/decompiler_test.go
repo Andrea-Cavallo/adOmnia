@@ -116,3 +116,18 @@ func TestRealVineflowerDecompilesAClass(t *testing.T) {
 		t.Fatalf("source = %s, %v", source, err)
 	}
 }
+
+func TestDecompilerJVMRunsOnAModernJDKForLegacyProjects(t *testing.T) {
+	java6 := JDK{Binary: "/jdk6/bin/java", Major: 6}
+	java17 := JDK{Binary: "/jdk17/bin/java", Major: 17}
+	java11 := JDK{Binary: "/jdk11/bin/java", Major: 11}
+	if jvm, err := DecompilerJVM(java17, []JDK{java11}); err != nil || jvm.Binary != java17.Binary {
+		t.Fatalf("a recent project JDK runs the decompiler: %+v %v", jvm, err)
+	}
+	if jvm, err := DecompilerJVM(java6, []JDK{java6, java17, java11}); err != nil || jvm.Binary != java11.Binary {
+		t.Fatalf("a Java 6 project uses the oldest JDK >= 11: %+v %v", jvm, err)
+	}
+	if _, err := DecompilerJVM(java6, []JDK{java6, {Binary: "/jdk8/bin/java", Major: 8}}); err == nil {
+		t.Fatal("no JDK >= 11 must be an explicit error")
+	}
+}
