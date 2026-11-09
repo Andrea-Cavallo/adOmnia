@@ -195,7 +195,7 @@ func wsReadPump(sess *WSSession) {
 				sess.broadcast(WSEvent{
 					Type:      "error",
 					Direction: "system",
-					Content:   err.Error(),
+					Content:   readError(err),
 					Timestamp: time.Now().UnixMilli(),
 				})
 			}
@@ -258,15 +258,16 @@ func wsConnectHandler(w http.ResponseWriter, r *http.Request) {
 		headers.Set("Authorization", wsBasicAuth(req.Auth.Username, req.Auth.Password))
 	}
 
-	dialer := websocket.Dialer{
-		HandshakeTimeout: 15 * time.Second,
-		Subprotocols:     req.Subprotocols,
+	dialer, err := wsDialer(req.Subprotocols)
+	if err != nil {
+		httputil.JSONError(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	conn, _, err := dialer.Dial(req.URL, headers)
+	conn, response, err := dialer.Dial(req.URL, headers)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
-		jsonutil.MarshalWrite(w, map[string]string{"error": err.Error()})
+		_ = jsonutil.MarshalWrite(w, map[string]string{"error": handshakeError(err, response)})
 		return
 	}
 
