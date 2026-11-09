@@ -184,6 +184,26 @@ func expectEvent(t *testing.T, events <-chan WSEvent, match func(WSEvent) bool) 
 	return WSEvent{}
 }
 
+// expectRoundTrip waits for the outbound frame and its echo in either order: the echo server can answer
+// before the send handler broadcasts the outbound event.
+func expectRoundTrip(t *testing.T, events <-chan WSEvent) (sent, echoed WSEvent) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for (sent.Direction == "" || echoed.Direction == "") && time.Now().Before(deadline) {
+		event := nextEvent(t, events)
+		switch {
+		case event.Direction == "outbound" && sent.Direction == "":
+			sent = event
+		case event.Direction == "inbound" && event.Type == "message" && echoed.Direction == "":
+			echoed = event
+		}
+	}
+	if sent.Direction == "" || echoed.Direction == "" {
+		t.Fatalf("round trip incomplete: sent=%+v echoed=%+v", sent, echoed)
+	}
+	return sent, echoed
+}
+
 func waitStreamClosed(t *testing.T, events <-chan WSEvent) {
 	t.Helper()
 	deadline := time.After(5 * time.Second)
@@ -298,11 +318,10 @@ func TestConnectionRoundTrip(t *testing.T) {
 		t.Fatalf("send status = %d (%s)", code, body)
 	}
 
-	sent := expectEvent(t, events, func(event WSEvent) bool { return event.Direction == "outbound" })
+	sent, echoed := expectRoundTrip(t, events)
 	if sent.Type != "message" || sent.Content != "hello" || sent.Binary {
 		t.Fatalf("outbound frame = %+v", sent)
 	}
-	echoed := expectEvent(t, events, func(event WSEvent) bool { return event.Direction == "inbound" })
 	if echoed.Type != "message" || echoed.Content != "hello" || echoed.Binary {
 		t.Fatalf("inbound frame = %+v", echoed)
 	}
@@ -339,11 +358,10 @@ func TestBinaryRoundTrip(t *testing.T) {
 	if code, body := postJSON(t, sidecar.URL+"/ws/send", map[string]any{"sessionId": sessionID, "content": payload, "messageType": "binary"}); code != http.StatusOK {
 		t.Fatalf("send status = %d (%s)", code, body)
 	}
-	sent := expectEvent(t, events, func(event WSEvent) bool { return event.Direction == "outbound" })
+	sent, echoed := expectRoundTrip(t, events)
 	if !sent.Binary || sent.Content != payload {
 		t.Fatalf("outbound binary frame = %+v", sent)
 	}
-	echoed := expectEvent(t, events, func(event WSEvent) bool { return event.Direction == "inbound" })
 	if !echoed.Binary || echoed.Content != payload {
 		t.Fatalf("inbound binary frame = %+v", echoed)
 	}
