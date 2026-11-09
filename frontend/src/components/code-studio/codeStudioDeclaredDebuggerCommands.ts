@@ -1,4 +1,4 @@
-import { installDebugger, installTestRunner, previewDebuggerInstall, previewTestRunnerInstall } from '@/lib/code-studio-debug-api'
+import { installDebugger, previewDebuggerInstall } from '@/lib/code-studio-debug-api'
 import { runVisibleInstall } from './codeStudioVisibleInstall'
 import type { CodeStudioCommandId } from './codeStudioCommands'
 
@@ -22,15 +22,6 @@ function installDeclaredDebugger(sessionId: string, target: DeclaredDebugger): P
 
 /** Comandi dei linguaggi dichiarati. Restituisce false se il comando non appartiene a questo modulo. */
 export function runDeclaredDebuggerCommand(id: CodeStudioCommandId, sessionId: string | null): boolean {
-  if (id === 'java.installTestLauncher') {
-    if (sessionId) void runVisibleInstall(sessionId, {
-      preview: () => previewTestRunnerInstall(sessionId, 'java'),
-      install: () => installTestRunner(sessionId, 'java'),
-      confirmLabel: 'Install JUnit launcher',
-      done: 'JUnit Console Launcher installed. Run the tests of Ant and Eclipse projects from the Test panel.',
-    })
-    return true
-  }
   const target = DEBUGGERS.get(id)
   if (!target) return false
   if (sessionId) void installDeclaredDebugger(sessionId, target)

@@ -8,16 +8,19 @@ function normalized(path: string): string {
 }
 
 /**
- * La libreria di un file aperto dai sorgenti estratti (`…/maven-sources/<group>/<artifact>/<version>/…`) e il
+ * La libreria di un file aperto dai sorgenti estratti (`…/maven-sources/…` o decompilati `…/maven-decompiled/…`) e il
  * file relativo alla sua radice: l'albero apre la libreria fin lì.
  */
 export function libraryOfSourcesPath(path: string, libraries: JavaLibrary[]): { library: JavaLibrary; file: string } | null {
   const target = normalized(path)
   const folded = target.toLowerCase()
   for (const library of libraries) {
-    const marker = `/maven-sources/${library.groupId}/${library.artifactId}/${library.version}/`.toLowerCase()
-    const index = folded.indexOf(marker)
-    if (index >= 0) return { library, file: target.slice(index + marker.length) }
+    // The real sources jar, or the classes decompiled when the library publishes none.
+    for (const cache of ['maven-sources', 'maven-decompiled']) {
+      const marker = `/${cache}/${library.groupId}/${library.artifactId}/${library.version}/`.toLowerCase()
+      const index = folded.indexOf(marker)
+      if (index >= 0) return { library, file: target.slice(index + marker.length) }
+    }
   }
   return null
 }

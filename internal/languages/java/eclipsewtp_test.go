@@ -88,6 +88,12 @@ func TestEclipseWebProjectsGetTheirWTPContainersAsJars(t *testing.T) {
 	if !strings.Contains(filepath.ToSlash(string(description)), filepath.ToSlash(filepath.Join(root, "billing", "src"))) {
 		t.Errorf("the sources are linked, not copied:\n%s", description)
 	}
+	if !strings.Contains(text, `kind="output" path="output"`) || !strings.Contains(filepath.ToSlash(string(description)), filepath.ToSlash(filepath.Join(root, "billing", "build", "classes"))) {
+		t.Errorf("JDT LS compiles into the project's own output, which Tomcat publishes:\n%s\n%s", text, description)
+	}
+	if info, err := os.Stat(filepath.Join(root, "billing", "build", "classes")); err != nil || !info.IsDir() {
+		t.Error("the declared output folder is created")
+	}
 	prefs, _ := os.ReadFile(filepath.Join(dest, "billing", ".settings", "org.eclipse.jdt.core.prefs"))
 	if !strings.Contains(string(prefs), "compliance=1.8") {
 		t.Errorf("Java 6 is checked at 1.8:\n%s", prefs)

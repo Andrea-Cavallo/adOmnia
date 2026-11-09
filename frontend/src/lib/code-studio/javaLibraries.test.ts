@@ -11,6 +11,8 @@ describe('javaLibraries', () => {
     const libraries = [library('org.slf4j', 'slf4j-api', '2.0.9'), library('com.google.guava', 'guava', '33.0')]
     expect(libraryOfSourcesPath('C:\\Users\\a\\AppData\\Local\\adomnia\\virtual\\maven-sources\\com.google.guava\\guava\\33.0\\com\\google\\common\\base\\Strings.java', libraries))
       .toEqual({ library: libraries[1], file: 'com/google/common/base/Strings.java' })
+    expect(libraryOfSourcesPath('/home/a/.cache/adomnia/virtual/maven-decompiled/org.slf4j/slf4j-api/2.0.9/org/slf4j/Logger.java', libraries))
+      .toEqual({ library: libraries[0], file: 'org/slf4j/Logger.java' })
     expect(libraryOfSourcesPath('/home/a/project/src/Main.java', libraries)).toBeNull()
   })
 

@@ -1499,6 +1499,33 @@ export function JavaLibrarySource(sessionID: string, groupID: string, artifactID
 }
 
 /**
+ * DecompileJavaJar decompiles a .jar into a read-only cache and describes it like library sources.
+ */
+export function DecompileJavaJar(sessionID: string, jar: string): $CancellablePromise<codestudio$0.DependencySource> {
+    return $Call.ByID(4210736279, sessionID, jar).then(($result: any) => {
+        return $$createType130($result);
+    });
+}
+
+/**
+ * PreviewJavaDecompilerInstall shows the command that installs the Java decompiler (Vineflower).
+ */
+export function PreviewJavaDecompilerInstall(sessionID: string): $CancellablePromise<codestudio$0.ServerInstallPreview> {
+    return $Call.ByID(3303269627, sessionID).then(($result: any) => {
+        return $$createType210($result);
+    });
+}
+
+/**
+ * InstallJavaDecompiler installs Vineflower in adOmnia's tools folder after confirmation.
+ */
+export function InstallJavaDecompiler(sessionID: string, confirmed: boolean): $CancellablePromise<codestudio$0.Execution> {
+    return $Call.ByID(648090223, sessionID, confirmed).then(($result: any) => {
+        return $$createType26($result);
+    });
+}
+
+/**
  * JavaMainClasses elenca le classi lanciabili: JDT LS se pronto, altrimenti la scansione dei sorgenti.
  */
 export function JavaMainClasses(sessionID: string): $CancellablePromise<java$0.MainClassInfo[]> {

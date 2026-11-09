@@ -47,3 +47,20 @@ func (s *Service) javaServerTestOptions(session Session, module string, raw []by
 	options.Launcher = java.JUnitLauncherJar(s.toolsRoot)
 	return jsonutil.Marshal(options)
 }
+
+// javaPluginTestOptions runs the tests of a PDE workspace inside Equinox (JUnit Plug-in Test) on the project
+// JVM, the same one Run and Debug of the bundles use: the bundles must be built first.
+func (s *Service) javaPluginTestOptions(session Session, raw []byte) ([]byte, error) {
+	var options java.TestOptions
+	if len(raw) > 0 {
+		if err := jsonv1.Unmarshal(raw, &options); err != nil {
+			return nil, fmt.Errorf("invalid test options: %w", err)
+		}
+	}
+	jvm, err := s.osgiJVM(session)
+	if err != nil {
+		return nil, err
+	}
+	options.PluginTest = &java.PluginTestJVM{Java: jvm.Binary, Major: jvm.Major, Arch: jvm.Arch}
+	return jsonutil.Marshal(options)
+}

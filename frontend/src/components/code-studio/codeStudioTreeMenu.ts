@@ -253,6 +253,7 @@ function handoffItems(entry: Entry): ContextMenuItem[] {
     ...(/\.(xml|xsd|wsdl)$/i.test(entry.relativePath) ? [{ id: 'xmlTools', label: 'Open in XML Tools', icon: FileCode2 }] : []),
     ...(/\.(pem|crt|cer)$/i.test(entry.relativePath) ? [{ id: 'mtlsTools', label: 'Configure HTTP mTLS', icon: KeyRound }] : []),
     ...(isPemCandidate(entry.relativePath) ? [{ id: 'pemTools', label: 'Inspect certificate / keystore', icon: KeyRound, separatorBefore: true }] : []),
+    ...(/\.(jar|war)$/i.test(entry.relativePath) ? [{ id: 'decompileJar', label: 'Decompile (Java)', icon: FileCode2, separatorBefore: true }] : []),
   ]
 }
 
