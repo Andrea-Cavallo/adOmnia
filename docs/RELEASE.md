@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md` (local planning note; the published status is [ISSUES.md](ISSUES.md)). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.0.31 — readable WebSocket messages, Hub game off by default (and everything in 1.0.30)
+
+[Release notes](releases/v1.0.31.md). The 1.0.30 tag never produced artifacts; this is the first published build with the Java decompiler, JUnit Plug-in Tests, WebSocket through the proxy and the Hub mini game. Native acceptance in the desktop app remains manual.
+
 ## v1.0.30 — Java decompiler, JUnit Plug-in Tests, WebSocket through the proxy, Hub mini game
 
 [Release notes](releases/v1.0.30.md). Covered by automated tests; native acceptance in the desktop app (decompiler, plug-in tests, Tomcat reloads, the mini game) remains manual.

@@ -214,7 +214,7 @@ export function WelcomePanel() {
           </section>
         )}
       </main>
-      <Suspense fallback={null}><HubGame /></Suspense>
+      {flags.hubGameEnabled && <Suspense fallback={null}><HubGame /></Suspense>}
     </div>
   )
 }
