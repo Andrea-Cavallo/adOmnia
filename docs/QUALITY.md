@@ -47,7 +47,7 @@ Script, Dockerfile and workflow lints run in Docker (or the CI images):
 ```bash
 docker run --rm -v "$PWD:/repo" -w /repo koalaman/shellcheck:stable build.sh build/*.sh build/linux/*.sh scripts/*.sh packaging/render.sh
 docker run --rm -v "$PWD:/repo" -w /repo hadolint/hadolint:latest hadolint Dockerfile.linux build/Dockerfile docker/adomnia-lab/mock-api/Dockerfile
-docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest
+go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -shellcheck=   # the same pinned build as CI
 ```
 
 ## SonarQube locally (Docker)
