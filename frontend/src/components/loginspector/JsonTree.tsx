@@ -117,7 +117,12 @@ interface JsonTreeProps {
    * BSON wrappers as `ObjectId('…')` while Copy JSON keeps the real structure.
    */
   renderScalar?: (value: unknown) => React.ReactNode | undefined
+  /** Text size of the nodes: 'sm' for dense inspectors (the default), 'md' where the payload is the point. */
+  size?: JsonTreeSize
 }
+
+export type JsonTreeSize = 'sm' | 'md'
+const TEXT_SIZE: Record<JsonTreeSize, string> = { sm: 'text-[11px] leading-[1.5]', md: 'text-[12.5px] leading-[1.6]' }
 
 function initialExpanded(value: unknown, depth: number): Set<string> {
   const out = new Set<string>(['$'])
@@ -135,7 +140,7 @@ function initialExpanded(value: unknown, depth: number): Set<string> {
   return out
 }
 
-export function JsonTree({ value, title, className, actions, startExpanded = 0, renderScalar }: JsonTreeProps) {
+export function JsonTree({ value, title, className, actions, startExpanded = 0, renderScalar, size = 'sm' }: JsonTreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(() => initialExpanded(value, startExpanded))
   const [search, setSearch] = useState('')
   const [wrap, setWrap] = useState(false)
@@ -222,7 +227,8 @@ export function JsonTree({ value, title, className, actions, startExpanded = 0, 
       {raw ? (
         <pre
           className={cn(
-            'min-h-0 flex-1 overflow-auto bg-surface-0 px-3 py-2 font-mono text-[11px] leading-[1.5] text-text-2',
+            'min-h-0 flex-1 overflow-auto bg-surface-0 px-3 py-2 font-mono text-text-2',
+            TEXT_SIZE[size],
             wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre',
           )}
         >
@@ -248,6 +254,7 @@ export function JsonTree({ value, title, className, actions, startExpanded = 0, 
                 )}
                 onCopyPath={() => copy(row.path, `p:${row.path}`)}
                 renderScalar={renderScalar}
+                textClass={TEXT_SIZE[size]}
               />
             ))
           )}
@@ -295,14 +302,15 @@ interface JsonTreeRowProps {
   onCopyValue: () => void
   onCopyPath: () => void
   renderScalar?: (value: unknown) => React.ReactNode | undefined
+  textClass: string
 }
 
-function JsonTreeRow({ row, expanded, wrap, searching, copiedToken, onToggle, onCopyValue, onCopyPath, renderScalar }: JsonTreeRowProps) {
+function JsonTreeRow({ row, expanded, wrap, searching, copiedToken, onToggle, onCopyValue, onCopyPath, renderScalar, textClass }: JsonTreeRowProps) {
   const meta = row.kind === 'array' ? `[${row.childCount}]` : row.kind === 'object' ? `{${row.childCount}}` : ''
   const custom = renderScalar?.(row.value)
   return (
     <div
-      className="group flex items-start gap-1.5 py-[2px] pr-2 font-mono text-[11px] hover:bg-surface-1"
+      className={cn('group flex items-start gap-1.5 py-[2px] pr-2 font-mono hover:bg-surface-1', textClass)}
       style={{ paddingLeft: (searching ? 0 : row.depth) * 14 + 6 }}
     >
       <button

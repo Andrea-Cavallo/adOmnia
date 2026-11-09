@@ -6,6 +6,14 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### API workspace
+
+- **Readable WebSocket messages.** Each message shows up to three lines of its payload in a larger font. The inspector gets more room and shows JSON as a tree three levels open (search, collapse, raw), plain text at a readable size; *Expand* (or a double-click on a message) gives it the whole panel.
+
+### Hub
+
+- **The mini game is off by default.** Turn it on in Settings → Feature Surface → *Hub mini game*.
+
 ## [1.0.30] — 2026-11-09
 
 ### Code Studio

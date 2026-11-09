@@ -54,6 +54,8 @@ export function FrameStreamView({ title, state, frames, headerExtra, headerActio
   const [filter, setFilter] = useState<StreamFilter>('all')
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  /** The inspector takes the whole panel, to read a long message without scrolling a small box. */
+  const [expanded, setExpanded] = useState(false)
   const deferredQuery = useDeferredValue(query)
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
@@ -105,22 +107,29 @@ export function FrameStreamView({ title, state, frames, headerExtra, headerActio
 
       <div
         ref={scrollRef}
+        hidden={!!selected && expanded}
         onScroll={(event) => {
           const element = event.currentTarget
           stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24
         }}
-        className={cn('overflow-y-auto', selected ? 'min-h-[96px] flex-[3]' : 'min-h-0 flex-1')}
+        className={cn('overflow-y-auto', selected ? 'min-h-[96px] flex-[2]' : 'min-h-0 flex-1')}
       >
         <WsFrameList
           frames={visible}
           selectedId={selectedId}
           onSelect={(id) => setSelectedId((current) => (current === id ? null : id))}
+          onOpen={(id) => { setSelectedId(id); setExpanded(true) }}
           emptyHint={frames.length ? 'No message matches the filter.' : emptyHint}
         />
       </div>
       {selected && (
-        <div className="flex min-h-[120px] flex-[2] flex-col border-t border-border-1">
-          <WsFrameInspector frame={selected} onClose={() => setSelectedId(null)} />
+        <div className={cn('flex min-h-[200px] flex-col', expanded ? 'flex-1' : 'flex-[3] border-t border-border-1')}>
+          <WsFrameInspector
+            frame={selected}
+            onClose={() => { setSelectedId(null); setExpanded(false) }}
+            expanded={expanded}
+            onToggleExpanded={() => setExpanded((current) => !current)}
+          />
         </div>
       )}
     </div>

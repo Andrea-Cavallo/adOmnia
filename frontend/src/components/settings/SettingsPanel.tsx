@@ -916,6 +916,12 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 checked={settings.features.dailyScenariosEnabled}
                 onChange={(v) => updateFeatures({ dailyScenariosEnabled: v })}
               />
+              <Toggle
+                label="Hub mini game"
+                desc="Show the knight mini game at the bottom of the Hub. It only reads keys while you play it."
+                checked={settings.features.hubGameEnabled}
+                onChange={(v) => updateFeatures({ hubGameEnabled: v })}
+              />
             </SettingsCard>
           </>
         )}
