@@ -6,6 +6,8 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.30] — 2026-11-09
+
 ### Code Studio
 
 - **Java decompiler.** Vineflower, installed once from the Java menu with a visible command, decompiles a `.jar`/`.war` of the project (*Decompile (Java)* in the tree) into a read-only cache, and libraries without a sources jar open decompiled in External Libraries. It runs on a JDK 11+ even when the project targets Java 6 or 8.
@@ -20,6 +22,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 ### Hub
 
 - **Mini game.** A knight runs through an endless side-scrolling strip at the bottom of the Hub: arrows run, Space jumps, X slashes, C casts the lightning, Esc pauses. Every 20 seconds a boss (a flying skull or a ghost) warns before it dives and drops a chest when beaten; chests give an extra heart, a wide golden slash or a shield. Ghosts fade in and out, big slimes split, frogs crouch before they leap. Keys are read only while the game has focus, so it never takes one from the Hub. Effects by pixelfx (MIT).
+
+### Fixes
+
+- The WebSocket round-trip tests accept the echo before the outbound event (they failed the v1.0.29 tag build at random); the CI downloads of hadolint and actionlint survive GitHub's transient 504s (actionlint is built from the Go module proxy).
 
 ## [1.0.29] — 2026-11-08
 
