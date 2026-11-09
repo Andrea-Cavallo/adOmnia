@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BOSS_EVERY, BOSS_HP, BOSS_WARN_SECONDS, HEART_CAP, SHIELD_SECONDS, WIDE_REACH, WIDE_SECONDS, bossOf, ghostVisibility, tangible,
+  BOSS_EVERY, BOSS_HP, BOSS_HP_MAX, BOSS_WARN_SECONDS, bossHp, HEART_CAP, SHIELD_SECONDS, WIDE_REACH, WIDE_SECONDS, bossOf, ghostVisibility, tangible,
   ATTACK_REACH, CHAIN_SECONDS, CHAIN_STEP, CHARGE_MAX, COIN_POINTS, GRAVITY, INVULNERABLE_SECONDS, JUMP_SPEED, KILL_POINTS, MAX_HEARTS, PIT_MAX, RUN_SPEED,
   chainMultiplier, groundY, medalFor, meters, newRun, pauseRun, resizeRun, runScore, startRun, stepRun,
   type Enemy, type RunInput, type RunState,
@@ -238,7 +238,19 @@ describe('hub run: bosses', () => {
     expect(bossOf(run)).toBeUndefined()
     expect(run.stats.bosses).toBe(1)
     expect(run.chests).toHaveLength(1)
-    expect(run.bossIn).toBe(BOSS_EVERY)
+    // The countdown restarts at the kill and runs on while the rest of the swing plays out.
+    expect(run.bossIn).toBeGreaterThan(BOSS_EVERY - 0.5)
+    expect(run.bossIn).toBeLessThanOrEqual(BOSS_EVERY)
+  })
+  it('makes every next boss tougher, up to a cap', () => {
+    expect([0, 1, 2, 4, 10].map((beaten) => bossHp(beaten))).toEqual([BOSS_HP, BOSS_HP + 1, BOSS_HP + 2, BOSS_HP_MAX, BOSS_HP_MAX])
+    const second = stepRun(flat({ bossIn: 0.01, stats: { ...flat().stats, bosses: 1 } }), idle, DT)
+    expect(bossOf(second)).toMatchObject({ kind: 'ghost', hp: BOSS_HP + 1, maxHp: BOSS_HP + 1 })
+  })
+  it('does not hurt him while it reels from the hit he just landed', () => {
+    const struck = { ...bossAt(700, 'skull', 46, TOP - 20), bossPhase: 'return' as const, flash: 0.3 }
+    expect(stepRun(flat({ enemies: [struck] }), idle, DT).hearts).toBe(MAX_HEARTS)
+    expect(stepRun(flat({ enemies: [{ ...struck, flash: 0 }] }), idle, DT).hearts).toBe(MAX_HEARTS - 1)
   })
   it('holds back the other enemies while a boss is out', () => {
     const run = flat({ enemies: [bossAt(700, 'ghost', 400, TOP - 60)], builtTo: 1000, ground: [{ x0: -500, x1: 1000 }] })
@@ -260,7 +272,6 @@ describe('hub run: new enemies', () => {
   it('splits a big slime into two small ones', () => {
     const big = enemy('slime', 40 + ATTACK_REACH - 10, TOP - 13, { big: true })
     const after = steps(stepRun(flat({ enemies: [big] }), { ...idle, attack: true }, DT), 0.05)
-    expect(after.events.length >= 0).toBe(true)
     const smalls = after.enemies.filter((e) => e.kind === 'slime')
     expect(smalls).toHaveLength(2)
     expect(smalls.every((e) => !e.big)).toBe(true)

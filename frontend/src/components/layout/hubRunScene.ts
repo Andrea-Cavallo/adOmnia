@@ -117,3 +117,27 @@ function addLight(a: number, b: number): number {
   const channel = (shift: number) => Math.min(255, ((a >>> shift) & 255) + ((b >>> shift) & 255)) << shift
   return (channel(0) | channel(8) | channel(16) | (0xff << 24)) >>> 0
 }
+
+/** A dotted ring that turns with the clock: the shield around the knight. */
+export function drawRing(frame: PixelFrame, center: { x: number; y: number }, radius: number, color: number, turn: number): void {
+  const dots = Math.round(radius * 2.4)
+  for (let index = 0; index < dots; index++) {
+    // Every third dot is left out, so the ring reads as turning.
+    if ((index + Math.floor(turn)) % 3 === 0) continue
+    const angle = (index / dots) * Math.PI * 2 + turn * 0.15
+    put(frame, Math.round(center.x + radius * Math.cos(angle)), Math.round(center.y + radius * Math.sin(angle)), color)
+  }
+}
+
+/** Where a boss is about to dive: a cross on the spot, with ticks around it. */
+export function drawMarker(frame: PixelFrame, x: number, y: number, color: number): void {
+  const cx = Math.round(x)
+  const cy = Math.round(y)
+  for (let d = -3; d <= 3; d++) {
+    put(frame, cx + d, cy + d, color)
+    put(frame, cx + d, cy - d, color)
+  }
+  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]] as const) {
+    for (let step = 5; step <= 7; step++) put(frame, cx + dx * step, cy + dy * step, color)
+  }
+}

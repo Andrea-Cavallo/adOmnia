@@ -1,23 +1,22 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { actTiming, clearFrame, composite, createAct, createFrame, createFx, painterFor, type PixelAct, type PixelFrame, type PixelFx, type PixelFxModule } from 'pixelfx'
-import * as batEffect from 'pixelfx/fx/critters/bat'
-import * as birdEffect from 'pixelfx/fx/critters/bird'
-import * as frogEffect from 'pixelfx/fx/critters/frog'
-import * as slimeEffect from 'pixelfx/fx/critters/slime'
 import * as powEffect from 'pixelfx/fx/explosions/cartoon-pow'
 import * as hitSpark from 'pixelfx/fx/impacts/hit-spark'
+import * as shieldBlock from 'pixelfx/fx/impacts/shield-block'
 import * as doubleSlash from 'pixelfx/fx/melee/double-slash'
 import * as swordSlash from 'pixelfx/fx/melee/sword-slash'
 import * as uppercut from 'pixelfx/fx/melee/uppercut'
 import * as lightningCall from 'pixelfx/fx/moves/lightning-call'
+import * as chestEffect from 'pixelfx/fx/pickups/chest-open'
 import * as coinEffect from 'pixelfx/fx/pickups/coin-spin'
 import * as collectEffect from 'pixelfx/fx/pickups/collect-burst'
 import * as poofEffect from 'pixelfx/fx/spawn/poof'
+import { CRITTERS, FEET_OFFSET, POWER_LABELS, WIDE_SLASH_PALETTE, critterOptions, enemyShown, trembleOf, warningShown } from './hubRunLook'
 import {
-  CHARGE_MAX, MAX_HEARTS, chainMultiplier, medalFor, meters, newRun, pauseRun, resizeRun, runScore, specialReady, startRun, stepRun,
-  type EnemyKind, type RunEvent, type RunInput, type RunMedal, type RunPhase, type RunState, type RunStats,
+  BOSS_NAMES, CHARGE_MAX, MAX_HEARTS, bossOf, chainMultiplier, medalFor, meters, newRun, pauseRun, resizeRun, runScore, specialReady, startRun, stepRun,
+  type RunEvent, type RunInput, type RunMedal, type RunPhase, type RunState, type RunStats,
 } from './hubRunRules'
-import { blit, drawHills, drawKnight, drawTerrain, knightPose } from './hubRunScene'
+import { blit, drawHills, drawKnight, drawMarker, drawRing, drawTerrain, knightPose } from './hubRunScene'
 
 const PIXEL_SCALE = 2
 const FRAME_MS = 1000 / 60
@@ -28,6 +27,15 @@ const ATTACK_FRAME = { w: 140, h: 100, x: 54, y: 88 }
 const SWING_LEAD = 0.04
 const HURT_SECONDS = 0.35
 const SHAKE = 3
+/** A beaten boss shakes the strip this long. */
+const BOSS_DOWN_SHAKE = 0.5
+/** A closed chest rattles through the first part of its opening, over and over, until it is touched. */
+const CHEST_RATTLE = 0.9
+const SHIELD_RADIUS = 17
+/** The shield ring sits around his chest, this high above the feet. */
+const SHIELD_HEIGHT = 15
+const SHIELD_COLOR = 0xc0f4c862
+const WARN_COLOR = 0xff3a3aff
 const POPUP_SECONDS = 0.8
 const POPUP_RISE = 22
 const WHITE = 0xffffffff
@@ -35,9 +43,6 @@ const GOLD = 0xff30c0f0
 const RED = 0xff3030ff
 const OUTLINE = 0xff140c0e
 const SWINGS: readonly PixelFxModule[] = [swordSlash, doubleSlash, uppercut]
-const CRITTERS: Record<EnemyKind, PixelFxModule> = { slime: slimeEffect, frog: frogEffect, bat: batEffect, bird: birdEffect }
-/** Slimes and frogs are drawn from their feet, flyers from their middle. */
-const FEET_OFFSET: Record<EnemyKind, number> = { slime: 9, frog: 9, bat: 0, bird: 0 }
 const MEDAL_TITLES: Record<RunMedal, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' }
 
 type Key = 'left' | 'right' | 'jump' | 'attack' | 'special' | 'pause'
@@ -54,6 +59,7 @@ function saveBest(best: number): void {
   try { localStorage.setItem(BEST_KEY, String(best)) } catch { /* the record is only a nicety */ }
 }
 
+interface HudBoss { name: string; hp: number; maxHp: number }
 interface HudState {
   phase: RunPhase
   score: number
@@ -61,6 +67,10 @@ interface HudState {
   hearts: number
   chain: number
   charge: number
+  /** Whole seconds left of the wide slash and of the shield; 0 when off. */
+  wide: number
+  shield: number
+  boss: HudBoss | null
   stats: RunStats
 }
 interface Popup { text: string; x: number; y: number; age: number; color: number }
@@ -68,9 +78,19 @@ interface Popup { text: string; x: number; y: number; age: number; color: number
 interface Placed { fx: PixelFx; x: number; y: number }
 
 const isOver = (run: RunState) => run.phase === 'over'
-const hudOf = (run: RunState): HudState => ({ phase: run.phase, score: runScore(run), meters: meters(run), hearts: run.hearts, chain: run.chain, charge: run.charge, stats: run.stats })
+function hudBoss(run: RunState): HudBoss | null {
+  const boss = bossOf(run)
+  if (!boss || (boss.kind !== 'skull' && boss.kind !== 'ghost')) return null
+  return { name: BOSS_NAMES[boss.kind], hp: boss.hp, maxHp: boss.maxHp }
+}
+const hudOf = (run: RunState): HudState => ({
+  phase: run.phase, score: runScore(run), meters: meters(run), hearts: run.hearts, chain: run.chain, charge: run.charge,
+  wide: Math.ceil(run.wide), shield: Math.ceil(run.shield), boss: hudBoss(run), stats: run.stats,
+})
+const sameBoss = (a: HudBoss | null, b: HudBoss | null) => a === b || (!!a && !!b && a.name === b.name && a.hp === b.hp)
 const sameHud = (a: HudState, b: HudState) =>
-  a.phase === b.phase && a.score === b.score && a.meters === b.meters && a.hearts === b.hearts && a.chain === b.chain && a.charge === b.charge
+  a.phase === b.phase && a.score === b.score && a.meters === b.meters && a.hearts === b.hearts && a.chain === b.chain && a.charge === b.charge &&
+  a.wide === b.wide && a.shield === b.shield && sameBoss(a.boss, b.boss)
 
 /**
  * A strip at the bottom of the Hub: a knight running through an endless world. Arrows to move,
@@ -97,6 +117,8 @@ export function HubGame() {
     const attackFrame = createFrame(ATTACK_FRAME.w, ATTACK_FRAME.h)
     const critters = new Map<number, PixelFx>()
     const coins = new Map<number, PixelFx>()
+    /** A closed chest's sprite and how long it has rattled since it was (re)started. */
+    const chests = new Map<number, { fx: PixelFx; age: number }>()
     let effects: Placed[] = []
     let popups: Popup[] = []
     let swing: PixelAct | null = null
@@ -108,6 +130,7 @@ export function HubGame() {
     let last = 0
     let clock = 0
     let hurtFlash = 0
+    let bossShake = 0
 
     const fit = () => {
       const width = Math.max(1, Math.floor(canvas.clientWidth / PIXEL_SCALE))
@@ -128,7 +151,9 @@ export function HubGame() {
       switch (event.type) {
         case 'swing': {
           const move = SWINGS[swings++ % SWINGS.length]
-          swing = createAct(move, { x: ATTACK_FRAME.x, y: ATTACK_FRAME.y, flip: run.knight.facing < 0, seed: swings })
+          // No palette key at all without the power: an undefined one would wipe the move's own colors.
+          const colors = run.wide > 0 ? { palette: WIDE_SLASH_PALETTE } : {}
+          swing = createAct(move, { x: ATTACK_FRAME.x, y: ATTACK_FRAME.y, flip: run.knight.facing < 0, seed: swings, ...colors })
           const windup = actTiming(move)?.windup ?? 0
           if (windup > SWING_LEAD) swing.update(windup - SWING_LEAD)
           break
@@ -147,6 +172,31 @@ export function HubGame() {
           popup(event.type === 'fall' ? 'FALL' : 'OUCH', event.x, event.y - 46, RED)
           hurtFlash = HURT_SECONDS
           break
+        case 'split':
+          place(poofEffect, event.x, event.y + 12, Math.round(clock * 100))
+          popup('SPLIT!', event.x, event.y - 18, WHITE)
+          break
+        case 'block':
+          place(shieldBlock, event.x, event.y - 14, Math.round(clock * 100))
+          popup('BLOCK', event.x, event.y - 46, GOLD)
+          break
+        case 'chest':
+          place(chestEffect, event.x, event.y, Math.round(clock * 100))
+          popup(POWER_LABELS[event.power], event.x, event.y - 30, GOLD)
+          break
+        case 'boss':
+          place(poofEffect, event.x, event.y + 12, Math.round(clock * 100))
+          popup(`${BOSS_NAMES[event.kind].toUpperCase()}!`, run.cameraX + frame.w / 2, 26, RED)
+          break
+        case 'bossHit':
+          place(hitSpark, event.x, event.y, Math.round(clock * 100))
+          popup(`${event.hp} LEFT`, event.x, event.y - 24, WHITE)
+          break
+        case 'bossDown':
+          place(powEffect, event.x, event.y, Math.round(clock * 100))
+          popup(`BOSS +${event.points}`, event.x, event.y - 28, GOLD)
+          bossShake = BOSS_DOWN_SHAKE
+          break
         case 'special':
           cast = createAct(lightningCall, { x: ATTACK_FRAME.x, y: ATTACK_FRAME.y, seed: Math.round(clock * 100) })
           for (const enemy of event.cleared) place(powEffect, enemy.x, enemy.y, Math.round(enemy.x))
@@ -162,9 +212,9 @@ export function HubGame() {
       const enemies = new Set(run.enemies.map((enemy) => enemy.id))
       for (const id of critters.keys()) if (!enemies.has(id)) critters.delete(id)
       for (const enemy of run.enemies) {
-        const fx = critters.get(enemy.id) ?? createFx(CRITTERS[enemy.kind], { seed: enemy.id })
+        const fx = critters.get(enemy.id) ?? createFx(CRITTERS[enemy.kind], critterOptions(enemy))
         critters.set(enemy.id, fx)
-        fx.options.x = Math.round(screenX(enemy.x))
+        fx.options.x = Math.round(screenX(enemy.x) + trembleOf(enemy, clock))
         fx.options.y = Math.round(enemy.y + FEET_OFFSET[enemy.kind])
         fx.options.flip = enemy.vx < 0 || (!enemy.awake && enemy.x > run.knight.x)
       }
@@ -175,6 +225,23 @@ export function HubGame() {
         coins.set(coin.id, fx)
         fx.options.x = Math.round(screenX(coin.x))
         fx.options.y = Math.round(coin.y + 6)
+      }
+      const closed = new Set(run.chests.map((chest) => chest.id))
+      for (const id of chests.keys()) if (!closed.has(id)) chests.delete(id)
+      for (const chest of run.chests) {
+        const sprite = chests.get(chest.id) ?? { fx: createFx(chestEffect, { seed: chest.id }), age: 0 }
+        chests.set(chest.id, sprite)
+        sprite.fx.options.x = Math.round(screenX(chest.x))
+        sprite.fx.options.y = Math.round(chest.y)
+      }
+    }
+
+    /** Closed chests replay their first rattle; the opening itself is placed as an effect when one is touched. */
+    const rattleChests = (dt: number) => {
+      for (const [id, sprite] of chests) {
+        sprite.age += dt
+        if (sprite.age < CHEST_RATTLE) { sprite.fx.update(dt); continue }
+        chests.set(id, { fx: createFx(chestEffect, { ...sprite.fx.options }), age: 0 })
       }
     }
 
@@ -188,6 +255,7 @@ export function HubGame() {
       for (const event of run.events) react(event)
       syncSprites()
       for (const fx of [...critters.values(), ...coins.values()]) fx.update(dt)
+      rattleChests(dt)
       for (const placed of effects) {
         placed.fx.options.x = Math.round(screenX(placed.x))
         placed.fx.update(dt)
@@ -199,6 +267,7 @@ export function HubGame() {
       if (cast?.done()) cast = null
       popups = popups.map((item) => ({ ...item, age: item.age + dt })).filter((item) => item.age < POPUP_SECONDS)
       hurtFlash = Math.max(0, hurtFlash - dt)
+      bossShake = Math.max(0, bossShake - dt)
     }
 
     const drawKnightNow = () => {
@@ -216,10 +285,26 @@ export function HubGame() {
       blit(frame, attackFrame, x - ATTACK_FRAME.x, knight.y - ATTACK_FRAME.y)
     }
 
+    const drawShield = () => {
+      if (run.shield <= 0) return
+      drawRing(frame, { x: screenX(run.knight.x), y: run.knight.y - SHIELD_HEIGHT }, SHIELD_RADIUS, SHIELD_COLOR, clock * 12)
+    }
+
+    const drawEnemies = () => {
+      for (const enemy of run.enemies) {
+        if (!enemyShown(enemy, clock)) continue
+        critters.get(enemy.id)?.draw(frame)
+        if (warningShown(enemy, clock)) drawMarker(frame, screenX(enemy.targetX), enemy.targetY, WARN_COLOR)
+      }
+    }
+
     const paintLabels = () => {
       const painter = painterFor(frame)
       if (specialReady(run) && run.phase === 'playing' && Math.sin(clock * 8) > -0.4) {
         painter.text('C: LIGHTNING', Math.max(30, Math.min(frame.w - 30, screenX(run.knight.x))), Math.max(2, run.knight.y - 58), GOLD, { font: 'mini', align: 'center', outline: OUTLINE })
+      }
+      for (const enemy of run.enemies) {
+        if (warningShown(enemy, clock)) painter.text('!', screenX(enemy.x), Math.max(2, enemy.y - 34), RED, { font: 'big', align: 'center', outline: OUTLINE })
       }
       for (const item of popups) {
         const y = item.y - POPUP_RISE * (item.age / POPUP_SECONDS)
@@ -232,13 +317,16 @@ export function HubGame() {
       drawHills(frame, run.cameraX)
       drawTerrain(frame, run)
       for (const fx of coins.values()) fx.draw(frame)
-      for (const fx of critters.values()) fx.draw(frame)
+      for (const sprite of chests.values()) sprite.fx.draw(frame)
+      drawEnemies()
       drawKnightNow()
+      drawShield()
       for (const placed of effects) placed.fx.draw(frame)
       paintLabels()
       composite(frame, image.data)
       const strength = hurtFlash / HURT_SECONDS
-      const shakeX = strength ? SHAKE * strength * (Math.sin(clock * 90) > 0 ? 1 : -1) : 0
+      const shaking = Math.max(strength, bossShake / BOSS_DOWN_SHAKE)
+      const shakeX = shaking ? SHAKE * shaking * (Math.sin(clock * 90) > 0 ? 1 : -1) : 0
       context.clearRect(0, 0, frame.w, frame.h)
       context.putImageData(image, Math.round(shakeX), 0)
       if (strength) {
@@ -295,6 +383,7 @@ export function HubGame() {
         run = startRun(frame.w, frame.h)
         critters.clear()
         coins.clear()
+        chests.clear()
         effects = []
         popups = []
         swing = null
@@ -303,6 +392,7 @@ export function HubGame() {
         pressed = {}
         clock = 0
         hurtFlash = 0
+        bossShake = 0
         publish()
         wake()
       },
@@ -376,6 +466,7 @@ export function HubGame() {
           <span className="hub-game-points">{hud.score}</span>
         </p>
       )}
+      {active && <HubGameStatus hud={hud} />}
       {active && (
         <div className="hub-game-charge" data-ready={hud.charge >= CHARGE_MAX} aria-hidden="true">
           <i style={{ transform: `scaleX(${hud.charge / CHARGE_MAX})` }} />
@@ -420,8 +511,30 @@ function HubGameResults({ hud, best, beaten }: Readonly<{ hud: HudState; best: n
         {beaten ? <strong className="hub-game-record">New best!</strong> : <> · best {best}</>}
       </p>
       <p className="hub-game-stats">
-        {stats.kills} down{stats.stomps > 0 && <> ({stats.stomps} stomped)</>} · {stats.coins} coins · chain {stats.bestChain}
+        {stats.kills} down{stats.stomps > 0 && <> ({stats.stomps} stomped)</>}
+        {stats.bosses > 0 && <> · {stats.bosses} {stats.bosses === 1 ? 'boss' : 'bosses'}</>} · {stats.coins} coins · chain {stats.bestChain}
       </p>
     </div>
+  )
+}
+
+/** The boss's life while one is out, and the powers a chest gave with the seconds they have left. */
+function HubGameStatus({ hud }: Readonly<{ hud: HudState }>) {
+  const { boss } = hud
+  return (
+    <>
+      {boss && (
+        <div className="hub-game-boss" aria-hidden="true">
+          <span>{boss.name}</span>
+          <i><b style={{ transform: `scaleX(${boss.hp / boss.maxHp})` }} /></i>
+        </div>
+      )}
+      {(hud.wide > 0 || hud.shield > 0) && (
+        <p className="hub-game-powers" aria-hidden="true">
+          {hud.wide > 0 && <span data-power="wide">Wide slash {hud.wide}s</span>}
+          {hud.shield > 0 && <span data-power="shield">Shield {hud.shield}s</span>}
+        </p>
+      )}
+    </>
   )
 }

@@ -31,6 +31,12 @@ const BOSS_DIVE_SPEED: Record<BossKind, number> = { skull: 230, ghost: 190 }
 const BOSS_HOVER_SECONDS: Record<BossKind, number> = { skull: 1.6, ghost: 2.2 }
 const BOSS_DIVE_LIMIT = 1.3
 const BOSS_BOB = 6
+/** Every boss beaten makes the next one dive this much faster, up to BOSS_FURY_MAX. */
+const BOSS_FURY = 0.1
+const BOSS_FURY_MAX = 0.6
+
+const diveSpeed = (state: RunState, kind: BossKind) =>
+  BOSS_DIVE_SPEED[kind] * (1 + 0.1 * difficulty(state) + Math.min(BOSS_FURY_MAX, BOSS_FURY * state.stats.bosses))
 
 export function blankEnemy(id: number, kind: EnemyKind, x: number, y: number): Enemy {
   return {
@@ -39,8 +45,8 @@ export function blankEnemy(id: number, kind: EnemyKind, x: number, y: number): E
   }
 }
 
-export function bossAt(id: number, kind: BossKind, x: number, y: number): Enemy {
-  return { ...blankEnemy(id, kind, x, y), awake: true, boss: true, hp: BOSS_HP, maxHp: BOSS_HP, bossPhase: 'enter' }
+export function bossAt(id: number, kind: BossKind, x: number, y: number, hp = BOSS_HP): Enemy {
+  return { ...blankEnemy(id, kind, x, y), awake: true, boss: true, hp, maxHp: hp, bossPhase: 'enter' }
 }
 
 /** The two small slimes a big one leaves, hopping away on both sides. */
@@ -53,9 +59,9 @@ export function splitSlime(enemy: Enemy, nextId: number, height: number): Enemy[
 
 function wokenEnemy(state: RunState, enemy: Enemy): Enemy {
   if (enemy.awake || enemy.x > state.cameraX + state.width + WAKE_MARGIN) return enemy
-  const toward = state.knight.x < enemy.x ? -1 : 1
+  const side = state.knight.x < enemy.x ? -1 : 1
   const speed = SPEEDS[enemy.kind] * (1 + 0.25 * difficulty(state))
-  return { ...enemy, awake: true, vx: enemy.kind === 'bird' ? -speed : toward * speed }
+  return { ...enemy, awake: true, vx: enemy.kind === 'bird' ? -speed : side * speed }
 }
 
 /** A slime walks, turns at the edge of its ground, and lands when it was sent hopping by a split. */
@@ -130,7 +136,7 @@ const hoverPoint = (state: RunState, enemy: Enemy) => ({
   x: state.cameraX + state.width * BOSS_LEAD, y: groundY(state.height) - BOSS_HEIGHT + Math.sin(enemy.age * 2) * BOSS_BOB,
 })
 
-function toward(enemy: Enemy, x: number, y: number, speed: number, dt: number): { enemy: Enemy; arrived: boolean } {
+function flyToward(enemy: Enemy, x: number, y: number, speed: number, dt: number): { enemy: Enemy; arrived: boolean } {
   const dx = x - enemy.x
   const dy = y - enemy.y
   const distance = Math.hypot(dx, dy)
@@ -151,22 +157,22 @@ function stepBoss(state: RunState, enemy: Enemy, dt: number): Enemy {
   const home = hoverPoint(state, boss)
   switch (boss.bossPhase) {
     case 'enter': {
-      const { enemy: moved, arrived } = toward(boss, home.x, home.y, BOSS_ENTER_SPEED + Math.abs(state.knight.vx), dt)
+      const { enemy: moved, arrived } = flyToward(boss, home.x, home.y, BOSS_ENTER_SPEED + Math.abs(state.knight.vx), dt)
       return arrived ? phased(moved, 'hover', BOSS_HOVER_SECONDS[kind]) : moved
     }
     case 'hover': {
-      const { enemy: moved } = toward(boss, home.x, home.y, BOSS_RETURN_SPEED + Math.abs(state.knight.vx), dt)
+      const { enemy: moved } = flyToward(boss, home.x, home.y, BOSS_RETURN_SPEED + Math.abs(state.knight.vx), dt)
       if (moved.timer > 0) return moved
       return { ...phased(moved, 'warn', BOSS_WARN_SECONDS), targetX: state.knight.x, targetY: state.knight.y - 18 }
     }
     case 'warn':
       return boss.timer > 0 ? boss : phased(boss, 'dive', BOSS_DIVE_LIMIT)
     case 'dive': {
-      const { enemy: moved, arrived } = toward(boss, boss.targetX, boss.targetY, BOSS_DIVE_SPEED[kind] * (1 + 0.1 * difficulty(state)), dt)
+      const { enemy: moved, arrived } = flyToward(boss, boss.targetX, boss.targetY, diveSpeed(state, kind), dt)
       return arrived || moved.timer <= 0 ? phased(moved, 'return', 0) : moved
     }
     case 'return': {
-      const { enemy: moved, arrived } = toward(boss, home.x, home.y, BOSS_RETURN_SPEED + Math.abs(state.knight.vx), dt)
+      const { enemy: moved, arrived } = flyToward(boss, home.x, home.y, BOSS_RETURN_SPEED + Math.abs(state.knight.vx), dt)
       return arrived ? phased(moved, 'hover', BOSS_HOVER_SECONDS[kind]) : moved
     }
   }

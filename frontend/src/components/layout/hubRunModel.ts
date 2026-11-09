@@ -149,7 +149,9 @@ export const PIT_MIN = 24
 export const PIT_MAX = 46
 export const BOSS_EVERY = 20
 export const BOSS_HP = 5
-export const BOSS_WARN_SECONDS = 0.6
+/** Each boss beaten makes the next one take a hit more, up to this. */
+export const BOSS_HP_MAX = 9
+export const BOSS_WARN_SECONDS = 0.75
 export const GHOST_CYCLE = 3
 export const MEDALS: ReadonlyArray<readonly [RunMedal, number]> = [['gold', 7000], ['silver', 3500], ['bronze', 1500]]
 export const BOSS_NAMES: Record<BossKind, string> = { skull: 'Flying skull', ghost: 'Ghost' }
@@ -170,6 +172,7 @@ export const meters = (state: RunState) => Math.floor(state.furthest / PIXELS_PE
 export const runScore = (state: RunState) => state.points + meters(state)
 export const difficulty = (state: Pick<RunState, 'furthest'>) => Math.min(MAX_DIFFICULTY, state.furthest / DIFFICULTY_PIXELS)
 export const difficultyAt = (x: number) => Math.min(MAX_DIFFICULTY, x / DIFFICULTY_PIXELS)
+export const bossHp = (beaten: number) => Math.min(BOSS_HP_MAX, BOSS_HP + beaten)
 export const specialReady = (state: RunState) => state.charge >= CHARGE_MAX
 export const medalFor = (score: number): RunMedal | null => MEDALS.find(([, threshold]) => score >= threshold)?.[0] ?? null
 export const swinging = (knight: Knight) => knight.attack >= ATTACK_FROM && knight.attack <= ATTACK_TO

@@ -57,6 +57,13 @@
 .hub-game-charge { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--hub-line); pointer-events: none; }
 .hub-game-charge i { display: block; height: 100%; background: var(--color-info); transform-origin: left; transition: transform 120ms ease; }
 .hub-game-charge[data-ready='true'] i { background: var(--color-warning); }
+.hub-game-boss { position: absolute; top: 8px; left: 14px; display: flex; align-items: center; gap: 8px; color: var(--color-error, #f0707a); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; pointer-events: none; }
+.hub-game-boss i { display: block; width: 96px; height: 5px; border-radius: 3px; background: var(--hub-line); overflow: hidden; }
+.hub-game-boss b { display: block; height: 100%; background: var(--color-error, #f0707a); transform-origin: left; transition: transform 160ms ease; }
+.hub-game-powers { position: absolute; top: 28px; right: 14px; display: flex; gap: 6px; margin: 0; font-size: 11px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.hub-game-powers span { padding: 1px 6px; border: 1px solid var(--hub-line); border-radius: 4px; color: var(--hub-ink); background: color-mix(in srgb, var(--hub-bg) 70%, transparent); }
+.hub-game-powers [data-power='wide'] { border-color: var(--color-warning); }
+.hub-game-powers [data-power='shield'] { border-color: var(--color-info); }
 .hub-game-points { color: var(--hub-ink); font-size: 16px; font-weight: 700; }
 .hub-game-menu { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 16px; color: var(--hub-muted); font-size: 13px; pointer-events: none; background: color-mix(in srgb, var(--hub-bg) 72%, transparent); }
 .hub-game-lives { color: var(--color-error, #f0707a); letter-spacing: 2px; font-size: 14px; }

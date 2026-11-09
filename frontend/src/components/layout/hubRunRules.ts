@@ -8,7 +8,7 @@ import { blankEnemy, bossAt, gone, splitSlime, stepEnemy } from './hubRunEnemies
 import {
   ATTACK_REACH, ATTACK_SECONDS, BOSS_EVERY, BOSS_POINTS, CHAIN_SECONDS, CHARGE_MAX, COIN_POINTS, FOOTING, GRAVITY, HEART_CAP,
   INVULNERABLE_SECONDS, JUMP_SPEED, KILL_POINTS, MAX_HEARTS, PIT_MAX, PIT_MIN, RUN_SPEED, SHIELD_SECONDS, SPECIAL_FACTOR, WIDE_REACH, WIDE_SECONDS,
-  bossOf, chainMultiplier, difficultyAt, enemyRadius, groundUnder, groundY, specialReady, swinging, tangible,
+  bossHp, bossOf, chainMultiplier, difficultyAt, enemyRadius, groundUnder, groundY, specialReady, swinging, tangible,
   type BossKind, type Chest, type Coin, type Enemy, type Knight, type Platform, type RunEvent, type RunInput, type RunPower, type RunState, type RunStats, type Span,
 } from './hubRunModel'
 
@@ -43,7 +43,7 @@ const COIN_RADIUS = 7
 const COIN_SPACING = 16
 const CHEST_HALF_WIDTH = 10
 const CHEST_HEIGHT = 14
-const CHEST_CHANCE = 0.07
+const CHEST_CHANCE = 0.04
 const CHEST_FIRST = 700
 const CHEST_GAP = 600
 /** A struck boss shrugs off hits this long, so one swing takes one point of its life. */
@@ -329,11 +329,15 @@ function fight(state: RunState): RunState {
     const bladeHits = enemy.awake && inBlade(s, enemy) && !knight.struck.includes(enemy.id) && enemy.flash <= 0
     if (bladeHits) {
       const result = strike({ ...s, knight: { ...knight, struck: [...knight.struck, enemy.id] } }, enemy, 'kill')
-      s = result.state
+      // The halves of a split slime are born inside the blade: this swing must not cut them too.
+      const born = result.left.filter((left) => left.id !== enemy.id).map((left) => left.id)
+      s = { ...result.state, knight: { ...result.state.knight, struck: [...result.state.knight.struck, ...born] } }
       survivors.push(...result.left)
       continue
     }
     if (!tangible(enemy) || !touches(knight, enemy.x, enemy.y, enemyRadius(enemy))) { survivors.push(enemy); continue }
+    // A boss he has just struck is reeling back: the hit that landed must not cost him a heart too.
+    if (enemy.boss && enemy.flash > 0) { survivors.push(enemy); continue }
     const fromAbove = knight.vy > STOMP_MIN_SPEED && knight.y - 4 < enemy.y
     if (fromAbove && enemy.flash <= 0) {
       const result = strike({ ...s, knight: { ...knight, vy: -STOMP_BOUNCE, grounded: false } }, enemy, 'stomp')
@@ -406,7 +410,7 @@ function scheduleBoss(state: RunState, dt: number): RunState {
   const bossIn = state.bossIn - dt
   if (bossIn > 0) return { ...state, bossIn }
   const kind: BossKind = state.stats.bosses % 2 === 0 ? 'skull' : 'ghost'
-  const boss = bossAt(state.nextId, kind, state.cameraX + state.width + 30, groundY(state.height) - 62)
+  const boss = bossAt(state.nextId, kind, state.cameraX + state.width + 30, groundY(state.height) - 62, bossHp(state.stats.bosses))
   state.events.push({ type: 'boss', x: boss.x, y: boss.y, kind })
   return { ...state, bossIn: BOSS_EVERY, enemies: [...state.enemies, boss], nextId: state.nextId + 1 }
 }
