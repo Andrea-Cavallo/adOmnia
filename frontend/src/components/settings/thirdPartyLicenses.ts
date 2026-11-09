@@ -8,7 +8,7 @@ export const THIRD_PARTY_LICENSES: ReadonlyArray<{ license: string; packages: re
     license: 'MIT',
     packages: [
       '@apidevtools/openapi-schemas', '@monaco-editor/react', '@radix-ui/react-tabs', '@taplo/lib', '@wailsio/runtime', '@xterm/addon-fit', '@xterm/addon-search', '@xterm/xterm',
-      'ajv', 'ajv-formats', 'clsx', 'emmet', 'mermaid', 'monaco-editor', 'monaco-emacs', 'monaco-vim', 'monaco-yaml', 'pdf-lib', 'prettier', 'react', 'react-dom', 'Tailwind CSS', 'tailwind-merge', 'y-monaco', 'y-protocols', 'yjs', 'zustand',
+      'ajv', 'ajv-formats', 'clsx', 'emmet', 'mermaid', 'monaco-editor', 'monaco-emacs', 'monaco-vim', 'monaco-yaml', 'pdf-lib', 'pixelfx', 'prettier', 'react', 'react-dom', 'Tailwind CSS', 'tailwind-merge', 'y-monaco', 'y-protocols', 'yjs', 'zustand',
       'github.com/HdrHistogram/hdrhistogram-go', 'github.com/IBM/sarama', 'github.com/aymanbagabas/go-pty', 'github.com/dop251/goja', 'github.com/dustin/go-humanize', 'github.com/gabriel-vasile/mimetype', 'github.com/gaissmai/bart', 'github.com/jackc/pgx/v5', 'github.com/pavlo-v-chernykh/keystore-go/v4', 'github.com/tidwall/gjson', 'github.com/tidwall/sjson', 'github.com/wI2L/jsondiff', 'github.com/wailsapp/wails/v3', 'github.com/youmark/pkcs8', 'github.com/zalando/go-keyring', 'go.etcd.io/bbolt',
     ],
   },
