@@ -157,25 +157,23 @@ jobs:
 
       - name: Hadolint (Dockerfiles)
         # --https-only: a redirect to plain HTTP would otherwise be followed silently.
-        # --max-redirect: a bounded redirect chain, same policy as the curl below; --tries retries a refused connection or a transient 5xx from GitHub (-nv keeps the reason in the log).
+        # --max-redirect: a bounded redirect chain; --tries retries a refused connection or a transient 5xx from GitHub (-nv keeps the reason in the log).
         run: |
           wget --https-only --max-redirect 3 --tries=6 --waitretry=15 --retry-connrefused --retry-on-http-error=502,503,504 -nv -O /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
           chmod +x /usr/local/bin/hadolint
           hadolint Dockerfile.linux build/Dockerfile docker/adomnia-lab/mock-api/Dockerfile
 
-      # The archive is downloaded to a file and checked against the published SHA-256 before it is
-      # extracted and run: nothing that arrives over the network is executed unverified.
+      # Built from the Go module proxy, verified against the Go checksum database: no unverified binary
+      # runs, and it does not depend on GitHub release downloads (they answered 504 for minutes).
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
       - name: actionlint (GitHub workflows)
         env:
           ACTIONLINT_VERSION: 1.7.12
-          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
-        run: |
-          archive="$RUNNER_TEMP/actionlint.tar.gz"
-          curl --proto '=https' --tlsv1.2 --max-redirs 3 --retry 6 --retry-delay 10 --retry-all-errors -fsSL -o "$archive" \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum -c -
-          tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
-          "$RUNNER_TEMP/actionlint" -shellcheck=
+        run: go run "github.com/rhysd/actionlint/cmd/actionlint@v${ACTIONLINT_VERSION}" -shellcheck=
 
   gosec:
     name: gosec (Go security rules)
