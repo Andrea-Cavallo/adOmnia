@@ -13,6 +13,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 - **Saved changes reach Tomcat.** For Eclipse WTP projects the Java language server compiles into the output folder the `.classpath` declares (e.g. `build/classes`), which Tomcat publishes: no Ant build needed between an edit and a reload.
 - **JUnit Plug-in Tests.** In a PDE workspace with a target, test files run inside Equinox like PDE's JUnit Plug-in Test (headless test application, fragments loaded through their host); Eclipse's RemoteTestRunner reports fill the Test tree. Tycho `eclipse-test-plugin` modules run with `mvn verify`.
 
+### API workspace
+
+- **WebSocket connections follow the network settings.** The handshake now goes through adOmnia's proxy (or the system's `HTTPS_PROXY`) and trusts the corporate CA, like HTTP requests already did: behind a corporate proxy or firewall, `wss://` endpoints that worked in a browser or Postman failed with `unexpected EOF`. It also offers permessage-deflate like browsers do. A refused upgrade now shows the server's status and answer, and a dropped connection says where to look.
+
 ### Hub
 
 - **Mini game.** A knight runs through an endless side-scrolling strip at the bottom of the Hub: arrows run, Space jumps, X slashes, C casts the lightning, Esc pauses. Every 20 seconds a boss (a flying skull or a ghost) warns before it dives and drops a chest when beaten; chests give an extra heart, a wide golden slash or a shield. Ghosts fade in and out, big slimes split, frogs crouch before they leap. Keys are read only while the game has focus, so it never takes one from the Hub. Effects by pixelfx (MIT).
