@@ -2,6 +2,10 @@
 import type { UiMessage } from '@/lib/uiI18n'
 
 export const JA_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
+  "LET'S PLAY!": "LET'S PLAY!",
+  "Hub game": "ハブのゲーム",
+  "Loading game…": "ゲームを読み込み中…",
+  "Back to Hub": "ハブに戻る",
   "Good morning.": "おはようございます。",
   "An early start.": "早めのスタート。",
   "What are we building today?": "今日は何を作りますか？",

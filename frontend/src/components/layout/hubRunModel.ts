@@ -1,18 +1,25 @@
+export type WeaponKind = 'sword' | 'lance' | 'hammer' | 'daggers'
+export type ArmorTier = 'steel' | 'verdant' | 'arcane' | 'royal'
 /**
  * The shapes and numbers of the Hub run, shared by its rules and its enemies. All positions are
  * in game pixels, y down; the ground surface is at groundY(height).
  */
-export type RunPhase = 'idle' | 'playing' | 'paused' | 'over'
-export type EnemyKind = 'slime' | 'frog' | 'bat' | 'bird' | 'ghost' | 'skull'
-export type BossKind = 'skull' | 'ghost'
-/** What a boss is doing: flying in, hovering ahead, warning, diving at the knight, flying back. */
-export type BossPhase = 'enter' | 'hover' | 'warn' | 'dive' | 'return'
+import type { CemeteryProgress } from './hubRunStages'
+
+export type RunPhase = 'idle' | 'playing' | 'paused' | 'over' | 'complete'
+export type EnemyKind = 'slime' | 'frog' | 'bat' | 'bird' | 'ghost' | 'skull' | 'zombie' | 'reaper' | 'burster' | 'armored' | 'warden' | 'bonecaster' | 'gargoyle'
+export type BossKind = 'skull' | 'ghost' | 'warden'
+/** What a boss is doing: flying in, hovering ahead, warning, attacking, flying back. */
+export type BossPhase = 'enter' | 'hover' | 'warn' | 'dive' | 'slam' | 'return'
+/** The attack a boss has committed to when its warning ends. */
+export type BossAttack = 'dive' | 'slam' | 'raise'
 export type RunPower = 'heart' | 'wide' | 'shield'
 export type RunMedal = 'bronze' | 'silver' | 'gold'
 
-export interface Span { x0: number; x1: number }
+export interface Span { x0: number; x1: number; y0?: number; y1?: number }
 export interface Platform extends Span { y: number }
 export interface Coin { id: number; x: number; y: number }
+export interface Sword { id: number; x: number; y: number; previousX: number; vx: number; life: number; weapon?: WeaponKind; damage?: number; vy?: number; previousY?: number; pierces?: number }
 /** A chest on the ground: touching it opens it and grants a power. */
 export interface Chest { id: number; x: number; y: number }
 export interface Enemy {
@@ -25,7 +32,15 @@ export interface Enemy {
   vy: number
   /** Seconds since it woke up (it sleeps until it is near the screen). */
   age: number
+  /** Pixels walked so far: the walk cycle is driven by distance, so the feet never skate. */
+  stride?: number
+  knockTime?: number
+  bumped?: boolean
+  armLost?: boolean
+  armRecover?: number
+  armX?: number
   awake: boolean
+  emerging?: boolean
   /** Flyers bob around this height. */
   baseY: number
   /** Seconds until a frog hops again. */
@@ -43,6 +58,38 @@ export interface Enemy {
   targetY: number
   /** Seconds a struck boss shrugs off further hits (and flashes). */
   flash: number
+  /** Which way the body (and its shield) faces: 1 right, -1 left. */
+  facing: 1 | -1
+  /** Shield points left. 0 means no shield, or one that has already been broken. */
+  guard: number
+  /** Seconds the guard stays down after a block: frontal hits land in this window. */
+  guardOpen: number
+  /** Seconds left of its death animation; the enemy is gone when it reaches 0. */
+  dying: number
+  /** The whole death animation, so the renderer can read a 0–1 progress. */
+  dyingFor: number
+  /** Seconds it stands alert after noticing the knight, before it charges. */
+  alert: number
+  /** The Guardian's announced attack, chosen when its warning starts. */
+  bossAttack: BossAttack
+}
+/** A piece of equipment knocked off the knight: it flies, spins and falls to the ground. */
+export interface Debris {
+  id: number
+  kind: 'helmet' | 'plate' | 'rivet' | 'arm'
+  x: number
+  y: number
+  vx: number
+  vy: number
+  /** Radians. */
+  angle: number
+  spin: number
+  /** Seconds left before it fades. */
+  life: number
+  /** 1 when it has touched the ground (it stops bouncing after a couple of hits). */
+  bounces: number
+  floor: number
+  size: number
 }
 export interface Knight {
   /** Feet. */
@@ -58,6 +105,9 @@ export interface Knight {
   buffer: number
   /** Seconds since the swing started, or -1. */
   attack: number
+  attackWeapon?: WeaponKind
+  throwing?: number
+  crouching?: boolean
   /** Enemies this swing already hit. */
   struck: number[]
   /** Seconds he cannot be hurt. */
@@ -72,11 +122,36 @@ export interface RunInput {
   /** Pressed since the last step. */
   jump: boolean
   attack: boolean
+  selectWeapon?: WeaponKind
+  aimX?: number
+  aimY?: number
+  throwSword?: boolean
+  crouch?: boolean
+  interact?: boolean
   special: boolean
 }
 interface At { x: number; y: number }
+/** A freed prisoner's escape: out of the cage, over the ground, then away. */
+export type RescuePhase = 'freed' | 'climb' | 'run'
+export interface RescueActor {
+  /** The prisoner's id in the stage data. */
+  prisoner: number
+  x: number
+  y: number
+  phase: RescuePhase
+  timer: number
+  facing: 1 | -1
+  /** Where it is running to: off the critical path, past the cage. */
+  exitX: number
+  /** Set while it hops over a gap. */
+  vy: number
+}
 export type RunEvent =
-  | ({ type: 'jump' | 'land' | 'swing' | 'block' | 'split' } & At)
+  | ({ type: 'jump' | 'land' | 'swing' | 'throw' | 'bell' | 'block' | 'split' | 'burst' | 'armorBreak' | 'hammerImpact' | 'crowCry' | 'gargoyleCrash' | 'topple' | 'distantBell' | 'armLost' } & At)
+  | ({ type: 'shieldBlock' | 'shieldBreak'; guard: number } & At)
+  | ({ type: 'bossSlam' } & At)
+  | ({ type: 'rescue'; name: string; reward: string } & At)
+  | ({ type: 'reward'; text: string } & At)
   | ({ type: 'kill' | 'stomp'; kind: EnemyKind; points: number } & At)
   | ({ type: 'coin'; points: number } & At)
   | ({ type: 'hurt' | 'fall' } & At)
@@ -98,6 +173,17 @@ export interface RunState {
   coins: Coin[]
   chests: Chest[]
   enemies: Enemy[]
+  swords: Sword[]
+  swordCooldown: number
+  stage?: CemeteryProgress
+  /** Pieces of the knight's armor still in the air. */
+  debris?: Debris[]
+  /** Killed enemies playing their death animation: not targetable and not in `enemies`. */
+  corpses?: Enemy[]
+  /** Freed prisoners running to safety. */
+  escapes?: RescueActor[]
+  hazards?: Array<{ id: number; x: number; y: number; vx: number; vy: number; life: number; kind?: 'bone' | 'wave' }>
+  hitStop?: number
   /** World x up to which the level exists. */
   builtTo: number
   nextId: number
@@ -154,18 +240,19 @@ export const BOSS_HP_MAX = 9
 export const BOSS_WARN_SECONDS = 0.75
 export const GHOST_CYCLE = 3
 export const MEDALS: ReadonlyArray<readonly [RunMedal, number]> = [['gold', 7000], ['silver', 3500], ['bronze', 1500]]
-export const BOSS_NAMES: Record<BossKind, string> = { skull: 'Flying skull', ghost: 'Ghost' }
+export const BOSS_NAMES: Record<BossKind, string> = { skull: 'Flying skull', ghost: 'Ghost', warden: 'Grave Guardian' }
 
 const GROUND_MARGIN = 12
 const DIFFICULTY_PIXELS = 1200
 const MAX_DIFFICULTY = 3
 /** He keeps standing while this close to the edge of the ground. */
 export const FOOTING = 4
-const RADIUS: Record<EnemyKind, number> = { slime: 9, frog: 9, bat: 10, bird: 9, ghost: 10, skull: 14 }
+const RADIUS: Record<EnemyKind, number> = { slime: 9, frog: 9, bat: 10, bird: 9, ghost: 10, skull: 14, zombie: 16, reaper: 15, burster: 16, armored: 17, warden: 23, bonecaster: 16, gargoyle: 12 }
 const BIG_SLIME_RADIUS = 13
 const BOSS_RADIUS = 15
 
 export const groundY = (height: number) => height - GROUND_MARGIN
+export const knightBodyHeight = (knight: Pick<Knight, 'crouching'>) => knight.crouching ? 22 : 38
 export const enemyRadius = (enemy: Pick<Enemy, 'kind' | 'big' | 'boss'>) => (enemy.boss ? BOSS_RADIUS : enemy.big ? BIG_SLIME_RADIUS : RADIUS[enemy.kind])
 export const chainMultiplier = (chain: number) => Math.min(MAX_CHAIN_MULTIPLIER, 1 + Math.floor(Math.max(0, chain) / CHAIN_STEP))
 export const meters = (state: RunState) => Math.floor(state.furthest / PIXELS_PER_METER)
@@ -175,9 +262,20 @@ export const difficultyAt = (x: number) => Math.min(MAX_DIFFICULTY, x / DIFFICUL
 export const bossHp = (beaten: number) => Math.min(BOSS_HP_MAX, BOSS_HP + beaten)
 export const specialReady = (state: RunState) => state.charge >= CHARGE_MAX
 export const medalFor = (score: number): RunMedal | null => MEDALS.find(([, threshold]) => score >= threshold)?.[0] ?? null
-export const swinging = (knight: Knight) => knight.attack >= ATTACK_FROM && knight.attack <= ATTACK_TO
+export const swinging = (knight: Knight) => knight.attackWeapon === 'hammer' ? knight.attack >= 0.24 && knight.attack <= 0.4 : knight.attackWeapon === 'daggers' ? knight.attack >= 0.04 && knight.attack <= 0.12 : knight.attack >= ATTACK_FROM && knight.attack <= ATTACK_TO
 export const bossOf = (state: RunState): Enemy | undefined => state.enemies.find((enemy) => enemy.boss)
-export const groundUnder = (state: RunState, x: number) => state.ground.some((span) => x >= span.x0 - FOOTING && x <= span.x1 + FOOTING)
+export function spanHeight(span: Span, x: number, height: number): number {
+  const start = span.y0 ?? groundY(height)
+  const end = span.y1 ?? start
+  const t = Math.max(0, Math.min(1, (x - span.x0) / Math.max(1, span.x1 - span.x0)))
+  return start + (end - start) * t
+}
+export function groundHeightAt(state: Pick<RunState, 'ground' | 'height'>, x: number, padding = FOOTING): number | null {
+  const span = state.ground.find((item) => x >= item.x0 && x <= item.x1)
+    ?? state.ground.find((item) => x >= item.x0 - padding && x <= item.x1 + padding)
+  return span ? spanHeight(span, x, state.height) : null
+}
+export const groundUnder = (state: RunState, x: number) => groundHeightAt(state, x) !== null
 
 /**
  * A ghost (and the ghost boss while it hovers) goes through a cycle: solid, fading, gone, coming back.
@@ -192,6 +290,10 @@ export function ghostVisibility(age: number): Visibility {
 }
 /** Whether an enemy can touch or be touched right now. */
 export function tangible(enemy: Enemy): boolean {
+  if (enemy.dying > 0 || enemy.hp <= 0) return false
+  if (enemy.kind === 'gargoyle' && enemy.bossPhase === 'enter') return false
+  if (enemy.emerging && enemy.age < 0.85) return false
+  if (enemy.kind === 'burster' && enemy.age < 0.7) return false
   if (enemy.boss) return enemy.kind !== 'ghost' || enemy.bossPhase !== 'hover' || ghostVisibility(enemy.age) === 'solid'
   return enemy.kind !== 'ghost' || ghostVisibility(enemy.age) === 'solid'
 }

@@ -152,7 +152,7 @@ export interface AppSettings {
     dailyScenariosEnabled: boolean
     showAdvancedFeatures: boolean
     showLabFeatures: boolean
-    /** The knight mini game at the bottom of the Hub: off until turned on in Settings → Feature Surface. */
+    /** The Hub's LET'S PLAY! launcher: off until turned on in Settings → Feature Surface. */
     hubGameEnabled: boolean
   }
   markdown: {

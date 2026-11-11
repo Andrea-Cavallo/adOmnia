@@ -46,9 +46,18 @@
 
 /* Main column */
 .hub-main { position: relative; z-index: 1; grid-column: 2; grid-row: 1; min-width: 0; overflow-y: auto; padding: 0 44px 40px 60px; }
-.hub-game { position: relative; z-index: 1; grid-column: 2; grid-row: 2; height: 160px; border-top: 1px solid var(--hub-line); outline: none; transition: height 180ms ease; }
-/* Room to jump while a run is on; the strip shrinks back when it ends. */
-.hub-game[data-phase='playing'], .hub-game[data-phase='paused'] { height: 240px; }
+.hub-play { position: relative; z-index: 1; grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 0 44px 28px 60px; padding: 18px 24px; border: 1px solid var(--hub-line); border-radius: 999px; background: var(--hub-ink); color: var(--hub-bg) !important; font-family: var(--hub-dots) !important; font-size: 24px !important; letter-spacing: 0.08em; }
+.hub-play:hover { filter: brightness(0.9); }
+.hub-game-dialog { position: fixed; inset: 0; box-sizing: border-box; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--hub-bg); color: var(--hub-ink); font-family: var(--hub-mono); overflow: hidden; }
+.hub-game-dialog[open] { display: flex; flex-direction: column; }
+.hub-game-dialog::backdrop { background: var(--hub-bg); }
+.hub-game-header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--hub-line); }
+.hub-game-header > span { font: 800 24px var(--hub-dots); }
+.hub-game-header button { min-height: 36px; padding: 6px 16px; border: 1px solid var(--hub-line); border-radius: 999px; background: var(--color-surface-2); }
+.hub-game-dialog .hub-game { display: block; position: relative; flex: 1; min-height: 0; width: 100%; outline: none; }
+.hub-game-dialog .hub-game-menu { flex-direction: column; padding: 24px; text-align: center; }
+.hub-game-dialog .hub-game-results { align-items: center; }
+@media (max-width: 700px) { .hub-play { margin: 0 20px 20px; } }
 .hub-game:focus-visible { box-shadow: inset 0 0 0 1px var(--color-accent); }
 .hub-game-keys kbd { display: inline-block; min-width: 18px; margin: 0 2px; padding: 0 5px; border: 1px solid var(--hub-line); border-radius: 4px; background: var(--color-surface-2); color: var(--hub-ink); font: 600 11px/18px var(--font-mono, monospace); text-align: center; }
 .hub-game-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
@@ -138,6 +147,7 @@
   .hub-file-path { display: none; }
 }
 @media (max-width: 760px) {
+  .hub-play { grid-column: 1; grid-row: 3; margin: 0 20px 20px; }
   .hub-laser, .hub-game { display: none; }
   .hub-main { grid-column: auto; grid-row: auto; }
   [data-hub-page] { grid-template-columns: 1fr; grid-template-rows: auto 1fr; overflow-y: auto; }

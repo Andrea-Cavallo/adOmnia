@@ -14,10 +14,10 @@ import { frogCrouching } from './hubRunEnemies'
 import { ghostVisibility, type Enemy, type EnemyKind, type RunPower } from './hubRunRules'
 
 export const CRITTERS: Record<EnemyKind, PixelFxModule> = {
-  slime: slimeEffect, frog: frogEffect, bat: batEffect, bird: birdEffect, ghost: ghostEffect, skull: skullEffect,
+  gargoyle: skullEffect, slime: slimeEffect, frog: frogEffect, bat: batEffect, bird: birdEffect, ghost: ghostEffect, skull: skullEffect, zombie: ghostEffect, reaper: skullEffect, burster: ghostEffect, armored: ghostEffect, warden: skullEffect, bonecaster: ghostEffect,
 }
 /** From the sprite's origin (its floor) to the body's middle: slimes and frogs sit on it, the rest float above. */
-export const FEET_OFFSET: Record<EnemyKind, number> = { slime: 9, frog: 9, bat: 0, bird: 0, ghost: 29, skull: 40 }
+export const FEET_OFFSET: Record<EnemyKind, number> = { slime: 9, frog: 9, bat: 0, bird: 0, ghost: 29, skull: 40, zombie: 16, reaper: 0, burster: 16, armored: 17, warden: 23, bonecaster: 16, gargoyle: 18 }
 
 /** A big slime is red, so it reads as "this one splits" before it is struck. */
 const BIG_SLIME_PALETTE = ['#180608', '#3e0c14', '#741a22', '#b02a2a', '#e0503a', '#ff9a6a', '#ffe2c8']
@@ -63,3 +63,8 @@ export function trembleOf(enemy: Enemy, clock: number): number {
 
 /** Whether the dive warning (the target cross and the "!") shows this frame. */
 export const warningShown = (enemy: Enemy, clock: number) => enemy.boss && enemy.bossPhase === 'warn' && !blinkOff(clock, WARN_BLINK)
+
+/** A non-boss wind-up (the bone thrower's raise, the burster's swell) shows a "!" too. */
+export const telegraphShown = (enemy: Enemy, clock: number) =>
+  warningShown(enemy, clock) ||
+  ((enemy.kind === 'bonecaster' || enemy.kind === 'burster') && enemy.bossPhase === 'warn' && !blinkOff(clock, WARN_BLINK))

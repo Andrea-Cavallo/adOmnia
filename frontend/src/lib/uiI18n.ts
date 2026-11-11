@@ -9,6 +9,10 @@ import type { Lang } from '@/lib/i18n'
  * small while still making missing Italian entries a compile-time error.
  */
 export const ITALIAN_UI_MESSAGES = {
+  "LET'S PLAY!": "LET'S PLAY!",
+  "Hub game": "Gioco dell’Hub",
+  "Loading game…": "Caricamento del gioco…",
+  "Back to Hub": "Torna all’Hub",
   "Good morning.": "Buongiorno.",
   "An early start.": "Si comincia presto.",
   "What are we building today?": "Cosa costruiamo oggi?",

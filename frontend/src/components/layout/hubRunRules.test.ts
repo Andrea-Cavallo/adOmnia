@@ -168,7 +168,12 @@ describe('hub run: enemies', () => {
     const far = { ...enemy('slime', 2000, TOP - 9), awake: false }
     expect(stepRun(flat({ enemies: [far] }), idle, DT).enemies[0].x).toBe(2000)
     const near = { ...enemy('slime', 400, TOP - 9), awake: false }
-    expect(stepRun(flat({ enemies: [near] }), idle, DT).enemies[0].x).toBeLessThan(400)
+    // It turns to face him first, then charges.
+    const woke = stepRun(flat({ enemies: [near] }), idle, DT).enemies[0]
+    expect(woke.awake).toBe(true)
+    expect(woke.x).toBe(400)
+    expect(woke.facing).toBe(-1)
+    expect(steps(flat({ enemies: [near] }), 0.4).enemies[0].x).toBeLessThan(400)
   })
   it('turns a slime round at the edge of its ground', () => {
     const run = flat({ ground: [{ x0: -500, x1: 300 }], enemies: [enemy('slime', 296, TOP - 9, { vx: 20 })] })
