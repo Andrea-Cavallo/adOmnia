@@ -4,7 +4,7 @@ adOmnia is a Wails 3 desktop application with a Go backend and a React/TypeScrip
 
 ## Requirements
 
-- Go `1.27.2` (the version declared in `go.mod`)
+- Go `1.27.4` (the version declared in `go.mod`; includes the standard-library fix for GO-2026-6859)
 - Node.js 22.13.0+ and npm
 - Wails CLI `v3.1.0`
 - Native WebView development packages for the target OS
