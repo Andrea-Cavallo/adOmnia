@@ -379,7 +379,7 @@ Failed requests are grouped with their real reason (`error ×20: dial tcp … co
 
 ## What is experimental
 
-LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift, plugin marketplace and Hub games are hidden from v1 navigation. Imported PDFs still open the complete PDF editor, but platform support is limited by the underlying OS and toolchain.
+LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift and plugin marketplace are hidden from v1 navigation. Imported PDFs still open the complete PDF editor, but platform support is limited by the underlying OS and toolchain.
 
 ## Documentation
 

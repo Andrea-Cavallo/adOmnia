@@ -2,10 +2,6 @@
 import type { UiMessage } from '@/lib/uiI18n'
 
 export const ZH_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
-  "LET'S PLAY!": "LET'S PLAY!",
-  "Hub game": "主页游戏",
-  "Loading game…": "正在加载游戏…",
-  "Back to Hub": "返回主页",
   "Good morning.": "早上好。",
   "An early start.": "早早开始。",
   "What are we building today?": "今天要做些什么？",

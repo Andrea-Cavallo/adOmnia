@@ -916,12 +916,6 @@ export function SettingsPanel({ initialSection = 'general' }: { initialSection?:
                 checked={settings.features.dailyScenariosEnabled}
                 onChange={(v) => updateFeatures({ dailyScenariosEnabled: v })}
               />
-              <Toggle
-                label="Hub mini game"
-                desc="Show LET'S PLAY! in the Hub to open the knight game across the adOmnia window. It only reads keys while you play it."
-                checked={settings.features.hubGameEnabled}
-                onChange={(v) => updateFeatures({ hubGameEnabled: v })}
-              />
             </SettingsCard>
           </>
         )}

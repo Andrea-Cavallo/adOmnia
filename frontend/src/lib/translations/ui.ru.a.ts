@@ -2,10 +2,6 @@
 import type { UiMessage } from '@/lib/uiI18n'
 
 export const RU_UI_MESSAGES_A: Partial<Record<UiMessage, string>> = {
-  "LET'S PLAY!": "LET'S PLAY!",
-  "Hub game": "Игра в хабе",
-  "Loading game…": "Загрузка игры…",
-  "Back to Hub": "Вернуться в хаб",
   "Good morning.": "Доброе утро.",
   "An early start.": "Ранний старт.",
   "What are we building today?": "Что создадим сегодня?",

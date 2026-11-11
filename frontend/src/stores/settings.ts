@@ -153,7 +153,6 @@ export interface AppSettings {
     showAdvancedFeatures: boolean
     showLabFeatures: boolean
     /** The Hub's LET'S PLAY! launcher: off until turned on in Settings → Feature Surface. */
-    hubGameEnabled: boolean
   }
   markdown: {
     templatesFolder: string
@@ -323,7 +322,6 @@ const defaultSettings: AppSettings = {
     dailyScenariosEnabled: false,
     showAdvancedFeatures: true,
     showLabFeatures: false,
-    hubGameEnabled: false,
   },
   markdown: {
     templatesFolder: '',

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { ArrowRight, ChevronRight, Code2, Database, FileText, Info, Send, Settings, Wrench, type LucideIcon } from 'lucide-react'
 import { getFeatureLabel, isFeatureVisible, visibleRailCategories } from '@/lib/featureRegistry'
 import { minuteAlignedTimeout } from '@/lib/visiblePolling'
@@ -17,7 +17,6 @@ import './WelcomePanel.css'
 
 
 // Code Studio stays lazy: the file icon set loads only when the Hub shows a recent file.
-const HubGame = lazy(() => import('./HubGame').then((module) => ({ default: module.HubGame })))
 const FileIcon = lazy(() => import('@/components/code-studio/CodeStudioFileIcon').then((module) => ({ default: module.CodeStudioFileIcon })))
 
 // Start actions on the Hub page; the sidebar reads the full rail registry.
@@ -125,13 +124,6 @@ export function WelcomePanel() {
   const requests = useMemo(() => recentRequests(history, RECENT_ROWS), [history])
   const [phrase] = useState(loadHubPhrase)
   const flags = useSettingsStore((state) => state.settings.features)
-  const [gameOpen, setGameOpen] = useState(false)
-  const gameDialog = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    if (gameOpen && flags.hubGameEnabled) gameDialog.current?.showModal()
-    else gameDialog.current?.close()
-    if (!flags.hubGameEnabled) setGameOpen(false)
-  }, [gameOpen, flags.hubGameEnabled])
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   const date = now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(/[.,]/g, '').toUpperCase()
   const zone = zoneLabel(now)
@@ -221,15 +213,6 @@ export function WelcomePanel() {
           </section>
         )}
       </main>
-      {flags.hubGameEnabled && <>
-        <button type="button" className="hub-play" onClick={() => setGameOpen(true)}>{t("LET'S PLAY!")}<ArrowRight size={20} aria-hidden="true" /></button>
-        <dialog ref={gameDialog} className="hub-game-dialog" aria-label={t('Hub game')} onCancel={() => setGameOpen(false)} onClose={() => setGameOpen(false)}>
-          {gameOpen && <>
-            <header className="hub-game-header"><span>{t("LET'S PLAY!")}</span><button type="button" onClick={() => setGameOpen(false)}>{t('Back to Hub')}</button></header>
-            <Suspense fallback={<p role="status">{t('Loading game…')}</p>}><HubGame /></Suspense>
-          </>}
-        </dialog>
-      </>}
     </div>
   )
 }
