@@ -23,6 +23,8 @@ import type {
   ActivatorInfo, BundleDetail, BundleRow, Consumer, Diagnostic, ExplorerReport, FocusGraph, RuntimeSnapshot, SearchHit, TargetComparison,
 } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import { withContentKeys } from '@/lib/contentKeys'
+import '@fontsource/doto/latin-800.css'
+import './codeStudioOsgi.css'
 
 let openRequest: ((sessionId: string) => void) | null = null
 /** Un import richiesto dal menu contestuale: il pannello lo avvia appena è pronto. */
@@ -82,7 +84,7 @@ interface BundleStatusLike {
 function MissingRow({ missing }: Readonly<{ missing: { kind: string; name: string; range?: string; optional?: boolean; available?: string[] } }>) {
   const available = missing.available ?? []
   return (
-    <div className="pb-1 pl-4 text-[11px]">
+    <div className="pb-1 pl-4 text-[12px]">
       <span className={missing.optional ? 'text-text-3' : 'text-danger'}>{missing.kind}: {missing.name}</span>
       {missing.range && <span className="text-text-3"> · required {missing.range}</span>}
       {missing.optional && <span className="text-text-4"> · optional</span>}
@@ -141,6 +143,17 @@ function announceBuildOutcome(outcome: OsgiBuildEvent): void {
 }
 
 type Tab = 'bundles' | 'graph' | 'activators' | 'diagnose' | 'runtime' | 'apps' | 'dependencies' | 'target'
+const OSGI_SECTIONS: ReadonlyArray<{ id: Tab; label: string; hint: string; icon: typeof Boxes }> = [
+  { id: 'bundles', label: 'Bundles', hint: 'Inspect workspace bundles and their resolution state.', icon: ListTree },
+  { id: 'graph', label: 'Dependency graph', hint: 'Explore connections around the selected bundle.', icon: Link2 },
+  { id: 'activators', label: 'Activators', hint: 'Inspect lifecycle methods and set breakpoints.', icon: Bug },
+  { id: 'diagnose', label: 'Diagnostics', hint: 'Understand resolution problems and how to fix them.', icon: AlertTriangle },
+  { id: 'runtime', label: 'Runtime', hint: 'Monitor the live Equinox framework and its bundles.', icon: Activity },
+  { id: 'apps', label: 'Applications', hint: 'Launch or debug workspace products and applications.', icon: AppWindow },
+  { id: 'dependencies', label: 'Find a dependency', hint: 'Find who provides a class or package and who uses it.', icon: Package },
+  { id: 'target', label: 'Target platform', hint: 'Choose the bundles your workspace resolves against.', icon: Layers },
+]
+
 type Filter = 'all' | 'issues' | 'resolved' | 'lazy' | 'installed' | 'active'
 
 /** Quante righe disegna il navigator: oltre, la ricerca è la strada (500+ bundle restano veloci). */
@@ -172,17 +185,18 @@ function SummaryCards({ report, filter, onFilter }: Readonly<{ report: ExplorerR
         { key: 'issues', label: 'Issues', value: summary.issues, tone: summary.issues > 0 ? 'text-danger' : undefined },
       ]
   return (
-    <div className="grid grid-cols-4 gap-2 px-3 py-2">
+    <div className="osgi-filters" aria-label="Filter bundles by state">
       {cards.map((card) => (
         <button
           key={card.key}
           type="button"
           onClick={() => onFilter(filter === card.key ? 'all' : card.key)}
-          className={`rounded-md border px-2.5 py-1.5 text-left transition ${filter === card.key ? 'border-accent bg-surface-3' : 'border-border-1 bg-surface-2 hover:bg-surface-3'}`}
+          className="osgi-filter"
+          aria-pressed={filter === card.key}
           title={`Show ${card.label.toLowerCase()}`}
         >
-          <span className={`block text-[17px] font-semibold leading-tight ${card.tone ?? 'text-text-1'}`}>{card.value}</span>
-          <span className="block text-[10.5px] uppercase tracking-wide text-text-3">{card.label}</span>
+          <span className={`osgi-filter-value ${card.tone ?? 'text-text-1'}`}>{card.value}</span>
+          <span className="osgi-filter-label">{card.label}</span>
         </button>
       ))}
     </div>
@@ -194,9 +208,9 @@ function StatePip({ row }: Readonly<{ row: BundleRow }>) {
   const label = state === 'TARGET' ? 'target' : state === 'INSTALLED' ? 'INSTALLED' : state === 'ACTIVE' ? 'ACTIVE' : state === 'RESOLVED' ? (row.lazy ? 'RESOLVED · lazy' : 'RESOLVED') : 'not resolved'
   const title = state === 'TARGET' ? 'In the target platform' : state === 'INSTALLED' ? 'Does not resolve: see Diagnose' : state === 'ACTIVE' ? `Active in the running framework${row.activeAtMs ? ` (first ACTIVE at +${row.activeAtMs} ms)` : ''}` : state === 'RESOLVED' ? 'Resolves against the target; not running here' : 'Choose a target platform to resolve this bundle'
   return (
-    <span className="flex shrink-0 items-center gap-1" title={title}>
+    <span className="osgi-state" title={title}>
       <CircleDot size={9} className={STATE_CLASS[state] ?? 'text-text-3'} />
-      <span className={`text-[10px] ${STATE_CLASS[state] ?? 'text-text-3'}`}>{label}</span>
+      <span className={`text-[11px] ${STATE_CLASS[state] ?? 'text-text-3'}`}>{label}</span>
     </span>
   )
 }
@@ -206,17 +220,18 @@ function BundleLine({ row, selected, onSelect }: Readonly<{ row: BundleRow; sele
     <button
       type="button"
       onClick={onSelect}
-      className={`grid w-full grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 border-b border-border-1 px-3 py-1 text-left hover:bg-surface-3 ${selected ? 'bg-surface-3' : ''}`}
+      className="osgi-bundle-row"
+      aria-pressed={selected}
       title={row.location}
     >
-      <span className="min-w-0 truncate font-mono text-[11.5px] text-text-1">
-        {row.source === 'target' && <span className="mr-1 text-[9.5px] uppercase tracking-wide text-text-4">t</span>}
-        {row.symbolicName} <span className="text-accent">{row.version}</span>
+      <span className="osgi-bundle-name">
+        {row.source === 'target' && <span className="osgi-source">Target</span>}
+        {row.symbolicName} <span className="osgi-bundle-version">{row.version}</span>
       </span>
-      <span className="max-w-[13rem] truncate text-[10.5px] text-text-3" title={row.activator || 'no Bundle-Activator'}>{row.activator ? row.activator.split('.').pop() : '—'}</span>
-      <span className="text-[10px] text-text-3" title={`Declared start level · ${row.dependencies} direct requirement(s)`}>L{row.startLevel} · {row.dependencies}d</span>
+      <span className="osgi-bundle-activator truncate text-text-3" title={row.activator || 'no Bundle-Activator'}>{row.activator ? row.activator.split('.').pop() : '—'}</span>
+      <span className="osgi-bundle-level text-text-3" title={`Declared start level · ${row.dependencies} direct requirement(s)`}>L{row.startLevel} · {row.dependencies}d</span>
       <span className="flex items-center gap-1.5">
-        {row.issues > 0 && <span className="rounded bg-danger/15 px-1 text-[10px] text-danger" title={`${row.issues} issue(s)`}>{row.issues}</span>}
+        {row.issues > 0 && <span className="rounded bg-danger/15 px-1 text-[11px] text-danger" title={`${row.issues} issue(s)`}>{row.issues}</span>}
         <StatePip row={row} />
       </span>
     </button>
@@ -225,14 +240,14 @@ function BundleLine({ row, selected, onSelect }: Readonly<{ row: BundleRow; sele
 
 function ConsumerLine({ consumer }: Readonly<{ consumer: Consumer }>) {
   return (
-    <div className="flex flex-wrap items-baseline gap-1.5 border-b border-border-1/60 py-0.5 text-[11px]">
+    <div className="flex flex-wrap items-baseline gap-1.5 border-b border-border-1/60 py-0.5 text-[12px]">
       <span className="font-mono text-text-1">{consumer.symbolicName}</span>
       <span className="text-text-4">{consumer.version}</span>
-      <span className={`text-[10px] ${consumer.kind.includes('incompatible') ? 'text-danger' : 'text-text-3'}`}>{consumer.kind}</span>
-      {consumer.optional && <span className="text-[10px] text-text-4">optional</span>}
+      <span className={`text-[11px] ${consumer.kind.includes('incompatible') ? 'text-danger' : 'text-text-3'}`}>{consumer.kind}</span>
+      {consumer.optional && <span className="text-[11px] text-text-4">optional</span>}
       <span className="min-w-0 flex-1 truncate text-text-3" title={consumer.requirement}>{consumer.requirement}</span>
-      {(consumer.services ?? []).length > 0 && <span className="text-[10px] text-accent" title={(consumer.services ?? []).join(', ')}>service</span>}
-      {consumer.test && <span className="text-[10px] text-warning">test</span>}
+      {(consumer.services ?? []).length > 0 && <span className="text-[11px] text-accent" title={(consumer.services ?? []).join(', ')}>service</span>}
+      {consumer.test && <span className="text-[11px] text-warning">test</span>}
     </div>
   )
 }
@@ -241,18 +256,18 @@ function DiagnosticBlock({ diagnostic }: Readonly<{ diagnostic: Diagnostic }>) {
   const [open, setOpen] = useState(false)
   return (
     <div className="border-b border-border-1 px-3 py-1.5">
-      <button type="button" className="flex w-full items-center gap-2 text-left" onClick={() => setOpen(!open)}>
+      <button type="button" className="flex w-full items-center gap-2 text-left" aria-expanded={open} onClick={() => setOpen(!open)}>
         {open ? <ChevronDown size={11} className="shrink-0 text-text-3" /> : <ChevronRight size={11} className="shrink-0 text-text-3" />}
         <AlertTriangle size={11} className={`shrink-0 ${SEVERITY_CLASS[diagnostic.severity]}`} />
-        <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-1">{diagnostic.title}</span>
-        {diagnostic.bundle && <span className="shrink-0 font-mono text-[10.5px] text-text-3">{diagnostic.bundle}</span>}
-        <span className={`shrink-0 text-[10px] uppercase ${SEVERITY_CLASS[diagnostic.severity]}`}>{diagnostic.kind}</span>
+        <span className="min-w-0 flex-1 truncate text-[12px] text-text-1">{diagnostic.title}</span>
+        {diagnostic.bundle && <span className="shrink-0 font-mono text-[12px] text-text-3">{diagnostic.bundle}</span>}
+        <span className={`shrink-0 text-[11px] uppercase ${SEVERITY_CLASS[diagnostic.severity]}`}>{diagnostic.kind}</span>
       </button>
       {open && (
-        <div className="pl-6 pt-1 text-[11px]">
+        <div className="pl-6 pt-1 text-[12px]">
           <p className="text-text-2">{diagnostic.cause}</p>
           {(diagnostic.evidence ?? []).length > 0 && (
-            <ul className="pt-1 text-[10.5px] text-text-3">
+            <ul className="pt-1 text-[12px] text-text-3">
               {(diagnostic.evidence ?? []).map((line) => <li key={line} className="font-mono">{line}</li>)}
             </ul>
           )}
@@ -260,7 +275,7 @@ function DiagnosticBlock({ diagnostic }: Readonly<{ diagnostic: Diagnostic }>) {
             <p className="pt-1 text-text-2"><span className="text-text-3">Fix: </span>{(diagnostic.actions ?? []).join(' · ')}</p>
           )}
           {diagnostic.file && (
-            <button type="button" className="pt-1 text-left text-[10.5px] text-accent hover:underline" onClick={() => { if (diagnostic.file) void useCodeStudioStore.getState().openLocation(diagnostic.file, diagnostic.line || 1, 1) }}>
+            <button type="button" className="pt-1 text-left text-[12px] text-accent hover:underline" onClick={() => { if (diagnostic.file) void useCodeStudioStore.getState().openLocation(diagnostic.file, diagnostic.line || 1, 1) }}>
               {diagnostic.file}{diagnostic.line ? `:${diagnostic.line}` : ''}
             </button>
           )}
@@ -277,47 +292,47 @@ function ImpactSection({ detail }: Readonly<{ detail: BundleDetail }>) {
   const transitive = impact.transitiveConsumers ?? []
   return (
     <section aria-label="Impact" className="border-t border-border-1 px-3 py-2">
-      <h3 className="flex items-center gap-1 pb-1 text-[11px] font-medium text-text-2"><Link2 size={11} /> What breaks if I change this bundle</h3>
-      <p className="text-[11px] text-text-3">
+      <h3 className="flex items-center gap-1 pb-1 text-[12px] font-medium text-text-2"><Link2 size={11} /> What breaks if I change this bundle</h3>
+      <p className="text-[12px] text-text-3">
         {direct.length} direct consumer(s), {transitive.length} transitive.
         {(impact.tests ?? []).length > 0 && ` ${(impact.tests ?? []).length} test bundle(s) depend on it.`}
       </p>
       {direct.length > 0 && (
         <div className="pt-1">
-          <h4 className="text-[10px] uppercase tracking-wide text-text-4">Consumers</h4>
+          <h4 className="text-[11px] uppercase tracking-wide text-text-4">Consumers</h4>
           {direct.slice(0, 40).map((consumer) => <ConsumerLine key={`${consumer.symbolicName}:${consumer.requirement}`} consumer={consumer} />)}
-          {direct.length > 40 && <p className="text-[10px] text-text-4">and {direct.length - 40} more: refine with the graph.</p>}
+          {direct.length > 40 && <p className="text-[11px] text-text-4">and {direct.length - 40} more: refine with the graph.</p>}
         </div>
       )}
       {transitive.length > 0 && (
         <div className="pt-1">
-          <h4 className="text-[10px] uppercase tracking-wide text-text-4">Transitive consumers</h4>
+          <h4 className="text-[11px] uppercase tracking-wide text-text-4">Transitive consumers</h4>
           {transitive.slice(0, 20).map((consumer) => <ConsumerLine key={`${consumer.symbolicName}:${consumer.requirement}`} consumer={consumer} />)}
-          {transitive.length > 20 && <p className="text-[10px] text-text-4">and {transitive.length - 20} more.</p>}
+          {transitive.length > 20 && <p className="text-[11px] text-text-4">and {transitive.length - 20} more.</p>}
         </div>
       )}
       {(impact.tests ?? []).length > 0 && (
         <div className="pt-1">
-          <h4 className="text-[10px] uppercase tracking-wide text-text-4">Tests affected</h4>
+          <h4 className="text-[11px] uppercase tracking-wide text-text-4">Tests affected</h4>
           {(impact.tests ?? []).map((test) => (
-            <button key={test.symbolicName} type="button" className="block truncate text-left text-[11px] text-accent hover:underline" onClick={() => { if (test.location) void useCodeStudioStore.getState().openLocation(`${test.location}/`, 1, 1) }} title={test.reason}>
+            <button key={test.symbolicName} type="button" className="block truncate text-left text-[12px] text-accent hover:underline" onClick={() => { if (test.location) void useCodeStudioStore.getState().openLocation(`${test.location}/`, 1, 1) }} title={test.reason}>
               {test.symbolicName} <span className="text-text-4">· {test.reason}</span>
             </button>
           ))}
         </div>
       )}
       {(impact.providedServices ?? []).length > 0 && (
-        <p className="pt-1 text-[11px] text-text-3">Provides: <span className="font-mono text-text-2">{(impact.providedServices ?? []).join(', ')}</span></p>
+        <p className="pt-1 text-[12px] text-text-3">Provides: <span className="font-mono text-text-2">{(impact.providedServices ?? []).join(', ')}</span></p>
       )}
       {(impact.checks ?? []).length > 0 && (
         <div className="pt-1">
-          <h4 className="text-[10px] uppercase tracking-wide text-text-4">Before you ship</h4>
-          <ul className="text-[11px] text-text-2">
+          <h4 className="text-[11px] uppercase tracking-wide text-text-4">Before you ship</h4>
+          <ul className="text-[12px] text-text-2">
             {(impact.checks ?? []).map((check) => <li key={check}>· {check}</li>)}
           </ul>
         </div>
       )}
-      <p className="pt-1 text-[10px] text-text-4">Impact of {impact.symbolicName} {impact.version} ({impact.source === 'workspace' ? 'workspace' : 'target platform'}){impact.matchedClass ? ` · from ${impact.matchedClass}` : ''}.</p>
+      <p className="pt-1 text-[11px] text-text-4">Impact of {impact.symbolicName} {impact.version} ({impact.source === 'workspace' ? 'workspace' : 'target platform'}){impact.matchedClass ? ` · from ${impact.matchedClass}` : ''}.</p>
     </section>
   )
 }
@@ -329,8 +344,8 @@ function DetailPanel({ detail, loading, onDepth, depth, onToggleBreakpoint }: Re
   onDepth: (depth: number) => void
   onToggleBreakpoint: (path: string, line: number) => void
 }>) {
-  if (loading) return <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> Reading the bundle…</p>
-  if (!detail) return <p className="px-3 py-3 text-[11px] text-text-3">Select a bundle to see why it is in this state, who uses it and what to check.</p>
+  if (loading) return <p className="flex items-center gap-2 px-3 py-3 text-[12px] text-text-3"><Loader2 size={12} className="animate-spin" /> Reading the bundle…</p>
+  if (!detail) return <div className="osgi-empty"><Package size={30} strokeWidth={1.25} aria-hidden="true" /><h3>Inspect a bundle</h3><p>Select a bundle from the list to see its requirements, consumers and resolution details.</p></div>
   const row = detail.row
   const diagnostics = detail.diagnostics ?? []
   const activator = detail.activator
@@ -340,10 +355,10 @@ function DetailPanel({ detail, loading, onDepth, depth, onToggleBreakpoint }: Re
     <div className="flex h-full min-h-0 flex-col overflow-auto">
       <div className="border-b border-border-1 px-3 py-2">
         <div className="flex items-baseline gap-2">
-          <h3 className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-text-1">{row.symbolicName} <span className="text-accent">{row.version}</span></h3>
-          <span className="shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[10px] text-text-3">{row.source === 'workspace' ? 'workspace' : 'target'}</span>
+          <h3 className="min-w-0 flex-1 truncate font-mono text-[13px] text-text-1">{row.symbolicName} <span className="text-accent">{row.version}</span></h3>
+          <span className="shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[11px] text-text-3">{row.source === 'workspace' ? 'workspace' : 'target'}</span>
         </div>
-        <p className="pt-0.5 text-[10.5px] text-text-3">
+        <p className="pt-0.5 text-[12px] text-text-3">
           {row.state === 'INSTALLED' ? 'INSTALLED: a requirement is missing' : row.state === 'TARGET' ? 'Available in the target platform' : row.state === 'RESOLVED' ? 'RESOLVED: the target satisfies it' : 'Not resolved: choose a target platform'}
           {' · '}start level {row.startLevel}{row.startOnLaunch ? ' (starts)' : ''}
           {' · '}{row.lazy ? 'lazy activation' : 'eager activation'}
@@ -354,37 +369,37 @@ function DetailPanel({ detail, loading, onDepth, depth, onToggleBreakpoint }: Re
           {activator?.file && (activator.startLine ?? 0) > 0 && <button type="button" className="gs-btn" onClick={() => { if (activator?.file) void useCodeStudioStore.getState().openLocation(activator.file, activator.startLine ?? 1, 1) }}><Bug size={11} /> start()</button>}
           {activator?.file && (activator.stopLine ?? 0) > 0 && <button type="button" className="gs-btn" onClick={() => { if (activator?.file) void useCodeStudioStore.getState().openLocation(activator.file, activator.stopLine ?? 1, 1) }}><Bug size={11} /> stop()</button>}
           {activator?.file && (activator.startLine ?? 0) > 0 && <button type="button" className="gs-btn" onClick={() => { if (activator?.file) onToggleBreakpoint(activator.file, activator.startLine ?? 1) }} title="Toggle a breakpoint on start()">Breakpoint</button>}
-          <span className="ml-auto text-[10px] text-text-4">graph depth</span>
+          <span className="ml-auto text-[11px] text-text-4">graph depth</span>
           <div className="gs-segmented">
             {[1, 2].map((value) => (
-              <button key={value} type="button" className={depth === value ? 'is-active' : ''} onClick={() => onDepth(value)}>{value}</button>
+              <button key={value} type="button" className="gs-segment" aria-label={`Graph depth ${value}`} aria-pressed={depth === value} onClick={() => onDepth(value)}>{value}</button>
             ))}
           </div>
         </div>
       </div>
       {diagnostics.length > 0 && (
         <section aria-label="Diagnostics" className="border-b border-border-1">
-          <h3 className="px-3 pt-2 text-[11px] font-medium text-text-2">Why</h3>
+          <h3 className="px-3 pt-2 text-[12px] font-medium text-text-2">Why</h3>
           {diagnostics.map((diagnostic) => <DiagnosticBlock key={diagnostic.id} diagnostic={diagnostic} />)}
         </section>
       )}
       {diagnostics.length === 0 && (
-        <p className="border-b border-border-1 px-3 py-2 text-[11px] text-text-3">
+        <p className="border-b border-border-1 px-3 py-2 text-[12px] text-text-3">
           {row.state === 'INSTALLED' ? 'No diagnostic matched: reindex the target platform.' : 'Nothing to fix: the bundle resolves and no rule flags it.'}
         </p>
       )}
       {missing.length > 0 && (
         <section aria-label="Missing requirements" className="border-b border-border-1 px-3 py-1.5">
-          <h3 className="pb-1 text-[11px] font-medium text-text-2">Missing ({missing.length})</h3>
+          <h3 className="pb-1 text-[12px] font-medium text-text-2">Missing ({missing.length})</h3>
           {withContentKeys(missing, (item) => `${item.kind}:${item.name}:${item.range}`).map(({ key, item }) => <MissingRow key={key} missing={item} />)}
         </section>
       )}
       {wires.length > 0 && (
         <section aria-label="Wiring" className="border-b border-border-1 px-3 py-1.5">
-          <h3 className="pb-1 text-[11px] font-medium text-text-2">Wired to ({wires.length})</h3>
+          <h3 className="pb-1 text-[12px] font-medium text-text-2">Wired to ({wires.length})</h3>
           <div className="max-h-32 overflow-auto">
             {withContentKeys(wires, (wire) => `${wire.kind}:${wire.name}:${wire.provider}`).map(({ key, item }) => (
-              <p key={key} className="truncate font-mono text-[10.5px] text-text-3" title={`${item.kind} ${item.name} → ${item.provider} ${item.providerVersion}`}>
+              <p key={key} className="truncate font-mono text-[12px] text-text-3" title={`${item.kind} ${item.name} → ${item.provider} ${item.providerVersion}`}>
                 {item.kind} {item.name} → <span className="text-text-2">{item.provider}</span> {item.providerVersion}
               </p>
             ))}
@@ -393,9 +408,9 @@ function DetailPanel({ detail, loading, onDepth, depth, onToggleBreakpoint }: Re
       )}
       {(detail.serviceComponents ?? []).length > 0 && (
         <section aria-label="Services" className="border-b border-border-1 px-3 py-1.5">
-          <h3 className="pb-1 text-[11px] font-medium text-text-2">Declarative Services</h3>
+          <h3 className="pb-1 text-[12px] font-medium text-text-2">Declarative Services</h3>
           {(detail.serviceComponents ?? []).map((component) => (
-            <p key={component.file} className="text-[10.5px] text-text-3">
+            <p key={component.file} className="text-[12px] text-text-3">
               <span className="font-mono text-text-2">{component.name}</span>
               {(component.services ?? []).length > 0 && ` · provides ${(component.services ?? []).join(', ')}`}
               {(component.references ?? []).length > 0 && ` · uses ${(component.references ?? []).join(', ')}`}
@@ -407,7 +422,7 @@ function DetailPanel({ detail, loading, onDepth, depth, onToggleBreakpoint }: Re
       <ImpactSection detail={detail} />
       {(row.notes ?? []).length > 0 && (
         <section aria-label="Notes" className="border-t border-border-1 px-3 py-1.5">
-          {(row.notes ?? []).map((note) => <p key={note} className="text-[10.5px] text-warning">{note}</p>)}
+          {(row.notes ?? []).map((note) => <p key={note} className="text-[12px] text-warning">{note}</p>)}
         </section>
       )}
     </div>
@@ -415,8 +430,8 @@ function DetailPanel({ detail, loading, onDepth, depth, onToggleBreakpoint }: Re
 }
 
 function GraphPanel({ graph, loading }: Readonly<{ graph: FocusGraph | null; loading: boolean }>) {
-  if (loading) return <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> Building the focused graph…</p>
-  if (!graph) return <p className="px-3 py-3 text-[11px] text-text-3">Select a bundle in Bundles: the graph shows only its dependencies and its consumers, never the whole workspace.</p>
+  if (loading) return <p className="flex items-center gap-2 px-3 py-3 text-[12px] text-text-3"><Loader2 size={12} className="animate-spin" /> Building the focused graph…</p>
+  if (!graph) return <p className="px-3 py-3 text-[12px] text-text-3">Select a bundle in Bundles: the graph shows only its dependencies and its consumers, never the whole workspace.</p>
   const dependencies = graph.edges.filter((edge) => edge.direction === 'dependency')
   const consumers = graph.edges.filter((edge) => edge.direction === 'consumer')
   const required = dependencies.filter((edge) => edge.satisfied)
@@ -424,81 +439,81 @@ function GraphPanel({ graph, loading }: Readonly<{ graph: FocusGraph | null; loa
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-auto md:grid-cols-2">
       <section aria-label="Dependencies" className="min-h-0 border-b border-border-1 md:border-b-0 md:border-r">
-        <h3 className="px-3 pt-2 text-[11px] font-medium text-text-2">Requires ({required.length})</h3>
-        <p className="px-3 text-[10px] text-text-4">{graph.root}</p>
+        <h3 className="px-3 pt-2 text-[12px] font-medium text-text-2">Requires ({required.length})</h3>
+        <p className="px-3 text-[11px] text-text-4">{graph.root}</p>
         <div className="px-3 pb-2">
           {required.map((edge) => (
-            <div key={`${edge.from}|${edge.to}|${edge.kind}|${edge.requirement}`} className="border-b border-border-1/60 py-0.5 text-[11px]">
+            <div key={`${edge.from}|${edge.to}|${edge.kind}|${edge.requirement}`} className="border-b border-border-1/60 py-0.5 text-[12px]">
               <span className="font-mono text-text-2">{edge.to.split(' ')[0]}</span>
               <span className="text-text-4"> {edge.to.split(' ')[1]}</span>
               <span className="text-text-4"> · {edge.kind}</span>
-              {edge.optional && <span className="text-[10px] text-text-4"> optional</span>}
-              <p className="truncate font-mono text-[10px] text-text-4" title={edge.requirement}>{edge.requirement}</p>
+              {edge.optional && <span className="text-[11px] text-text-4"> optional</span>}
+              <p className="truncate font-mono text-[11px] text-text-4" title={edge.requirement}>{edge.requirement}</p>
             </div>
           ))}
           {missingEdges.length > 0 && (
             <>
-              <h4 className="pt-2 text-[10px] uppercase tracking-wide text-danger">Not satisfied ({missingEdges.length})</h4>
+              <h4 className="pt-2 text-[11px] uppercase tracking-wide text-danger">Not satisfied ({missingEdges.length})</h4>
               {missingEdges.map((edge) => (
-                <div key={`missing|${edge.to}|${edge.requirement}`} className="py-0.5 text-[11px]">
+                <div key={`missing|${edge.to}|${edge.requirement}`} className="py-0.5 text-[12px]">
                   <span className="text-danger">{edge.to}</span>
-                  <p className="truncate font-mono text-[10px] text-text-4" title={edge.requirement}>{edge.requirement}</p>
+                  <p className="truncate font-mono text-[11px] text-text-4" title={edge.requirement}>{edge.requirement}</p>
                 </div>
               ))}
             </>
           )}
-          {required.length === 0 && missingEdges.length === 0 && <p className="py-1 text-[11px] text-text-3">This bundle requires nothing from the index.</p>}
+          {required.length === 0 && missingEdges.length === 0 && <p className="py-1 text-[12px] text-text-3">This bundle requires nothing from the index.</p>}
         </div>
       </section>
       <section aria-label="Consumers">
-        <h3 className="px-3 pt-2 text-[11px] font-medium text-text-2">Required by ({consumers.length})</h3>
+        <h3 className="px-3 pt-2 text-[12px] font-medium text-text-2">Required by ({consumers.length})</h3>
         <div className="px-3 pb-2">
           {consumers.map((edge) => (
-            <div key={`${edge.from}|${edge.kind}|${edge.requirement}`} className="border-b border-border-1/60 py-0.5 text-[11px]">
+            <div key={`${edge.from}|${edge.kind}|${edge.requirement}`} className="border-b border-border-1/60 py-0.5 text-[12px]">
               <span className="font-mono text-text-2">{edge.from.split(' ')[0]}</span>
               <span className="text-text-4"> {edge.from.split(' ')[1]}</span>
               <span className="text-text-4"> · {edge.kind}</span>
-              <p className="truncate font-mono text-[10px] text-text-4" title={edge.requirement}>{edge.requirement}</p>
+              <p className="truncate font-mono text-[11px] text-text-4" title={edge.requirement}>{edge.requirement}</p>
             </div>
           ))}
-          {consumers.length === 0 && <p className="py-1 text-[11px] text-text-3">Nothing in the workspace or the target depends on it.</p>}
+          {consumers.length === 0 && <p className="py-1 text-[12px] text-text-3">Nothing in the workspace or the target depends on it.</p>}
         </div>
       </section>
-      {graph.truncated && <p className="px-3 py-2 text-[10.5px] text-warning md:col-span-2">The graph stopped after {graph.nodes.length} bundles: select a closer bundle or use the search.</p>}
+      {graph.truncated && <p className="px-3 py-2 text-[12px] text-warning md:col-span-2">The graph stopped after {graph.nodes.length} bundles: select a closer bundle or use the search.</p>}
     </div>
   )
 }
 
 function ActivatorsPanel({ activators, sessionId, onToggleBreakpoint }: Readonly<{ activators: ActivatorInfo[]; sessionId: string; onToggleBreakpoint: (path: string, line: number) => void }>) {
   if (activators.length === 0) {
-    return <p className="px-3 py-3 text-[11px] text-text-3">No Bundle-Activator in the workspace bundles: they are libraries, fragments or menu contributions only.</p>
+    return <p className="px-3 py-3 text-[12px] text-text-3">No Bundle-Activator in the workspace bundles: they are libraries, fragments or menu contributions only.</p>
   }
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       {withContentKeys(activators, (activator) => `${activator.bundle}:${activator.class}`).map(({ key, item }) => (
         <div key={key} className="border-b border-border-1 px-3 py-1.5">
           <div className="flex items-baseline gap-2">
-            <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-text-1">{item.bundle}</span>
-            <span className={`text-[10px] ${item.lazy ? 'text-warning' : 'text-text-3'}`}>{item.lazy ? 'lazy' : 'eager'}</span>
+            <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-text-1">{item.bundle}</span>
+            <span className={`text-[11px] ${item.lazy ? 'text-warning' : 'text-text-3'}`}>{item.lazy ? 'lazy' : 'eager'}</span>
           </div>
-          <p className="truncate font-mono text-[10.5px] text-text-3">{item.class}</p>
+          <p className="truncate font-mono text-[12px] text-text-3">{item.class}</p>
           <div className="flex flex-wrap items-center gap-1 pt-1">
             {item.file && (item.startLine ?? 0) > 0 && <button type="button" className="gs-btn" onClick={() => { if (item.file) void useCodeStudioStore.getState().openLocation(item.file, item.startLine ?? 1, 1) }}><Bug size={11} /> start()</button>}
             {item.file && (item.stopLine ?? 0) > 0 && <button type="button" className="gs-btn" onClick={() => { if (item.file) void useCodeStudioStore.getState().openLocation(item.file, item.stopLine ?? 1, 1) }}><Bug size={11} /> stop()</button>}
             {item.file && (item.startLine ?? 0) > 0 && <button type="button" className="gs-btn" onClick={() => { if (item.file) onToggleBreakpoint(item.file, item.startLine ?? 1) }}>Breakpoint on start()</button>}
-            {!item.fileExists && <span className="text-[10px] text-warning">source not in the source folders (generated activator or classes in a JAR)</span>}
-            <span className="ml-auto text-[10px] text-text-4">{item.location}</span>
+            {!item.fileExists && <span className="text-[11px] text-warning">source not in the source folders (generated activator or classes in a JAR)</span>}
+            <span className="ml-auto text-[11px] text-text-4">{item.location}</span>
           </div>
         </div>
       ))}
-      <p className="px-3 py-2 text-[10px] text-text-4">Breakpoints are set on the Java source and used by the Java debugger of Code Studio; the activation policy decides whether the framework calls start() eagerly or on first class load ({sessionId.slice(0, 6)}…).</p>
+      <p className="px-3 py-2 text-[11px] text-text-4">Breakpoints are set on the Java source and used by the Java debugger of Code Studio; the activation policy decides whether the framework calls start() eagerly or on first class load ({sessionId.slice(0, 6)}…).</p>
     </div>
   )
 }
 
 function DiagnosePanel({ diagnostics, jvm }: Readonly<{ diagnostics: Diagnostic[]; jvm: number }>) {
   if (diagnostics.length === 0) {
-    return <p className="px-3 py-3 text-[11px] text-text-3">No diagnostic: every bundle resolves against the active target platform.</p>
+    return <p className="px-3 py-3 text-[12px] text-text-3">No diagnostic: every bundle resolves against the active target platform.</p>
   }
   const groups: Array<{ severity: string; label: string }> = [
     { severity: 'error', label: 'Errors: these bundles will not resolve' },
@@ -508,15 +523,15 @@ function DiagnosePanel({ diagnostics, jvm }: Readonly<{ diagnostics: Diagnostic[
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       {jvm === 0 && (
-        <p className="flex items-center gap-1 px-3 py-1.5 text-[10.5px] text-warning"><Info size={11} /> No project JVM selected: Bundle-RequiredExecutionEnvironment is not checked. Choose it in Java › Select JDK.</p>
+        <p className="flex items-center gap-1 px-3 py-1.5 text-[12px] text-warning"><Info size={11} /> No project JVM selected: Bundle-RequiredExecutionEnvironment is not checked. Choose it in Java › Select JDK.</p>
       )}
-      <p className="px-3 py-1 text-[10px] text-text-4">Static analysis: nothing is compiled or started. Runtime states (ACTIVE, services) belong to the runtime adapter.</p>
+      <p className="px-3 py-1 text-[11px] text-text-4">Static analysis: nothing is compiled or started. Runtime states (ACTIVE, services) belong to the runtime adapter.</p>
       {groups.map((group) => {
         const items = diagnostics.filter((diagnostic) => diagnostic.severity === group.severity)
         if (items.length === 0) return null
         return (
           <section key={group.severity} aria-label={group.label}>
-            <h3 className={`px-3 pt-2 text-[11px] font-medium ${SEVERITY_CLASS[group.severity]}`}>{group.label} ({items.length})</h3>
+            <h3 className={`px-3 pt-2 text-[12px] font-medium ${SEVERITY_CLASS[group.severity]}`}>{group.label} ({items.length})</h3>
             {items.map((diagnostic) => <DiagnosticBlock key={diagnostic.id} diagnostic={diagnostic} />)}
           </section>
         )
@@ -535,9 +550,10 @@ function RuntimePanel({ snapshot, diagnostics, busy, onStart, onRefresh, onStop 
 }>) {
   if (!snapshot) {
     return (
-      <div className="min-h-0 flex-1 overflow-auto px-3 py-3 text-[11px] text-text-3">
-        <p>The states above are static: nothing is running. Start the framework to see which bundles are really ACTIVE, the service registry and the activation order.</p>
-        <p className="pt-1 text-[10.5px] text-text-4">
+      <div className="min-h-0 flex-1 overflow-auto px-3 py-3 text-[12px] text-text-3">
+        <h3 className="mb-2 text-[14px] font-medium text-text-1">Runtime is not running</h3>
+        <p>Start the framework to see live bundle states, the service registry and the activation order. Until then, bundle states reflect manifest resolution against the target.</p>
+        <p className="pt-1 text-[12px] text-text-4">
           It launches the compiled bundles in Equinox on the project JVM, with the console on a local port. It needs a target platform with <span className="font-mono">org.eclipse.equinox.console</span> (an Eclipse installation) and the bundles already built.
         </p>
         <button type="button" className="gs-btn mt-2" disabled={busy} onClick={onStart}>{busy ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />} Start runtime</button>
@@ -551,7 +567,7 @@ function RuntimePanel({ snapshot, diagnostics, busy, onStart, onRefresh, onStop 
   const services = snapshot.services ?? []
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border-1 px-3 py-2 text-[10.5px] text-text-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border-1 px-3 py-2 text-[12px] text-text-3">
         <Activity size={12} className="text-success" />
         <span className="font-mono">{snapshot.address}</span>
         <span>· start level {snapshot.frameworkStartLevel}</span>
@@ -564,57 +580,57 @@ function RuntimePanel({ snapshot, diagnostics, busy, onStart, onRefresh, onStop 
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-auto md:grid-cols-2">
         <section aria-label="Activation order" className="min-h-0 border-b border-border-1 md:border-b-0 md:border-r">
-          <h3 className="px-3 pt-2 text-[11px] font-medium text-text-2">Activation order ({activationOrder.length})</h3>
-          <p className="px-3 text-[10px] text-text-4">Measured by polling the framework, not inferred: the time each bundle first reported ACTIVE.</p>
+          <h3 className="px-3 pt-2 text-[12px] font-medium text-text-2">Activation order ({activationOrder.length})</h3>
+          <p className="px-3 text-[11px] text-text-4">Measured by polling the framework, not inferred: the time each bundle first reported ACTIVE.</p>
           <div className="px-3 pb-2">
             {activationOrder.slice(0, 60).map((bundle) => (
-              <div key={bundle.id} className="flex items-baseline gap-2 border-b border-border-1/60 py-0.5 text-[11px]">
+              <div key={bundle.id} className="flex items-baseline gap-2 border-b border-border-1/60 py-0.5 text-[12px]">
                 <span className="w-16 shrink-0 text-right font-mono text-text-3">+{bundle.activeAtMs} ms</span>
                 <span className="min-w-0 flex-1 truncate font-mono text-text-2">{bundle.symbolicName}</span>
-                <span className="shrink-0 text-[10px] text-text-4">{bundle.version}</span>
+                <span className="shrink-0 text-[11px] text-text-4">{bundle.version}</span>
               </div>
             ))}
-            {activationOrder.length === 0 && <p className="py-1 text-[11px] text-text-3">No bundle reported ACTIVE: the framework stopped before activating them.</p>}
+            {activationOrder.length === 0 && <p className="py-1 text-[12px] text-text-3">No bundle reported ACTIVE: the framework stopped before activating them.</p>}
           </div>
           {slowest.length > 0 && (
             <div className="px-3 pb-2">
-              <h4 className="text-[10px] uppercase tracking-wide text-warning">Slowest activations</h4>
+              <h4 className="text-[11px] uppercase tracking-wide text-warning">Slowest activations</h4>
               {slowest.map((bundle) => (
-                <p key={`slow-${bundle.id}`} className="truncate text-[10.5px] text-text-2">+{bundle.activeAtMs} ms · {bundle.symbolicName}</p>
+                <p key={`slow-${bundle.id}`} className="truncate text-[12px] text-text-2">+{bundle.activeAtMs} ms · {bundle.symbolicName}</p>
               ))}
             </div>
           )}
         </section>
         <section aria-label="Services" className="min-h-0">
-          <h3 className="px-3 pt-2 text-[11px] font-medium text-text-2">Service registry ({services.length})</h3>
+          <h3 className="px-3 pt-2 text-[12px] font-medium text-text-2">Service registry ({services.length})</h3>
           <div className="px-3 pb-2">
             {services.slice(0, 120).map((service) => (
-              <div key={`${service.interface}:${service.serviceId}`} className="border-b border-border-1/60 py-0.5 text-[11px]">
+              <div key={`${service.interface}:${service.serviceId}`} className="border-b border-border-1/60 py-0.5 text-[12px]">
                 <div className="flex items-baseline gap-2">
                   <span className="min-w-0 flex-1 truncate font-mono text-text-2" title={service.interface}>{service.interface}</span>
-                  <span className="shrink-0 text-[10px] text-text-4">id {service.serviceId}</span>
+                  <span className="shrink-0 text-[11px] text-text-4">id {service.serviceId}</span>
                 </div>
-                <p className="truncate text-[10px] text-text-3">
+                <p className="truncate text-[11px] text-text-3">
                   {service.provider ? <>provider <span className="font-mono text-text-2">{service.provider}</span></> : 'provider unknown'}
                   {(service.consumers ?? []).length > 0 && <> · used by {(service.consumers ?? []).join(', ')}</>}
                 </p>
               </div>
             ))}
-            {services.length === 0 && <p className="py-1 text-[11px] text-text-3">The registry is empty (or the console `services` command returned nothing).</p>}
-            {services.length > 120 && <p className="text-[10px] text-text-4">{services.length - 120} more.</p>}
+            {services.length === 0 && <p className="py-1 text-[12px] text-text-3">The registry is empty (or the console `services` command returned nothing).</p>}
+            {services.length > 120 && <p className="text-[11px] text-text-4">{services.length - 120} more.</p>}
           </div>
         </section>
       </div>
       {diagnostics.length > 0 && (
         <section aria-label="Runtime diagnostics" className="border-t border-border-1">
-          <h3 className="px-3 pt-2 text-[11px] font-medium text-text-2">What only the runtime knows ({diagnostics.length})</h3>
+          <h3 className="px-3 pt-2 text-[12px] font-medium text-text-2">What only the runtime knows ({diagnostics.length})</h3>
           {diagnostics.map((diagnostic) => <DiagnosticBlock key={diagnostic.id} diagnostic={diagnostic} />)}
         </section>
       )}
       {(snapshot.problems ?? []).length > 0 && (
         <section aria-label="Runtime problems" className="border-t border-border-1 px-3 py-1.5">
-          <h3 className="text-[11px] font-medium text-text-2">Console problems</h3>
-          {(snapshot.problems ?? []).map((problem) => <p key={problem} className="text-[10.5px] text-warning">{problem}</p>)}
+          <h3 className="text-[12px] font-medium text-text-2">Console problems</h3>
+          {(snapshot.problems ?? []).map((problem) => <p key={problem} className="text-[12px] text-warning">{problem}</p>)}
         </section>
       )}
     </div>
@@ -634,8 +650,8 @@ function TargetPanel({ report, targetPath, onTarget, onReload, sessionId, onComp
   useEffect(() => { setPath(report.targetPath ?? '') }, [report.targetPath])
   return (
     <div className="min-h-0 flex-1 overflow-auto px-3 py-2">
-      <h3 className="text-[11px] font-medium text-text-2">Target platform</h3>
-      <p className="pb-1 text-[10.5px] text-text-3">
+      <h3 className="text-[12px] font-medium text-text-2">Target platform</h3>
+      <p className="pb-1 text-[12px] text-text-3">
         {report.hasTarget ? `${report.targetBundles} bundles indexed from ${report.targetPath}` : 'No target chosen: the bundles cannot be resolved.'}
       </p>
       <form className="flex flex-wrap items-center gap-2" onSubmit={(event) => { event.preventDefault(); if (path.trim()) onTarget(path.trim()) }}>
@@ -649,18 +665,18 @@ function TargetPanel({ report, targetPath, onTarget, onReload, sessionId, onComp
         <button type="button" className="gs-btn" onClick={onAddJar} title="Copy a loose JAR into the active target folder (it must be an OSGi bundle)"><Package size={12} /> Add JAR…</button>
         <button type="button" className="gs-btn" onClick={() => { void selectGoIDEFolder('Compare the active target with: a folder of bundles or an Eclipse installation').then((folder) => { if (folder) onCompare(folder) }) }} title="Diff the active target against another one"><Layers size={12} /> Compare…</button>
         <button type="button" className="gs-btn" onClick={() => { void selectGoIDEFile('Compare the active target with an Eclipse .target definition', 'Target definitions (*.target)', '*.target').then((file) => { if (file) onCompare(file) }) }} title="Diff the active target against a .target definition"><FileCode2 size={12} /> Compare .target…</button>
-        <span className="text-[10px] text-text-4">Comparing is read-only; adding a JAR writes into the target folder.</span>
+        <span className="text-[11px] text-text-4">Comparing is read-only; adding a JAR writes into the target folder.</span>
       </div>
       <div className="pt-2">
-        <h3 className="text-[11px] font-medium text-text-2">Tycho</h3>
-        <p className="text-[10.5px] text-text-3">A pom.xml with a Tycho build declares its own target platform: write it from the pom, then download only what the bundles require.</p>
+        <h3 className="text-[12px] font-medium text-text-2">Tycho</h3>
+        <p className="text-[12px] text-text-3">A pom.xml with a Tycho build declares its own target platform: write it from the pom, then download only what the bundles require.</p>
         <button type="button" className="gs-btn mt-1" onClick={() => { void javaOsgiTychoTarget(sessionId, true).then((result) => {
           if (result.report) onReload()
           studioToast(`Target written from ${(result.repositories ?? []).length} p2 repository(ies), ${(result.units ?? []).length} required unit(s).`, 'info')
         }).catch((reason: unknown) => studioToast(messageOf(reason), 'info')) }}><Package size={12} /> Target from pom.xml</button>
       </div>
       {report.hasTarget && <div className="pt-2"><CodeStudioJavaOsgiP2 sessionId={sessionId} targetPath={report.targetPath} onDownloaded={onReload} /></div>}
-      {targetPath && <p className="pt-2 text-[10px] text-text-4">Active: {targetPath}</p>}
+      {targetPath && <p className="pt-2 text-[11px] text-text-4">Active: {targetPath}</p>}
     </div>
   )
 }
@@ -668,28 +684,28 @@ function TargetPanel({ report, targetPath, onTarget, onReload, sessionId, onComp
 function ComparisonPanel({ comparison }: Readonly<{ comparison: TargetComparison }>) {
   return (
     <section aria-label="Target comparison" className="border-t border-border-1 px-3 py-2">
-      <h3 className="text-[11px] font-medium text-text-2">Target comparison</h3>
-      <p className="text-[10.5px] text-text-3">
+      <h3 className="text-[12px] font-medium text-text-2">Target comparison</h3>
+      <p className="text-[12px] text-text-3">
         {comparison.leftBundles} → {comparison.rightBundles} bundles · {comparison.common} in common · {comparison.added.length} added · {comparison.removed.length} removed · {comparison.changed.length} version change(s)
       </p>
       <div className="grid gap-2 pt-1 md:grid-cols-3">
         <div>
-          <h4 className="text-[10px] uppercase tracking-wide text-success">Added</h4>
-          {comparison.added.slice(0, 50).map((bundle) => <p key={bundle.symbolicName} className="truncate font-mono text-[10.5px] text-text-2">{bundle.symbolicName} {bundle.version}</p>)}
-          {comparison.added.length === 0 && <p className="text-[10px] text-text-4">none</p>}
+          <h4 className="text-[11px] uppercase tracking-wide text-success">Added</h4>
+          {comparison.added.slice(0, 50).map((bundle) => <p key={bundle.symbolicName} className="truncate font-mono text-[12px] text-text-2">{bundle.symbolicName} {bundle.version}</p>)}
+          {comparison.added.length === 0 && <p className="text-[11px] text-text-4">none</p>}
         </div>
         <div>
-          <h4 className="text-[10px] uppercase tracking-wide text-danger">Removed</h4>
-          {comparison.removed.slice(0, 50).map((bundle) => <p key={bundle.symbolicName} className="truncate font-mono text-[10.5px] text-text-2">{bundle.symbolicName} {bundle.version}</p>)}
-          {comparison.removed.length === 0 && <p className="text-[10px] text-text-4">none</p>}
+          <h4 className="text-[11px] uppercase tracking-wide text-danger">Removed</h4>
+          {comparison.removed.slice(0, 50).map((bundle) => <p key={bundle.symbolicName} className="truncate font-mono text-[12px] text-text-2">{bundle.symbolicName} {bundle.version}</p>)}
+          {comparison.removed.length === 0 && <p className="text-[11px] text-text-4">none</p>}
         </div>
         <div>
-          <h4 className="text-[10px] uppercase tracking-wide text-warning">Version changed</h4>
-          {comparison.changed.slice(0, 50).map((change) => <p key={change.symbolicName} className="truncate font-mono text-[10.5px] text-text-2">{change.symbolicName} <span className="text-text-4">{change.left} → {change.right}</span></p>)}
-          {comparison.changed.length === 0 && <p className="text-[10px] text-text-4">none</p>}
+          <h4 className="text-[11px] uppercase tracking-wide text-warning">Version changed</h4>
+          {comparison.changed.slice(0, 50).map((change) => <p key={change.symbolicName} className="truncate font-mono text-[12px] text-text-2">{change.symbolicName} <span className="text-text-4">{change.left} → {change.right}</span></p>)}
+          {comparison.changed.length === 0 && <p className="text-[11px] text-text-4">none</p>}
         </div>
       </div>
-      {comparison.problems.length > 0 && <p className="pt-1 text-[10px] text-warning">{comparison.problems.length} problem(s) indexing the targets: {comparison.problems[0].message}</p>}
+      {comparison.problems.length > 0 && <p className="pt-1 text-[11px] text-warning">{comparison.problems.length} problem(s) indexing the targets: {comparison.problems[0].message}</p>}
     </section>
   )
 }
@@ -949,29 +965,42 @@ export function CodeStudioJavaOsgi() {
   const diagnostics = [...(report?.diagnostics ?? []), ...(report?.runtimeDiagnostics ?? [])]
   const graph = detail?.graph ?? null
 
+  const currentSection = OSGI_SECTIONS.find((section) => section.id === tab)!
+
   return (
-    <CodeStudioModal open={!!sessionId} onClose={() => setSessionId(null)} title="OSGi Control Center" subtitle={subtitleOf(report, busy, importing !== null)} icon={Boxes} size="lg" tall divided flush top>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex items-center gap-2 border-b border-border-1 px-3 py-2">
+    <CodeStudioModal open={!!sessionId} onClose={() => setSessionId(null)} title="OSGi Control Center" subtitle={subtitleOf(report, busy, importing !== null)} icon={Boxes} size="lg" tall divided flush className="osgi-center" bodyClassName="osgi-body">
+      <div className="osgi-workspace">
+        <aside className="osgi-sidebar">
+          <p className="osgi-nav-label">Workspace</p>
+          <nav aria-label="OSGi sections">
+            {OSGI_SECTIONS.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}>
+                <Icon size={17} strokeWidth={1.5} aria-hidden="true" /><span>{label}</span>
+                {id === 'diagnose' && diagnostics.some((item) => item.severity !== 'info') && <b className="osgi-issue-count">{diagnostics.filter((item) => item.severity !== 'info').length}</b>}
+              </button>
+            ))}
+          </nav>
+          <div className="osgi-environment"><span>Target platform</span><strong>{report ? report.hasTarget ? 'Configured' : 'Not configured' : 'Not loaded'}</strong><p title={report?.targetPath}>{report?.targetPath || 'Choose a target to resolve workspace bundles.'}</p><button type="button" className="gs-btn" onClick={() => setTab('target')}>Manage target<ChevronRight size={13} /></button></div>
+        </aside>
+        <div className="osgi-content">
+        <header className="osgi-section-heading"><div><h3>{currentSection.label}</h3><p>{currentSection.hint}</p></div><span className="osgi-engine">Equinox{report?.jvm ? ` · Java ${report.jvm}` : ''}</span></header>
+        <div className="osgi-toolbar">
+          <div className="osgi-search">
           <Search size={14} className="text-text-3" />
-          <input data-autofocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search bundles, Activators, services, packages, manifest text…" className="gs-input flex-1" />
+          <input data-autofocus value={query} onChange={(event) => { setQuery(event.target.value); if (event.target.value.trim()) setTab('bundles') }} placeholder="Search bundles, services, packages…" aria-label="Search OSGi bundles" className="gs-input flex-1" onFocus={() => { if (tab !== 'bundles' && query.trim()) setTab('bundles') }} />
+          {query && <button type="button" className="gs-btn gs-btn-icon" aria-label="Clear bundle search" onClick={() => setQuery('')}><X size={13} /></button>}
+          </div>
+          <div className="osgi-actions" aria-label="Workspace actions">
           <button type="button" className="gs-btn gs-btn-icon shrink-0" disabled={busy} onClick={refresh} title="Re-read manifests, target index and diagnostics" aria-label="Refresh the Control Center"><RefreshCw size={13} /></button>
           <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiBuild(sessionId); setSessionId(null) } }} title="Compile with the Eclipse compiler of the target, on the project JVM (Java > Select JDK)"><Hammer size={13} /> Build</button>
-          <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiFramework(sessionId); setSessionId(null) } }} title="Start the compiled bundles in Equinox, on the project JVM"><Play size={13} /> Run</button>
+          <button type="button" className="gs-btn gs-btn-primary shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { runOsgiFramework(sessionId); setSessionId(null) } }} title="Start the compiled bundles in Equinox, on the project JVM"><Play size={13} /> Run</button>
           <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) { void useCodeStudioDebugStore.getState().startOsgi(sessionId); setSessionId(null) } }} title="Start the compiled bundles in Equinox waiting for the debugger: breakpoints in the bundles stop there"><Bug size={13} /> Debug</button>
           <button type="button" className="gs-btn shrink-0" disabled={busy || !report?.hasTarget} onClick={() => { if (sessionId) void exportOsgiBundles(sessionId, false) }} title="Export the compiled bundles and the features as jars (bin.includes, qualifier applied). Java › Export OSGi Bundles as p2 Repository also publishes them"><Package size={13} /> Export…</button>
           <button type="button" className="gs-btn shrink-0" disabled={busy} onClick={() => { void importPlugins() }} title="Import plug-in projects from this machine: they are copied under plugins/ so several repositories compile together"><FolderPlus size={13} /> Import…</button>
-        </div>
-        {report && <SummaryCards report={report} filter={filter} onFilter={setFilter} />}
-        <div className="flex items-center gap-1 border-b border-border-1 px-2">
-          {([['bundles', 'Bundles', ListTree], ['graph', 'Graph', Link2], ['activators', 'Activators', Bug], ['diagnose', `Diagnose${diagnostics.length > 0 ? ` (${diagnostics.filter((item) => item.severity !== 'info').length})` : ''}`, AlertTriangle], ['runtime', `Runtime${report?.runtime ? ` · ${report.summary.active}` : ''}`, Activity], ['apps', 'Applications', AppWindow], ['dependencies', 'Dependencies', Package], ['target', 'Target', Layers]] as Array<[Tab, string, typeof Boxes]>).map(([key, label, Icon]) => (
-            <button key={key} type="button" onClick={() => setTab(key)} className={`flex items-center gap-1 border-b-2 px-2 py-1.5 text-[11px] ${tab === key ? 'border-accent text-text-1' : 'border-transparent text-text-3 hover:text-text-2'}`}>
-              <Icon size={12} /> {label}
-            </button>
-          ))}
+          </div>
         </div>
         {importing !== null ? (
-          <div className="flex items-center gap-2 border-b border-border-1 px-3 py-1.5 text-[11px] text-text-3">
+          <div className="flex items-center gap-2 border-b border-border-1 px-3 py-1.5 text-[12px] text-text-3">
             <Loader2 size={11} className="shrink-0 animate-spin" />
             <span className="min-w-0 flex-1 truncate">
               {importProgress
@@ -981,52 +1010,55 @@ export function CodeStudioJavaOsgi() {
             <button type="button" className="gs-btn shrink-0" onClick={() => { cancelled.current = true; void cancelJavaOsgiImport(importing) }}>Cancel</button>
           </div>
         ) : busy && (
-          <p className="flex items-center gap-2 px-3 py-2 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" /> A full Eclipse target has about a thousand bundles: this can take a few seconds.</p>
+          <p className="flex items-center gap-2 px-3 py-2 text-[12px] text-text-3"><Loader2 size={12} className="animate-spin" /> A full Eclipse target has about a thousand bundles: this can take a few seconds.</p>
         )}
-        {error && <p className="whitespace-pre-wrap px-3 py-2 text-[11px] text-danger">{error}</p>}
+        {error && <p className="whitespace-pre-wrap px-3 py-2 text-[12px] text-danger">{error}</p>}
         {tab === 'bundles' && (
-          <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-            <div className="flex min-h-0 flex-col border-r border-border-1">
+          <div className="osgi-bundle-browser">
+            <div className="osgi-bundle-list">
+                  <div className="osgi-pane-heading"><h4>Bundle explorer</h4><span>{hits !== null ? `${hits.length} matches` : `${visible.length} ${visible.length === 1 ? 'bundle' : 'bundles'}`}</span></div>
+              {report && <SummaryCards report={report} filter={filter} onFilter={setFilter} />}
               {hits !== null ? (
                 <div className="min-h-0 flex-1 overflow-auto">
-                  <p className="px-3 pt-2 text-[10px] uppercase tracking-wide text-text-4">{hits.length} match(es) for “{query.trim()}”</p>
+                  <p className="px-3 pt-2 text-[11px] uppercase tracking-wide text-text-4">{hits.length} match(es) for “{query.trim()}”</p>
                   {hits.map((hit) => (
                     <button key={`${hit.symbolicName}:${hit.version}:${hit.source}`} type="button" onClick={() => { setSelected(hit.symbolicName); setTab('bundles') }} className={`block w-full border-b border-border-1 px-3 py-1 text-left hover:bg-surface-3 ${selected === hit.symbolicName ? 'bg-surface-3' : ''}`}>
                       <div className="flex items-baseline gap-2">
-                        <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-text-1">{hit.symbolicName} <span className="text-accent">{hit.version}</span></span>
-                        <span className="shrink-0 text-[10px] text-text-4">{hit.source}</span>
+                        <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-text-1">{hit.symbolicName} <span className="text-accent">{hit.version}</span></span>
+                        <span className="shrink-0 text-[11px] text-text-4">{hit.source}</span>
                       </div>
-                      <p className="truncate text-[10px] text-text-3">{hit.field}: {hit.match}</p>
+                      <p className="truncate text-[11px] text-text-3">{hit.field}: {hit.match}</p>
                     </button>
                   ))}
-                  {hits.length === 0 && <p className="px-3 py-3 text-[11px] text-text-3">Nothing matches.</p>}
+                  {hits.length === 0 && <p className="px-3 py-3 text-[12px] text-text-3">Nothing matches.</p>}
                 </div>
               ) : (
                 <div className="min-h-0 flex-1 overflow-auto">
                   {visible.slice(0, MAX_ROWS).map((row) => (
                     <BundleLine key={`${row.source}:${row.symbolicName}:${row.version}`} row={row} selected={selected === row.symbolicName} onSelect={() => setSelected(row.symbolicName)} />
                   ))}
-                  {visible.length > MAX_ROWS && <p className="px-3 py-2 text-[10.5px] text-text-3">{visible.length - MAX_ROWS} more not drawn: use the search to narrow the list.</p>}
+                  {visible.length > MAX_ROWS && <p className="px-3 py-2 text-[12px] text-text-3">{visible.length - MAX_ROWS} more not drawn: use the search to narrow the list.</p>}
                   {empty && (
-                    <p className="px-3 py-3 text-[11px] text-text-3">
+                    <p className="px-3 py-3 text-[12px] text-text-3">
                       No OSGi bundles here: a bundle is an Eclipse project (.project) with META-INF/MANIFEST.MF.
                       {' '}Use Import… to bring the plug-in projects of another repository into plugins/ of this workspace.
                       {report && report.otherProjects > 0 && ` Found ${report.otherProjects} Eclipse project(s) without a manifest; bnd workspaces, which generate it at build time, are not supported yet.`}
                     </p>
                   )}
-                  {!empty && visible.length === 0 && <p className="px-3 py-3 text-[11px] text-text-3">Nothing matches this filter.</p>}
+                  {!empty && visible.length === 0 && <p className="px-3 py-3 text-[12px] text-text-3">Nothing matches this filter.</p>}
                   {problems.length > 0 && (
                     <section aria-label="Problems" className="px-3 py-2">
-                      <h3 className="pb-1 text-[11px] font-medium text-text-2">Problems ({problems.length})</h3>
+                      <h3 className="pb-1 text-[12px] font-medium text-text-2">Problems ({problems.length})</h3>
                       {withContentKeys(problems, (problem) => `${problem.severity}:${problem.file}:${problem.message}`).map(({ key, item }) => (
-                        <p key={key} className={`text-[11px] ${item.severity === 'error' ? 'text-danger' : 'text-warning'}`}>{item.file ? `${item.file}: ` : ''}{item.message}</p>
+                        <p key={key} className={`text-[12px] ${item.severity === 'error' ? 'text-danger' : 'text-warning'}`}>{item.file ? `${item.file}: ` : ''}{item.message}</p>
                       ))}
                     </section>
                   )}
                 </div>
               )}
             </div>
-            <div className="min-h-0">
+            <div className="osgi-bundle-detail">
+              <div className="osgi-pane-heading"><h4>Bundle details</h4><span>{selected ? 'Selected bundle' : 'No selection'}</span></div>
               <DetailPanel detail={detail} loading={detailLoading} depth={depth} onDepth={setDepth} onToggleBreakpoint={(path, line) => { void toggleBreakpoint(path, line) }} />
               {detail && importedPluginName(detail.row, report?.root) && (
                 <div className="border-t border-border-1 px-3 py-1.5">
@@ -1038,12 +1070,12 @@ export function CodeStudioJavaOsgi() {
         )}
         {tab === 'graph' && (
           <div className="flex min-h-0 flex-1 flex-col">
-            <p className="px-3 py-1.5 text-[10.5px] text-text-3">
+            <p className="px-3 py-1.5 text-[12px] text-text-3">
               {selected ? <>Focused on <span className="font-mono text-text-2">{selected}</span> · depth {depth}</> : 'Select a bundle in Bundles first.'}
             </p>
             <GraphPanel graph={graph} loading={detailLoading} />
             {detail?.impact && (
-              <div className="border-t border-border-1 px-3 py-1.5 text-[10.5px] text-text-3">
+              <div className="border-t border-border-1 px-3 py-1.5 text-[12px] text-text-3">
                 {detail.impact.directConsumers.length} direct consumer(s) · {detail.impact.transitiveConsumers.length} transitive · {(detail.impact.checks ?? []).length} check(s) before shipping.
               </div>
             )}
@@ -1069,18 +1101,19 @@ export function CodeStudioJavaOsgi() {
             {comparison && <ComparisonPanel comparison={comparison} />}
           </>
         )}
-        {!report && !busy && <p className="px-3 py-3 text-[11px] text-text-3">No data. Check the trust of the project and the target platform.</p>}
+        {!report && !busy && <div className="osgi-empty"><Boxes size={30} strokeWidth={1.25} aria-hidden="true" /><h3>Workspace data is unavailable</h3><p>Check that the project is trusted, then refresh to read its bundles and target platform.</p><button type="button" className="gs-btn" onClick={reload}><RefreshCw size={13} />Try again</button></div>}
         {report && !report.hasTarget && tab === 'bundles' && (
-          <p className="flex items-center gap-1 border-t border-border-1 px-3 py-1.5 text-[10.5px] text-warning"><Info size={11} /> No target platform: states stay empty until you choose one in Target.</p>
+          <p className="flex items-center gap-1 border-t border-border-1 px-3 py-1.5 text-[12px] text-warning"><Info size={11} /> No target platform: states stay empty until you choose one in Target.</p>
         )}
         {report && report.diagnostics.length === 0 && report.hasTarget && tab === 'bundles' && (
-          <p className="flex items-center gap-1 border-t border-border-1 px-3 py-1.5 text-[10.5px] text-text-3"><Info size={11} /> Every workspace bundle resolves against the active target platform.</p>
+          <p className="flex items-center gap-1 border-t border-border-1 px-3 py-1.5 text-[12px] text-text-3"><Info size={11} /> Every workspace bundle resolves against the active target platform.</p>
         )}
         {tab === 'bundles' && report && report.summary.lazy > 0 && (
-          <p className="border-t border-border-1 px-3 py-1.5 text-[10.5px] text-text-4">
+          <p className="border-t border-border-1 px-3 py-1.5 text-[12px] text-text-4">
             {report.summary.lazy} bundle(s) are RESOLVED with lazy activation: ready, not yet active. That is normal and never reported as a warning.
           </p>
         )}
+        </div>
       </div>
     </CodeStudioModal>
   )

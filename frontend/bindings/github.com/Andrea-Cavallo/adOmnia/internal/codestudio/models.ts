@@ -2985,21 +2985,21 @@ export class JavaDebugRequest {
      */
     static createFrom($$source: any = {}): JavaDebugRequest {
         const $$createField4_0 = $$createType4;
-        const $$createField8_0 = $$createType4;
-        const $$createField9_0 = $$createType4;
-        const $$createField10_0 = $$createType72;
+        const $$createField10_0 = $$createType4;
+        const $$createField11_0 = $$createType4;
+        const $$createField12_0 = $$createType72;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("buildArguments" in $$parsedSource) {
             $$parsedSource["buildArguments"] = $$createField4_0($$parsedSource["buildArguments"]);
         }
         if ("programArguments" in $$parsedSource) {
-            $$parsedSource["programArguments"] = $$createField8_0($$parsedSource["programArguments"]);
+            $$parsedSource["programArguments"] = $$createField10_0($$parsedSource["programArguments"]);
         }
         if ("vmArguments" in $$parsedSource) {
-            $$parsedSource["vmArguments"] = $$createField9_0($$parsedSource["vmArguments"]);
+            $$parsedSource["vmArguments"] = $$createField11_0($$parsedSource["vmArguments"]);
         }
         if ("environment" in $$parsedSource) {
-            $$parsedSource["environment"] = $$createField10_0($$parsedSource["environment"]);
+            $$parsedSource["environment"] = $$createField12_0($$parsedSource["environment"]);
         }
         return new JavaDebugRequest($$parsedSource as Partial<JavaDebugRequest>);
     }
