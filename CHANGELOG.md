@@ -6,6 +6,10 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+### Document Studio
+
+- **Diagram Studio.** A Lucidchart-style diagram editor on an infinite canvas (React Flow): a searchable library of flowchart, architecture, integration (Go/Java services, REST, SOAP, Kafka, Camel routes, Saga steps, OSGi bundles), UML, container and note shapes; resize, rotate, inline text editing and several connection points per side; straight, Bézier and orthogonal connectors routed around nodes, with draggable ends, editable bends, arrowheads, dashes, labels and glowing data-flow pulses; alignment guides, snap to grid, multi-selection, group/ungroup, align/distribute, layers, locking, context menus, undo/redo and keyboard shortcuts; ELK auto-layout; templates for microservices, Sagas, Camel, protocol flows, OSGi and UML. Diagrams autosave as versioned JSON in the local store and export to PNG, SVG or JSON. Guide: `docs/DIAGRAM-STUDIO.md`.
+
 ## [1.0.31] — 2026-11-09
 
 First published build since 1.0.29: the 1.0.30 tag never produced artifacts, so this release carries the 1.0.30 changes below too.

@@ -19,7 +19,7 @@ import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 import { useSplitViewStore } from '@/lib/api-code-link/splitView'
 import { canSplitHere, isInSplit, layoutBack, useWorkspaceLayoutStore } from '@/lib/workspaceLayout'
 
-import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
+import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, DiagramStudioPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
 
 let workspaceModulePromise: ReturnType<typeof importWorkspaceModule> | undefined
 
@@ -133,6 +133,7 @@ export function panelFor(activeRail: RailItem): PanelDef {
     case 'dockerlab': return { component: <UtilsPanel initialTool="dockerlab" />, titleKey: 'Power Tools', overflow: true }
     case 'latex': return { component: <LatexStudioPanel />, titleKey: 'latex', overflow: true }
     case 'pdfeditor': return { component: <PdfEditorPanel />, titleKey: 'pdfeditor', overflow: true }
+    case 'diagrams': return { component: <DiagramStudioPanel />, titleKey: 'diagrams', overflow: true }
     case 'storage': return { component: <StoragePanel />, titleKey: 'storage', overflow: true }
     case 'database': return { component: <DatabasePanel />, titleKey: 'Database Studio', overflow: true }
     case 'jsonviewer': return { component: <JsonViewerPanel />, titleKey: 'JSON Studio', overflow: true }

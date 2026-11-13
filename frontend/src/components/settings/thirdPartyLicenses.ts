@@ -7,8 +7,8 @@ export const THIRD_PARTY_LICENSES: ReadonlyArray<{ license: string; packages: re
   {
     license: 'MIT',
     packages: [
-      '@apidevtools/openapi-schemas', '@monaco-editor/react', '@radix-ui/react-tabs', '@taplo/lib', '@wailsio/runtime', '@xterm/addon-fit', '@xterm/addon-search', '@xterm/xterm',
-      'ajv', 'ajv-formats', 'clsx', 'emmet', 'mermaid', 'monaco-editor', 'monaco-emacs', 'monaco-vim', 'monaco-yaml', 'pdf-lib', 'prettier', 'react', 'react-dom', 'Tailwind CSS', 'tailwind-merge', 'y-monaco', 'y-protocols', 'yjs', 'zustand',
+      '@apidevtools/openapi-schemas', '@monaco-editor/react', '@radix-ui/react-tabs', '@taplo/lib', '@wailsio/runtime', '@xterm/addon-fit', '@xterm/addon-search', '@xterm/xterm', '@xyflow/react',
+      'ajv', 'ajv-formats', 'clsx', 'emmet', 'html-to-image', 'mermaid', 'monaco-editor', 'monaco-emacs', 'monaco-vim', 'monaco-yaml', 'pdf-lib', 'prettier', 'react', 'react-dom', 'Tailwind CSS', 'tailwind-merge', 'y-monaco', 'y-protocols', 'yjs', 'zustand',
       'github.com/HdrHistogram/hdrhistogram-go', 'github.com/IBM/sarama', 'github.com/aymanbagabas/go-pty', 'github.com/dop251/goja', 'github.com/dustin/go-humanize', 'github.com/gabriel-vasile/mimetype', 'github.com/gaissmai/bart', 'github.com/jackc/pgx/v5', 'github.com/pavlo-v-chernykh/keystore-go/v4', 'github.com/tidwall/gjson', 'github.com/tidwall/sjson', 'github.com/wI2L/jsondiff', 'github.com/wailsapp/wails/v3', 'github.com/youmark/pkcs8', 'github.com/zalando/go-keyring', 'go.etcd.io/bbolt',
     ],
   },
@@ -30,6 +30,7 @@ export const THIRD_PARTY_LICENSES: ReadonlyArray<{ license: string; packages: re
   { license: 'ISC', packages: ['d3-force', 'lucide-react', 'yaml'] },
   { license: 'MPL-2.0', packages: ['github.com/go-sql-driver/mysql'] },
   { license: 'EPL-2.0 or EDL-1.0', packages: ['github.com/eclipse/paho.mqtt.golang'] },
+  { license: 'EPL-2.0 or GPL-3.0-or-later', packages: ['elkjs'] },
   { license: 'MIT and Apache-2.0', packages: ['gopkg.in/yaml.v3'] },
   { license: 'MIT or Unlicense', packages: ['ripgrep'] },
   {

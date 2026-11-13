@@ -1100,6 +1100,7 @@ export const ITALIAN_NAVIGATION_MESSAGES: Record<string, string> = {
   'Mermaid Diagrams': 'Diagrammi Mermaid',
   'LaTeX Studio': 'Studio LaTeX',
   'PDF Editor & Sign': 'Editor e firma PDF',
+  'Diagram Studio': 'Diagram Studio',
   'Git Sync': 'Sincronizzazione Git',
   'Live Collaboration': 'Collaborazione live',
   'Code Studio': 'Code Studio',

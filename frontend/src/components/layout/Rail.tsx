@@ -15,7 +15,7 @@ import { openRailItemInWindow, usePanelWindowsStore } from '@/stores/panelWindow
 import './Rail.css'
 import {
   Send, LayoutList, Shield, ShieldAlert, Server, Radio, Bug, Container,
-  Wrench, FileText, FileCode, FileBox, Database, Braces, ChevronRight, FolderOpen,
+  Wrench, FileText, Shapes, FileCode, FileBox, Database, Braces, ChevronRight, FolderOpen,
   Lock, Puzzle, Settings, GitBranch, X,
   Zap, BarChart2, Activity, HardDrive, History, Layers,
   BookOpen, Search, CodeXml, Boxes, AppWindow, Users,
@@ -79,6 +79,7 @@ export const FEATURE_ICONS: Partial<Record<RailItem, React.ElementType>> = {
   security: ShieldAlert,
   latex: FileCode,
   pdfeditor: FileText,
+  diagrams: Shapes,
   collab: Users,
   themes: Settings,
   templates: FileText,

@@ -560,6 +560,7 @@ export const ZH_NAVIGATION_MESSAGES: Record<string, string> = {
   "Mermaid Diagrams": "Mermaid 图表",
   "LaTeX Studio": "LaTeX 工作台",
   "PDF Editor & Sign": "PDF 编辑与签名",
+  "Diagram Studio": "图表工作室",
   "Git Sync": "Git 同步",
   "Live Collaboration": "实时协作",
   "Code Studio": "Code Studio",

@@ -560,6 +560,7 @@ export const JA_NAVIGATION_MESSAGES: Record<string, string> = {
   "Mermaid Diagrams": "Mermaid ダイアグラム",
   "LaTeX Studio": "LaTeX Studio",
   "PDF Editor & Sign": "PDF エディターと署名",
+  "Diagram Studio": "ダイアグラム スタジオ",
   "Git Sync": "Git 同期",
   "Live Collaboration": "ライブコラボレーション",
   "Code Studio": "Code Studio",

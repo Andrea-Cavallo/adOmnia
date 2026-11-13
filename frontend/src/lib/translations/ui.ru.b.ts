@@ -560,6 +560,7 @@ export const RU_NAVIGATION_MESSAGES: Record<string, string> = {
   "Mermaid Diagrams": "Диаграммы Mermaid",
   "LaTeX Studio": "Студия LaTeX",
   "PDF Editor & Sign": "PDF-редактор и подпись",
+  "Diagram Studio": "Студия диаграмм",
   "Git Sync": "Синхронизация Git",
   "Live Collaboration": "Совместная работа в реальном времени",
   "Code Studio": "Code Studio",

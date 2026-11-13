@@ -16,6 +16,24 @@ adOmnia includes or depends on the following third-party software:
 - **Copyright**: Copyright (c) Meta Platforms, Inc. and affiliates
 - **Repository**: https://github.com/facebook/react
 
+### React Flow (@xyflow/react)
+- **License**: MIT License
+- **Copyright**: Copyright (c) 2019-2025 webkid GmbH
+- **Repository**: https://github.com/xyflow/xyflow
+- Bundled: the canvas engine of Diagram Studio.
+
+### ELK.js (elkjs)
+- **License**: EPL-2.0 OR GPL-3.0-or-later (used under GPL-3.0-or-later, compatible with adOmnia's GPL-3.0-only)
+- **Copyright**: Copyright (c) Kiel University and others (Eclipse Layout Kernel contributors)
+- **Repository**: https://github.com/kieler/elkjs
+- Bundled: Diagram Studio's auto-layout, loaded only when Auto-layout is used.
+
+### html-to-image
+- **License**: MIT License
+- **Copyright**: Copyright (c) 2017-2025 W.Y.
+- **Repository**: https://github.com/bubkoo/html-to-image
+- Bundled: PNG and SVG export of Diagram Studio, loaded only when exporting.
+
 ### ripgrep
 - **License**: dual MIT / Unlicense (the binary is distributed under the Unlicense; the source is offered under either)
 - **Copyright**: Copyright (c) 2016 Andrew Gallant

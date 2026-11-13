@@ -15,6 +15,7 @@ export const FlowsPanel           = lazy(() => import('@/components/flows/FlowsP
 export const SoapPanel            = lazy(() => import('@/components/soap/SoapPanel').then(m => ({ default: m.SoapPanel })))
 export const LatexStudioPanel     = lazy(() => import('@/components/latex/LatexStudioPanel').then(m => ({ default: m.LatexStudioPanel })))
 export const PdfEditorPanel       = lazy(() => import('@/components/pdfeditor/PdfEditorPanel').then(m => ({ default: m.PdfEditorPanel })))
+export const DiagramStudioPanel   = lazy(() => import('@/components/diagrams/DiagramStudioPanel').then(m => ({ default: m.DiagramStudioPanel })))
 export const JsonViewerPanel      = lazy(() => import('@/components/jsonviewer/JsonViewerPanel').then(m => ({ default: m.JsonViewerPanel })))
 export const LogInspectorPanel    = lazy(() => import('@/components/loginspector').then(m => ({ default: m.LogInspectorPanel })))
 export const SecurityCenterPanel  = lazy(() => import('@/components/security').then(m => ({ default: m.SecurityCenterPanel })))

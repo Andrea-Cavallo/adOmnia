@@ -14,6 +14,7 @@ export const ZH_TRANSLATIONS = {
     "mermaid": "Mermaid 图表",
     "latex": "LaTeX Studio",
     "pdfeditor": "PDF 编辑与签名",
+    "diagrams": "图表工作室",
     "apidocs": "Swagger 编辑器",
     "storage": "存储",
     "vault": "保险库",

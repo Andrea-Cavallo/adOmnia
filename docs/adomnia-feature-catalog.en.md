@@ -738,6 +738,9 @@ WebSocket connections live in the API workspace, with the same layout as REST re
 | E5.15 | **Import / Drop `.tex`** | Imports LaTeX files from picker or global drag-and-drop and opens LaTeX Studio directly. |
 | E5.16 | **Local LaTeX Persistence** | Last document and selected preset are saved locally for continuity. |
 | E5.17 | **Technical Report Preset** | Includes a LaTeX technical/API findings report template in addition to CV presets. |
+| E5.18 | **Diagram Studio** | Lucidchart-style editor on an infinite React Flow canvas: searchable shape library (flowchart, architecture, integration and services, UML, containers, notes), smart connectors, auto-layout, PNG/SVG/JSON export. Guide: [DIAGRAM-STUDIO.md](DIAGRAM-STUDIO.md). |
+| E5.19 | **Diagram templates** | Go & Java microservices, orchestrated Saga, Apache Camel integration, REST/SOAP/Kafka/database flow, OSGi bundles and UML classes, laid out by ELK. |
+| E5.20 | **Diagram persistence** | Every diagram autosaves (debounced) as versioned JSON in the local bbolt store (`diagrams` bucket), with nodes, styles, connectors, bends and viewport. |
 
 ---
 
