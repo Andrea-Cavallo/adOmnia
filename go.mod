@@ -37,7 +37,7 @@ require (
 	github.com/ulikunitz/xz v0.5.17
 	github.com/wI2L/jsondiff v0.7.1
 	github.com/wailsapp/wails/v3 v3.1.0
-	github.com/xdg-go/scram v1.3.0
+	github.com/xdg-go/scram v1.4.0
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	github.com/zalando/go-keyring v0.2.8
 	go.etcd.io/bbolt v1.5.0
@@ -116,7 +116,6 @@ require (
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/u-root/u-root v0.16.0 // indirect
-	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/atomic v1.12.0 // indirect
