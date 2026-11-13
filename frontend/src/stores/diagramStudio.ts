@@ -8,7 +8,7 @@ import { applyEdgeChanges, applyNodeChanges, reconnectEdge, type Connection, typ
 import { createAutosave, type SaveStatus } from '@/lib/diagrams/autosave'
 import { diagramFromBlueprint } from '@/lib/diagrams/blueprint'
 import {
-  alignNodes, copySelection, createEdge, createNode, deleteElements, distributeNodes, duplicateSelection, groupNodes,
+  absoluteRect, alignNodes, copySelection, createEdge, createNode, deleteElements, distributeNodes, duplicateSelection, groupNodes,
   moveLayer, pasteClipboard, reparentByDrop, setLocked, ungroup, updateEdgeData, updateNodeData,
   type AlignMode, type Clipboard, type DistributeAxis, type LayerMove,
 } from '@/lib/diagrams/graphOps'
@@ -24,6 +24,7 @@ import { DIAGRAM_TEMPLATES } from '@/lib/diagrams/templates'
 
 const AUTOSAVE_DELAY_MS = 800
 const PASTE_OFFSET = 32
+const STRAIGHTEN_WITHIN = 32
 
 interface DiagramStudioState {
   summaries: DiagramSummary[]
@@ -57,6 +58,8 @@ interface DiagramStudioState {
 
   addShape: (shapeId: string, position: XYPosition) => string | null
   connect: (connection: Connection) => void
+  /** A new shape like the source, centered on `position` and connected to it, in one undo step. */
+  connectToNew: (source: string, sourceHandle: string | null, position: XYPosition) => string | null
   /** Moves an edge's end to another node or handle (endpoint dragged on the canvas). */
   reconnect: (edge: DiagramEdge, connection: Connection) => void
   /** Live updates during a gesture that already recorded its history step (rotation, waypoint drag). */
@@ -278,6 +281,23 @@ export function createDiagramStudioStore(repository: DiagramRepository = diagram
         const { doc } = get()
         if (!doc || connection.source === connection.target) return
         commit((graph) => ({ ...graph, edges: [...graph.edges, createEdge(connection, doc.settings.defaultRouting)] }))
+      },
+
+      connectToNew(source, sourceHandle, position) {
+        const { doc } = get()
+        const from = doc?.nodes.find((node) => node.id === source)
+        if (!doc || !from) return null
+        const fresh = createNode(from.data.shape, position)
+        // Nearly in line with the source: put it exactly in line, so the connector is straight.
+        const box = absoluteRect(from, new Map(doc.nodes.map((node) => [node.id, node])))
+        const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        const inLine = (value: number, axis: number) => (Math.abs(value - axis) < STRAIGHTEN_WITHIN ? axis : value)
+        const at = { x: inLine(position.x, center.x), y: inLine(position.y, center.y) }
+        const node = { ...fresh, position: { x: at.x - (fresh.width ?? 0) / 2, y: at.y - (fresh.height ?? 0) / 2 }, selected: true }
+        const edge = createEdge({ source, sourceHandle, target: node.id, targetHandle: null }, doc.settings.defaultRouting)
+        commit((graph) => ({ nodes: [...graph.nodes.map((other) => ({ ...other, selected: false })), node], edges: [...graph.edges, edge] }))
+        get().dropInContainer(node.id)
+        return node.id
       },
 
       reconnect(edge, connection) {

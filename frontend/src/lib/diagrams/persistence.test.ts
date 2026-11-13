@@ -81,8 +81,16 @@ describe('diagram blueprints and layout', () => {
   })
 
   it('lays out top-level nodes with ELK and leaves container children in place', async () => {
-    const template = DIAGRAM_TEMPLATES.find((candidate) => candidate.id === 'camel')!
-    const graph = await diagramFromBlueprint(template.blueprint, 'orthogonal')
+    const graph = await diagramFromBlueprint({
+      nodes: [
+        { key: 'box', shape: 'boundary', label: 'service' },
+        { key: 'in', shape: 'process', label: 'in', parent: 'box' },
+        { key: 'out', shape: 'process', label: 'out', parent: 'box' },
+        { key: 'db', shape: 'database', label: 'db' },
+        { key: 'client', shape: 'client', label: 'client' },
+      ],
+      links: [{ from: 'client', to: 'in' }, { from: 'in', to: 'out' }, { from: 'out', to: 'db' }],
+    }, 'orthogonal')
     const topLevel = graph.nodes.filter((node) => !node.parentId)
     const positions = new Set(topLevel.map((node) => `${node.position.x},${node.position.y}`))
     expect(positions.size).toBe(topLevel.length)

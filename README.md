@@ -95,6 +95,7 @@ A step-by-step version is in [Getting started](docs/GETTING-STARTED.md).
 - **Request-level debugging.** *Debug Request* starts your service under Delve, waits for the port, sends the request and stops on the breakpoint that handles it. Requests can target a service by name, resolved to your local run, a Compose port or a remote URL, and show the SQL and Kafka traffic they cause.
 - **A full IDE for Go, Java and the web.** gopls completion, diagnostics and refactoring; run, test and debug from the gutter; pprof and escape-analysis workbenches; a Git workbench with hunk staging; several isolated projects open at once. Java/Spring, TypeScript/JavaScript and Python follow the same run, test and debug interface.
 - **Data and messaging beside the request.** Database Studio (PostgreSQL, MySQL/MariaDB, MongoDB, Redis), Broker Studio, Docker Lab, Mock Server, Proxy, Browser Debugging, load testing and WebSocket/SSE/gRPC/SOAP clients. Opening a tool from a detected service arrives already configured.
+- **Diagrams next to the code.** Diagram Studio is a Lucidchart-style editor on an infinite canvas: basic, flowchart, architecture, UML and swimlane shapes, connectors that attach to the shape you release them on or grow a new connected shape on the empty canvas, auto-layout, and PNG, SVG or JSON export. Diagrams autosave locally.
 - **Enterprise protocols.** SOAP/WSDL, WS-Security, mTLS, JKS and certificate tools sit in the same workspace as modern HTTP APIs.
 - **Dependency security.** Security Center scans `pom.xml`, `go.mod` and Python manifests, separates severity from exploitation signals, and previews the impact of an upgrade. Fixes show the diff and apply only after review.
 - **Local-first and extensible.** No cloud, no account, no telemetry. Project tools run only after you trust a project, and every tool install shows its exact command first. Light and dark themes, importable skins, a JavaScript plugin system, shareable templates and Git-friendly workspaces. One portable executable.
@@ -200,6 +201,10 @@ Open or paste logs, or follow them live. Search with filters, see fields detecte
 <p align="center">
   <img src="assets/screenshots/log-inspector.png" alt="Log Inspector with filters, timeline and JSON event view" width="100%">
 </p>
+
+### Diagram Studio
+
+Open it from **Document Studio → Diagram Studio**. Drag a shape from the searchable library, double-click to write in it, and drag from one of its points to draw a connector: released on another shape it attaches to the facing side, released on the empty canvas it adds a connected shape of the same kind, ready to be typed in. Resize, rotate, group, align, undo and auto-layout are one click away; **New → Saga (orchestrated)** opens a worked example colored by role. Diagrams save by themselves in the local store and export to PNG, SVG or JSON.
 
 ### Power Tools
 
@@ -389,6 +394,7 @@ LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift
 | [Installation](docs/INSTALL.md) | Install, update and check platform requirements |
 | [Code Studio](docs/CODE-STUDIO.md) | Configure projects, tools, tests, debugger and editor |
 | [Code Studio technical reference](docs/CODE-STUDIO-REFERENCE.md) | Understand the IDE platform: architecture, modules, language adapters, UI and bindings |
+| [Diagram Studio](docs/DIAGRAM-STUDIO.md) | Draw flowcharts, architectures and UML: shapes, connectors, layout, export and file format |
 | [Vault and local credentials](docs/VAULT.md) | Understand age+scrypt, the in-memory key, auto-lock, DPAPI/keychain seals and the threat model |
 | [Live sessions](docs/LIVE-SESSION.md) | Connect requests with code, logs, SQL and messages |
 | [Feature reference](docs/adomnia-feature-catalog.en.md) | Explore the supporting studios |

@@ -9,13 +9,14 @@ import type { Edge, Node, Viewport } from '@xyflow/react'
 export const DIAGRAM_FORMAT_VERSION = 1
 export const DIAGRAM_FORMAT = 'adomnia-diagram'
 
-export type ShapeCategory = 'flowchart' | 'architecture' | 'integration' | 'uml' | 'containers' | 'annotations'
+export type ShapeCategory = 'basic' | 'flowchart' | 'architecture' | 'integration' | 'uml' | 'containers' | 'annotations'
 
 /** How a shape's outline is drawn; several catalog entries share one geometry. */
 export type ShapeGeometry =
   | 'rectangle' | 'rounded' | 'pill' | 'diamond' | 'parallelogram' | 'ellipse' | 'circle'
   | 'cylinder' | 'hexagon' | 'document' | 'queue' | 'cloud' | 'uml-class' | 'package'
   | 'component' | 'container' | 'note' | 'text'
+  | 'triangle' | 'star' | 'arrow' | 'subprocess' | 'manual-input' | 'delay' | 'off-page' | 'actor'
 
 export interface NodeStyle {
   fill: string

@@ -1,12 +1,13 @@
 /**
  * The infinite canvas: React Flow wired to the Diagram Studio store, with smart alignment guides
- * while dragging, drop from the shape library, context menus, keyboard shortcuts, minimap and
- * zoom controls. Drag on empty canvas selects; Space+drag, the middle button or the wheel pans.
+ * while dragging, drop from the shape library, context menus, keyboard shortcuts and zoom
+ * controls. A connector dropped on a shape attaches to it; dropped on the empty canvas it gets a new
+ * shape at its end. Drag on empty canvas selects; Space+drag, the middle button or the wheel pans.
  */
 import { useCallback, useSyncExternalStore, type DragEvent, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import {
-  Background, BackgroundVariant, ConnectionLineType, ConnectionMode, Controls, MiniMap, ReactFlow, SelectionMode, ViewportPortal,
-  useReactFlow, type NodeChange, type NodePositionChange, type OnNodeDrag, type Viewport,
+  Background, BackgroundVariant, ConnectionLineType, ConnectionMode, Controls, ReactFlow, SelectionMode, ViewportPortal,
+  useReactFlow, type NodeChange, type NodePositionChange, type OnConnectEnd, type OnNodeDrag, type Viewport,
 } from '@xyflow/react'
 import { alignmentGuides } from '@/lib/diagrams/guides'
 import { absoluteRect, indexNodes, nodeSize } from '@/lib/diagrams/graphOps'
@@ -24,6 +25,8 @@ const NODE_TYPES = { shape: ShapeNode }
 const EDGE_TYPES = { smart: SmartEdge }
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 4
+/** A connector released closer than this to where it started is a slip of the hand, not a new shape. */
+const MIN_DRAG_TO_ADD = 48
 const BACKGROUND: Record<'dots' | 'lines', BackgroundVariant> = { dots: BackgroundVariant.Dots, lines: BackgroundVariant.Lines }
 
 /**
@@ -82,6 +85,7 @@ export function DiagramCanvas() {
   const onNodesChange = useDiagramStudio((state) => state.onNodesChange)
   const onEdgesChange = useDiagramStudio((state) => state.onEdgesChange)
   const connect = useDiagramStudio((state) => state.connect)
+  const connectToNew = useDiagramStudio((state) => state.connectToNew)
   const reconnect = useDiagramStudio((state) => state.reconnect)
   const checkpoint = useDiagramStudio((state) => state.checkpoint)
   const setViewport = useDiagramStudio((state) => state.setViewport)
@@ -111,6 +115,26 @@ export function DiagramCanvas() {
     addShape(shapeId, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
   }, [addShape, screenToFlowPosition])
 
+  /** A connector that did not end on a connection point: on a shape it attaches to it, on empty canvas it grows a shape. */
+  const onConnectEnd = useCallback<OnConnectEnd>((event, connection) => {
+    const source = connection.fromNode?.id
+    if (connection.isValid || !source || !connection.from) return
+    const point = 'changedTouches' in event ? event.changedTouches[0] : event
+    const under = document.elementFromPoint(point.clientX, point.clientY)
+    const sourceHandle = connection.fromHandle?.id ?? null
+    const target = under?.closest<HTMLElement>('.react-flow__node')?.dataset.id
+    if (target) {
+      const locked = useDiagramStudio.getState().doc?.nodes.find((node) => node.id === target)?.data.locked
+      if (target !== source && !locked) connect({ source, sourceHandle, target, targetHandle: null })
+      return
+    }
+    if (!under?.closest('.react-flow__pane')) return
+    const at = screenToFlowPosition({ x: point.clientX, y: point.clientY })
+    if (Math.hypot(at.x - connection.from.x, at.y - connection.from.y) < MIN_DRAG_TO_ADD) return
+    const created = connectToNew(source, sourceHandle, at)
+    if (created) editNode(created)
+  }, [connect, connectToNew, editNode, screenToFlowPosition])
+
   const menuAt = useCallback((event: ReactMouseEvent | MouseEvent, target: ContextTarget) => {
     event.preventDefault()
     const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY })
@@ -137,6 +161,7 @@ export function DiagramCanvas() {
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={connect}
+        onConnectEnd={onConnectEnd}
         onReconnect={reconnect}
         onReconnectStart={checkpoint}
         edgesReconnectable
@@ -172,7 +197,6 @@ export function DiagramCanvas() {
         {settings.grid !== 'none' && (
           <Background variant={BACKGROUND[settings.grid]} gap={settings.gridSize} size={settings.grid === 'dots' ? 1.2 : undefined} className="diagram-grid" />
         )}
-        <MiniMap pannable zoomable className="diagram-minimap diagram-no-export" nodeStrokeWidth={2} />
         <Controls showInteractive={false} className="diagram-controls diagram-no-export" />
         <GuideLines />
         <SelectionToolbar />

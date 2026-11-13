@@ -29,7 +29,7 @@ export function createNode(shapeId: string, position: XYPosition, overrides: Par
   const definition = shapeOf(shapeId)
   const data: DiagramNodeData = {
     shape: definition.id,
-    label: definition.label,
+    label: definition.text ?? definition.label,
     subtitle: definition.subtitle,
     attributes: definition.compartments?.attributes,
     operations: definition.compartments?.operations,

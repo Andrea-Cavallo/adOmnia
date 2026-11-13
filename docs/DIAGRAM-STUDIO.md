@@ -9,14 +9,14 @@ The window has three parts: the **shape library** on the left, the **infinite ca
 | Action | How |
 |---|---|
 | Add a shape | Drag it from the library onto the canvas, or click it to drop it in the middle of the view (repeated clicks cascade). Search matches names, categories and keywords (`kafka`, `saga`, `osgi`, `uml interface`…). |
-| Connect two shapes | Drag from a connection point (they appear on hover: the middle of each side, plus a quarter and three quarters along sides of 120 px or more) to a point of another shape. |
+| Connect two shapes | Drag from a connection point (they appear on hover: the middle of each side, plus a quarter and three quarters along sides of 120 px or more) and release it on another shape: on one of its points to pin that point, anywhere else on the shape to let the connector pick the facing side. Released on the empty canvas, the connector gets a new shape of the same kind at its end, ready to be typed in. |
 | Edit text | Double-click a shape. Enter commits, Shift+Enter starts a new line, Escape cancels. UML attributes and operations are edited in the inspector. |
 | Label a connector | Double-click the connector (or its label). |
 | Resize / rotate | Select the shape and drag a handle; drag the round handle above it to rotate (15° steps, Shift for a free angle). Boxes of text and containers do not rotate. |
 | Bend a connector | Select it and drag a **+** to add a bend; drag a bend to move it, double-click it to remove it. *Reset bends* in the inspector routes it automatically again. |
 | Move a connector end | Drag the end of a selected connector onto another shape. |
 | Select | Drag on empty canvas for a box selection; Shift/Ctrl/Cmd+click adds to it. |
-| Pan / zoom | Wheel or trackpad pans; Ctrl/Cmd+wheel or pinch zooms; Space+drag or the middle button pans. The controls bottom left zoom and fit; the minimap bottom right pans and zooms too. |
+| Pan / zoom | Wheel or trackpad pans; Ctrl/Cmd+wheel or pinch zooms; Space+drag or the middle button pans. The controls bottom left zoom and fit. |
 | Put shapes in a container | Drop a shape inside a *Container* or *System boundary*; drag it out to take it out. *Group* (Ctrl+G) wraps the selection in a new container. |
 
 The floating toolbar above a selection offers duplicate, group/ungroup, align (left, center, right, top, middle, bottom), distribute (three or more shapes), bring to front, send to back, lock and delete. Right-click opens the same actions, plus *Edit text*, *Paste here* and *Add a process here* on the empty canvas.
@@ -39,11 +39,12 @@ Shortcuts work while the canvas has focus and never while you type in a field.
 
 ## Shapes
 
-- **Flowchart:** process, decision, input/output, start/end, connector, document, stored data.
+- **Basic shapes:** rectangle, rounded rectangle, ellipse, circle, triangle, diamond, hexagon, star, block arrow, cloud. They start without text.
+- **Flowchart:** process, decision, input/output, start/end, connector, document, stored data, subprocess, manual input, preparation, delay, off-page link.
 - **Architecture:** service, API, database, cache, message queue, API gateway, load balancer, client, external system.
 - **Integration & services:** Go service, Java service, REST endpoint, SOAP endpoint, Kafka topic, domain event, Camel route, Saga orchestrator, Saga step, OSGi bundle.
-- **UML:** class and interface (with attribute and operation compartments), package, component.
-- **Containers:** container, system boundary (dashed).
+- **UML:** class and interface (with attribute and operation compartments), actor, use case, package, component.
+- **Containers:** container, swimlane, system boundary (dashed).
 - **Text & notes:** free text, note.
 
 Every shape has a label, an optional subtitle (technology, port, stereotype) and an optional icon. Colors come from the active theme unless you pick one: the inspector offers restrained swatches (graphite, green, blue, amber, red, violet, paper) and any custom color for fill, border and text, plus border width, dashed border and font size.
@@ -60,7 +61,7 @@ Every shape has a label, an optional subtitle (technology, port, stereotype) and
 
 **Layout** runs ELK's layered algorithm left to right; the arrow next to it lays out top to bottom. Locked shapes stay where they are, and manual bends are cleared so the connectors route again. ELK is loaded the first time you use it.
 
-**New** creates a blank diagram or one from a template: *Go & Java microservices*, *Saga (orchestrated)*, *Apache Camel integration*, *REST, SOAP, Kafka & database flow*, *OSGi plug-in bundles*, *UML classes*.
+**New** creates a blank diagram or the worked example, *Saga (orchestrated)*: an orchestrator, its three local transactions, their compensations and the two outcomes, colored by role.
 
 ## Saving, import and export
 
@@ -114,7 +115,7 @@ Every edit goes through the store's `commit`, which records one undo step and sc
 ### Extending
 
 - **A shape:** one entry in `SHAPES`; a new outline only when no existing geometry fits (`ShapeGeometry` + a case in `outlineOf`).
-- **A template:** one blueprint in `templates.ts`.
+- **A template:** one blueprint in `templates.ts`. A node or a link takes a `color` of the inspector palette (`green`, `blue`, `amber`, `red`, `violet`, `graphite`) when the color carries a meaning, as in the Saga template; nodes of a layer are laid out in the order they are declared.
 - **Diagrams from the workspace:** implement `DiagramSource` (`blueprint.ts`): `describe()` returns a blueprint of typed nodes and links, and `diagramFromBlueprint` lays it out. Discovery (Developer Context routes, Kafka topics, datasources, OSGi bundles…) belongs in that source, outside the editor; the editor never reads the workspace.
 
 ## Known limits
