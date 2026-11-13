@@ -52,7 +52,7 @@
     "monaco-vim": "^0.4.4",
     "monaco-yaml": "^5.5.1",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^6.3.289",
+    "pdfjs-dist": "^6.5.438",
     "pixelfx": "github:patch-gg/pixelfx#a84159688af3ca37a4be05a0d422b94451b2e24e",
     "prettier": "^3.9.10",
     "react": "^19.3.0",
