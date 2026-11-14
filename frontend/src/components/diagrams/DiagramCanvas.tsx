@@ -162,7 +162,6 @@ export function DiagramCanvas() {
         deleteKeyCode={null}
         multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
         elevateNodesOnSelect={false}
-        onlyRenderVisibleElements
         onInit={(instance) => {
           // A diagram never viewed before (a template, an import) is framed once; a saved view is kept.
           const fresh = doc.viewport.x === 0 && doc.viewport.y === 0 && doc.viewport.zoom === 1
