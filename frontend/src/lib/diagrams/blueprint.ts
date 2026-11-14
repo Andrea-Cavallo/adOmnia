@@ -57,6 +57,15 @@ const tint = (id: string | undefined) => STYLE_PALETTE.find((entry) => entry.id 
 /** Space between the nodes inside a container and between them and its border. */
 const CONTAINER_GAP = 40
 
+const TEXT_FIT = { labelChar: 8.2, subtitleChar: 6.8, padding: 56, max: 340 }
+
+/** A generated node is as wide as its name and its file:line, so neither wraps mid-word nor overflows. */
+export function widenToText(node: DiagramNode): DiagramNode {
+  const text = Math.max(node.data.label.length * TEXT_FIT.labelChar, (node.data.subtitle?.length ?? 0) * TEXT_FIT.subtitleChar)
+  const width = Math.min(TEXT_FIT.max, Math.max(node.width ?? 0, Math.ceil(text) + TEXT_FIT.padding))
+  return width === node.width ? node : { ...node, width }
+}
+
 /** The blueprint as a graph: nodes with their shapes, containers sized and filled in rows, links routed. */
 export function graphFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRouting): DiagramGraph {
   const ids = new Map<string, string>()
@@ -72,7 +81,7 @@ export function graphFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRou
       ...style,
     })
     ids.set(spec.key, node.id)
-    return { spec, node }
+    return { spec, node: spec.generated ? widenToText(node) : node }
   })
   const nodes = created.map(({ spec, node }): DiagramNode => (spec.parent && ids.has(spec.parent) ? { ...node, parentId: ids.get(spec.parent) } : node))
   const sized = fitContainers(nodes)

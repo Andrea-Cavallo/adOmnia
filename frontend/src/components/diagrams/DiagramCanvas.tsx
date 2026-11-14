@@ -13,7 +13,7 @@ import { alignmentGuides } from '@/lib/diagrams/guides'
 import { absoluteRect, indexNodes, nodeSize } from '@/lib/diagrams/graphOps'
 import type { DiagramEdge, DiagramNode } from '@/lib/diagrams/model'
 import { useDiagramStudio } from '@/stores/diagramStudio'
-import { useDiagramUi, type ContextTarget } from '@/stores/diagramStudioUi'
+import { FIT_ALL, useDiagramUi, type ContextTarget } from '@/stores/diagramStudioUi'
 import { DiagramContextMenu } from './DiagramContextMenu'
 import { handleDiagramKey, typingIn } from './diagramActions'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -105,9 +105,10 @@ export function DiagramCanvas() {
   // Cross-panel navigation: bring the node into view once the canvas has it, then clear the request.
   useEffect(() => {
     if (!focusNodeId) return
-    if (!useDiagramStudio.getState().doc?.nodes.some((node) => node.id === focusNodeId)) { focusNode(null); return }
+    const all = focusNodeId === FIT_ALL
+    if (!all && !useDiagramStudio.getState().doc?.nodes.some((node) => node.id === focusNodeId)) { focusNode(null); return }
     const frame = requestAnimationFrame(() => {
-      void fitView({ nodes: [{ id: focusNodeId }], duration: 300, maxZoom: 1.4, padding: 1.2 })
+      void fitView(all ? { duration: 300, maxZoom: 1, padding: 0.15 } : { nodes: [{ id: focusNodeId }], duration: 300, maxZoom: 1.4, padding: 1.2 })
       focusNode(null)
     })
     return () => cancelAnimationFrame(frame)
@@ -230,7 +231,7 @@ export function DiagramCanvas() {
         {settings.grid !== 'none' && (
           <Background variant={BACKGROUND[settings.grid]} gap={settings.gridSize} size={settings.grid === 'dots' ? 1.2 : undefined} className="diagram-grid" />
         )}
-        <Controls showInteractive={false} className="diagram-controls diagram-no-export" />
+        <Controls position="bottom-right" showInteractive={false} className="diagram-controls diagram-no-export" />
         <GuideLines />
         <SelectionToolbar />
       </ReactFlow>

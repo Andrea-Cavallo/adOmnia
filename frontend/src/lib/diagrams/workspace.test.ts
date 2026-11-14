@@ -86,6 +86,12 @@ describe('workspace → diagram', () => {
     expect(entities.map((item) => item.id)).toContain('fn:payments.CreatePayment')
   })
 
+  it('treats the handler as what an endpoint calls', () => {
+    const fixture = analysis([payment, handler, reserve, endpoint, topic], links)
+    expect(relatedEntities(fixture, 'http:POST /payments', 'callees').entities.map((item) => item.id)).toContain('fn:payments.CreatePayment')
+    expect(relatedEntities(fixture, 'fn:payments.CreatePayment', 'callers').entities.map((item) => item.id)).toContain('http:POST /payments')
+  })
+
   it('resolves a renamed entity by file when the id is gone', () => {
     const renamed = { ...handler, id: 'fn:payments.CreatePayment.v2', label: 'payments.CreatePaymentV2' }
     const found = resolveEntity(analysis([renamed]), { entityId: handler.id, kind: 'function', file: 'service/payment.go', line: 42 })

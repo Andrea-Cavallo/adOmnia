@@ -61,7 +61,8 @@ function shortLabel(entity: WorkspaceEntity): string {
     const tail = label.includes('.') ? label.slice(label.lastIndexOf('.') + 1) : label
     return tail.endsWith('()') ? tail : `${tail}()`
   }
-  if (entity.kind === 'package' && label.includes('/')) return label.slice(label.lastIndexOf('/') + 1)
+  // A Go module is named by its import path: the last segment is the name people use.
+  if ((entity.kind === 'package' || entity.kind === 'service') && label.includes('/')) return label.slice(label.lastIndexOf('/') + 1)
   return label
 }
 
@@ -244,7 +245,7 @@ function ownershipLinks(analysis: WorkspaceAnalysis, visible: ReadonlySet<string
   for (const entity of analysis.entities) {
     if (!entity.service || entity.service === entity.id || !visible.has(entity.id) || !visible.has(entity.service)) continue
     const role = entity.kind === 'endpoint' ? 'exposes' : entity.kind === 'table' ? 'uses' : entity.kind === 'topic' ? 'uses' : 'depends'
-    links.push({ from: entity.service, to: entity.id, kind: role, detail: `service ${entity.kind}`, confidence: 'derived' })
+    links.push({ from: entity.service, to: entity.id, kind: role, confidence: 'derived' })
   }
   return links
 }
@@ -345,8 +346,10 @@ export function relatedEntities(analysis: WorkspaceAnalysis, id: string, directi
   const byId = new Map(analysis.entities.map((entity) => [entity.id, entity]))
   const links = analysis.links.filter((link) => {
     if (!FLOW_LINK_KINDS.has(link.kind)) return false
-    if (direction === 'callers') return link.to === id
-    if (direction === 'callees') return link.from === id
+    // `handles` is stored handler → endpoint, but a request runs endpoint → handler.
+    const [upstream, downstream] = link.kind === 'handles' ? [link.to, link.from] : [link.from, link.to]
+    if (direction === 'callers') return downstream === id
+    if (direction === 'callees') return upstream === id
     return link.from === id || link.to === id
   })
   const ids = new Set<string>([id])

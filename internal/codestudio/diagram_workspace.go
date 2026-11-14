@@ -18,7 +18,7 @@ func (s *Service) DiagramWorkspace(sessionID string, refresh bool) (diagrams.Wor
 		return diagrams.WorkspaceAnalysis{}, err
 	}
 	if session.Project.Authorization != AuthorizationPermitted {
-		return diagrams.WorkspaceAnalysis{}, errors.New("explicitly authorize the tools for this project")
+		return diagrams.WorkspaceAnalysis{}, errors.New("Trust this project in Code Studio first: the analysis only runs for a trusted project")
 	}
 	root := session.Project.RealPath
 	input := diagrams.WorkspaceInput{Root: root}

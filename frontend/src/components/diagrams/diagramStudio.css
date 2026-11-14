@@ -34,6 +34,12 @@
 .diagram-body--no-library.diagram-body--no-inspector { grid-template-columns: minmax(0, 1fr); }
 .diagram-canvas-host { position: relative; min-width: 0; min-height: 0; border-left: 1px solid var(--color-border-1); border-right: 1px solid var(--color-border-1); }
 .diagram-canvas { position: absolute; inset: 0; outline: none; }
+/* Narrow pane (the split beside Code Studio): the canvas keeps the room, the side panes step aside. */
+.diagram-studio { container-type: inline-size; }
+@container (max-width: 820px) {
+  .diagram-body, .diagram-body--no-inspector, .diagram-body--no-library { grid-template-columns: minmax(0, 1fr); }
+  .diagram-studio .diagram-library, .diagram-studio .diagram-inspector { display: none; }
+}
 .diagram-empty-hint { margin: 16px; font-size: 11px; color: var(--color-text-4); }
 
 /* ---- command bar */

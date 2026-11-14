@@ -36,6 +36,9 @@ interface DiagramUiState {
   focusNode: (id: string | null) => void
 }
 
+/** `focusNode(FIT_ALL)` frames the whole diagram, e.g. after nodes were added outside the view. */
+export const FIT_ALL = '*'
+
 export const useDiagramUi = create<DiagramUiState>((set) => ({
   editingNodeId: null,
   editingEdgeId: null,

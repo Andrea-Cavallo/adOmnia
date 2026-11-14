@@ -20,6 +20,8 @@ import { DiagramWorkspaceBar } from './DiagramWorkspaceBar'
 import { useDiagramCodeGraph } from '@/stores/diagramCodeGraph'
 import { ShapeLibrary } from './ShapeLibrary'
 import '@xyflow/react/dist/base.css'
+// The shared studio frame (flex column, clipped) — without it the canvas grows as tall as the library.
+import '../ui/nothingStudio.css'
 import './diagramStudio.css'
 
 const CASCADE = 32

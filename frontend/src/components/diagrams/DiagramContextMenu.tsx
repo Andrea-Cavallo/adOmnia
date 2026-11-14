@@ -1,5 +1,5 @@
 /** The right-click menu: the menu actions for the clicked element, plus Paste here and Add here. */
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { ClipboardPaste, Copy, Database, ExternalLink, GitBranch, ListTree, MessageSquare, MousePointerClick, Radio, RefreshCw, Square, StickyNote } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { absoluteRect } from '@/lib/diagrams/graphOps'
@@ -19,6 +19,13 @@ const MENU_ACTIONS = DIAGRAM_ACTIONS.filter((action) => action.places.includes('
 const RADIUS_PRESETS = [0, 4, 10, 20]
 /** Gap between a shape and the sticky note created beside it. */
 const STICKY_GAP = 32
+
+/** Opens towards the side with more room, so a menu near an edge of the window stays whole. */
+function menuPlacement(x: number, y: number): CSSProperties {
+  const horizontal = x > window.innerWidth / 2 ? { right: window.innerWidth - x } : { left: x }
+  const vertical = y > window.innerHeight / 2 ? { bottom: window.innerHeight - y } : { top: y }
+  return { ...horizontal, ...vertical }
+}
 
 export function DiagramContextMenu() {
   const menu = useDiagramUi((state) => state.menu)
@@ -95,7 +102,7 @@ export function DiagramContextMenu() {
   }
 
   return (
-    <div ref={ref} className="diagram-menu diagram-no-export" role="menu" style={{ left: menu.x, top: menu.y }}>
+    <div ref={ref} className="diagram-menu diagram-no-export" role="menu" style={menuPlacement(menu.x, menu.y)}>
       {target.kind === 'node' && (
         <button type="button" role="menuitem" onClick={() => run(() => editNode(target.id))}><MousePointerClick size={12} /> Edit text<kbd>Double-click</kbd></button>
       )}
@@ -144,10 +151,10 @@ export function DiagramContextMenu() {
           )}
           {flowEntity && (
             <>
-              <button type="button" role="menuitem" onClick={() => run(() => { useDiagramCodeGraph.getState().expand('callers') })}>
+              <button type="button" role="menuitem" onClick={() => run(() => { void useDiagramCodeGraph.getState().expand('callers') })}>
                 <GitBranch size={12} /> Show Callers
               </button>
-              <button type="button" role="menuitem" onClick={() => run(() => { useDiagramCodeGraph.getState().expand('callees') })}>
+              <button type="button" role="menuitem" onClick={() => run(() => { void useDiagramCodeGraph.getState().expand('callees') })}>
                 <GitBranch size={12} /> Show Callees
               </button>
             </>

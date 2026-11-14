@@ -4,7 +4,7 @@
  * the source refs, but never moves a node the user placed or renames a shape they labelled.
  */
 import { createEdge, createNode, nodeSize } from './graphOps'
-import type { BlueprintLink } from './blueprint'
+import { widenToText, type BlueprintLink } from './blueprint'
 import { blueprintLinkOf, blueprintNodeOf, confidenceOf } from './workspace'
 import { STYLE_PALETTE } from './shapes'
 import type { WorkspaceEntity, WorkspaceLink } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/diagrams/models'
@@ -130,7 +130,7 @@ export function revealNode(entity: WorkspaceEntity, anchor: DiagramNode | null, 
   const at = anchor ? { x: anchor.position.x + nodeSize(anchor).width + RELATED_GAP, y: anchor.position.y } : { x: 0, y: 0 }
   const base = createNode(spec.shape, at)
   // A shape from the catalog may already carry a style; the service tint is merged over it.
-  return {
+  return widenToText({
     ...base,
     data: {
       ...base.data,
@@ -141,7 +141,7 @@ export function revealNode(entity: WorkspaceEntity, anchor: DiagramNode | null, 
       ...(spec.service ? { service: spec.service } : {}),
       generated: true,
     },
-  }
+  })
 }
 
 function styleOfColor(color: string): { fill?: string; stroke?: string } {

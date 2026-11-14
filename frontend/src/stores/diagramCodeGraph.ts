@@ -8,7 +8,7 @@ import type { WorkspaceAnalysis, WorkspaceEntity } from '../../bindings/github.c
 import { generateWorkspaceDiagram, relatedEntities, resolveEntity, entityAt } from '@/lib/diagrams/workspace'
 import type { DiagramCodeRef, DiagramViewKind } from '@/lib/diagrams/model'
 import { useDiagramStudio } from '@/stores/diagramStudio'
-import { useDiagramUi } from '@/stores/diagramStudioUi'
+import { FIT_ALL, useDiagramUi } from '@/stores/diagramStudioUi'
 import { useAppStore } from '@/stores/app'
 import { enterDiagramSplit } from '@/lib/workspaceLayout'
 
@@ -40,7 +40,7 @@ interface DiagramCodeState {
   ensureAnalysisFor: (sessionId: string, workspaceId?: string) => Promise<WorkspaceAnalysis | null>
   setView: (view: DiagramViewKind, focusId?: string) => Promise<void>
   /** Adds the callers/callees of the selected node. Returns how many nodes were added. */
-  expand: (direction: Direction) => number
+  expand: (direction: Direction) => Promise<number>
   /** Code Studio â†’ Diagram Studio: highlights the entity a source location belongs to. */
   reveal: (ref: Pick<DiagramCodeRef, 'sessionId' | 'workspaceId' | 'entityId' | 'kind' | 'file' | 'line' | 'symbol'>) => Promise<'shown' | 'missing' | 'error'>
   /** Code Studio â†’ Diagram Studio from the editor caret: find the entity by file and line. */
@@ -53,6 +53,9 @@ interface DiagramCodeState {
 }
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
+/** Time the split takes to give the diagram pane its new width. */
+const SPLIT_SETTLE_MS = 250
 
 async function activeProject(): Promise<{ sessionId: string; workspaceId?: string; projectName?: string } | null> {
   const { useCodeStudioStore } = await import('@/stores/codeStudio')
@@ -166,14 +169,18 @@ export const useDiagramCodeGraph = create<DiagramCodeState>((set, get) => ({
     await get().generate({ view, focusId, mode: 'refresh' })
   },
 
-  expand(direction) {
-    const { analysis, sessionId, workspaceId } = get()
+  async expand(direction) {
+    // A diagram reopened after a restart has no analysis in memory yet: load it instead of doing nothing.
+    const analysis = await get().ensureAnalysis()
+    const { sessionId, workspaceId } = get()
     const doc = useDiagramStudio.getState().doc
     if (!analysis || !sessionId || !doc) return 0
     const selected = doc.nodes.find((node) => node.selected)?.data.source
     if (!selected) return 0
     const { entities, links } = relatedEntities(analysis, selected.entityId, direction)
     const added = useDiagramStudio.getState().addRelated(entities, links, { sessionId, workspaceId, fingerprint: analysis.fingerprint })
+    // New nodes land beside the selection, often outside the view: frame the diagram again.
+    if (added > 0) useDiagramUi.getState().focusNode(FIT_ALL)
     if (added === 0) {
       set({ notes: [...get().notes, direction === 'callers' ? 'No caller left to add.' : direction === 'callees' ? 'No callee left to add.' : 'No related entity left to add.'] })
     }
@@ -220,7 +227,10 @@ export const useDiagramCodeGraph = create<DiagramCodeState>((set, get) => ({
       useDiagramStudio.setState({ notice: 'This entity has no source file in the analysed workspace.' })
       return
     }
+    const wasSplit = useAppStore.getState().splitView
     enterDiagramSplit('diagrams')
+    // The pane just became narrower: frame the diagram again once it has its new width, so the node stays in view.
+    if (!wasSplit) setTimeout(() => useDiagramUi.getState().focusNode(FIT_ALL), SPLIT_SETTLE_MS)
     const { routeToModule } = await import('@/lib/moduleRouting')
     routeToModule('codestudio', { kind: 'open-location', file: ref.file, line: ref.line ?? 1, sessionId: ref.sessionId })
   },
