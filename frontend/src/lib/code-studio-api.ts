@@ -5,6 +5,7 @@ import type { CargoTreeNode } from '../../bindings/github.com/Andrea-Cavallo/adO
 import type { CertificateInfo } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/nettools/models'
 import type { AppLaunch as OsgiAppLaunch, BundleDetail, DependencyLookup, ExplorerReport, FocusGraph, Impact, LooseJarResult, P2DownloadResult, P2Preview, RuntimeSnapshot, SearchHit, TargetComparison, WorkspaceReport } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde/models'
 import type { Explanation as FlowExplanation, FlowEntry, Impact as FlowImpact, Overview as FlowOverview, Path as FlowPath, RuntimeEvidence as FlowRuntimeEvidence, Trace as FlowTrace } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/flowintel/models'
+import type { WorkspaceAnalysis } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/diagrams/models'
 import * as GoIDEBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/goide'
 import { Call, Events } from '@wailsio/runtime'
 import type { CancellablePromise } from '@wailsio/runtime'
@@ -1153,6 +1154,14 @@ export async function stopJavaOsgiRuntime(sessionId: string): Promise<void> {
 /** Flow Intelligence: flow/subflow del progetto, adapter e conteggi. */
 export async function getFlowOverview(sessionId: string, refresh = false): Promise<FlowOverview | null> {
   return GoIDEBindings.FlowOverview(sessionId, refresh)
+}
+
+/**
+ * Diagram Studio: the workspace graph plus the flow graph, normalized into one navigable model.
+ * Built from the indexes both explorers already cache; `refresh` re-reads the sources.
+ */
+export async function getDiagramWorkspace(sessionId: string, refresh = false): Promise<WorkspaceAnalysis> {
+  return GoIDEBindings.DiagramWorkspace(sessionId, refresh)
 }
 
 /** Filtra i flow per testo e bundle. */

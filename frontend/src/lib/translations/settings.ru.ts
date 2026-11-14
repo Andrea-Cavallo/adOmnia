@@ -14,6 +14,7 @@ export const RU_TRANSLATIONS = {
     "mermaid": "Диаграммы Mermaid",
     "latex": "LaTeX Studio",
     "pdfeditor": "Редактор и подпись PDF",
+    "diagrams": "Студия диаграмм",
     "apidocs": "Swagger Editor",
     "storage": "Данные",
     "vault": "Хранилище",

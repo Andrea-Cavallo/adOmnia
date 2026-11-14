@@ -271,7 +271,8 @@ function MountedCodeStudioCodeEditor({ document, handlesReveal, onCursor, onRunT
     // No cleanup: clearing the location re-runs this effect and must not cancel the reveal.
     revealWhenSized(editor, position)
     clearRevealLocation()
-  }, [clearRevealLocation, document.document.id, handlesReveal, revealLocation])
+  // mountedEditor: a location requested before the editor exists (first file of the session) is applied once it mounts.
+  }, [clearRevealLocation, document.document.id, handlesReveal, mountedEditor, revealLocation])
 
   // Ripristino dopo riavvio o crash: il file riapre dove era il cursore, se nessuno l'ha già spostato.
   useEffect(() => {

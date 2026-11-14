@@ -155,6 +155,8 @@ func (l *Language) ServerSpec(root, toolsRoot string) (lsp.ServerSpec, error) {
 		Configuration:    func() any { return JDTSettingsFor(root) },
 		WatchesFile:      watchesFile,
 		VirtualDocuments: &lsp.VirtualDocuments{Method: "java/classFileContents", RelativePath: classFilePath},
+		// Java 6/7 projects: JDT no longer compiles their level, its model is raised to 1.8 (legacylevel.go).
+		DiagnosticsRepair: legacyLevelRepair,
 	}, nil
 }
 

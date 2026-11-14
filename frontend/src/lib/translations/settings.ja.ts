@@ -14,6 +14,7 @@ export const JA_TRANSLATIONS = {
     "mermaid": "Mermaid ダイアグラム",
     "latex": "LaTeX Studio",
     "pdfeditor": "PDF エディターと署名",
+    "diagrams": "ダイアグラム スタジオ",
     "apidocs": "Swagger Editor",
     "storage": "ストレージ",
     "vault": "ボールト",

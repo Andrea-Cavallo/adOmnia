@@ -95,6 +95,64 @@ export class Edge {
 }
 
 /**
+ * Graph è il grafo di un progetto. Fingerprint identifica lo stato dei sorgenti da cui è nato.
+ */
+export class Graph {
+    "root": string;
+    "language": string;
+    "fingerprint": string;
+    "builtAt": string;
+    "nodes": Node[];
+    "edges": Edge[];
+    "truncated"?: boolean;
+    "problems"?: string[];
+
+    /** Creates a new Graph instance. */
+    constructor($$source: Partial<Graph> = {}) {
+        if (!("root" in $$source)) {
+            this["root"] = "";
+        }
+        if (!("language" in $$source)) {
+            this["language"] = "";
+        }
+        if (!("fingerprint" in $$source)) {
+            this["fingerprint"] = "";
+        }
+        if (!("builtAt" in $$source)) {
+            this["builtAt"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("nodes" in $$source)) {
+            this["nodes"] = [];
+        }
+        if (!("edges" in $$source)) {
+            this["edges"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Graph instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Graph {
+        const $$createField4_0 = $$createType5;
+        const $$createField5_0 = $$createType7;
+        const $$createField7_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("nodes" in $$parsedSource) {
+            $$parsedSource["nodes"] = $$createField4_0($$parsedSource["nodes"]);
+        }
+        if ("edges" in $$parsedSource) {
+            $$parsedSource["edges"] = $$createField5_0($$parsedSource["edges"]);
+        }
+        if ("problems" in $$parsedSource) {
+            $$parsedSource["problems"] = $$createField7_0($$parsedSource["problems"]);
+        }
+        return new Graph($$parsedSource as Partial<Graph>);
+    }
+}
+
+/**
  * Impact è ciò che una modifica al target può rompere.
  */
 export class Impact {
@@ -222,22 +280,22 @@ export class Impact {
      */
     static createFrom($$source: any = {}): Impact {
         const $$createField0_0 = $$createType4;
-        const $$createField1_0 = $$createType6;
-        const $$createField2_0 = $$createType6;
-        const $$createField3_0 = $$createType6;
-        const $$createField4_0 = $$createType6;
-        const $$createField5_0 = $$createType6;
-        const $$createField6_0 = $$createType6;
-        const $$createField7_0 = $$createType6;
-        const $$createField8_0 = $$createType6;
-        const $$createField9_0 = $$createType6;
-        const $$createField10_0 = $$createType6;
+        const $$createField1_0 = $$createType9;
+        const $$createField2_0 = $$createType9;
+        const $$createField3_0 = $$createType9;
+        const $$createField4_0 = $$createType9;
+        const $$createField5_0 = $$createType9;
+        const $$createField6_0 = $$createType9;
+        const $$createField7_0 = $$createType9;
+        const $$createField8_0 = $$createType9;
+        const $$createField9_0 = $$createType9;
+        const $$createField10_0 = $$createType9;
         const $$createField11_0 = $$createType3;
         const $$createField12_0 = $$createType3;
-        const $$createField13_0 = $$createType6;
-        const $$createField14_0 = $$createType6;
-        const $$createField15_0 = $$createType6;
-        const $$createField16_0 = $$createType6;
+        const $$createField13_0 = $$createType9;
+        const $$createField14_0 = $$createType9;
+        const $$createField15_0 = $$createType9;
+        const $$createField16_0 = $$createType9;
         const $$createField18_0 = $$createType3;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("target" in $$parsedSource) {
@@ -333,7 +391,7 @@ export class Node {
      * Creates a new Node instance from a string or object.
      */
     static createFrom($$source: any = {}): Node {
-        const $$createField6_0 = $$createType7;
+        const $$createField6_0 = $$createType10;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("attrs" in $$parsedSource) {
             $$parsedSource["attrs"] = $$createField6_0($$parsedSource["attrs"]);
@@ -440,7 +498,7 @@ export class PackageRisk {
      * Creates a new PackageRisk instance from a string or object.
      */
     static createFrom($$source: any = {}): PackageRisk {
-        const $$createField5_0 = $$createType8;
+        const $$createField5_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("riskiest" in $$parsedSource) {
             $$parsedSource["riskiest"] = $$createField5_0($$parsedSource["riskiest"]);
@@ -534,7 +592,9 @@ const $$createType1 = $Create.Array($$createType0);
 const $$createType2 = $Create.Map($Create.Any, $Create.Any);
 const $$createType3 = $Create.Array($Create.Any);
 const $$createType4 = Node.createFrom;
-const $$createType5 = Ref.createFrom;
-const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = $Create.Map($Create.Any, $Create.Any);
-const $$createType8 = $Create.Array($$createType4);
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = Edge.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = Ref.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = $Create.Map($Create.Any, $Create.Any);

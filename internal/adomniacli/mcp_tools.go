@@ -96,7 +96,7 @@ func mcpTools() []mcpTool {
 			"outputDir":  str("Directory to save the .md report (optional; content always returned even if omitted)."),
 		}), network},
 	}
-	return append(append(tools, mcpWorkspaceTools()...), mcpFlowTools()...)
+	return append(append(append(tools, mcpWorkspaceTools()...), mcpFlowTools()...), mcpDiagramTools()...)
 }
 
 func mcpKnownTool(name string) bool {
@@ -140,6 +140,9 @@ func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error)
 	}
 	if flowTool(name) {
 		return s.callFlowTool(name, raw)
+	}
+	if diagramTool(name) {
+		return s.callDiagramTool(name, raw)
 	}
 	switch name {
 	case "project_list_routes":

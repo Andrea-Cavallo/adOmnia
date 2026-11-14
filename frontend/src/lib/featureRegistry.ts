@@ -69,8 +69,9 @@ export const FEATURE_REGISTRY: FeatureDef[] = [
 
   { id: 'security', title: 'Security Center', group: 'Security', keywords: 'security vulnerability cve ghsa osv epss kev sbom cyclonedx spdx sarif dependency dependencies maven pom.xml go.mod reachability remediation upgrade', maturity: 'core' },
 
-  { id: 'latex', title: 'LaTeX Studio', group: 'Document Studio', keywords: 'tex latex cv resume curriculum pdf document template preset', maturity: 'lab' },
-  { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Document Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'core' },
+  { id: 'latex', title: 'LaTeX Studio', group: 'Diagram Studio', keywords: 'tex latex cv resume curriculum pdf document template preset', maturity: 'lab' },
+  { id: 'diagrams', title: 'Diagram Studio', group: 'Diagram Studio', keywords: 'diagram flowchart architecture uml c4 microservices saga camel kafka osgi draw canvas lucidchart whiteboard', maturity: 'core', description: 'Architectures, flows and UML on an infinite canvas.' },
+  { id: 'pdfeditor', title: 'PDF Editor & Sign', group: 'Diagram Studio', keywords: 'pdf edit annotate sign signature form fill text highlight document viewer', maturity: 'core' },
 
   { id: 'collab', title: 'Live Collaboration', group: 'Workspace', keywords: 'collaboration share invite lan team pair live session collection request environment', maturity: 'advanced' },
   { id: 'codestudio', title: 'Code Studio', group: 'Workspace', keywords: 'code studio ide editor project module workspace development run debug test go golang java python rust node typescript', maturity: 'core', railLabel: 'Code Studio' },
@@ -113,9 +114,9 @@ export const RAIL_CATEGORIES: FeatureRailCategory[] = [
     ],
   },
   {
-    key: 'docs', label: 'Document Studio', code: 'DOC',
+    key: 'docs', label: 'Diagram Studio', code: 'DIAG',
     groups: [
-      { title: 'Documents', items: ['pdfeditor', 'latex'].map((id) => ({ id: id as RailItem })) },
+      { title: 'Documents', items: ['diagrams', 'pdfeditor', 'latex'].map((id) => ({ id: id as RailItem })) },
     ],
   },
   {

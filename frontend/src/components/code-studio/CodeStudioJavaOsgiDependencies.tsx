@@ -43,8 +43,8 @@ export function CodeStudioJavaOsgiDependencies({ sessionId, onSelectBundle }: Re
           {busy ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />} Find
         </button>
       </form>
-      {error && <p className="px-3 py-2 text-[11px] text-danger">{error}</p>}
-      {!lookup && !error && <p className="px-3 py-3 text-[11px] text-text-3">Which bundle provides a class, which workspace bundles use it and which use it without declaring it in MANIFEST.MF.</p>}
+      {error && <p className="px-3 py-2 text-[12px] text-danger">{error}</p>}
+      {!lookup && !error && <p className="px-3 py-3 text-[12px] text-text-3">Which bundle provides a class, which workspace bundles use it and which use it without declaring it in MANIFEST.MF.</p>}
       {lookup && <LookupResult lookup={lookup} onSelectBundle={onSelectBundle} />}
     </div>
   )
@@ -53,14 +53,14 @@ export function CodeStudioJavaOsgiDependencies({ sessionId, onSelectBundle }: Re
 function LookupResult({ lookup, onSelectBundle }: Readonly<{ lookup: DependencyLookup, onSelectBundle: (name: string) => void }>) {
   const open = (file: string, line: number): void => { void useCodeStudioStore.getState().openLocation(file, line, 1) }
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-3 py-2 text-[11px]">
+    <div className="min-h-0 flex-1 overflow-auto px-3 py-2 text-[12px]">
       <p className="text-text-2">
         Package <span className="font-mono text-text-1">{lookup.package}</span>
         {lookup.jre && <span className="text-text-3"> · provided by the JRE</span>}
         {lookup.missing > 0 && <span className="text-danger"> · {lookup.missing} bundle(s) use it without declaring it</span>}
       </p>
 
-      <h3 className="mt-2 text-[10px] uppercase tracking-wide text-text-4">Exported by</h3>
+      <h3 className="mt-2 text-[11px] uppercase tracking-wide text-text-4">Exported by</h3>
       {lookup.providers.length === 0 && <p className="text-text-3">{lookup.jre ? 'The JRE (no bundle exports it).' : 'No bundle of the workspace or the target exports it.'}</p>}
       <ul>
         {lookup.providers.map((provider) => (
@@ -74,7 +74,7 @@ function LookupResult({ lookup, onSelectBundle }: Readonly<{ lookup: DependencyL
         ))}
       </ul>
 
-      <h3 className="mt-2 text-[10px] uppercase tracking-wide text-text-4">Used by</h3>
+      <h3 className="mt-2 text-[11px] uppercase tracking-wide text-text-4">Used by</h3>
       {lookup.consumers.length === 0 && <p className="text-text-3">No workspace bundle imports it.</p>}
       <ul>
         {lookup.consumers.map((consumer) => (

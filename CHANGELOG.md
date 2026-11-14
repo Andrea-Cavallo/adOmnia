@@ -6,6 +6,27 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.32] — 2026-11-14
+
+Diagram Studio becomes a living view of the code. No 1.0.31 build was published, so this release carries the 1.0.31 changes below too.
+
+### Diagram Studio
+
+- **Generate from Workspace.** The strip above the canvas turns the project selected in Code Studio into a diagram: services, endpoints, handlers, functions, topics, tables, OSGi bundles, flows and subflows, read from the indexes the IDE already builds (Go Semantic Workspace Graph and Flow Intelligence for Java/XML/OSGi). Five views of the same graph: System Architecture, Service Flow, Function / Call Flow, Endpoint Flow, OSGi / Legacy Flow. The analysis is local, read-only and refused for a project whose tools are not authorized.
+- **From a node to its code, and back.** Right-click a generated node → *Open in Code Studio (Split Right)*: the diagram stays on the left, selected and zoomed as it was, and the file opens on the right at the definition. In Code Studio, *Show in Diagram Studio* highlights the node of the symbol under the caret. A link never opens a same-named file of another project: a closed session is refused.
+- **Expand, search, hand off.** *Show Callers / Show Callees* grow the diagram one hop at a time; *Search* jumps to a service, method, endpoint, topic, table or file; endpoints open in the API Workspace, tables in Database Studio, topics in Broker Studio.
+- **Refresh from Code.** Re-reads the sources and merges them into the open diagram: positions, sizes, labels, styles, manual shapes and connectors are kept, a node whose entity disappeared is marked stale, and unsaved editor buffers mark the diagram as based on the last saved sources.
+- **Evidence is visible.** Every generated connector says how it was found (declared, derived, inferred, observed): inferred relations are dashed amber, observed ones animate. The native JSON keeps the source references; PNG, SVG and draw.io exports are pictures.
+- **Simpler selection toolbar.** The toolbar above a selection shows named buttons (Duplicate, Group, Lock, Delete) and one *Align* menu with plain-language entries, instead of a row of unlabeled icons; layer order stays in the right-click menu.
+- **MCP.** New read-only `diagram_workspace_overview` and `diagram_find_entity` tools: an agent lists what is worth drawing and finds an entity by stable id, file and line.
+- **Renamed and redrawn.** The rail group *Document Studio* is now **Diagram Studio**, with a nodes-and-connectors icon in the rail and in the Hub.
+- **Pages, legends, sticky notes, images.** A diagram has several pages (tabs bottom left). New legend shape with editable color rows, four sticky-note colors, and pictures dropped on the canvas (PNG, JPEG, GIF, WebP, SVG) that resize, move and connect like shapes. Right-click a shape for quick fill colors.
+- **Icon library.** An *Icons* tab with two sets: 3,472 technology logos (languages, databases, Kafka and messaging, cloud, containers, CI/CD, observability, AI…) and 783 AWS architecture icons; category menu, instant search by name, category or alias, recently used icons, drag or click to place.
+- **UML sequence diagrams.** Lifelines with a connection point on every row (messages stay horizontal), activation bars, loop/alt/else/opt fragments, sync/async/reply messages; *Sequence diagram from text* draws a whole diagram from Mermaid-style text, with a registration-and-login example and the orchestrated Saga as a colored sequence (`rect` bands). Double-click a crooked connector to straighten it.
+- **draw.io and SVG.** Export and import `.drawio` (every page, styles, containers, connection points, bends); exported SVGs carry the editable diagram, and draw.io SVGs import as diagrams.
+- **From Markdown and over MCP.** *New → From Markdown* turns components, steps, links and Mermaid blocks into a colored, laid-out diagram; the same parser powers the new `diagram_from_markdown`, `diagram_create` and `diagram_shapes` MCP tools, which write a file Diagram Studio opens.
+- **Diagram Studio.** A Lucidchart-style diagram editor on an infinite canvas (React Flow): a searchable library of basic, flowchart, architecture, integration (Go/Java services, REST, SOAP, Kafka, Camel routes, Saga steps, OSGi bundles), UML (classes, actors, use cases), container, swimlane and note shapes; resize, rotate, inline text editing and several connection points per side; straight, Bézier and orthogonal connectors routed around nodes, with draggable ends, editable bends, arrowheads, dashes, labels and glowing data-flow pulses; alignment guides, snap to grid, multi-selection, group/ungroup, align/distribute, layers, locking, context menus, undo/redo and keyboard shortcuts; ELK auto-layout; a worked orchestrated-Saga example colored by role. A connector released on a shape attaches to it, and released on the empty canvas it grows a new connected shape, in line with the one it started from. Diagrams autosave as versioned JSON in the local store and export to PNG, SVG or JSON. Guide: `docs/DIAGRAM-STUDIO.md`.
+
 ## [1.0.31] — 2026-11-09
 
 First published build since 1.0.29: the 1.0.30 tag never produced artifacts, so this release carries the 1.0.30 changes below too.

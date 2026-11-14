@@ -41,6 +41,11 @@ type ServerSpec struct {
 	// ChangeSignatureCommand is the workspace/executeCommand that rewrites a signature and its callers
 	// (gopls: "gopls.change_signature"); empty when the server has none.
 	ChangeSignatureCommand string
+	// DiagnosticsRepair, when set, may answer a published report with a workspace/executeCommand that
+	// fixes the server's own model (JDT LS: a Java 6 project it no longer compiles is raised to 1.8).
+	// Key groups the reports one command serves (e.g. the project); the host runs it at most
+	// maxRepairs times per key and server process, so a repair that does not hold never loops.
+	DiagnosticsRepair func(uri string, diagnostics []Diagnostic) (repair DiagnosticsRepair, ok bool)
 	// Root, when set, is the folder the server is given as rootUri and only workspace folder instead of
 	// the project root: a server that cannot read the project's own metadata (JDT LS on a PDE workspace)
 	// works on a generated mirror that links the real sources. Documents keep their real URIs.
@@ -72,4 +77,11 @@ func (s ServerSpec) DisplayName() string {
 		return s.Name
 	}
 	return "language server"
+}
+
+// DiagnosticsRepair is the command a ServerSpec.DiagnosticsRepair asks the host to run.
+type DiagnosticsRepair struct {
+	Key       string
+	Command   string
+	Arguments []any
 }

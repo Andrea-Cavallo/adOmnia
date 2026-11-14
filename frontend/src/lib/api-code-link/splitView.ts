@@ -7,10 +7,12 @@ export interface SplitPreferences {
   side: SplitSide
   /** Width of the code pane, as a fraction of the split. */
   ratio: number
+  /** Where code sits in the Diagram Studio pair: the diagram is on the left by default. */
+  diagramSide: SplitSide
 }
 
 export const SPLIT_PREFERENCES_KEY = 'adomnia.apiCode.split.v1'
-export const DEFAULT_SPLIT_PREFERENCES: SplitPreferences = { side: 'code-left', ratio: 0.55 }
+export const DEFAULT_SPLIT_PREFERENCES: SplitPreferences = { side: 'code-left', ratio: 0.55, diagramSide: 'code-right' }
 export const MIN_SPLIT_RATIO = 0.25
 export const MAX_SPLIT_RATIO = 0.75
 
@@ -41,14 +43,23 @@ export function loadSplitPreferences(storage?: StorageLike): SplitPreferences {
     const raw = target.getItem(SPLIT_PREFERENCES_KEY)
     if (!raw) return DEFAULT_SPLIT_PREFERENCES
     const parsed = JSON.parse(raw) as Record<string, unknown>
-    return { side: normalizeSplitSide(parsed.side), ratio: clampSplitRatio(parsed.ratio) }
+    return {
+      side: normalizeSplitSide(parsed.side),
+      ratio: clampSplitRatio(parsed.ratio),
+      // Files written before the diagram pair existed fall back to the diagram-on-the-left default.
+      diagramSide: parsed.diagramSide === undefined ? DEFAULT_SPLIT_PREFERENCES.diagramSide : normalizeSplitSide(parsed.diagramSide),
+    }
   } catch {
     return DEFAULT_SPLIT_PREFERENCES
   }
 }
 
 export function saveSplitPreferences(preferences: SplitPreferences, storage?: StorageLike): SplitPreferences {
-  const normalized = { side: normalizeSplitSide(preferences.side), ratio: clampSplitRatio(preferences.ratio) }
+  const normalized = {
+    side: normalizeSplitSide(preferences.side),
+    ratio: clampSplitRatio(preferences.ratio),
+    diagramSide: normalizeSplitSide(preferences.diagramSide),
+  }
   const target = storageOrNull(storage)
   if (target) {
     try {
@@ -64,6 +75,8 @@ interface SplitViewState extends SplitPreferences {
   setSide: (side: SplitSide) => void
   setRatio: (ratio: number) => void
   reverse: () => void
+  /** Reverses the pair the split is showing. */
+  reverseFor: (pair: 'api' | 'diagram') => void
 }
 
 const initial = loadSplitPreferences()
@@ -92,5 +105,10 @@ export const useSplitViewStore = create<SplitViewState>((set, get) => ({
   reverse: () => {
     const next = saveSplitPreferences({ ...get(), side: get().side === 'code-left' ? 'code-right' : 'code-left' })
     set({ side: next.side })
+  },
+  reverseFor: (pair) => {
+    if (pair === 'api') { get().reverse(); return }
+    const next = saveSplitPreferences({ ...get(), diagramSide: get().diagramSide === 'code-left' ? 'code-right' : 'code-left' })
+    set({ diagramSide: next.diagramSide })
   },
 }))

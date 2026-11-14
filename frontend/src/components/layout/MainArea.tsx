@@ -65,7 +65,7 @@ import { WEBSOCKET_HANDOFF_INTENT, useEntityHandoff } from '@/lib/entities/dispa
 
 // ─── Lazy-loaded panels (loaded on first navigation) ──────────────────────────
 
-import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CodeStudioPanel } from './lazyPanels'
+import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, DiagramStudioPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CodeStudioPanel } from './lazyPanels'
 
 function PanelSkeleton() {
   const tr = useUiTranslation()
@@ -1492,6 +1492,7 @@ function panelFor(activeRail: RailItem): PanelDef {
     case 'dockerlab':   return { component: <UtilsPanel initialTool="dockerlab" />, titleKey: 'Power Tools', overflow: true }
     case 'latex':       return { component: <LatexStudioPanel />,      titleKey: 'latex',     overflow: true }
     case 'pdfeditor':   return { component: <PdfEditorPanel />,        titleKey: 'pdfeditor', overflow: true }
+    case 'diagrams':    return { component: <DiagramStudioPanel />,    titleKey: 'diagrams',  overflow: true }
     case 'storage':     return { component: <StoragePanel />,         titleKey: 'storage',   overflow: true }
     case 'database':    return { component: <DatabasePanel />,        titleKey: 'Database Studio', overflow: true }
     case 'jsonviewer':  return { component: <JsonViewerPanel />,      titleKey: 'JSON Studio', overflow: true }

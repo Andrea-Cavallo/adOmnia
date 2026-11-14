@@ -5,12 +5,15 @@ import { useWorkspaceFocus } from '@/hooks/useWorkspaceFocus'
 import { describeFocus } from '@/lib/workspaceFocus'
 import { closeAuxiliary, layoutBack, useWorkspaceLayoutStore } from '@/lib/workspaceLayout'
 import { useCodeStudioStore } from '@/stores/codeStudio'
+import { useDiagramStudio } from '@/stores/diagramStudio'
 import type { RailItem } from '@/stores/app'
 
 const PANE_NAMES: Partial<Record<RailItem, string>> = { database: 'Database Studio', broker: 'Broker Studio', loginspector: 'Logs' }
 
 export interface SplitViewHeaderProps {
   side: 'code-left' | 'code-right'
+  /** Which pair the split shows. */
+  pair: 'api' | 'diagram'
   /** Third pane, when one is open beside code and request. */
   auxiliary: RailItem | null
   maximizedPane: RailItem | null
@@ -22,12 +25,15 @@ export interface SplitViewHeaderProps {
 }
 
 /** Header of the shared API ↔ code window: layout controls stay in one compact menu. */
-export function SplitViewHeader({ side, auxiliary, maximizedPane, hiddenPane, onReverse, onMaximize, onHide, onClose }: SplitViewHeaderProps) {
+export function SplitViewHeader({ side, pair, auxiliary, maximizedPane, hiddenPane, onReverse, onMaximize, onHide, onClose }: SplitViewHeaderProps) {
   const titlebar = useWindowTitlebar()
   const focus = useWorkspaceFocus()
   const stale = !!focus.stale
   const project = useCodeStudioStore((s) => s.sessions.find((session) => session.id === focus.sessionId)?.project.name)
-  const summary = [project, describeFocus(focus)].filter(Boolean).join(' · ')
+  const diagramOrigin = useDiagramStudio((s) => s.doc?.origin)
+  const summary = pair === 'diagram'
+    ? [diagramOrigin?.projectName, diagramOrigin?.view].filter(Boolean).join(' · ')
+    : [project, describeFocus(focus)].filter(Boolean).join(' · ')
   const back = useWorkspaceLayoutStore((s) => s.history[s.history.length - 1])
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -41,15 +47,18 @@ export function SplitViewHeader({ side, auxiliary, maximizedPane, hiddenPane, on
     document.addEventListener('keydown', close)
     return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close) }
   }, [menuOpen])
-  const hidden = hiddenPane === 'codestudio' ? 'code' : hiddenPane === 'collections' ? 'api' : null
+  const hidden = hiddenPane === 'codestudio' ? 'code' : hiddenPane === 'collections' ? 'api' : hiddenPane === 'diagrams' ? 'diagram' : null
   const auxName = auxiliary ? PANE_NAMES[auxiliary] ?? auxiliary : ''
+  const secondaryName = pair === 'diagram' ? 'Diagram Studio' : 'API Workspace'
+  const pairTitle = pair === 'diagram' ? 'Code Studio ↔ Diagram Studio' : 'Code Studio ↔ API request'
+  const secondaryRail: RailItem = pair === 'diagram' ? 'diagrams' : 'collections'
   const run = (action: () => void) => { setMenuOpen(false); action() }
   const items = [
     { id: 'reverse', label: side === 'code-left' ? 'Move Code Studio to the Right' : 'Move Code Studio to the Left', icon: ArrowLeftRight, run: onReverse },
     { id: 'max-code', label: maximizedPane === 'codestudio' ? 'Restore Both Panels' : 'Maximize Code Studio', icon: maximizedPane === 'codestudio' ? Minimize2 : Maximize2, run: () => { onHide(null); onMaximize(maximizedPane === 'codestudio' ? null : 'codestudio') } },
-    { id: 'max-api', label: maximizedPane === 'collections' ? 'Restore Both Panels' : 'Maximize API Workspace', icon: maximizedPane === 'collections' ? Minimize2 : Maximize2, run: () => { onHide(null); onMaximize(maximizedPane === 'collections' ? null : 'collections') } },
+    { id: 'max-secondary', label: maximizedPane === secondaryRail ? 'Restore Both Panels' : `Maximize ${secondaryName}`, icon: maximizedPane === secondaryRail ? Minimize2 : Maximize2, run: () => { onHide(null); onMaximize(maximizedPane === secondaryRail ? null : secondaryRail) } },
     { id: 'hide-code', label: hidden === 'code' ? 'Show Code Studio' : 'Hide Code Studio', icon: hidden === 'code' ? Columns2 : PanelRightClose, run: () => { onMaximize(null); onHide(hidden === 'code' ? null : 'codestudio') } },
-    { id: 'hide-api', label: hidden === 'api' ? 'Show API Workspace' : 'Hide API Workspace', icon: hidden === 'api' ? Columns2 : PanelLeftClose, run: () => { onMaximize(null); onHide(hidden === 'api' ? null : 'collections') } },
+    { id: 'hide-secondary', label: hidden === 'api' || hidden === 'diagram' ? `Show ${secondaryName}` : `Hide ${secondaryName}`, icon: hidden === 'api' || hidden === 'diagram' ? Columns2 : PanelLeftClose, run: () => { onMaximize(null); onHide(hidden === 'api' || hidden === 'diagram' ? null : secondaryRail) } },
     ...(auxiliary ? [
       { id: 'max-aux', label: maximizedPane === auxiliary ? 'Restore All Panels' : `Maximize ${auxName}`, icon: maximizedPane === auxiliary ? Minimize2 : Maximize2, run: () => { onHide(null); onMaximize(maximizedPane === auxiliary ? null : auxiliary) } },
       { id: 'close-aux', label: `Close ${auxName}`, icon: X, run: () => { onMaximize(null); onHide(null); closeAuxiliary() } },
@@ -65,13 +74,13 @@ export function SplitViewHeader({ side, auxiliary, maximizedPane, hiddenPane, on
       )}
       {auxiliary ? <Columns3 size={13} className="text-accent" aria-hidden="true" /> : <Columns2 size={13} className="text-accent" aria-hidden="true" />}
       <span className="flex-1 truncate px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-2" title={summary || undefined}>
-        {summary || `Code Studio ↔ API request${auxiliary ? ` ↔ ${auxName}` : ''}`}
+        {summary || `${pairTitle}${auxiliary ? ` ↔ ${auxName}` : ''}`}
       </span>
       {stale && <span title="The linked handler changed. Open the endpoint again to refresh the link." className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" aria-label="Stale link" />}
       {hidden && (
-        <button type="button" onClick={() => onHide(null)} title={`Show ${hidden === 'code' ? 'Code Studio' : 'API Workspace'}`}
+        <button type="button" onClick={() => onHide(null)} title={`Show ${hidden === 'code' ? 'Code Studio' : hidden === 'diagram' ? 'Diagram Studio' : 'API Workspace'}`}
           className="h-6 shrink-0 rounded px-2 text-[11px] text-accent hover:bg-accent/10">
-          Show {hidden === 'code' ? 'Code Studio' : 'API'}
+          Show {hidden === 'code' ? 'Code Studio' : hidden === 'diagram' ? 'Diagram' : 'API'}
         </button>
       )}
       <div ref={menuRef} className="relative shrink-0">

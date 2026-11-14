@@ -13,6 +13,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/codestudio"
 	"github.com/Andrea-Cavallo/adOmnia/internal/codestudiowindow"
 	"github.com/Andrea-Cavallo/adOmnia/internal/copilot"
+	"github.com/Andrea-Cavallo/adOmnia/internal/diagrams"
 	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 	"github.com/Andrea-Cavallo/adOmnia/internal/flowintel"
 	"github.com/Andrea-Cavallo/adOmnia/internal/git"
@@ -1573,6 +1574,16 @@ func (g *GoIDE) AnalyzeArchitecture(sessionID string) (codestudio.ArchitectureRe
 // WorkspaceGraphSummary costruisce (o riprende dal disco) il Semantic Workspace Graph e ne dà il riassunto.
 func (g *GoIDE) WorkspaceGraphSummary(sessionID string, rebuild bool) (codestudio.GraphSummary, error) {
 	return g.service.WorkspaceGraphSummary(sessionID, rebuild)
+}
+
+// WorkspaceGraph restituisce il Semantic Workspace Graph intero (visualizzazione, export).
+func (g *GoIDE) WorkspaceGraph(sessionID string) (graph.Graph, error) {
+	return g.service.WorkspaceGraph(sessionID)
+}
+
+// DiagramWorkspace normalizza il grafo semantico e i flow in un modello unico per Diagram Studio.
+func (g *GoIDE) DiagramWorkspace(sessionID string, refresh bool) (diagrams.WorkspaceAnalysis, error) {
+	return g.service.DiagramWorkspace(sessionID, refresh)
 }
 
 // GraphImpact: cosa può rompere una modifica alla funzione che contiene relPath:line.

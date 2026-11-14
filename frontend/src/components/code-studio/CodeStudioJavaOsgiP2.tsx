@@ -77,7 +77,7 @@ export function CodeStudioJavaOsgiP2({ sessionId, targetPath, onDownloaded }: Re
 
   const status = preview.downloaded ? `${preview.bundles} bundle(s) downloaded` : 'not downloaded yet'
   return (
-    <div className="flex items-center gap-2 border-b border-border-1 px-3 py-1.5 text-[11px] text-text-3">
+    <div className="flex items-center gap-2 border-b border-border-1 px-3 py-1.5 text-[12px] text-text-3">
       <CloudDownload size={13} className="shrink-0" />
       <span className="min-w-0 flex-1 truncate" title={(preview.repositories ?? []).join('\n')}>
         {downloading

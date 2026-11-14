@@ -118,6 +118,8 @@ type lspSession struct {
 	virtualURIs map[string]string
 	// progress: fasi $/progress aperte, per misurarne la durata nel log (lsp_trace.go).
 	progress map[string]progressTrace
+	// repairs counts the DiagnosticsRepair commands run per key and process (lsp_repair.go).
+	repairs map[repairKey]int
 }
 
 // lspKey identifica un language server: uno per linguaggio in ogni sessione, e uno per unità
@@ -1052,6 +1054,7 @@ func (h *lspHandler) HandleNotification(method string, params jsonv1.RawMessage)
 		var report lsp.PublishDiagnosticsParams
 		if json.Unmarshal(params, &report) == nil {
 			h.manager.publishDiagnostics(h.session, report)
+			h.manager.repairDiagnostics(h.session, report)
 		}
 	case "window/logMessage", "window/showMessage":
 		var message LanguageServerMessage

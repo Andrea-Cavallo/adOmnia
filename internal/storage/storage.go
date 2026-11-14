@@ -40,6 +40,7 @@ var storeBuckets = []string{
 	"proxy",              // proxy/interceptor config + traffic
 	"flows",              // editable API flow definitions (created on opening existing DBs)
 	"pdfprojects",        // PDF Editor projects (base64 PDF bytes + annotation layer)
+	"diagrams",           // Diagram Studio documents: meta:<id> summaries and doc:<id> versioned JSON
 	"goide",              // Code Studio session metadata; project files remain on disk
 	"collab",             // encrypted collaboration recovery snapshots
 }

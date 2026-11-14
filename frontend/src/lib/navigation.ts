@@ -17,6 +17,7 @@ export const RAIL_ITEMS = [
   'soap',
   'latex',
   'pdfeditor',
+  'diagrams',
   'powertools',
   'storage',
   'database',

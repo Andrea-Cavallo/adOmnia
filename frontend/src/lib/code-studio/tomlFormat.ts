@@ -10,7 +10,7 @@ export async function formatToml(source: string, options: TomlFormatOptions): Pr
   engine ??= import('@taplo/lib').then(({ Taplo }) => Taplo.initialize()).catch(error => { engine = undefined; throw error })
   const taplo = await engine
   // Parse before formatting; the decoded representation is never used to rewrite the document.
-  try { taplo.decode(source, false) } catch (error) { throw new Error(`TOML: ${error instanceof Error ? error.message : String(error)}`) }
+  try { taplo.decode(source, false) } catch (error) { throw new Error(`TOML: ${error instanceof Error ? error.message : String(error)}`, { cause: error }) }
   return taplo.format(source, { options: {
     indentString: options.insertSpaces ? ' '.repeat(Math.max(1, Math.min(8, options.tabSize))) : '\t',
     trailingNewline: options.trailingNewline ?? source.endsWith('\n'),

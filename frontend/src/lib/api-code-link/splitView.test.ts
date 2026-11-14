@@ -26,8 +26,8 @@ describe('split view preferences', () => {
 
   it('round-trips the side and the ratio', () => {
     const storage = fakeStorage()
-    saveSplitPreferences({ side: 'code-right', ratio: 0.4 }, storage)
-    expect(loadSplitPreferences(storage)).toEqual({ side: 'code-right', ratio: 0.4 })
+    saveSplitPreferences({ side: 'code-right', ratio: 0.4, diagramSide: 'code-left' }, storage)
+    expect(loadSplitPreferences(storage)).toEqual({ side: 'code-right', ratio: 0.4, diagramSide: 'code-left' })
     expect(storage.values[SPLIT_PREFERENCES_KEY]).toBeTruthy()
   })
 
@@ -37,7 +37,7 @@ describe('split view preferences', () => {
     expect(clampSplitRatio(Number.NaN)).toBe(DEFAULT_SPLIT_PREFERENCES.ratio)
     expect(normalizeSplitSide('diagonal')).toBe('code-left')
     const storage = fakeStorage({ [SPLIT_PREFERENCES_KEY]: JSON.stringify({ side: 'diagonal', ratio: 9 }) })
-    expect(loadSplitPreferences(storage)).toEqual({ side: 'code-left', ratio: MAX_SPLIT_RATIO })
+    expect(loadSplitPreferences(storage)).toEqual({ side: 'code-left', diagramSide: 'code-right', ratio: MAX_SPLIT_RATIO })
   })
 
   it('survives a corrupt entry without throwing', () => {

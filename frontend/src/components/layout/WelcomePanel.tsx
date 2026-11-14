@@ -17,7 +17,6 @@ import './WelcomePanel.css'
 
 
 // Code Studio stays lazy: the file icon set loads only when the Hub shows a recent file.
-const HubGame = lazy(() => import('./HubGame').then((module) => ({ default: module.HubGame })))
 const FileIcon = lazy(() => import('@/components/code-studio/CodeStudioFileIcon').then((module) => ({ default: module.CodeStudioFileIcon })))
 
 // Start actions on the Hub page; the sidebar reads the full rail registry.
@@ -214,7 +213,6 @@ export function WelcomePanel() {
           </section>
         )}
       </main>
-      {flags.hubGameEnabled && <Suspense fallback={null}><HubGame /></Suspense>}
     </div>
   )
 }

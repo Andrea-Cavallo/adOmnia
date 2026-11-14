@@ -23,6 +23,12 @@ export const STORAGE_SCHEMAS = {
     item: 'all',
     currentVersion: 1,
   },
+  diagrams: {
+    // One diagram per entry: `meta:<id>` for the list, `doc:<id>` for the JSON; see lib/diagrams/storage.ts.
+    bucket: 'diagrams',
+    item: 'all',
+    currentVersion: 1,
+  },
 } as const satisfies Record<string, StorageSchemaDefinition>
 
 export type StorageSchemaName = keyof typeof STORAGE_SCHEMAS

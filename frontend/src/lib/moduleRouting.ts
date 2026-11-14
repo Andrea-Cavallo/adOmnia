@@ -121,7 +121,20 @@ function runLocally(rail: RailItem, action: ModuleAction | null, show: boolean, 
     case 'event': document.dispatchEvent(new CustomEvent(action.name)); break
     case 'dispatch': deliverWhenMounted(rail, action.eventName, action.detail, onTimeout); break
     // Code Studio stays out of the startup bundle: loaded only when a link really opens code.
-    case 'open-location': void import('@/stores/codeStudio').then(async ({ useCodeStudioStore }) => { if (action.sessionId) { if (!useCodeStudioStore.getState().sessions.some(session => session.id === action.sessionId)) return; await useCodeStudioStore.getState().selectSession(action.sessionId) }; await useCodeStudioStore.getState().openLocation(action.file, action.line, 1) }); break
+    case 'open-location': void import('@/stores/codeStudio').then(async ({ useCodeStudioStore }) => {
+      const before = useCodeStudioStore.getState()
+      if (!before.initialized) await before.initialize()
+      const state = useCodeStudioStore.getState()
+      if (action.sessionId) {
+        if (!state.sessions.some((session) => session.id === action.sessionId)) {
+          // A session that closed meanwhile must never fall back to another project's file.
+          useCodeStudioStore.setState({ error: 'The project this link belongs to is no longer open. Reopen it in Code Studio.' })
+          return
+        }
+        if (state.activeSessionId !== action.sessionId) await state.selectSession(action.sessionId)
+      }
+      await useCodeStudioStore.getState().openLocation(action.file, action.line, 1)
+    }); break
     // The API ↔ code link is lazy too: the workspace shell never pays for it.
     case 'api-code-request': void import('@/lib/api-code-link/actions').then((module) => module.openRequestInCodeStudio(action)); break
     case 'api-code-handler': void import('@/lib/api-code-link/actions').then((module) => module.openHandlerInApiWorkspace(action)); break
