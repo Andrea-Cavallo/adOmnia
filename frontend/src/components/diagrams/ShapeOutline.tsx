@@ -12,9 +12,9 @@ export const ShapeOutline = memo(function ShapeOutline({ geometry, width, height
   geometry: ShapeGeometry
   width: number
   height: number
-  style: Pick<NodeStyle, 'fill' | 'stroke' | 'strokeWidth' | 'dashed'>
+  style: Pick<NodeStyle, 'fill' | 'stroke' | 'strokeWidth' | 'dashed'> & { radius?: number }
 }) {
-  const outline = outlineOf(geometry, width, height, style.strokeWidth)
+  const outline = outlineOf(geometry, width, height, style.strokeWidth, style.radius)
   if (outline.bodies.length === 0 && outline.lines.length === 0) return null
   const stroke = themeColor(style.stroke, '--diagram-node-stroke')
   const dash = style.dashed ? DASH : undefined

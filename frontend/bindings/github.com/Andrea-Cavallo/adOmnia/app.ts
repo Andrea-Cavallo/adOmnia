@@ -19,6 +19,9 @@ import * as collectionsstore$0 from "./internal/collectionsstore/models.js";
 import * as devlog$0 from "./internal/devlog/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as diagrams$0 from "./internal/diagrams/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as markdown$0 from "./internal/markdown/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -147,6 +150,16 @@ export function DetachRequestAndResponse(tabID: string, snapshotJSON: string, ti
     return $Call.ByID(2949879727, tabID, snapshotJSON, title);
 }
 
+/**
+ * DiagramFromMarkdown reads a Markdown description (components, steps, links, Mermaid blocks)
+ * into a Diagram Studio blueprint; the frontend lays it out and opens it as a new diagram.
+ */
+export function DiagramFromMarkdown(markdown: string): $CancellablePromise<diagrams$0.Blueprint> {
+    return $Call.ByID(702456015, markdown).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
 export function DownloadUpdate(): $CancellablePromise<update$0.State> {
     return $Call.ByID(115027584).then(($result: any) => {
         return $$createType2($result);
@@ -204,7 +217,7 @@ export function GetDevLogs(): $CancellablePromise<string> {
  */
 export function GetDevLogsSince(offset: number): $CancellablePromise<devlog$0.Chunk> {
     return $Call.ByID(3157841597, offset).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -213,7 +226,7 @@ export function GetDevLogsSince(offset: number): $CancellablePromise<devlog$0.Ch
  */
 export function GetNetworkActivity(): $CancellablePromise<netpolicy$0.Event[]> {
     return $Call.ByID(2699211190).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
@@ -222,7 +235,7 @@ export function GetNetworkActivity(): $CancellablePromise<netpolicy$0.Event[]> {
  */
 export function GetNetworkSettings(): $CancellablePromise<netpolicy$0.Settings> {
     return $Call.ByID(1026796858).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
@@ -253,7 +266,7 @@ export function GetVaultTimeout(): $CancellablePromise<number> {
 
 export function ImportMarkdownFolderToWorkspace(sourceRoot: string): $CancellablePromise<markdown$0.WorkspaceInfo> {
     return $Call.ByID(421526873, sourceRoot).then(($result: any) => {
-        return $$createType8($result);
+        return $$createType9($result);
     });
 }
 
@@ -277,13 +290,13 @@ export function IsDevMode(): $CancellablePromise<boolean> {
  */
 export function ListLogFiles(): $CancellablePromise<devlog$0.FileInfo[]> {
     return $Call.ByID(2963318464).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType11($result);
     });
 }
 
 export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.FileEntry[]> {
     return $Call.ByID(2340622615, root).then(($result: any) => {
-        return $$createType11($result);
+        return $$createType12($result);
     });
 }
 
@@ -292,7 +305,7 @@ export function ListMarkdownFiles(root: string): $CancellablePromise<markdown$0.
  */
 export function ListPanelWindows(): $CancellablePromise<string[]> {
     return $Call.ByID(998307998).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType13($result);
     });
 }
 
@@ -302,13 +315,13 @@ export function ListPanelWindows(): $CancellablePromise<string[]> {
  */
 export function LoadBootstrapState(): $CancellablePromise<bootstrap$0.State> {
     return $Call.ByID(705221870).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType14($result);
     });
 }
 
 export function LoadBootstrapStateV2(): $CancellablePromise<bootstrap$0.StateV2> {
     return $Call.ByID(1584322926).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType15($result);
     });
 }
 
@@ -326,7 +339,7 @@ export function LoadCollectionWorkspace(workspaceID: string): $CancellablePromis
  */
 export function LoadCollectionWorkspaceV2(workspaceID: string): $CancellablePromise<collectionsstore$0.WorkspacePayload> {
     return $Call.ByID(1596975798, workspaceID).then(($result: any) => {
-        return $$createType15($result);
+        return $$createType16($result);
     });
 }
 
@@ -473,7 +486,7 @@ export function SaveMarkdownFileAs(defaultName: string, content: string): $Cance
  */
 export function SaveNetworkSettings(settings: netpolicy$0.Settings): $CancellablePromise<netpolicy$0.Settings> {
     return $Call.ByID(1280426947, settings).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType8($result);
     });
 }
 
@@ -552,13 +565,13 @@ export function StorageGet(bucket: string, key: string): $CancellablePromise<str
 
 export function StorageGetAll(bucket: string): $CancellablePromise<$models.StorageEntry[]> {
     return $Call.ByID(2257741921, bucket).then(($result: any) => {
-        return $$createType17($result);
+        return $$createType18($result);
     });
 }
 
 export function StorageList(bucket: string, prefix: string): $CancellablePromise<string[]> {
     return $Call.ByID(3840110650, bucket, prefix).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType13($result);
     });
 }
 
@@ -587,17 +600,18 @@ const $$createType0 = activity$0.Snapshot.createFrom;
 const $$createType1 = update$0.UpdateInfo.createFrom;
 const $$createType2 = update$0.State.createFrom;
 const $$createType3 = markdown$0.FileEntry.createFrom;
-const $$createType4 = devlog$0.Chunk.createFrom;
-const $$createType5 = netpolicy$0.Event.createFrom;
-const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = netpolicy$0.Settings.createFrom;
-const $$createType8 = markdown$0.WorkspaceInfo.createFrom;
-const $$createType9 = devlog$0.FileInfo.createFrom;
-const $$createType10 = $Create.Array($$createType9);
-const $$createType11 = $Create.Array($$createType3);
-const $$createType12 = $Create.Array($Create.Any);
-const $$createType13 = bootstrap$0.State.createFrom;
-const $$createType14 = bootstrap$0.StateV2.createFrom;
-const $$createType15 = collectionsstore$0.WorkspacePayload.createFrom;
-const $$createType16 = $models.StorageEntry.createFrom;
-const $$createType17 = $Create.Array($$createType16);
+const $$createType4 = diagrams$0.Blueprint.createFrom;
+const $$createType5 = devlog$0.Chunk.createFrom;
+const $$createType6 = netpolicy$0.Event.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = netpolicy$0.Settings.createFrom;
+const $$createType9 = markdown$0.WorkspaceInfo.createFrom;
+const $$createType10 = devlog$0.FileInfo.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = $Create.Array($$createType3);
+const $$createType13 = $Create.Array($Create.Any);
+const $$createType14 = bootstrap$0.State.createFrom;
+const $$createType15 = bootstrap$0.StateV2.createFrom;
+const $$createType16 = collectionsstore$0.WorkspacePayload.createFrom;
+const $$createType17 = $models.StorageEntry.createFrom;
+const $$createType18 = $Create.Array($$createType17);

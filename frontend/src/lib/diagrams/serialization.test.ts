@@ -30,6 +30,34 @@ describe('diagram serialization', () => {
     expect(file.nodes.some((node) => 'selected' in node || 'measured' in node)).toBe(false)
   })
 
+  it('round-trips a generated diagram: origin, source refs, confidence and stale nodes', () => {
+    const doc = sample()
+    const generated = {
+      ...doc,
+      origin: { sessionId: 's1', workspaceId: 'w1', projectName: 'payments', fingerprint: 'fp1', generatedAt: 5, view: 'architecture' as const, sources: ['go', 'java'] },
+      nodes: doc.nodes.map((node, index) => index === 0 ? {
+        ...node,
+        data: {
+          ...node.data, generated: true, stale: true, service: 'mod:payments',
+          source: { sessionId: 's1', workspaceId: 'w1', entityId: 'mod:payments', kind: 'service', file: 'go.mod', line: 1, column: 1, symbol: 'payments', confidence: 'derived' as const, fingerprint: 'fp1' },
+        },
+      } : node),
+      edges: [{ ...doc.edges[0], data: { ...doc.edges[0].data!, confidence: 'inferred' as const, evidence: 'calls · inferred', generated: true } }],
+    }
+    const back = parseDiagram(serializeDiagram(generated))
+    expect(back.origin).toMatchObject({ sessionId: 's1', workspaceId: 'w1', view: 'architecture', fingerprint: 'fp1', sources: ['go', 'java'] })
+    expect(back.nodes[0].data.source).toMatchObject({ entityId: 'mod:payments', file: 'go.mod', line: 1, confidence: 'derived' })
+    expect(back.nodes[0].data).toMatchObject({ generated: true, stale: true, service: 'mod:payments' })
+    expect(back.edges[0].data).toMatchObject({ confidence: 'inferred', evidence: 'calls · inferred', generated: true })
+  })
+
+  it('drops an incomplete source ref instead of half-reading it', () => {
+    const doc = sample()
+    const broken = { ...doc, nodes: doc.nodes.map((node) => ({ ...node, data: { ...node.data, source: { entityId: 'x' } } })) } as unknown as DiagramDocument
+    const back = parseDiagram(serializeDiagram(broken))
+    expect(back.nodes.every((node) => node.data.source === undefined)).toBe(true)
+  })
+
   it('fills missing fields, drops edges to missing nodes and keeps unknown shapes', () => {
     const doc = parseDiagram(JSON.stringify({
       format: 'adomnia-diagram', version: 1, name: '',

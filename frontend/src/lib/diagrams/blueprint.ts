@@ -6,7 +6,7 @@
  */
 import { createEdge, createNode } from './graphOps'
 import { autoLayout, type LayoutOptions } from './layout'
-import type { DiagramEdgeData, DiagramGraph, DiagramNode, EdgeRouting } from './model'
+import type { DiagramCodeRef, DiagramEdgeData, DiagramGraph, DiagramNode, EdgeRouting, LinkConfidence } from './model'
 import { DEFAULT_NODE_STYLE, STYLE_PALETTE, shapeOf } from './shapes'
 
 export interface BlueprintNode {
@@ -19,6 +19,10 @@ export interface BlueprintNode {
   color?: string
   /** Key of the container this node sits in. */
   parent?: string
+  /** The analysed entity this node stands for (workspace generation only). */
+  source?: DiagramCodeRef
+  service?: string
+  generated?: boolean
 }
 
 export interface BlueprintLink {
@@ -30,6 +34,10 @@ export interface BlueprintLink {
   dashed?: boolean
   /** A tint of STYLE_PALETTE for the line. */
   color?: string
+  /** Set on relations derived from the code, never on links the user drew. */
+  confidence?: LinkConfidence
+  evidence?: string
+  generated?: boolean
 }
 
 export interface DiagramBlueprint {
@@ -55,7 +63,14 @@ export function graphFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRou
   const created = blueprint.nodes.map((spec) => {
     const color = tint(spec.color)
     const style = color ? { style: { ...DEFAULT_NODE_STYLE, ...shapeOf(spec.shape).style, fill: color.fill, stroke: color.stroke } } : {}
-    const node = createNode(spec.shape, { x: 0, y: 0 }, { label: spec.label, ...(spec.subtitle === undefined ? {} : { subtitle: spec.subtitle }), ...style })
+    const node = createNode(spec.shape, { x: 0, y: 0 }, {
+      label: spec.label,
+      ...(spec.subtitle === undefined ? {} : { subtitle: spec.subtitle }),
+      ...(spec.source ? { source: spec.source, generated: true } : {}),
+      ...(spec.service ? { service: spec.service } : {}),
+      ...(spec.generated ? { generated: true } : {}),
+      ...style,
+    })
     ids.set(spec.key, node.id)
     return { spec, node }
   })
@@ -65,7 +80,11 @@ export function graphFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRou
     const source = ids.get(link.from)
     const target = ids.get(link.to)
     if (!source || !target) return []
-    const data: Partial<DiagramEdgeData> = { label: link.label ?? '', flow: link.flow ?? false, dashed: link.dashed ?? false, color: tint(link.color)?.stroke ?? '' }
+    const data: Partial<DiagramEdgeData> = {
+      label: link.label ?? '', flow: link.flow ?? false, dashed: link.dashed ?? false, color: tint(link.color)?.stroke ?? '',
+      ...(link.confidence ? { confidence: link.confidence, generated: true } : {}),
+      ...(link.evidence ? { evidence: link.evidence } : {}),
+    }
     return [createEdge({ source, target, sourceHandle: null, targetHandle: null }, routing, data)]
   })
   // Containers first: React Flow needs a parent before its children.
@@ -79,18 +98,43 @@ function fitContainers(nodes: DiagramNode[]): DiagramNode[] {
   for (const node of nodes) if (node.parentId) children.set(node.parentId, [...(children.get(node.parentId) ?? []), node])
   const placed = new Map<string, DiagramNode>()
   for (const [parentId, members] of children) {
-    let x = CONTAINER_GAP
-    let tallest = 0
-    for (const member of members) {
-      placed.set(member.id, { ...member, position: { x, y: CONTAINER_GAP + 12 } })
-      x += (member.width ?? 0) + CONTAINER_GAP
-      tallest = Math.max(tallest, member.height ?? 0)
-    }
     const parent = nodes.find((node) => node.id === parentId)
-    if (parent) placed.set(parentId, { ...parent, width: Math.max(parent.width ?? 0, x), height: Math.max(parent.height ?? 0, tallest + CONTAINER_GAP * 2 + 12) })
+    if (!parent) continue
+    // A tall container (a swimlane) grows downwards, a wide one to the right.
+    const column = (parent.height ?? 0) > (parent.width ?? 0)
+    let offset = 0
+    let deepest = 0
+    for (const member of members) {
+      placed.set(member.id, { ...member, position: column
+        ? { x: CONTAINER_GAP, y: CONTAINER_GAP + 12 + offset }
+        : { x: CONTAINER_GAP + offset, y: CONTAINER_GAP + 12 } })
+      offset += (column ? member.height ?? 0 : member.width ?? 0) + CONTAINER_GAP
+      deepest = Math.max(deepest, column ? member.width ?? 0 : member.height ?? 0)
+    }
+    placed.set(parentId, { ...parent, ...(column
+      ? { width: Math.max(parent.width ?? 0, deepest + CONTAINER_GAP * 2), height: CONTAINER_GAP * 2 + 12 + offset }
+      : { width: CONTAINER_GAP + offset, height: Math.max(parent.height ?? 0, deepest + CONTAINER_GAP * 2 + 12) }) })
   }
   return nodes.map((node) => placed.get(node.id) ?? node)
 }
+
+/**
+ * A lane blueprint: the containers stay in the order they are declared and sit side by side, because
+ * ELK orders top-level nodes by their edges and a swimlane must read in the order its author wrote.
+ * Only the lanes are placed; their children come from `fitContainers`.
+ */
+export function lanesFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRouting, gap = 32): DiagramGraph {
+  const graph = graphFromBlueprint(blueprint, routing)
+  let x = 0
+  const laneX = new Map<string, number>()
+  for (const node of graph.nodes) {
+    if (node.parentId) continue
+    laneX.set(node.id, x)
+    x += (node.width ?? 0) + gap
+  }
+  return { ...graph, nodes: graph.nodes.map((node) => (node.parentId ? node : { ...node, position: { x: laneX.get(node.id) ?? 0, y: 0 } })) }
+}
+
 
 export async function diagramFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRouting, layout?: LayoutOptions): Promise<DiagramGraph> {
   return autoLayout(graphFromBlueprint(blueprint, routing), layout)

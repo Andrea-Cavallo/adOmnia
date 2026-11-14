@@ -4,7 +4,7 @@ import { showModule } from '@/lib/moduleRouting'
 import { sqlStatementAt } from '@/lib/code-studio/sqlStatement'
 import { requestLocations, requestOrganizeImports, type GoIDELocationKind } from '@/lib/code-studio-lsp-api'
 import { useCodeStudioLspStore } from '@/stores/codeStudioLsp'
-import { navigateToLocation, prepareDocument } from './codeStudioLanguageFeatures'
+import { documentForModel, navigateToLocation, prepareDocument } from './codeStudioLanguageFeatures'
 import { applyCodeStudioWorkspaceChange } from './codeStudioWorkspaceEdits'
 import { caretAnchor, showHierarchy, showQuickDefinition, showTypeInfo, showUsagesPopup } from './codeStudioSemanticFeatures'
 import { goToTest } from './codeStudioCodeGen'
@@ -42,6 +42,7 @@ export const CODE_STUDIO_ACTIONS = {
   moveToNewFile: 'codeStudio.moveToNewFile',
   changeSignature: 'codeStudio.changeSignature',
   moveSymbol: 'codeStudio.moveSymbol',
+  showInDiagram: 'codeStudio.showInDiagram',
 } as const
 
 function report(message: string): void {
@@ -83,6 +84,21 @@ async function organizeImports(editor: Monaco.editor.ICodeEditor): Promise<void>
   }
 }
 
+/** Code Studio → Diagram Studio: highlight the entity declared at the caret. */
+async function showInDiagramStudio(editor: Monaco.editor.ICodeEditor): Promise<void> {
+  const model = editor.getModel()
+  const position = editor.getPosition()
+  const document = model ? documentForModel(model) : null
+  if (!document || document.document.external || !position) return report('Open a project file to show it in Diagram Studio.')
+  const line = position.lineNumber
+  const { useCodeStudioStore } = await import('@/stores/codeStudio')
+  const session = useCodeStudioStore.getState().sessions.find((candidate) => candidate.id === document.document.sessionId)
+  const { useDiagramCodeGraph } = await import('@/stores/diagramCodeGraph')
+  const outcome = await useDiagramCodeGraph.getState().revealLocation(document.document.sessionId, session?.workspaceId, document.document.relativePath, line)
+  if (outcome === 'missing') report('No diagram entity is indexed at this position: generate a diagram from the workspace first.')
+  if (outcome === 'error') report(useDiagramCodeGraph.getState().error || 'The workspace analysis failed.')
+}
+
 function requestRename(editor: Monaco.editor.ICodeEditor): void {
   const model = editor.getModel()
   const position = editor.getPosition()
@@ -100,6 +116,7 @@ export function installCodeStudioEditorActions(editor: Monaco.editor.IStandalone
   const semantic = (id: string, label: string, keybindings: number[], run: (target: Monaco.editor.ICodeEditor) => void | Promise<void>) => {
     editor.addAction({ id, label, keybindings, contextMenuGroupId: 'navigation', run: (target) => { void run(target) } })
   }
+  editor.addAction({ id: CODE_STUDIO_ACTIONS.showInDiagram, label: 'Show in Diagram Studio', contextMenuGroupId: 'navigation', contextMenuOrder: -5, run: (target) => { void showInDiagramStudio(target) } })
   semantic(CODE_STUDIO_ACTIONS.gotoDeclaration, 'Go to Declaration', [KeyMod.CtrlCmd | KeyCode.KeyB], (target) => target.trigger('code-studio', 'editor.action.revealDefinition', null))
   semantic(CODE_STUDIO_ACTIONS.gotoImplementation, 'Go to Implementation', [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyB], (target) => showLocations(target, 'implementation', `Implementations of ${wordAt(target)}`))
   semantic(CODE_STUDIO_ACTIONS.findUsages, 'Find Usages', [KeyMod.Alt | KeyCode.F7, KeyMod.Shift | KeyCode.F12], (target) => showLocations(target, 'references', `Usages of ${wordAt(target)}`))

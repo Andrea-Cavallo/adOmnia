@@ -17,6 +17,8 @@ const OBSTACLE_REACH = 160
 const PULSES = 3
 const PULSE_SECONDS = 2.4
 const ARROW_SIZE = 9
+const ROW_HANDLE = /^[LR]\d+$/
+const MESSAGE_LABEL_LIFT = 11
 
 /**
  * The rectangles of the nodes near this edge, as a string so the edge re-renders only when one of
@@ -220,6 +222,8 @@ export const SmartEdge = memo(function SmartEdge(props: EdgeProps<DiagramEdge>) 
     ? getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition: POSITION[sourceAnchor.side], targetPosition: POSITION[targetAnchor.side] })
     : [pathOf(data.routing, points), midpoint(points).x, midpoint(points).y]
   const color = data.color || 'var(--diagram-edge)'
+  // A sequence message (between two lifeline rows, horizontal) reads with its text above the arrow.
+  const isMessage = ROW_HANDLE.test(props.sourceHandleId ?? '') && ROW_HANDLE.test(props.targetHandleId ?? '') && source !== target
   const before = (end: 'start' | 'end') => {
     if (bezierAuto || data.routing === 'orthogonal') return stepFrom(end === 'end' ? targetAnchor : sourceAnchor)
     return end === 'end' ? points[points.length - 2] : points[1]
@@ -247,7 +251,7 @@ export const SmartEdge = memo(function SmartEdge(props: EdgeProps<DiagramEdge>) 
         </g>
       )}
       <EdgeLabelRenderer>
-        <EdgeLabel id={id} label={data.label} at={{ x: labelX, y: labelY }} editing={editing} />
+        <EdgeLabel id={id} label={data.label} at={{ x: labelX, y: labelY - (isMessage ? MESSAGE_LABEL_LIFT : 0) }} editing={editing} />
       </EdgeLabelRenderer>
       {selected && <Waypoints id={id} ends={[sourceAnchor, targetAnchor]} waypoints={data.waypoints} />}
     </>

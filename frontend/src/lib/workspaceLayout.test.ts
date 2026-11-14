@@ -3,8 +3,8 @@ import { useAppStore } from '@/stores/app'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { useTabsStore } from '@/stores/tabs'
 import {
-  LAYOUT_HISTORY_LIMIT, MAX_AUX_RATIO, MIN_AUX_RATIO, backLabel, clampAuxRatio, closeAuxiliary, enterSplit,
-  isInSplit, layoutBack, placeAuxiliary, pushSnapshot, useWorkspaceLayoutStore, type LayoutSnapshot,
+  LAYOUT_HISTORY_LIMIT, MAX_AUX_RATIO, MIN_AUX_RATIO, backLabel, clampAuxRatio, closeAuxiliary, enterDiagramSplit, enterSplit,
+  isInSplit, layoutBack, placeAuxiliary, pushSnapshot, SPLIT_PAIRS, useWorkspaceLayoutStore, type LayoutSnapshot,
 } from './workspaceLayout'
 
 const snapshot = (activeRail: LayoutSnapshot['activeRail'], extra: Partial<LayoutSnapshot> = {}): LayoutSnapshot =>
@@ -15,7 +15,7 @@ beforeEach(() => {
   const values = new Map<string, string>()
   vi.stubGlobal('localStorage', { getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, v: string) => { values.set(k, v) }, removeItem: (k: string) => { values.delete(k) } })
   vi.stubGlobal('window', { location: { search: '' }, dispatchEvent: () => true, localStorage: globalThis.localStorage })
-  useAppStore.setState({ activeRail: 'collections', splitView: false, splitAuxiliary: null, keptPanels: [], railHistory: [] })
+  useAppStore.setState({ activeRail: 'collections', splitView: false, splitAuxiliary: null, splitPair: 'api', keptPanels: [], railHistory: [] })
   usePanelWindowsStore.setState({ detached: [] })
   useWorkspaceLayoutStore.setState({ history: [] })
   useTabsStore.setState({ activeTabId: 'tab-a' })
@@ -56,6 +56,25 @@ describe('workspace layout coordinator', () => {
     expect(app.splitView).toBe(true)
     expect(app.keptPanels).toEqual(expect.arrayContaining(['codestudio', 'collections']))
     expect(useWorkspaceLayoutStore.getState().history).toHaveLength(1)
+  })
+
+  it('opens Diagram Studio beside Code Studio, keeping both mounted', () => {
+    enterDiagramSplit()
+    const app = useAppStore.getState()
+    expect(app).toMatchObject({ splitView: true, splitPair: 'diagram', activeRail: 'diagrams' })
+    expect(app.keptPanels).toEqual(expect.arrayContaining(['diagrams', 'codestudio']))
+    expect(SPLIT_PAIRS.diagram).toEqual(['diagrams', 'codestudio'])
+    expect(isInSplit('diagrams', true, null, 'diagram')).toBe(true)
+    expect(isInSplit('collections', true, null, 'diagram')).toBe(false)
+    // Back returns to the screen before the diagram split, not to a broken half-pair.
+    expect(layoutBack()).toBe(true)
+    expect(useAppStore.getState()).toMatchObject({ splitPair: 'api', splitView: false, activeRail: 'collections' })
+  })
+
+  it('keeps the API third pane out of the diagram split', () => {
+    enterDiagramSplit()
+    expect(placeAuxiliary('database')).toBe(false)
+    expect(useAppStore.getState().splitAuxiliary).toBeNull()
   })
 
   it('adds Database beside code and request, and Back returns to the response', () => {

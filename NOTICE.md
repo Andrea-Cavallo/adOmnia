@@ -51,6 +51,18 @@ adOmnia includes or depends on the following third-party software:
 - **Repository**: https://github.com/cloudflare/security-audit-skill
 - Not bundled: the Security Center downloads it on request, with its LICENSE, into `~/.agents/skills/security-audit`.
 
+### Simple Icons
+- **License**: CC0 1.0 Universal (the collection); individual logos may carry their own license, listed in the collection's data file
+- **Repository**: https://github.com/simple-icons/simple-icons
+- Bundled: 3,472 SVG logos in `frontend/public/diagram-icons/tech/` (Diagram Studio → *Icons* → *Tech logos*), recolored with each brand color.
+- Brand names and logos are trademarks of their respective owners. They are shown only to identify a technology in a diagram and do not imply endorsement; follow each brand's guidelines when you publish a diagram that uses them.
+
+### AWS Architecture Icons
+- **Terms**: AWS Architecture Icons terms of use — https://aws.amazon.com/architecture/icons/
+- **Copyright**: © Amazon.com, Inc. or its affiliates. All rights reserved.
+- Bundled: 783 PNG icons in `frontend/public/diagram-icons/aws/` (Diagram Studio → *Icons* tab), with a copy of these terms in `frontend/public/diagram-icons/NOTICE.md`.
+- They are **not** covered by adOmnia's GPL-3.0 license. AWS lets customers and partners use these icons to draw architecture diagrams (in documents, presentations and similar material); the icons may not be modified, used as a logo, or used in a way that suggests AWS endorses or sponsors adOmnia or the diagram. Amazon Web Services, AWS and the service names are trademarks of Amazon.com, Inc. or its affiliates; they are used here only to identify the services the icons depict.
+
 ---
 
 ## Disclaimer

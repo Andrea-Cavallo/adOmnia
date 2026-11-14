@@ -5,10 +5,49 @@
  */
 import { getNodesBounds, getViewportForBounds, type Node } from '@xyflow/react'
 import { SaveBinaryFileBase64 } from '../../../bindings/github.com/Andrea-Cavallo/adOmnia/app'
+import { toDrawio } from './drawio'
 import type { DiagramDocument } from './model'
+import { syncedPages } from './model'
 import { serializeDiagram } from './serialization'
 
-export type ExportFormat = 'png' | 'svg' | 'json'
+export type ExportFormat = 'png' | 'svg' | 'json' | 'drawio'
+
+/** Marker of the diagram JSON an exported SVG carries, so importing the SVG gives back an editable diagram. */
+const SVG_MARK = 'adomnia-diagram'
+
+/** The SVG with the diagram embedded as Base64 JSON in a <metadata> element. */
+export function embedDiagram(svg: string, doc: DiagramDocument): string {
+  const metadata = `<metadata id="${SVG_MARK}">${base64OfText(serializeDiagram(doc))}</metadata>`
+  return svg.replace(/<svg\b[^>]*>/, (open) => `${open}${metadata}`)
+}
+
+/** The diagram JSON embedded by embedDiagram, or null for any other SVG. */
+export function embeddedDiagram(svg: string): string | null {
+  const match = /<metadata id="adomnia-diagram">([A-Za-z0-9+/=\s]+)<\/metadata>/.exec(svg)
+  if (!match) return null
+  const bytes = Uint8Array.from(atob(match[1].replace(/\s+/g, '')), (char) => char.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
+}
+
+/** Data URLs of the app images (architecture icons) a diagram uses, for formats read outside adOmnia. */
+export async function inlineImages(doc: DiagramDocument): Promise<Map<string, string>> {
+  const sources = new Set(syncedPages(doc).flatMap((page) => page.nodes.map((node) => node.data.image)).filter((src): src is string => !!src && !src.startsWith('data:')))
+  const entries = await Promise.all([...sources].map(async (src) => {
+    try {
+      const blob = await (await fetch(src)).blob()
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = () => reject(reader.error ?? new Error('read failed'))
+        reader.readAsDataURL(blob)
+      })
+      return [[src, dataUrl] as const]
+    } catch {
+      return [] // the icon stays a link: draw.io shows an empty frame instead of failing the export
+    }
+  }))
+  return new Map(entries.flat())
+}
 
 /** Border around the diagram in an exported picture, in pixels. */
 const EXPORT_PADDING = 48
@@ -71,6 +110,12 @@ export function base64OfDataUrl(dataUrl: string): string {
   return header.endsWith(';base64') ? payload : base64OfText(decodeURIComponent(payload))
 }
 
+/** The text of a data URL (UTF-8), Base64 or percent-encoded. */
+export function textOfDataUrl(dataUrl: string): string {
+  const bytes = Uint8Array.from(atob(base64OfDataUrl(dataUrl)), (char) => char.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
+}
+
 /** Renders the viewport element to a data URL; html-to-image is loaded only when exporting. */
 async function renderImage(viewport: HTMLElement, nodes: Node[], format: 'png' | 'svg', background: string): Promise<string> {
   const { toPng, toSvg } = await import('html-to-image')
@@ -101,8 +146,10 @@ async function renderImage(viewport: HTMLElement, nodes: Node[], format: 'png' |
 export async function exportDiagram(doc: DiagramDocument, format: ExportFormat, viewport: HTMLElement | null, background: string): Promise<string> {
   const name = exportFileName(doc.name, format)
   if (format === 'json') return SaveBinaryFileBase64(name, base64OfText(serializeDiagram(doc)))
+  if (format === 'drawio') return SaveBinaryFileBase64(name, base64OfText(toDrawio(doc, await inlineImages(doc))))
   if (doc.nodes.length === 0) throw new Error('The diagram is empty: add a shape before exporting a picture.')
   if (!viewport) throw new Error('The canvas is not ready yet.')
   const dataUrl = await renderImage(viewport, doc.nodes, format, background)
+  if (format === 'svg') return SaveBinaryFileBase64(name, base64OfText(embedDiagram(textOfDataUrl(dataUrl), doc)))
   return SaveBinaryFileBase64(name, base64OfDataUrl(dataUrl))
 }

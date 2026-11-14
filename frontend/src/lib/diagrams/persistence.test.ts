@@ -71,6 +71,7 @@ describe('diagram autosave', () => {
 describe('diagram blueprints and layout', () => {
   it('builds every template with containers first and links between existing nodes', () => {
     for (const template of DIAGRAM_TEMPLATES) {
+      if (!template.blueprint) continue
       const graph = graphFromBlueprint(template.blueprint, 'orthogonal')
       const ids = new Set(graph.nodes.map((node) => node.id))
       expect(graph.edges.every((edge) => ids.has(edge.source) && ids.has(edge.target)), template.id).toBe(true)

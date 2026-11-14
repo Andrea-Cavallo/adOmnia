@@ -2,15 +2,16 @@
  * The shape library: searchable, grouped by category. Drag a shape onto the canvas, or click it to
  * drop it in the middle of the view.
  */
-import { memo, useMemo, useState, type DragEvent } from 'react'
+import { lazy, memo, Suspense, useMemo, useState, type DragEvent } from 'react'
 import { Search, X } from 'lucide-react'
 import { SHAPE_CATEGORIES, searchShapes, type ShapeDefinition } from '@/lib/diagrams/shapes'
 import { DEFAULT_NODE_STYLE } from '@/lib/diagrams/shapes'
 import { SHAPE_ICONS } from './shapeIcons'
 import { ShapeOutline } from './ShapeOutline'
 
-/** The drag payload type the canvas accepts. */
-export const SHAPE_DRAG_TYPE = 'application/adomnia-diagram-shape'
+import { SHAPE_DRAG_TYPE } from './dragTypes'
+
+const IconLibrary = lazy(() => import('./IconLibrary').then((module) => ({ default: module.IconLibrary })))
 const PREVIEW_WIDTH = 46
 const PREVIEW_MAX_HEIGHT = 32
 
@@ -36,11 +37,26 @@ const ShapeTile = memo(function ShapeTile({ shape, onAdd }: { shape: ShapeDefini
   )
 })
 
-export function ShapeLibrary({ onAdd }: { onAdd: (shapeId: string) => void }) {
+export function ShapeLibrary({ onAdd, onAddIcon }: { onAdd: (shapeId: string) => void; onAddIcon: (src: string, label: string) => void }) {
+  const [tab, setTab] = useState<'shapes' | 'icons'>('shapes')
+  return (
+    <aside className="diagram-library" aria-label="Shapes and icons">
+      <div className="diagram-library-tabs" role="tablist" aria-label="Library">
+        <button type="button" role="tab" aria-pressed={tab === 'shapes'} aria-selected={tab === 'shapes'} onClick={() => setTab('shapes')}>Shapes</button>
+        <button type="button" role="tab" aria-pressed={tab === 'icons'} aria-selected={tab === 'icons'} onClick={() => setTab('icons')}>Icons</button>
+      </div>
+      {tab === 'shapes' ? <Shapes onAdd={onAdd} /> : (
+        <Suspense fallback={<p className="diagram-empty-hint">Loading icons…</p>}><IconLibrary onAdd={onAddIcon} /></Suspense>
+      )}
+    </aside>
+  )
+}
+
+function Shapes({ onAdd }: { onAdd: (shapeId: string) => void }) {
   const [query, setQuery] = useState('')
   const matches = useMemo(() => searchShapes(query), [query])
   return (
-    <aside className="diagram-library" aria-label="Shapes">
+    <>
       <label className="diagram-search">
         <Search size={12} aria-hidden="true" />
         <span className="sr-only">Search shapes</span>
@@ -62,6 +78,6 @@ export function ShapeLibrary({ onAdd }: { onAdd: (shapeId: string) => void }) {
         })}
         {matches.length === 0 && <p className="diagram-empty-hint">No shape matches “{query}”.</p>}
       </div>
-    </aside>
+    </>
   )
 }

@@ -4,7 +4,7 @@
  * controls. A connector dropped on a shape attaches to it; dropped on the empty canvas it gets a new
  * shape at its end. Drag on empty canvas selects; Space+drag, the middle button or the wheel pans.
  */
-import { useCallback, useSyncExternalStore, type DragEvent, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useSyncExternalStore, type DragEvent, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   Background, BackgroundVariant, ConnectionLineType, ConnectionMode, Controls, ReactFlow, SelectionMode, ViewportPortal,
   useReactFlow, type NodeChange, type NodePositionChange, type OnConnectEnd, type OnNodeDrag, type Viewport,
@@ -17,7 +17,8 @@ import { useDiagramUi, type ContextTarget } from '@/stores/diagramStudioUi'
 import { DiagramContextMenu } from './DiagramContextMenu'
 import { handleDiagramKey, typingIn } from './diagramActions'
 import { SelectionToolbar } from './SelectionToolbar'
-import { SHAPE_DRAG_TYPE } from './ShapeLibrary'
+import { ICON_DRAG_TYPE, SHAPE_DRAG_TYPE } from './dragTypes'
+import { PageTabs } from './PageTabs'
 import { ShapeNode } from './ShapeNode'
 import { SmartEdge } from './SmartEdge'
 
@@ -27,6 +28,8 @@ const MIN_ZOOM = 0.1
 const MAX_ZOOM = 4
 /** A connector released closer than this to where it started is a slip of the hand, not a new shape. */
 const MIN_DRAG_TO_ADD = 48
+/** Size of an architecture icon dropped on the canvas. */
+const ICON_SIZE = 64
 const BACKGROUND: Record<'dots' | 'lines', BackgroundVariant> = { dots: BackgroundVariant.Dots, lines: BackgroundVariant.Lines }
 
 /**
@@ -94,8 +97,21 @@ export function DiagramCanvas() {
   const editEdge = useDiagramUi((state) => state.editEdge)
   const openMenu = useDiagramUi((state) => state.openMenu)
   const setGuides = useDiagramUi((state) => state.setGuides)
-  const { screenToFlowPosition } = useReactFlow()
+  const focusNodeId = useDiagramUi((state) => state.focusNodeId)
+  const focusNode = useDiagramUi((state) => state.focusNode)
+  const { screenToFlowPosition, fitView } = useReactFlow()
   const colorMode = useSyncExternalStore(subscribeToTheme, appColorMode)
+
+  // Cross-panel navigation: bring the node into view once the canvas has it, then clear the request.
+  useEffect(() => {
+    if (!focusNodeId) return
+    if (!useDiagramStudio.getState().doc?.nodes.some((node) => node.id === focusNodeId)) { focusNode(null); return }
+    const frame = requestAnimationFrame(() => {
+      void fitView({ nodes: [{ id: focusNodeId }], duration: 300, maxZoom: 1.4, padding: 1.2 })
+      focusNode(null)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [focusNodeId, fitView, focusNode])
 
   const handleNodesChange = useCallback((changes: NodeChange<DiagramNode>[]) => {
     const nodes = useDiagramStudio.getState().doc?.nodes ?? []
@@ -108,12 +124,30 @@ export function DiagramCanvas() {
     for (const node of dragged) store.dropInContainer(node.id)
   }, [setGuides])
 
+  /** Shapes and icons from the library, and files from the desktop (images are placed, diagrams open). */
   const onDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
+    const at = screenToFlowPosition({ x: event.clientX, y: event.clientY })
     const shapeId = event.dataTransfer.getData(SHAPE_DRAG_TYPE)
-    if (!shapeId) return
+    const icon = event.dataTransfer.getData(ICON_DRAG_TYPE)
+    const files = [...event.dataTransfer.files]
+    if (!shapeId && !icon && files.length === 0) return
+    // preventDefault tells the app-wide file drop that the canvas owns this drop.
     event.preventDefault()
-    addShape(shapeId, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
+    if (shapeId) { addShape(shapeId, at); return }
+    if (icon) {
+      const { src, label } = JSON.parse(icon) as { src: string; label: string }
+      useDiagramStudio.getState().addImage(src, { x: at.x - ICON_SIZE / 2, y: at.y - ICON_SIZE / 2 }, label, { width: ICON_SIZE, height: ICON_SIZE })
+      return
+    }
+    files.forEach((file, index) => { void useDiagramStudio.getState().importFile(file, { x: at.x + index * 32, y: at.y + index * 32 }) })
   }, [addShape, screenToFlowPosition])
+
+  const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    const types = event.dataTransfer.types
+    if (!types.includes(SHAPE_DRAG_TYPE) && !types.includes(ICON_DRAG_TYPE) && !types.includes('Files')) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }, [])
 
   /** A connector that did not end on a connection point: on a shape it attaches to it, on empty canvas it grows a shape. */
   const onConnectEnd = useCallback<OnConnectEnd>((event, connection) => {
@@ -150,9 +184,9 @@ export function DiagramCanvas() {
   if (!doc) return null
   const { settings } = doc
   return (
-    <div className="diagram-canvas" tabIndex={0} onKeyDown={onKeyDown} onDragOver={(event) => { if (event.dataTransfer.types.includes(SHAPE_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy' } }} onDrop={onDrop}>
+    <div className="diagram-canvas" tabIndex={0} onKeyDown={onKeyDown} onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow<DiagramNode, DiagramEdge>
-        key={doc.id}
+        key={`${doc.id}:${doc.activePageId}`}
         colorMode={colorMode}
         nodes={doc.nodes}
         edges={doc.edges}
@@ -168,7 +202,7 @@ export function DiagramCanvas() {
         onNodeDragStart={checkpoint}
         onNodeDragStop={onDragStop}
         onNodeDoubleClick={(_event, node) => { if (!node.data.locked) editNode(node.id) }}
-        onEdgeDoubleClick={(_event, edge) => editEdge(edge.id)}
+        onEdgeDoubleClick={(_event, edge) => { if (!useDiagramStudio.getState().straighten(edge.id)) editEdge(edge.id) }}
         onNodeContextMenu={(event, node) => menuAt(event, { kind: 'node', id: node.id })}
         onEdgeContextMenu={(event, edge) => menuAt(event, { kind: 'edge', id: edge.id })}
         onPaneContextMenu={(event) => menuAt(event, { kind: 'pane' })}
@@ -200,6 +234,7 @@ export function DiagramCanvas() {
         <GuideLines />
         <SelectionToolbar />
       </ReactFlow>
+      <PageTabs />
       <DiagramContextMenu />
     </div>
   )

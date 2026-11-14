@@ -6,17 +6,25 @@
 import { create } from 'zustand'
 import { applyEdgeChanges, applyNodeChanges, reconnectEdge, type Connection, type EdgeChange, type NodeChange, type Viewport, type XYPosition } from '@xyflow/react'
 import { createAutosave, type SaveStatus } from '@/lib/diagrams/autosave'
-import { diagramFromBlueprint } from '@/lib/diagrams/blueprint'
+import { diagramFromBlueprint, lanesFromBlueprint } from '@/lib/diagrams/blueprint'
+import type { GeneratedDiagram } from '@/lib/diagrams/workspace'
+import type { WorkspaceEntity, WorkspaceLink } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/diagrams/models'
+import { mergeGeneratedGraph, relatedGraph, revealNode } from '@/lib/diagrams/workspaceMerge'
 import {
   absoluteRect, alignNodes, copySelection, createEdge, createNode, deleteElements, distributeNodes, duplicateSelection, groupNodes,
   moveLayer, pasteClipboard, reparentByDrop, setLocked, ungroup, updateEdgeData, updateNodeData,
   type AlignMode, type Clipboard, type DistributeAxis, type LayerMove,
 } from '@/lib/diagrams/graphOps'
 import { emptyHistory, record, redo, undo, type History } from '@/lib/diagrams/history'
-import { autoLayout, type LayoutDirection } from '@/lib/diagrams/layout'
+import { legendFromGraph, legendHeight } from '@/lib/diagrams/legend'
+import { autoLayout, DEFAULT_LAYOUT, type LayoutDirection } from '@/lib/diagrams/layout'
+import { diagramFromBlueprintFile, importDiagramFile, type BlueprintFile } from '@/lib/diagrams/importFile'
+import { sequenceFromText } from '@/lib/diagrams/sequence'
+import { straightenEdge } from '@/lib/diagrams/straighten'
+import { shapeOf } from '@/lib/diagrams/shapes'
 import {
-  emptyDiagram, newDiagramId,
-  type DiagramDocument, type DiagramEdge, type DiagramEdgeData, type DiagramGraph, type DiagramNode, type DiagramNodeData, type DiagramSettings, type DiagramSummary,
+  emptyDiagram, newDiagramId, newPage, summaryOf, syncedPages, withActivePage,
+  type DiagramCodeRef, type DiagramDocument, type DiagramEdge, type DiagramEdgeData, type DiagramGraph, type DiagramNode, type DiagramNodeData, type DiagramSettings, type DiagramSummary,
 } from '@/lib/diagrams/model'
 import { parseDiagram } from '@/lib/diagrams/serialization'
 import { diagramRepository, type DiagramRepository } from '@/lib/diagrams/storage'
@@ -25,6 +33,7 @@ import { DIAGRAM_TEMPLATES } from '@/lib/diagrams/templates'
 const AUTOSAVE_DELAY_MS = 800
 const PASTE_OFFSET = 32
 const STRAIGHTEN_WITHIN = 32
+const LIFELINE_GAP = 180
 
 interface DiagramStudioState {
   summaries: DiagramSummary[]
@@ -41,6 +50,34 @@ interface DiagramStudioState {
   open: (id: string) => Promise<void>
   create: (templateId?: string) => Promise<void>
   importJson: (json: string) => Promise<void>
+  /** A dropped or picked file: a diagram opens as a new one, a picture is placed at `at` (or the origin). */
+  importFile: (file: File, at?: XYPosition) => Promise<void>
+  /** A generated diagram (Markdown, MCP) laid out and opened as a new diagram. */
+  createFromBlueprint: (file: BlueprintFile) => Promise<void>
+  /**
+   * Shows a workspace analysis as a diagram. `mode: 'new'` opens a fresh diagram; `'refresh'`
+   * merges into the open generated diagram, keeping positions, labels and manual edits.
+   */
+  showWorkspaceDiagram: (generated: GeneratedDiagram, mode: 'new' | 'refresh', projectName?: string) => Promise<void>
+  /** Adds the callers/callees of the selected node around it, without resetting the layout. */
+  addRelated: (entities: WorkspaceEntity[], links: WorkspaceLink[], options: { sessionId: string; workspaceId?: string; fingerprint?: string }) => number
+  /** Selects the node of an entity, adding it beside the selection when the diagram lacks it. */
+  revealEntity: (entity: WorkspaceEntity, options: { sessionId: string; workspaceId?: string; fingerprint?: string }) => string | null
+  /** The source ref of a node, for Open in Code Studio. */
+  nodeSource: (nodeId: string) => DiagramCodeRef | undefined
+  /** Marks every generated node of a session as stale (the index is older than the buffer). */
+  markGeneratedStale: () => void
+  /** A sequence diagram from Mermaid-style text, as a new page of the open diagram. */
+  addSequencePage: (text: string, name?: string) => void
+  addImage: (src: string, position: XYPosition, label?: string, size?: { width: number; height: number }) => string | null
+  addPage: () => void
+  switchPage: (pageId: string) => void
+  renamePage: (pageId: string, name: string) => void
+  removePage: (pageId: string) => void
+  /** Straightens a crooked connector; false when it was already straight. */
+  straighten: (edgeId: string) => boolean
+  /** Lines the selected (or all) lifelines up: same top, same height, even spacing. */
+  tidySequence: () => void
   rename: (name: string) => void
   remove: (id: string) => Promise<void>
   flush: () => Promise<void>
@@ -57,6 +94,8 @@ interface DiagramStudioState {
   redo: () => void
 
   addShape: (shapeId: string, position: XYPosition) => string | null
+  /** A legend of the colors the diagram already uses, at `position`; false when nothing is colored. */
+  addLegend: (position: XYPosition) => boolean
   connect: (connection: Connection) => void
   /** A new shape like the source, centered on `position` and connected to it, in one undo step. */
   connectToNew: (source: string, sourceHandle: string | null, position: XYPosition) => string | null
@@ -125,6 +164,19 @@ export function createDiagramStudioStore(repository: DiagramRepository = diagram
       set({ doc, history: emptyHistory() })
     }
 
+    /** Opens a diagram that came from outside under a fresh id, so importing twice never overwrites. */
+    const openNew = async (doc: DiagramDocument) => {
+      const fresh = { ...doc, id: newDiagramId() }
+      await openDoc(fresh)
+      store(fresh)
+    }
+
+    /** Shows another page (or a new page list); undo belongs to the page it was recorded on. */
+    const showPages = (doc: DiagramDocument) => {
+      store(doc)
+      set({ history: emptyHistory() })
+    }
+
     const commit = (edit: (graph: DiagramGraph) => DiagramGraph) => {
       const { doc, history } = get()
       if (!doc) return
@@ -177,7 +229,13 @@ export function createDiagramStudioStore(repository: DiagramRepository = diagram
         const template = DIAGRAM_TEMPLATES.find((candidate) => candidate.id === templateId)
         const doc = emptyDiagram(template ? template.label : 'Untitled diagram')
         try {
-          if (template) Object.assign(doc, await diagramFromBlueprint(template.blueprint, doc.settings.defaultRouting))
+          if (template?.blueprint) {
+            const graph = template.layout === 'lanes'
+              ? lanesFromBlueprint(template.blueprint, doc.settings.defaultRouting)
+              : await diagramFromBlueprint(template.blueprint, doc.settings.defaultRouting, template.layout ? { ...DEFAULT_LAYOUT, direction: template.layout } : undefined)
+            Object.assign(doc, graph)
+          }
+          if (template?.sequence) Object.assign(doc, sequenceFromText(template.sequence))
         } catch (error) {
           set({ notice: `The template could not be laid out: ${message(error)}` })
         }
@@ -194,6 +252,154 @@ export function createDiagramStudioStore(repository: DiagramRepository = diagram
         } catch (error) {
           set({ notice: `Could not import the diagram: ${message(error)}` })
         }
+      },
+
+      async importFile(file, at) {
+        try {
+          const imported = await importDiagramFile(file)
+          if (imported.kind === 'diagram') { await openNew(imported.doc); return }
+          const size = await imageSize(imported.src)
+          const center = at ?? { x: 0, y: 0 }
+          get().addImage(imported.src, { x: center.x - size.width / 2, y: center.y - size.height / 2 }, '', size)
+        } catch (error) {
+          set({ notice: `Could not import “${file.name}”: ${message(error)}` })
+        }
+      },
+
+      async createFromBlueprint(file) {
+        try {
+          await openNew(await diagramFromBlueprintFile(file, get().doc?.settings.defaultRouting))
+        } catch (error) {
+          set({ notice: `Could not generate the diagram: ${message(error)}` })
+        }
+      },
+
+      async showWorkspaceDiagram(generated, mode, projectName) {
+        const { doc } = get()
+        const routing = doc?.settings.defaultRouting ?? 'orthogonal'
+        const sameOrigin = !!doc?.origin && doc.origin.sessionId === generated.origin.sessionId
+        try {
+          if (mode === 'new' || !doc || !sameOrigin) {
+            const fresh = emptyDiagram(`${projectName ?? 'Workspace'} · ${generated.origin.view}`)
+            const graph = await diagramFromBlueprint(generated.blueprint, routing)
+            Object.assign(fresh, graph, { origin: generated.origin, name: fresh.name })
+            await openNew(fresh)
+            if (generated.notes.length) set({ notice: generated.notes.join(' ') })
+            return
+          }
+          const graph = await diagramFromBlueprint(generated.blueprint, routing)
+          commit((current) => mergeGeneratedGraph(current, graph).graph)
+          const next = get().doc
+          if (next) store({ ...next, origin: generated.origin })
+          if (generated.notes.length) set({ notice: generated.notes.join(' ') })
+        } catch (error) {
+          set({ notice: `Could not generate the diagram: ${message(error)}` })
+        }
+      },
+
+      addRelated(entities, links, options) {
+        const { doc } = get()
+        const selected = doc?.nodes.find((node) => node.selected) ?? null
+        const present = new Set((doc?.nodes ?? []).flatMap((node) => (node.data.source ? [node.data.source.entityId] : [])))
+        const graph = relatedGraph(entities, links, selected, { ...options, routing: doc?.settings.defaultRouting ?? 'orthogonal' })
+        const isNew = (node: DiagramNode) => !node.data.source || !present.has(node.data.source.entityId)
+        const nodes = graph.nodes.filter(isNew)
+        const existingPairs = new Set((doc?.edges ?? []).map((edge) => `${edge.source}\u0000${edge.target}`))
+        const edges = graph.edges.filter((edge) => !existingPairs.has(`${edge.source}\u0000${edge.target}`))
+        if (nodes.length === 0 && edges.length === 0) return 0
+        commit((current) => ({ nodes: [...current.nodes, ...nodes], edges: [...current.edges, ...edges] }))
+        return nodes.length
+      },
+
+      revealEntity(entity, options) {
+        const { doc } = get()
+        if (!doc) return null
+        const existing = doc.nodes.find((node) => node.data.source?.entityId === entity.id)
+        if (existing) {
+          get().selectFor('node', existing.id)
+          return existing.id
+        }
+        const anchor = doc.nodes.find((node) => node.selected) ?? null
+        const node = { ...revealNode(entity, anchor, options), selected: true }
+        commit((graph) => ({ ...graph, nodes: [...graph.nodes.map((other) => ({ ...other, selected: false })), node] }))
+        return node.id
+      },
+
+      nodeSource(nodeId) {
+        return get().doc?.nodes.find((node) => node.id === nodeId)?.data.source
+      },
+
+      markGeneratedStale() {
+        const { doc } = get()
+        if (!doc || !doc.origin) return
+        if (!doc.nodes.some((node) => node.data.generated && !node.data.stale)) return
+        set({ doc: { ...doc, nodes: doc.nodes.map((node) => (node.data.generated ? { ...node, data: { ...node.data, stale: true } } : node)) } })
+      },
+
+      addSequencePage(text, name = 'Sequence') {
+        const { doc } = get()
+        if (!doc) return
+        const graph = sequenceFromText(text)
+        if (graph.nodes.length === 0) { set({ notice: 'No participant or message found: write lines like “A->>B: call”.' }); return }
+        const page = newPage(name, graph)
+        showPages(withActivePage({ ...doc, pages: [...syncedPages(doc), page] }, page.id))
+      },
+
+      addImage(src, position, label = '', size) {
+        const node = { ...createNode('image', position, { image: src, label }), ...(size ?? {}), selected: true }
+        commit((graph) => ({ ...graph, nodes: [...graph.nodes.map((other) => ({ ...other, selected: false })), node] }))
+        return node.id
+      },
+
+      addPage() {
+        const { doc } = get()
+        if (!doc) return
+        const page = newPage(`Page ${doc.pages.length + 1}`)
+        showPages(withActivePage({ ...doc, pages: [...syncedPages(doc), page] }, page.id))
+      },
+
+      switchPage(pageId) {
+        const { doc } = get()
+        if (doc && doc.activePageId !== pageId) showPages(withActivePage(doc, pageId))
+      },
+
+      renamePage(pageId, name) {
+        const { doc } = get()
+        const trimmed = name.trim()
+        if (doc && trimmed) store({ ...doc, pages: doc.pages.map((page) => (page.id === pageId ? { ...page, name: trimmed } : page)) })
+      },
+
+      removePage(pageId) {
+        const { doc } = get()
+        if (!doc || doc.pages.length < 2) return
+        const pages = syncedPages(doc).filter((page) => page.id !== pageId)
+        if (doc.activePageId !== pageId) { showPages({ ...doc, pages }); return }
+        const first = pages[0]
+        showPages({ ...doc, pages, activePageId: first.id, nodes: first.nodes, edges: first.edges, viewport: first.viewport })
+      },
+
+      straighten(edgeId) {
+        const { doc } = get()
+        if (!doc) return false
+        const before = graphOf(doc)
+        const after = straightenEdge(before, edgeId)
+        if (after === before) return false
+        commit(() => after)
+        return true
+      },
+
+      tidySequence() {
+        commit((graph) => {
+          const isLifeline = (node: DiagramNode) => !node.parentId && shapeOf(node.data.shape).geometry === 'lifeline'
+          const selected = graph.nodes.filter((node) => node.selected && isLifeline(node))
+          const lifelines = (selected.length > 1 ? selected : graph.nodes.filter(isLifeline)).sort((a, b) => a.position.x - b.position.x)
+          if (lifelines.length === 0) return graph
+          const top = Math.min(...lifelines.map((node) => node.position.y))
+          const height = Math.max(...lifelines.map((node) => node.height ?? 0))
+          const left = lifelines[0].position.x
+          const placed = new Map(lifelines.map((node, index) => [node.id, { x: left + index * LIFELINE_GAP, y: top }]))
+          return { ...graph, nodes: graph.nodes.map((node) => (placed.has(node.id) ? { ...node, position: placed.get(node.id)!, height } : node)) }
+        })
       },
 
       rename(name) {
@@ -275,6 +481,19 @@ export function createDiagramStudioStore(repository: DiagramRepository = diagram
         commit((graph) => ({ ...graph, nodes: [...graph.nodes.map((other) => ({ ...other, selected: false })), node] }))
         get().dropInContainer(node.id)
         return node.id
+      },
+
+      addLegend(position) {
+        const { doc } = get()
+        if (!doc) return false
+        const rows = legendFromGraph(doc.nodes, doc.edges)
+        if (rows.length === 0) {
+          set({ notice: 'Nothing to describe yet: color a shape or a connector, then add the legend.' })
+          return false
+        }
+        const node = { ...createNode('legend', position, { label: 'Legend', legend: rows }), height: legendHeight(rows.length), selected: true }
+        commit((graph) => ({ ...graph, nodes: [...graph.nodes.map((other) => ({ ...other, selected: false })), node] }))
+        return true
       },
 
       connect(connection) {
@@ -399,8 +618,22 @@ export function createDiagramStudioStore(repository: DiagramRepository = diagram
   })
 }
 
+/** The natural size of a picture, scaled to fit 240px, so a dropped image keeps its proportions. */
+function imageSize(src: string): Promise<{ width: number; height: number }> {
+  const fit = (width: number, height: number) => {
+    const scale = Math.min(1, 240 / Math.max(width, height, 1))
+    return { width: Math.max(24, Math.round(width * scale)), height: Math.max(24, Math.round(height * scale)) }
+  }
+  return new Promise((resolve) => {
+    const image = new Image()
+    image.onload = () => resolve(fit(image.naturalWidth || 96, image.naturalHeight || 96))
+    image.onerror = () => resolve({ width: 96, height: 96 })
+    image.src = src
+  })
+}
+
 function upsertSummary(summaries: DiagramSummary[], doc: DiagramDocument): DiagramSummary[] {
-  const summary = { id: doc.id, name: doc.name, nodeCount: doc.nodes.length, updatedAt: doc.updatedAt }
+  const summary = summaryOf(doc)
   return [summary, ...summaries.filter((item) => item.id !== doc.id)]
 }
 

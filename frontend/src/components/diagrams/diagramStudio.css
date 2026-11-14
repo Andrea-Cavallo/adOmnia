@@ -30,6 +30,8 @@
 /* ---- layout */
 .diagram-body { display: grid; grid-template-columns: 216px minmax(0, 1fr) 272px; flex: 1; min-height: 0; }
 .diagram-body--no-inspector { grid-template-columns: 216px minmax(0, 1fr); }
+.diagram-body--no-library { grid-template-columns: minmax(0, 1fr) 272px; }
+.diagram-body--no-library.diagram-body--no-inspector { grid-template-columns: minmax(0, 1fr); }
 .diagram-canvas-host { position: relative; min-width: 0; min-height: 0; border-left: 1px solid var(--color-border-1); border-right: 1px solid var(--color-border-1); }
 .diagram-canvas { position: absolute; inset: 0; outline: none; }
 .diagram-empty-hint { margin: 16px; font-size: 11px; color: var(--color-text-4); }
@@ -65,6 +67,7 @@
 .diagram-menu-title { display: flex; flex-direction: column; gap: 2px; }
 .diagram-menu-title small { font-size: 10.5px; color: var(--color-text-4); }
 .diagram-menu-divider { height: 1px; margin: 4px 2px; background: var(--color-border-1); }
+.diagram-menu-group { padding: 8px 8px 2px; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text-4); }
 
 /* ---- shape library */
 .diagram-library { display: flex; flex-direction: column; min-height: 0; background: var(--color-surface-1); }
@@ -160,11 +163,95 @@ textarea.diagram-input { height: auto; padding: 5px 7px; resize: vertical; line-
 
 /* ---- floating selection toolbar */
 .diagram-toolbar { display: flex; align-items: center; gap: 1px; padding: 3px; border: 1px solid var(--color-border-2); border-radius: 7px; background: var(--color-surface-1); box-shadow: 0 6px 18px rgb(0 0 0 / .3); }
-.diagram-toolbar-item { display: inline-flex; align-items: center; }
-.diagram-toolbar button { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; color: var(--color-text-2); }
-.diagram-toolbar button:hover { background: var(--color-surface-2); color: var(--color-text-1); }
-.diagram-toolbar button.is-danger:hover { color: var(--color-error); }
+.diagram-toolbar-arrange { position: relative; display: inline-flex; }
+.diagram-toolbar > button, .diagram-toolbar-arrange > button { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 7px; border-radius: 4px; color: var(--color-text-2); font-size: 11.5px; white-space: nowrap; }
+.diagram-toolbar > button:hover, .diagram-toolbar-arrange > button:hover { background: var(--color-surface-2); color: var(--color-text-1); }
+.diagram-toolbar > button.is-danger:hover { color: var(--color-error); }
 .diagram-toolbar-divider { width: 1px; height: 14px; margin: 0 3px; background: var(--color-border-1); }
+
+/* ---- pass-through nodes (lifelines, fragments): only the header, the border, the tab and the
+   connection points catch the pointer, so what lies inside stays clickable */
+.diagram-studio .react-flow__node:has(> .diagram-node--passthrough) { pointer-events: none; }
+.diagram-node--passthrough .react-flow__handle, .diagram-node--passthrough .react-flow__resize-control, .diagram-node--passthrough .diagram-rotate,
+.diagram-node--passthrough .diagram-fragment-tab, .diagram-node--passthrough .diagram-lifeline-hit, .diagram-node--passthrough .diagram-inline-editor { pointer-events: auto; }
+.diagram-node--lifeline .diagram-shape-outline path { pointer-events: auto; }
+.diagram-node--fragment .diagram-shape-outline path, .diagram-node--passthrough.diagram-node--rounded .diagram-shape-outline path { pointer-events: stroke; }
+.diagram-node-text--lifeline { justify-content: center; }
+.diagram-lifeline-stem { position: absolute; inset: 0; overflow: visible; }
+.diagram-lifeline-hit { position: absolute; top: 44px; bottom: 0; left: calc(50% - 6px); width: 12px; cursor: move; }
+.diagram-studio .react-flow__handle.diagram-handle--row { width: 6px; height: 6px; }
+.diagram-node--activation .diagram-shape-outline path { filter: drop-shadow(0 1px 1px rgb(0 0 0 / .25)); }
+
+/* ---- combined fragments */
+.diagram-fragment { position: absolute; inset: 0; pointer-events: none; font-size: 11px; }
+.diagram-fragment-tab { position: absolute; top: 0; left: 0; display: flex; align-items: center; padding: 0 8px; font-family: var(--font-mono); font-weight: 700; cursor: move; }
+.diagram-fragment-guard { display: block; padding: 3px 8px; font-family: var(--font-mono); font-size: 10.5px; opacity: .85; }
+.diagram-fragment > .diagram-fragment-guard { position: absolute; top: 0; left: 64px; }
+.diagram-fragment-divider { position: absolute; left: 0; border-top: 1.2px dashed; }
+
+/* ---- images, legends */
+.diagram-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; }
+.diagram-image-caption { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px; font-size: 11px; white-space: nowrap; color: var(--diagram-node-text); }
+.diagram-image-missing { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--diagram-node-stroke); font-size: 10px; color: var(--color-text-4); }
+.diagram-node--image.is-selected { outline: 1px solid color-mix(in srgb, var(--diagram-select) 60%, transparent); }
+.diagram-legend { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; pointer-events: none; }
+.diagram-legend-title { display: flex; align-items: center; height: 28px; padding: 0 10px; font-weight: 600; }
+.diagram-legend ul { margin: 0; padding: 8px 10px; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: .9em; }
+.diagram-legend li { display: flex; align-items: center; gap: 8px; }
+
+/* ---- pages */
+.diagram-pages { position: absolute; left: 10px; bottom: 10px; z-index: 5; display: flex; align-items: center; gap: 2px; max-width: calc(100% - 140px); overflow-x: auto; padding: 3px; border: 1px solid var(--color-border-1); border-radius: 7px; background: var(--color-surface-1); }
+.diagram-page { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: 4px; font-family: var(--font-mono); font-size: 10.5px; color: var(--color-text-3); white-space: nowrap; }
+.diagram-page:hover { background: var(--color-surface-2); color: var(--color-text-1); }
+.diagram-page.is-active { background: var(--color-surface-2); color: var(--color-text-1); box-shadow: inset 0 -2px 0 var(--color-accent); }
+.diagram-page input { width: 110px; background: none; outline: none; color: var(--color-text-1); font: inherit; }
+
+/* ---- architecture icon library */
+.diagram-library-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 10px 10px 0; padding: 2px; border: 1px solid var(--color-border-1); border-radius: 6px; }
+.diagram-library-tabs button { height: 24px; border-radius: 4px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .6px; text-transform: uppercase; color: var(--color-text-3); }
+.diagram-library-tabs button[aria-pressed='true'] { background: var(--color-surface-2); color: var(--color-text-1); }
+.diagram-icon-filter { width: calc(100% - 20px); margin: 0 10px 8px; }
+.diagram-icon-sets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 10px 10px 0; }
+.diagram-icon-sets button { height: 26px; border: 1px solid var(--color-border-2); border-radius: 5px; font-size: 11px; color: var(--color-text-3); transition: border-color 120ms ease, color 120ms ease; }
+.diagram-icon-sets button:hover { color: var(--color-text-1); }
+.diagram-icon-sets button.is-active { border-color: var(--color-accent); color: var(--color-text-1); background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+.diagram-icon-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 10px 8px; }
+.diagram-icon-chips button { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px; border: 1px solid var(--color-border-1); border-radius: 10px; font-size: 10px; color: var(--color-text-3); white-space: nowrap; }
+.diagram-icon-chips button small { font-family: var(--font-mono); font-size: 9px; color: var(--color-text-4); }
+.diagram-icon-chips button:hover { border-color: var(--color-border-3); color: var(--color-text-1); }
+.diagram-icon-chips button[aria-pressed='true'] { border-color: var(--color-accent); color: var(--color-text-1); background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+.diagram-icon-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+.diagram-icon-tile { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 5px 2px; border: 1px solid transparent; border-radius: 5px; cursor: grab; }
+.diagram-icon-tile:hover { border-color: var(--color-border-2); background: var(--color-surface-2); }
+.diagram-icon-tile img { width: 30px; height: 30px; object-fit: contain; }
+.diagram-icon-tile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; color: var(--color-text-4); }
+
+/* ---- dialogs (markdown, sequence text) */
+.diagram-dialog-backdrop { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgb(0 0 0 / .45); }
+.diagram-dialog { display: flex; flex-direction: column; gap: 10px; width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 16px; border: 1px solid var(--color-border-2); border-radius: 9px; background: var(--color-surface-1); box-shadow: 0 20px 50px rgb(0 0 0 / .45); }
+.diagram-dialog h2 { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--color-text-2); }
+.diagram-dialog p { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--color-text-3); }
+.diagram-dialog textarea { min-height: 300px; font-family: var(--font-mono); font-size: 11.5px; }
+.diagram-dialog-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.diagram-dialog-actions button { height: 28px; padding: 0 12px; border: 1px solid var(--color-border-2); border-radius: 5px; font-size: 11.5px; color: var(--color-text-2); }
+.diagram-dialog-actions button.is-primary { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-surface-0); }
+.diagram-dialog-actions button:disabled { opacity: .5; }
+
+/* ---- context menu fill swatches */
+.diagram-menu-swatches { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; }
+.diagram-menu .diagram-menu-swatches button { width: 18px; padding: 0; border: 1px solid var(--color-border-3); border-radius: 4px; }
+
+/* ---- context menu corner radius: the glyph shows the radius, the number says how much */
+.diagram-menu-radii { display: flex; gap: 4px; padding: 2px 8px 6px; }
+.diagram-menu .diagram-menu-radii button { width: auto; height: 24px; gap: 5px; padding: 0 7px 0 4px; border: 1px solid var(--color-border-2); border-radius: 5px; font-family: var(--font-mono); font-size: 10px; }
+.diagram-menu .diagram-menu-radii button:hover { border-color: var(--color-border-3); }
+.diagram-menu .diagram-menu-radii button.is-current { border-color: var(--color-accent); color: var(--color-accent); }
+.diagram-radius-glyph { width: 12px; height: 12px; flex-shrink: 0; border: 1.5px solid currentColor; border-radius: 0; }
+
+/* ---- legend and operand rows in the inspector */
+.diagram-legend-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 5px; margin-bottom: 5px; }
+.diagram-legend-row button { width: 22px; height: 22px; border: 1px solid var(--color-border-2); border-radius: 4px; color: var(--color-text-3); }
+.diagram-legend-row button:hover, .diagram-legend-row button.is-active { border-color: var(--color-accent); color: var(--color-text-1); }
 
 @media (prefers-reduced-motion: reduce) {
   .diagram-flow { display: none; }
@@ -172,4 +259,126 @@ textarea.diagram-input { height: auto; padding: 5px 7px; resize: vertical; line-
 @media (max-width: 1100px) {
   .diagram-body { grid-template-columns: 180px minmax(0, 1fr) 240px; }
   .diagram-body--no-inspector { grid-template-columns: 180px minmax(0, 1fr); }
+  .diagram-body--no-library { grid-template-columns: minmax(0, 1fr) 240px; }
+  .diagram-body--no-library.diagram-body--no-inspector { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- Workspace analysis strip ---------------------------------------------------------------- */
+
+.diagram-workspace-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--color-border-1);
+  background: var(--color-surface-1);
+  flex-shrink: 0;
+}
+
+.diagram-generate { color: var(--color-accent); }
+
+.diagram-view-select {
+  height: 24px;
+  max-width: 190px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 5px;
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+  font-size: 11.5px;
+  outline: none;
+}
+.diagram-view-select:focus-visible { border-color: var(--color-accent); }
+
+.diagram-code-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  min-width: 220px;
+  max-width: 420px;
+  flex: 1;
+  padding: 0 7px;
+  border: 1px solid var(--color-border-1);
+  border-radius: 5px;
+  background: var(--color-surface-0);
+  color: var(--color-text-3);
+}
+.diagram-code-search:focus-within { border-color: var(--color-accent); }
+.diagram-code-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--color-text-1);
+  font-size: 11.5px;
+}
+.diagram-code-search > button { color: var(--color-text-3); display: grid; place-items: center; }
+.diagram-code-search > button:hover { color: var(--color-text-1); }
+
+.diagram-code-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 6px;
+  background: var(--color-surface-2);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 35%);
+}
+.diagram-code-results > button {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--color-text-2);
+}
+.diagram-code-results > button:hover,
+.diagram-code-results > button:focus-visible { background: var(--color-surface-3); color: var(--color-text-1); }
+.diagram-code-kind {
+  flex-shrink: 0;
+  min-width: 58px;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-4);
+}
+.diagram-code-kind--endpoint, .diagram-code-kind--service { color: var(--color-accent); }
+.diagram-code-result-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.diagram-code-result-file { margin-left: auto; flex-shrink: 0; font-family: var(--font-mono, monospace); font-size: 10px; color: var(--color-text-4); }
+
+.diagram-code-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--color-text-4);
+  white-space: nowrap;
+}
+.diagram-code-status--error { color: var(--color-danger, #d65a5a); }
+.diagram-code-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--color-warning, #d4a03a); }
+
+.diagram-node-stale { opacity: 0.6; }
+
+.diagram-node--stale { opacity: 0.55; }
+.diagram-node--stale::after {
+  content: "stale";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 8.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-warning, #d4a03a);
+  pointer-events: none;
 }

@@ -133,3 +133,4 @@ __pycache__/
 
 # Vendored ripgrep staged by scripts/fetch-ripgrep.mjs (release packaging only)
 build/rg/
+.openidea/

@@ -7,13 +7,14 @@ import { memo, useRef, type KeyboardEvent, type PointerEvent as ReactPointerEven
 import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react'
 import { Lock, RotateCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { CONTAINER_TITLE_HEIGHT } from '@/lib/diagrams/geometry'
+import { CONTAINER_TITLE_HEIGHT, LIFELINE_HEAD } from '@/lib/diagrams/geometry'
 import type { DiagramNode } from '@/lib/diagrams/model'
 import { shapeOf } from '@/lib/diagrams/shapes'
 import { useDiagramStudio } from '@/stores/diagramStudio'
 import { useDiagramUi } from '@/stores/diagramStudioUi'
 import { SHAPE_ICONS } from './shapeIcons'
 import { ShapeOutline, themeColor } from './ShapeOutline'
+import { FragmentBody, ImageBody, LegendBody, LifelineHandles, LifelineStem } from './SpecialNodes'
 
 const MIN_SIZE = 32
 /** A side this long or longer gets two extra connection points, at a quarter and three quarters. */
@@ -113,12 +114,47 @@ export const ShapeNode = memo(function ShapeNode({ id, data, selected, width, he
   const h = height ?? definition.height
   const Icon = data.icon ? SHAPE_ICONS[data.icon] : undefined
   const style = data.style
-  const uml = definition.geometry === 'uml-class'
-  const container = definition.geometry === 'container'
+  const geometry = definition.geometry
+  const uml = geometry === 'uml-class'
+  const container = geometry === 'container'
+  const lifeline = geometry === 'lifeline'
   const textStyle = { color: themeColor(style.textColor, '--diagram-node-text'), fontSize: style.fontSize }
+  const label = editing ? <InlineEditor id={id} value={data.label} /> : null
+
+  let content
+  if (geometry === 'image') content = label ?? <ImageBody src={data.image} label={data.label} />
+  else if (geometry === 'legend') content = label ?? <LegendBody data={data} fontSize={style.fontSize} />
+  else if (geometry === 'fragment') content = label ?? <FragmentBody data={data} width={w} />
+  else if (geometry === 'activation') content = null
+  else if (uml) {
+    content = (
+      <div className="diagram-uml" style={textStyle}>
+        {data.subtitle && <div className="diagram-uml-stereotype">{data.subtitle}</div>}
+        <div className="diagram-uml-name">{label ?? data.label}</div>
+        {data.attributes !== undefined && <pre className="diagram-uml-section">{data.attributes}</pre>}
+        {data.operations !== undefined && <pre className="diagram-uml-section">{data.operations}</pre>}
+      </div>
+    )
+  } else {
+    const titleBand = container ? { height: CONTAINER_TITLE_HEIGHT } : lifeline ? { height: LIFELINE_HEAD } : {}
+    content = (
+      <div className={cn('diagram-node-text', (container || lifeline) && 'diagram-node-text--title', lifeline && 'diagram-node-text--lifeline')} style={{ ...textStyle, ...titleBand }}>
+        {label ?? (
+          <>
+            <span className="diagram-node-label">
+              {Icon && <Icon size={Math.round(style.fontSize * 1.1)} className="diagram-node-icon" aria-hidden="true" />}
+              <span>{data.label}</span>
+            </span>
+            {data.subtitle && <span className="diagram-node-subtitle">{data.subtitle}</span>}
+          </>
+        )}
+      </div>
+    )
+  }
+  const plainHandles = !lifeline && geometry !== 'activation' && geometry !== 'fragment' && geometry !== 'legend'
 
   return (
-    <div className={cn('diagram-node', `diagram-node--${definition.geometry}`, selected && 'is-selected', data.locked && 'is-locked')} style={{ width: w, height: h }}>
+    <div className={cn('diagram-node', `diagram-node--${geometry}`, definition.passThrough && 'diagram-node--passthrough', selected && 'is-selected', data.locked && 'is-locked', data.stale && 'diagram-node--stale')} style={{ width: w, height: h }} title={data.stale ? 'Stale: the source disappeared or moved since the last analysis. Refresh from Code or delete the node.' : undefined}>
       <NodeResizer
         isVisible={selected && !data.locked}
         minWidth={MIN_SIZE}
@@ -128,31 +164,14 @@ export const ShapeNode = memo(function ShapeNode({ id, data, selected, width, he
         handleClassName="diagram-resizer-handle diagram-no-export"
       />
       <div className="diagram-node-body" style={{ transform: data.rotation ? `rotate(${data.rotation}deg)` : undefined }}>
-        <ShapeOutline geometry={definition.geometry} width={w} height={h} style={style} />
-        {uml ? (
-          <div className="diagram-uml" style={textStyle}>
-            {data.subtitle && <div className="diagram-uml-stereotype">{data.subtitle}</div>}
-            <div className="diagram-uml-name">{editing ? <InlineEditor id={id} value={data.label} /> : data.label}</div>
-            {data.attributes !== undefined && <pre className="diagram-uml-section">{data.attributes}</pre>}
-            {data.operations !== undefined && <pre className="diagram-uml-section">{data.operations}</pre>}
-          </div>
-        ) : (
-          <div className={cn('diagram-node-text', container && 'diagram-node-text--title')} style={{ ...textStyle, ...(container ? { height: CONTAINER_TITLE_HEIGHT } : {}) }}>
-            {editing ? <InlineEditor id={id} value={data.label} /> : (
-              <>
-                <span className="diagram-node-label">
-                  {Icon && <Icon size={Math.round(style.fontSize * 1.1)} className="diagram-node-icon" aria-hidden="true" />}
-                  <span>{data.label}</span>
-                </span>
-                {data.subtitle && <span className="diagram-node-subtitle">{data.subtitle}</span>}
-              </>
-            )}
-          </div>
-        )}
+        {lifeline && <LifelineStem width={w} height={h} stroke={style.stroke} />}
+        <ShapeOutline geometry={geometry} width={w} height={h} style={style} />
+        {content}
       </div>
       {data.locked && <Lock size={10} className="diagram-node-lock diagram-no-export" aria-label="Locked" />}
       {selected && !data.locked && definition.rotatable && <RotationHandle id={id} rotation={data.rotation} />}
-      <ConnectionPoints width={w} height={h} locked={data.locked} />
+      {lifeline && <LifelineHandles height={h} locked={data.locked} />}
+      {plainHandles && <ConnectionPoints width={w} height={h} locked={data.locked} />}
     </div>
   )
 })

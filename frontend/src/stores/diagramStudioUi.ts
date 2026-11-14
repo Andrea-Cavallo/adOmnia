@@ -22,24 +22,33 @@ interface DiagramUiState {
   editingNodeId: string | null
   editingEdgeId: string | null
   inspectorOpen: boolean
+  libraryOpen: boolean
   guides: Guide[]
   menu: ContextMenuState | null
+  /** Node to bring into view and select (cross-panel navigation); cleared once framed. */
+  focusNodeId: string | null
   editNode: (id: string | null) => void
   editEdge: (id: string | null) => void
   toggleInspector: () => void
+  toggleLibrary: () => void
   setGuides: (guides: Guide[]) => void
   openMenu: (menu: ContextMenuState | null) => void
+  focusNode: (id: string | null) => void
 }
 
 export const useDiagramUi = create<DiagramUiState>((set) => ({
   editingNodeId: null,
   editingEdgeId: null,
   inspectorOpen: true,
+  libraryOpen: true,
   guides: [],
   menu: null,
+  focusNodeId: null,
   editNode: (editingNodeId) => set({ editingNodeId, editingEdgeId: null }),
   editEdge: (editingEdgeId) => set({ editingEdgeId, editingNodeId: null }),
   toggleInspector: () => set((state) => ({ inspectorOpen: !state.inspectorOpen })),
+  toggleLibrary: () => set((state) => ({ libraryOpen: !state.libraryOpen })),
   setGuides: (guides) => set((state) => (state.guides.length === 0 && guides.length === 0 ? state : { guides })),
   openMenu: (menu) => set({ menu }),
+  focusNode: (focusNodeId) => set({ focusNodeId }),
 }))

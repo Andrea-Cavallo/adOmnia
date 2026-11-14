@@ -13,6 +13,19 @@ export interface Outline {
 const NONE: Outline = { bodies: [], lines: [] }
 /** Height of a container's title band. */
 export const CONTAINER_TITLE_HEIGHT = 28
+/** Height of a lifeline's header box. */
+export const LIFELINE_HEAD = 44
+/** Vertical distance between two message rows of a sequence diagram, and where the first row is. */
+export const SEQ_ROW = 40
+export const SEQ_FIRST_ROW = LIFELINE_HEAD + 30
+/** Half the width of an activation bar: messages end on its side, not on the dashed line. */
+export const SEQ_BAR_HALF = 7
+
+/** The message rows a lifeline of this height offers. */
+export const lifelineRows = (height: number) => Math.max(1, Math.floor((height - SEQ_FIRST_ROW - 10) / SEQ_ROW) + 1)
+
+/** Size of a combined fragment's operator tab (loop, alt, opt). */
+export const FRAGMENT_TAB = { width: 64, height: 22 }
 
 const rect = (x: number, y: number, w: number, h: number) => `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`
 
@@ -48,18 +61,21 @@ function star(x: number, y: number, w: number, h: number): string {
 }
 
 /** The outline of a geometry in a w×h box, inset so a stroke of the given width stays inside it. */
-export function outlineOf(geometry: ShapeGeometry, width: number, height: number, strokeWidth = 1.5): Outline {
+export function outlineOf(geometry: ShapeGeometry, width: number, height: number, strokeWidth = 1.5, radius = 0): Outline {
   const s = strokeWidth / 2
   const x = s
   const y = s
   const w = Math.max(1, width - strokeWidth)
   const h = Math.max(1, height - strokeWidth)
+  // A radius set on the shape wins over the geometry's own corners; 0 keeps the shape as drawn.
+  const corner = (fallback: number) => (Number(radius) > 0 ? Number(radius) : fallback)
   switch (geometry) {
     case 'rectangle':
+      return { bodies: [Number(radius) > 0 ? roundedRect(x, y, w, h, corner(0)) : rect(x, y, w, h)], lines: [] }
     case 'uml-class':
       return { bodies: [rect(x, y, w, h)], lines: [] }
     case 'rounded':
-      return { bodies: [roundedRect(x, y, w, h, 10)], lines: [] }
+      return { bodies: [roundedRect(x, y, w, h, corner(10))], lines: [] }
     case 'pill':
       return { bodies: [roundedRect(x, y, w, h, h / 2)], lines: [] }
     case 'diamond':
@@ -102,7 +118,7 @@ export function outlineOf(geometry: ShapeGeometry, width: number, height: number
       return { bodies: [rect(x + notch / 2, y, w - notch / 2, h), ...tabs], lines: [] }
     }
     case 'container':
-      return { bodies: [roundedRect(x, y, w, h, 8)], lines: [`M ${x} ${y + CONTAINER_TITLE_HEIGHT} H ${x + w}`] }
+      return { bodies: [roundedRect(x, y, w, h, corner(8))], lines: [`M ${x} ${y + CONTAINER_TITLE_HEIGHT} H ${x + w}`] }
     case 'note': {
       const fold = Math.min(16, w * 0.15, h * 0.2)
       return { bodies: [`M ${x} ${y} H ${x + w - fold} L ${x + w} ${y + fold} V ${y + h} H ${x} Z`], lines: [`M ${x + w - fold} ${y} V ${y + fold} H ${x + w}`] }
@@ -144,6 +160,18 @@ export function outlineOf(geometry: ShapeGeometry, width: number, height: number
       return { bodies: [`M ${x} ${y} H ${x + w} V ${y + h - tip} L ${x + w / 2} ${y + h} L ${x} ${y + h - tip} Z`], lines: [] }
     }
     case 'text':
+    case 'image':
       return NONE
+    case 'legend':
+      return { bodies: [roundedRect(x, y, w, h, corner(6))], lines: [`M ${x} ${y + CONTAINER_TITLE_HEIGHT} H ${x + w}`] }
+    case 'lifeline':
+      return { bodies: [roundedRect(x, y, w, Math.min(h, LIFELINE_HEAD), 4)], lines: [] }
+    case 'activation':
+      return { bodies: [rect(x, y, w, h)], lines: [] }
+    case 'fragment': {
+      const tw = Math.min(FRAGMENT_TAB.width, w)
+      const th = Math.min(FRAGMENT_TAB.height, h)
+      return { bodies: [rect(x, y, w, h)], lines: [`M ${x} ${y + th} H ${x + tw - 8} L ${x + tw} ${y + th - 8} V ${y}`] }
+    }
   }
 }

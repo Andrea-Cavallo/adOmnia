@@ -17,7 +17,7 @@ import { canDetachPanel, openPanelWindow } from '@/lib/panel-windows-api'
 import { usePanelWindowsStore } from '@/stores/panelWindows'
 import { startModuleActionListener, useModuleEpoch } from '@/lib/moduleRouting'
 import { useSplitViewStore } from '@/lib/api-code-link/splitView'
-import { canSplitHere, isInSplit, layoutBack, useWorkspaceLayoutStore } from '@/lib/workspaceLayout'
+import { canSplitHere, isInSplit, layoutBack, secondaryPane, SPLIT_PAIRS, useWorkspaceLayoutStore } from '@/lib/workspaceLayout'
 
 import { WelcomePanel, RequestHistoryPanel, DailyScenariosPanel, SsePanel, BrokerStudioPanel, MockPanel, ProxyPanel, BrowserDebugPanel, UtilsPanel, FlowsPanel, SoapPanel, LatexStudioPanel, PdfEditorPanel, DiagramStudioPanel, JsonViewerPanel, LogInspectorPanel, SecurityCenterPanel, ApiDocsPanel, StoragePanel, DatabasePanel, VaultPanel, SettingsPanel, CollabPanel, CodeStudioPanel, KubePanel } from './lazyPanels'
 
@@ -111,7 +111,7 @@ function PanelHeader({ titleKey }: { titleKey?: string }) {
 export type PanelDef = { component: React.ReactNode; titleKey?: string; overflow?: boolean }
 
 /** Panels that stay mounted once visited: the developer moves between code and API without losing either. */
-export const KEEP_ALIVE_PANELS: readonly RailItem[] = ['collections', 'codestudio', 'websocket', 'grpc']
+export const KEEP_ALIVE_PANELS: readonly RailItem[] = ['collections', 'codestudio', 'websocket', 'grpc', 'diagrams']
 
 export function panelFor(activeRail: RailItem): PanelDef {
   switch (activeRail) {
@@ -185,9 +185,10 @@ export function MainAreaRouter() {
   // buffers survive every layout change.
   const splitView = useAppStore((s) => s.splitView)
   const storedAuxiliary = useAppStore((s) => s.splitAuxiliary)
+  const splitPair = useAppStore((s) => s.splitPair)
   // A module open in its own window cannot also be the third pane here.
   const auxiliary = storedAuxiliary && !detachedPanels.includes(storedAuxiliary) ? storedAuxiliary : null
-  const split = isInSplit(activeRail, splitView, auxiliary) && workspaceShellPhase === 'ready' && canSplitHere()
+  const split = isInSplit(activeRail, splitView, auxiliary, splitPair) && workspaceShellPhase === 'ready' && canSplitHere(undefined, splitPair)
   // The pane clicked last has the keyboard until another module is brought forward.
   const [focusedClick, setFocusedClick] = useState<{ pane: RailItem; whileActive: RailItem } | null>(null)
   const focusedPane = focusedClick?.whileActive === activeRail ? focusedClick.pane : null
@@ -196,9 +197,9 @@ export function MainAreaRouter() {
   const setAuxRatio = useWorkspaceLayoutStore((s) => s.setAuxRatio)
   const [maximizedPane, setMaximizedPane] = useState<RailItem | null>(null)
   const [hiddenPane, setHiddenPane] = useState<RailItem | null>(null)
-  const splitSide = useSplitViewStore((s) => s.side)
+  const splitSide = useSplitViewStore((s) => (splitPair === 'diagram' ? s.diagramSide : s.side))
   const splitRatio = useSplitViewStore((s) => s.ratio)
-  const reverseSplit = useSplitViewStore((s) => s.reverse)
+  const reverseSplitFor = useSplitViewStore((s) => s.reverseFor)
   const setSplitRatio = useSplitViewStore((s) => s.setRatio)
   const splitRef = useRef<HTMLDivElement>(null)
   const startSplitResize = useCallback((event: React.MouseEvent) => {
@@ -236,8 +237,9 @@ export function MainAreaRouter() {
     setMaximizedPane(null)
     setHiddenPane(null)
     const app = useAppStore.getState()
-    // The third pane only exists inside the split: the keyboard goes back to the request.
-    if (app.splitAuxiliary && app.activeRail === app.splitAuxiliary) app.setActiveRail('collections')
+    const other = secondaryPane(app.splitPair)
+    // A third pane (or a pane not in this pair) hands the keyboard back; code/request keep it.
+    if (!SPLIT_PAIRS[app.splitPair].includes(app.activeRail)) app.setActiveRail(other)
     app.setSplitView(false)
   }, [])
 
@@ -273,7 +275,7 @@ export function MainAreaRouter() {
     <main className={`flex-1 flex flex-col min-w-0 relative bg-surface-0${overflow ? ' overflow-hidden' : ''}`}>
       {split ? (
         <Suspense fallback={<div className="h-10 shrink-0 border-b border-border-1 bg-surface-1" />}>
-          <SplitViewHeader side={splitSide} auxiliary={auxiliary} maximizedPane={maximizedPane} hiddenPane={hiddenPane} onReverse={reverseSplit}
+          <SplitViewHeader side={splitSide} pair={splitPair} auxiliary={auxiliary} maximizedPane={maximizedPane} hiddenPane={hiddenPane} onReverse={() => reverseSplitFor(splitPair)}
             onMaximize={setMaximizedPane} onHide={setHiddenPane} onClose={closeSplit} />
         </Suspense>
       ) : workspaceHydrating
@@ -294,9 +296,9 @@ export function MainAreaRouter() {
       ))}
       {/* Same container and same children in both layouts: opening or closing the split never remounts a pane. */}
       <div ref={splitRef} className={split ? 'flex flex-1 min-h-0 min-w-0' : 'contents'}>
-        {keptRails(split ? [...keptPanels, 'codestudio', 'collections'] : keptPanels, activeRail).filter((rail) => !detachedPanels.includes(rail)).map((rail) => {
+        {keptRails(split ? [...keptPanels, ...SPLIT_PAIRS[splitPair]] : keptPanels, activeRail).filter((rail) => !detachedPanels.includes(rail)).map((rail) => {
           const shown = split
-            ? (rail === 'codestudio' || rail === 'collections') && hiddenPane !== rail && (!maximizedPane || maximizedPane === rail)
+            ? SPLIT_PAIRS[splitPair].includes(rail) && hiddenPane !== rail && (!maximizedPane || maximizedPane === rail)
             : rail === activeRail && !workspaceHydrating
           // The API workspace needs hydrated collections before it mounts.
           if (isWorkspaceRail(rail) && workspaceShellPhase !== 'ready') return null

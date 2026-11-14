@@ -27,6 +27,14 @@ export interface ShapeDefinition {
   container?: boolean
   /** UML classifiers show attribute and operation compartments. */
   compartments?: { attributes: string; operations: string }
+  /** Made by the editor (dropped images), not offered in the library. */
+  hidden?: boolean
+  /** A legend starts with these rows. */
+  legend?: Array<{ color: string; label: string; dashed?: boolean }>
+  /** Operand separators a new fragment starts with (alt/else). */
+  dividers?: Array<{ y: number; label: string }>
+  /** Clicks pass through the inside to what is behind; only the border and title tab catch them. */
+  passThrough?: boolean
 }
 
 export const SHAPE_CATEGORIES: ReadonlyArray<{ id: ShapeCategory; label: string }> = [
@@ -35,6 +43,7 @@ export const SHAPE_CATEGORIES: ReadonlyArray<{ id: ShapeCategory; label: string 
   { id: 'architecture', label: 'Architecture' },
   { id: 'integration', label: 'Integration & services' },
   { id: 'uml', label: 'UML' },
+  { id: 'sequence', label: 'Sequence (UML)' },
   { id: 'containers', label: 'Containers' },
   { id: 'annotations', label: 'Text & notes' },
 ]
@@ -51,7 +60,7 @@ export const STYLE_PALETTE: ReadonlyArray<{ id: string; label: string; fill: str
   { id: 'paper', label: 'Paper', fill: '#f4f1ea', stroke: '#8a8478' },
 ]
 
-export const DEFAULT_NODE_STYLE: NodeStyle = { fill: '', stroke: '', strokeWidth: 1.5, textColor: '', fontSize: 13, dashed: false }
+export const DEFAULT_NODE_STYLE: NodeStyle = { fill: '', stroke: '', strokeWidth: 1.5, radius: 0, textColor: '', fontSize: 13, dashed: false }
 
 const shape = (definition: ShapeDefinition): ShapeDefinition => definition
 
@@ -113,6 +122,15 @@ export const SHAPES: readonly ShapeDefinition[] = [
   shape({ id: 'uml-package', label: 'Package', category: 'uml', keywords: 'uml package namespace module', geometry: 'package', width: 200, height: 130, rotatable: false }),
   shape({ id: 'uml-component', label: 'Component', category: 'uml', keywords: 'uml component module', geometry: 'component', width: 180, height: 80, rotatable: false }),
 
+  // Sequence diagrams: lifelines carry a connection point every row, so messages stay horizontal.
+  shape({ id: 'seq-lifeline', label: 'Lifeline', category: 'sequence', keywords: 'sequence lifeline participant object timeline', geometry: 'lifeline', width: 120, height: 420, text: 'Participant', passThrough: true, style: { fill: '#1d3557', stroke: '#4c8fd6', textColor: '#ffffff' }, rotatable: false }),
+  shape({ id: 'seq-actor', label: 'Actor lifeline', category: 'sequence', keywords: 'sequence actor user lifeline', geometry: 'lifeline', width: 120, height: 420, text: 'User', passThrough: true, icon: 'user', style: { fill: '#1d3557', stroke: '#4c8fd6', textColor: '#ffffff' }, rotatable: false }),
+  shape({ id: 'seq-activation', label: 'Activation', category: 'sequence', keywords: 'sequence activation execution bar focus', geometry: 'activation', width: 14, height: 60, text: '', style: { fill: '#5fb3b3', stroke: '#3d8c8c' }, rotatable: false }),
+  shape({ id: 'seq-band', label: 'Highlight band', category: 'sequence', keywords: 'sequence rect highlight band background color', geometry: 'rounded', width: 360, height: 120, text: '', style: { fill: 'rgba(63, 185, 107, 0.1)', stroke: 'rgba(63, 185, 107, 0.45)', strokeWidth: 1 }, rotatable: false, passThrough: true }),
+  shape({ id: 'seq-loop', label: 'Loop', category: 'sequence', keywords: 'sequence fragment loop repeat combined', geometry: 'fragment', width: 360, height: 160, text: 'loop', subtitle: '[for each item]', style: { fill: 'transparent' }, rotatable: false, passThrough: true }),
+  shape({ id: 'seq-alt', label: 'Alt / else', category: 'sequence', keywords: 'sequence fragment alt else alternative if combined', geometry: 'fragment', width: 360, height: 200, text: 'alt', subtitle: '[valid]', style: { fill: 'transparent' }, dividers: [{ y: 100, label: '[else]' }], rotatable: false, passThrough: true }),
+  shape({ id: 'seq-opt', label: 'Opt', category: 'sequence', keywords: 'sequence fragment opt optional combined', geometry: 'fragment', width: 360, height: 140, text: 'opt', subtitle: '[condition]', style: { fill: 'transparent' }, rotatable: false, passThrough: true }),
+
   // Containers
   shape({ id: 'container', label: 'Container', category: 'containers', keywords: 'group frame area region', geometry: 'container', width: 360, height: 240, rotatable: false, container: true }),
   shape({ id: 'swimlane', label: 'Swimlane', category: 'containers', keywords: 'swimlane lane pool role department', geometry: 'container', width: 260, height: 480, rotatable: false, container: true }),
@@ -121,6 +139,14 @@ export const SHAPES: readonly ShapeDefinition[] = [
   // Text & notes
   shape({ id: 'text', label: 'Text', category: 'annotations', keywords: 'label caption title free text', geometry: 'text', width: 160, height: 40, rotatable: true }),
   shape({ id: 'note', label: 'Note', category: 'annotations', keywords: 'annotation comment sticky', geometry: 'note', width: 180, height: 110, style: { fill: '#2a2213', stroke: '#d4a03a' }, rotatable: false }),
+  shape({ id: 'sticky-yellow', label: 'Sticky · yellow', category: 'annotations', keywords: 'sticky note post-it memo annotation', geometry: 'rectangle', width: 160, height: 140, text: 'Note', style: { fill: '#fde68a', stroke: '#e0c35c', textColor: '#3b3108', strokeWidth: 1 }, rotatable: true }),
+  shape({ id: 'sticky-pink', label: 'Sticky · pink', category: 'annotations', keywords: 'sticky note post-it memo annotation', geometry: 'rectangle', width: 160, height: 140, text: 'Note', style: { fill: '#fbcfe8', stroke: '#e29cc4', textColor: '#4a1031', strokeWidth: 1 }, rotatable: true }),
+  shape({ id: 'sticky-green', label: 'Sticky · green', category: 'annotations', keywords: 'sticky note post-it memo annotation', geometry: 'rectangle', width: 160, height: 140, text: 'Note', style: { fill: '#bbf7d0', stroke: '#7fcf9c', textColor: '#0f3b22', strokeWidth: 1 }, rotatable: true }),
+  shape({ id: 'sticky-blue', label: 'Sticky · blue', category: 'annotations', keywords: 'sticky note post-it memo annotation', geometry: 'rectangle', width: 160, height: 140, text: 'Note', style: { fill: '#bfdbfe', stroke: '#86b2e8', textColor: '#0e2a52', strokeWidth: 1 }, rotatable: true }),
+  shape({ id: 'legend', label: 'Legend', category: 'annotations', keywords: 'legend key colors symbols explanation', geometry: 'legend', width: 200, height: 150, text: 'Legend', rotatable: false, legend: [
+    { color: '#3fb96b', label: 'Success path' }, { color: '#d65a5a', label: 'Failure / compensation', dashed: true }, { color: '#4c8fd6', label: 'Service call' },
+  ] }),
+  shape({ id: 'image', label: 'Image', category: 'annotations', keywords: 'image picture png icon', geometry: 'image', width: 96, height: 96, text: '', style: { strokeWidth: 0 }, rotatable: true, hidden: true }),
 ]
 
 const SHAPE_BY_ID = new Map(SHAPES.map((definition) => [definition.id, definition]))
@@ -135,8 +161,9 @@ export const isKnownShape = (id: string) => SHAPE_BY_ID.has(id)
 /** Shapes matching a free-text query in their label, category or keywords; all of them for an empty one. */
 export function searchShapes(query: string, shapes: readonly ShapeDefinition[] = SHAPES): ShapeDefinition[] {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return [...shapes]
-  return shapes.filter((definition) => {
+  const listed = shapes.filter((definition) => !definition.hidden)
+  if (words.length === 0) return listed
+  return listed.filter((definition) => {
     const haystack = `${definition.label} ${definition.category} ${definition.keywords} ${definition.subtitle ?? ''}`.toLowerCase()
     return words.every((word) => haystack.includes(word))
   })

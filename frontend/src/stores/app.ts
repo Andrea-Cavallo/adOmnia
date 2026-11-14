@@ -10,7 +10,7 @@ export type { RailItem } from '@/lib/navigation'
 // Canonical Cmd/Ctrl+1..7 quick-navigation targets, ordered by expected daily
 // use — core tools first, advanced-only tools last. This is deliberately NOT a
 // 1:1 mapping of the rail categories in components/layout/Rail.tsx: categories
-// without a frequently-used entry point (Document Studio) have no shortcut.
+// without a frequently-used entry point (Diagram Studio) have no shortcut.
 // Entries gated behind "Show advanced features" are marked below.
 export const RAIL_QUICK_NAV: RailItem[] = [
   'collections', // 1 - API Core
@@ -51,6 +51,9 @@ interface AppState {
   /** Third pane of the split (Database, Broker, Logs): shown next to code and request, null when absent. */
   splitAuxiliary: RailItem | null
   setSplitAuxiliary: (rail: RailItem | null) => void
+  /** Which pair the split shows: the API request beside code, or Diagram Studio beside code. */
+  splitPair: 'api' | 'diagram'
+  setSplitPair: (pair: 'api' | 'diagram') => void
   queueFileImport: (file: RoutedToolFile) => void
   consumeFileImport: (kind: RoutedToolFile['kind']) => RoutedToolFile | null
   goBack: () => void
@@ -107,6 +110,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSplitView: (split) => set(split ? { splitView: true } : { splitView: false, splitAuxiliary: null }),
   splitAuxiliary: null,
   setSplitAuxiliary: (rail) => set({ splitAuxiliary: rail }),
+  splitPair: 'api',
+  setSplitPair: (splitPair) => set((s) => (s.splitPair === splitPair ? s : { splitPair, ...(splitPair === 'api' ? {} : { splitAuxiliary: null }) })),
   keepPanel: (rail) => set((s) => (s.keptPanels.includes(rail) ? s : { keptPanels: [...s.keptPanels, rail] })),
   queueFileImport: (file) => set({ pendingFileImport: file }),
   consumeFileImport: (kind) => {

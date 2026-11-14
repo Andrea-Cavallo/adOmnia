@@ -37,6 +37,8 @@ export function createNode(shapeId: string, position: XYPosition, overrides: Par
     rotation: 0,
     locked: false,
     icon: definition.icon,
+    ...(definition.legend ? { legend: definition.legend.map((entry) => ({ ...entry })) } : {}),
+    ...(definition.dividers ? { dividers: definition.dividers.map((entry) => ({ ...entry })) } : {}),
     ...overrides,
   }
   return {

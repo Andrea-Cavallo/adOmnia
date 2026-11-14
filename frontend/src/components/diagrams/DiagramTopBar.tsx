@@ -3,16 +3,15 @@
  * the save state and the inspector toggle.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import {
-  ArrowDownFromLine, ArrowRightFromLine, Check, ChevronDown, CloudAlert, Download, FilePlus2, FolderOpen, Loader2, PanelRight, Redo2, Trash2, Undo2, Upload,
-} from 'lucide-react'
+import { ArrowDownFromLine, ArrowRightFromLine, Check, ChevronDown, CloudAlert, Download, FilePlus2, FolderOpen, Loader2, PanelLeft, PanelRight, Redo2, Trash2, Undo2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { confirm } from '@/lib/confirmDialog'
 import { exportDiagram, type ExportFormat } from '@/lib/diagrams/export'
-import { DIAGRAM_TEMPLATES } from '@/lib/diagrams/templates'
+import { templatesByCategory } from '@/lib/diagrams/templates'
 import { useDiagramStudio } from '@/stores/diagramStudio'
 import { useDiagramUi } from '@/stores/diagramStudioUi'
 import { shortcutLabel } from './diagramActions'
+import { GenerateDialog, type GenerateMode } from './GenerateDialog'
 
 /** A button that opens a small list below it; closes on pick, outside click or Escape. */
 function Dropdown({ label, icon, title, children }: { label: string; icon: ReactNode; title: string; children: (close: () => void) => ReactNode }) {
@@ -56,6 +55,17 @@ function SaveState() {
   )
 }
 
+/** The flow position at the middle of the visible canvas, where an imported image is placed. */
+function centerOf(host: HTMLElement | null): { x: number; y: number } | undefined {
+  const pane = host?.querySelector<HTMLElement>('.react-flow__viewport')
+  const box = host?.getBoundingClientRect()
+  if (!pane || !box) return undefined
+  const match = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)/.exec(pane.style.transform)
+  if (!match) return undefined
+  const [x, y, zoom] = match.slice(1).map(Number)
+  return { x: (box.width / 2 - x) / zoom, y: (box.height / 2 - y) / zoom }
+}
+
 export function DiagramTopBar({ canvas }: { canvas: () => HTMLElement | null }) {
   const doc = useDiagramStudio((state) => state.doc)
   const summaries = useDiagramStudio((state) => state.summaries)
@@ -64,8 +74,11 @@ export function DiagramTopBar({ canvas }: { canvas: () => HTMLElement | null }) 
   const store = useDiagramStudio.getState
   const inspectorOpen = useDiagramUi((state) => state.inspectorOpen)
   const toggleInspector = useDiagramUi((state) => state.toggleInspector)
+  const libraryOpen = useDiagramUi((state) => state.libraryOpen)
+  const toggleLibrary = useDiagramUi((state) => state.toggleLibrary)
   const fileInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const [generate, setGenerate] = useState<GenerateMode | null>(null)
 
   const runExport = async (format: ExportFormat) => {
     if (!doc) return
@@ -107,11 +120,22 @@ export function DiagramTopBar({ canvas }: { canvas: () => HTMLElement | null }) 
         {(close) => (
           <>
             <button type="button" role="menuitem" onClick={() => { close(); void store().create() }}>Blank diagram</button>
+            <button type="button" role="menuitem" onClick={() => { close(); setGenerate('markdown') }}>
+              <span className="diagram-menu-title">From Markdown…<small>Components, steps and links written as text.</small></span>
+            </button>
+            <button type="button" role="menuitem" onClick={() => { close(); setGenerate('sequence') }}>
+              <span className="diagram-menu-title">Sequence diagram from text…<small>Added as a new page of this diagram.</small></span>
+            </button>
             <div className="diagram-menu-divider" role="separator" />
-            {DIAGRAM_TEMPLATES.map((template) => (
-              <button key={template.id} type="button" role="menuitem" title={template.description} onClick={() => { close(); void store().create(template.id) }}>
-                <span className="diagram-menu-title">{template.label}<small>{template.description}</small></span>
-              </button>
+            {templatesByCategory().map((group) => (
+              <div key={group.category} role="group" aria-label={group.category}>
+                <div className="diagram-menu-group">{group.category}</div>
+                {group.templates.map((template) => (
+                  <button key={template.id} type="button" role="menuitem" title={template.description} onClick={() => { close(); void store().create(template.id) }}>
+                    <span className="diagram-menu-title">{template.label}<small>{template.description}</small></span>
+                  </button>
+                ))}
+              </div>
             ))}
           </>
         )}
@@ -124,29 +148,32 @@ export function DiagramTopBar({ canvas }: { canvas: () => HTMLElement | null }) 
       <button type="button" className="diagram-bar-icon" onClick={() => void store().layout('DOWN')} disabled={!doc?.nodes.length} title="Auto-layout top to bottom (ELK)" aria-label="Auto-layout top to bottom"><ArrowDownFromLine size={14} /></button>
       <div className="diagram-bar-spacer" />
       <SaveState />
-      <button type="button" className="diagram-bar-button" onClick={() => fileInput.current?.click()} title="Import an .adomnia-diagram.json file"><Upload size={13} /><span>Import</span></button>
+      <button type="button" className="diagram-bar-button" onClick={() => fileInput.current?.click()} title="Import a diagram (adOmnia JSON, draw.io .drawio/.xml, SVG) or place an image"><Upload size={13} /><span>Import</span></button>
       <input
         ref={fileInput}
         type="file"
-        accept=".json,application/json"
+        accept=".json,.drawio,.xml,.svg,.png,.jpg,.jpeg,.gif,.webp,application/json,image/*"
         hidden
         onChange={(event) => {
           const file = event.target.files?.[0]
           event.target.value = ''
-          if (file) void file.text().then((text) => store().importJson(text))
+          if (file) void store().importFile(file, centerOf(canvas()))
         }}
       />
       <Dropdown label={busy ? 'Exporting…' : 'Export'} icon={<Download size={13} />} title="Export the whole diagram">
         {(close) => (
           <>
             <button type="button" role="menuitem" onClick={() => { close(); void runExport('png') }}>PNG image<kbd>2×</kbd></button>
-            <button type="button" role="menuitem" onClick={() => { close(); void runExport('svg') }}>SVG vector</button>
+            <button type="button" role="menuitem" onClick={() => { close(); void runExport('svg') }}>SVG vector<kbd>re-importable</kbd></button>
+            <button type="button" role="menuitem" onClick={() => { close(); void runExport('drawio') }}>draw.io file<kbd>all pages</kbd></button>
             <button type="button" role="menuitem" onClick={() => { close(); void runExport('json') }}>adOmnia JSON<kbd>re-importable</kbd></button>
           </>
         )}
       </Dropdown>
       <button type="button" className="diagram-bar-icon" onClick={() => void removeCurrent()} disabled={!doc} title="Delete this diagram" aria-label="Delete this diagram"><Trash2 size={14} /></button>
+      <button type="button" className={cn('diagram-bar-icon', libraryOpen && 'is-active')} onClick={toggleLibrary} title="Show or hide the shape library" aria-label="Toggle the shape library" aria-pressed={libraryOpen}><PanelLeft size={14} /></button>
       <button type="button" className={cn('diagram-bar-icon', inspectorOpen && 'is-active')} onClick={toggleInspector} title="Show or hide the properties" aria-label="Toggle properties" aria-pressed={inspectorOpen}><PanelRight size={14} /></button>
+      {generate && <GenerateDialog mode={generate} onClose={() => setGenerate(null)} />}
     </div>
   )
 }

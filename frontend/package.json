@@ -2,7 +2,7 @@
   "name": "adomnia-frontend",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "type": "module",
   "engines": {
     "node": ">=22.13.0"
@@ -78,6 +78,7 @@
     "@vitejs/plugin-react": "^6.3.0",
     "@vitest/coverage-v8": "^5.0.5",
     "autoprefixer": "^10.6.2",
+    "happy-dom": "20.0.11",
     "oxlint": "^1.93.0",
     "postcss": "^8.5.32",
     "rollup-plugin-visualizer": "^7.1.3",

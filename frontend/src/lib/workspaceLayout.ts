@@ -13,10 +13,23 @@ import { useTabsStore } from '@/stores/tabs'
  * the query of a paused request back to its response.
  */
 
-/** The two panes of the split. Both stay mounted while the split is open. */
+/** The two panes of the API ↔ code split. Both stay mounted while the split is open. */
 export const SPLIT_PRIMARY_PANES: readonly RailItem[] = ['codestudio', 'collections']
 /** Modules that can join the split as its third pane. */
 export const SPLIT_AUXILIARY_PANES: readonly RailItem[] = ['database', 'broker', 'loginspector']
+
+/**
+ * The pane pairs the coordinator can show side by side. `api` is the API ↔ code split; `diagram`
+ * keeps Diagram Studio beside Code Studio when a generated node opens its source. One coordinator,
+ * one set of layout rules: a third pane only exists in the API pair.
+ */
+export type SplitPair = 'api' | 'diagram'
+export const SPLIT_PAIRS: Record<SplitPair, readonly [RailItem, RailItem]> = {
+  api: ['codestudio', 'collections'],
+  diagram: ['diagrams', 'codestudio'],
+}
+export const DEFAULT_SPLIT_PAIR: SplitPair = 'api'
+
 
 export const AUX_RATIO_KEY = 'adomnia.workspace.auxRatio.v1'
 export const DEFAULT_AUX_RATIO = 0.36
@@ -30,13 +43,19 @@ export function isAuxiliaryPane(rail: RailItem): boolean {
 }
 
 /** Rails shown by the split right now (primary panes, then the auxiliary one). */
-export function splitPanes(auxiliary: RailItem | null): RailItem[] {
-  return auxiliary ? [...SPLIT_PRIMARY_PANES, auxiliary] : [...SPLIT_PRIMARY_PANES]
+export function splitPanes(auxiliary: RailItem | null, pair: SplitPair = DEFAULT_SPLIT_PAIR): RailItem[] {
+  const primary = SPLIT_PAIRS[pair]
+  return auxiliary && pair === 'api' ? [...primary, auxiliary] : [...primary]
 }
 
 /** True when `rail` is one of the panes the open split shows. */
-export function isInSplit(rail: RailItem, splitView: boolean, auxiliary: RailItem | null): boolean {
-  return splitView && splitPanes(auxiliary).includes(rail)
+export function isInSplit(rail: RailItem, splitView: boolean, auxiliary: RailItem | null, pair: SplitPair = DEFAULT_SPLIT_PAIR): boolean {
+  return splitView && splitPanes(auxiliary, pair).includes(rail)
+}
+
+/** The rail on the other side of Code Studio in this pair. */
+export function secondaryPane(pair: SplitPair = DEFAULT_SPLIT_PAIR): RailItem {
+  return SPLIT_PAIRS[pair].find((rail) => rail !== 'codestudio') ?? 'collections'
 }
 
 export function clampAuxRatio(value: unknown): number {
@@ -50,6 +69,8 @@ export interface LayoutSnapshot {
   auxiliary: RailItem | null
   activeRail: RailItem
   activeTabId: string | null
+  /** Which pair the split showed; undefined means the API pair (older snapshots). */
+  pair?: SplitPair
   /** Shown on the Back button: where Back goes. */
   label: string
 }
@@ -58,11 +79,12 @@ export function pushSnapshot(history: LayoutSnapshot[], snapshot: LayoutSnapshot
   const last = history[history.length - 1]
   const same = last && last.splitView === snapshot.splitView && last.auxiliary === snapshot.auxiliary
     && last.activeRail === snapshot.activeRail && last.activeTabId === snapshot.activeTabId
+    && (last.pair ?? DEFAULT_SPLIT_PAIR) === (snapshot.pair ?? DEFAULT_SPLIT_PAIR)
   return same ? history : [...history.slice(-(LAYOUT_HISTORY_LIMIT - 1)), snapshot]
 }
 
 const RAIL_LABELS: Partial<Record<RailItem, string>> = {
-  collections: 'request', codestudio: 'code', database: 'query', broker: 'broker', loginspector: 'logs',
+  collections: 'request', codestudio: 'code', database: 'query', broker: 'broker', loginspector: 'logs', diagrams: 'diagram',
 }
 
 /** "Back to response" when the request pane had the keyboard, "Back to code" for Code Studio… */
@@ -108,7 +130,7 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set) => ({
 
 function currentSnapshot(): LayoutSnapshot {
   const app = useAppStore.getState()
-  const base = { splitView: app.splitView, auxiliary: app.splitAuxiliary, activeRail: app.activeRail }
+  const base = { splitView: app.splitView, auxiliary: app.splitAuxiliary, activeRail: app.activeRail, pair: app.splitPair }
   return { ...base, activeTabId: useTabsStore.getState().activeTabId, label: backLabel(base) }
 }
 
@@ -129,17 +151,35 @@ export function rememberLayout(): void {
 }
 
 /** Both split panes are in this window: a detached module cannot be shown side by side. */
-export function canSplitHere(extra?: RailItem): boolean {
+export function canSplitHere(extra?: RailItem, pair: SplitPair = DEFAULT_SPLIT_PAIR): boolean {
   const detached = usePanelWindowsStore.getState().detached
-  return ![...SPLIT_PRIMARY_PANES, ...(extra ? [extra] : [])].some((rail) => detached.includes(rail))
+  const required = [...SPLIT_PAIRS[pair], ...(extra ? [extra] : [])]
+  return !required.some((rail) => detached.includes(rail))
 }
 
 /** Opens code + request side by side, keeping both mounted; `focus` gets the keyboard. */
 export function enterSplit(focus?: RailItem): void {
+  enterPair('api', focus)
+}
+
+/**
+ * Opens Diagram Studio + Code Studio side by side and keeps both mounted: opening a source from a
+ * node never unmounts the diagram, so selection, zoom and scroll survive.
+ */
+export function enterDiagramSplit(focus: RailItem = 'diagrams'): void {
+  enterPair('diagram', focus)
+}
+
+function enterPair(pair: SplitPair, focus?: RailItem): void {
   const app = useAppStore.getState()
-  if (!app.splitView) rememberLayout()
-  for (const rail of SPLIT_PRIMARY_PANES) app.keepPanel(rail)
-  const target = focus ?? (isInSplit(app.activeRail, true, app.splitAuxiliary) ? app.activeRail : 'collections')
+  const primary = SPLIT_PAIRS[pair]
+  if (!app.splitView || app.splitPair !== pair) rememberLayout()
+  for (const rail of primary) app.keepPanel(rail)
+  if (pair === 'api') app.keepPanel('collections')
+  if (app.splitPair !== pair) app.setSplitPair(pair)
+  // The third pane only belongs to the API pair.
+  if (pair !== 'api' && app.splitAuxiliary) app.setSplitAuxiliary(null)
+  const target = focus ?? (isInSplit(app.activeRail, true, app.splitAuxiliary, pair) ? app.activeRail : primary[0])
   if (app.activeRail !== target) app.setActiveRail(target)
   app.setSplitView(true)
 }
@@ -152,6 +192,8 @@ export function enterSplit(focus?: RailItem): void {
 export function placeAuxiliary(rail: RailItem): boolean {
   if (!isAuxiliaryPane(rail) || !canSplitHere(rail)) return false
   const app = useAppStore.getState()
+  // The third pane exists only beside code and request: a diagram split is left as it is.
+  if (app.splitPair !== 'api') return false
   if (app.splitAuxiliary !== rail || app.activeRail !== rail) rememberLayout()
   for (const pane of SPLIT_PRIMARY_PANES) app.keepPanel(pane)
   app.setSplitView(true)
@@ -177,6 +219,7 @@ export function layoutBack(): boolean {
   useWorkspaceLayoutStore.setState({ history: history.slice(0, -1) })
   const app = useAppStore.getState()
   app.setSplitView(previous.splitView)
+  app.setSplitPair(previous.pair ?? DEFAULT_SPLIT_PAIR)
   if (previous.splitView) app.setSplitAuxiliary(previous.auxiliary)
   if (app.activeRail !== previous.activeRail) app.setActiveRail(previous.activeRail)
   const tabs = useTabsStore.getState()
