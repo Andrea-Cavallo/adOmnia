@@ -3,7 +3,7 @@
  * drop it in the middle of the view.
  */
 import { lazy, memo, Suspense, useMemo, useState, type DragEvent } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, Shapes as ShapesIcon, Blocks, X } from 'lucide-react'
 import { SHAPE_CATEGORIES, searchShapes, type ShapeDefinition } from '@/lib/diagrams/shapes'
 import { DEFAULT_NODE_STYLE } from '@/lib/diagrams/shapes'
 import { SHAPE_ICONS } from './shapeIcons'
@@ -12,8 +12,8 @@ import { ShapeOutline } from './ShapeOutline'
 import { SHAPE_DRAG_TYPE } from './dragTypes'
 
 const IconLibrary = lazy(() => import('./IconLibrary').then((module) => ({ default: module.IconLibrary })))
-const PREVIEW_WIDTH = 46
-const PREVIEW_MAX_HEIGHT = 32
+const PREVIEW_WIDTH = 54
+const PREVIEW_MAX_HEIGHT = 36
 
 const ShapeTile = memo(function ShapeTile({ shape, onAdd }: { shape: ShapeDefinition; onAdd: (id: string) => void }) {
   const scale = Math.min(PREVIEW_WIDTH / shape.width, PREVIEW_MAX_HEIGHT / shape.height)
@@ -29,7 +29,7 @@ const ShapeTile = memo(function ShapeTile({ shape, onAdd }: { shape: ShapeDefini
       <span className="diagram-tile-preview">
         {shape.geometry === 'text'
           ? <span className="diagram-tile-text">Aa</span>
-          : <ShapeOutline geometry={shape.geometry} width={width} height={height} style={{ ...DEFAULT_NODE_STYLE, ...shape.style, strokeWidth: 1.2 }} />}
+          : <ShapeOutline geometry={shape.geometry} width={width} height={height} style={{ ...DEFAULT_NODE_STYLE, ...shape.style, strokeWidth: 1.5, stroke: shape.style?.stroke || 'var(--color-text-3)' }} />}
         {Icon && <Icon size={11} className="diagram-tile-icon" aria-hidden="true" />}
       </span>
       <span className="diagram-tile-label">{shape.label}</span>
@@ -41,9 +41,10 @@ export function ShapeLibrary({ onAdd, onAddIcon }: { onAdd: (shapeId: string) =>
   const [tab, setTab] = useState<'shapes' | 'icons'>('shapes')
   return (
     <aside className="diagram-library" aria-label="Shapes and icons">
+      <div className="diagram-library-heading"><strong>Assets</strong><span>Click or drag to add</span></div>
       <div className="diagram-library-tabs" role="tablist" aria-label="Library">
-        <button type="button" role="tab" aria-pressed={tab === 'shapes'} aria-selected={tab === 'shapes'} onClick={() => setTab('shapes')}>Shapes</button>
-        <button type="button" role="tab" aria-pressed={tab === 'icons'} aria-selected={tab === 'icons'} onClick={() => setTab('icons')}>Icons</button>
+        <button type="button" role="tab" aria-pressed={tab === 'shapes'} aria-selected={tab === 'shapes'} onClick={() => setTab('shapes')}><ShapesIcon size={14} aria-hidden="true" />Shapes</button>
+        <button type="button" role="tab" aria-pressed={tab === 'icons'} aria-selected={tab === 'icons'} onClick={() => setTab('icons')}><Blocks size={14} aria-hidden="true" />Icons</button>
       </div>
       {tab === 'shapes' ? <Shapes onAdd={onAdd} /> : (
         <Suspense fallback={<p className="diagram-empty-hint">Loading icons…</p>}><IconLibrary onAdd={onAddIcon} /></Suspense>
@@ -69,7 +70,7 @@ function Shapes({ onAdd }: { onAdd: (shapeId: string) => void }) {
           if (shapes.length === 0) return null
           return (
             <section key={category.id} className="diagram-library-group">
-              <h3>{category.label}</h3>
+              <h3>{category.label}<span>{shapes.length}</span></h3>
               <div className="diagram-tiles">
                 {shapes.map((shape) => <ShapeTile key={shape.id} shape={shape} onAdd={onAdd} />)}
               </div>

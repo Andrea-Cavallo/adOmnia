@@ -123,7 +123,7 @@ export const ShapeNode = memo(function ShapeNode({ id, data, selected, width, he
 
   let content
   if (geometry === 'image') content = label ?? <ImageBody src={data.image} label={data.label} />
-  else if (geometry === 'legend') content = label ?? <LegendBody data={data} fontSize={style.fontSize} />
+  else if (geometry === 'legend') content = <LegendBody id={id} data={data} fontSize={style.fontSize} selected={!!selected} editingTitle={editing} />
   else if (geometry === 'fragment') content = label ?? <FragmentBody data={data} width={w} />
   else if (geometry === 'activation') content = null
   else if (uml) {

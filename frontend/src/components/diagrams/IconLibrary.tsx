@@ -8,9 +8,10 @@
 import { memo, useEffect, useMemo, useState, type DragEvent } from 'react'
 import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DIAGRAM_ICON_BASE } from '@/lib/diagrams/blueprint'
 import { ICON_DRAG_TYPE } from './dragTypes'
 
-const BASE = `${import.meta.env.BASE_URL}diagram-icons/`
+const BASE = DIAGRAM_ICON_BASE
 /** Icons shown per category before "Show all", so a few thousand pictures never load at once. */
 const PREVIEW_COUNT = 16
 const RECENT_KEY = 'adomnia.diagrams.recentIcons'
@@ -88,7 +89,7 @@ function CategoryGroup({ title, icons, open, onOpen, onAdd }: { title: string; i
   const shown = open ? icons : icons.slice(0, PREVIEW_COUNT)
   return (
     <section className="diagram-library-group">
-      <h3>{title} · {icons.length}</h3>
+      <h3>{title}<span>{icons.length}</span></h3>
       <div className="diagram-icon-tiles">{shown.map((icon) => <IconTile key={icon.p} icon={icon} onAdd={onAdd} />)}</div>
       {shown.length < icons.length && <button type="button" className="diagram-inspector-action" onClick={onOpen}>Show all {icons.length}</button>}
     </section>

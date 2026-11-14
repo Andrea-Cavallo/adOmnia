@@ -6,9 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
-## [1.0.32] — 2026-11-14
+## [1.0.31] — 2026-11-14
 
-Diagram Studio becomes a living view of the code. No 1.0.31 build was published, so this release carries the 1.0.31 changes below too.
+Diagram Studio becomes a living view of the code, WebSocket messages are readable and the Hub mini game is off by default.
 
 ### Diagram Studio
 
@@ -17,6 +17,9 @@ Diagram Studio becomes a living view of the code. No 1.0.31 build was published,
 - **Expand, search, hand off.** *Show Callers / Show Callees* grow the diagram one hop at a time; *Search* jumps to a service, method, endpoint, topic, table or file; endpoints open in the API Workspace, tables in Database Studio, topics in Broker Studio.
 - **Refresh from Code.** Re-reads the sources and merges them into the open diagram: positions, sizes, labels, styles, manual shapes and connectors are kept, a node whose entity disappeared is marked stale, and unsaved editor buffers mark the diagram as based on the last saved sources.
 - **Evidence is visible.** Every generated connector says how it was found (declared, derived, inferred, observed): inferred relations are dashed amber, observed ones animate. The native JSON keeps the source references; PNG, SVG and draw.io exports are pictures.
+- **More starting points, with real icons.** *Event-driven with Kafka* (outbox, topic, three consumers, a search projection and a dead-letter topic), *Streaming analytics* (Kafka, Flink, ClickHouse, object storage, Grafana), *Microservices on Kubernetes* (ingress, services, database, cache and the telemetry path) and *CQRS with a read model*, drawn with the technology icons of the library. Connector labels get the room they need, so they no longer cover the shapes.
+- **Legends are written in place.** Double-click the title or a row to type, Enter to keep it; a selected legend offers *+ Add row*. The inspector still edits colors and dashes.
+- **Fixes found using the desktop app.** The canvas no longer grows past the window (a generated diagram was framed off screen), the zoom controls are no longer hidden by the page tabs, the library and the inspector step aside in the split beside Code Studio, *Open in Code Studio* reaches the line on the first file of a session, *Show Callees* on an endpoint adds its handler, and the context menu stays inside the window.
 - **Simpler selection toolbar.** The toolbar above a selection shows named buttons (Duplicate, Group, Lock, Delete) and one *Align* menu with plain-language entries, instead of a row of unlabeled icons; layer order stays in the right-click menu.
 - **MCP.** New read-only `diagram_workspace_overview` and `diagram_find_entity` tools: an agent lists what is worth drawing and finds an entity by stable id, file and line.
 - **Renamed and redrawn.** The rail group *Document Studio* is now **Diagram Studio**, with a nodes-and-connectors icon in the rail and in the Hub.
@@ -26,10 +29,6 @@ Diagram Studio becomes a living view of the code. No 1.0.31 build was published,
 - **draw.io and SVG.** Export and import `.drawio` (every page, styles, containers, connection points, bends); exported SVGs carry the editable diagram, and draw.io SVGs import as diagrams.
 - **From Markdown and over MCP.** *New → From Markdown* turns components, steps, links and Mermaid blocks into a colored, laid-out diagram; the same parser powers the new `diagram_from_markdown`, `diagram_create` and `diagram_shapes` MCP tools, which write a file Diagram Studio opens.
 - **Diagram Studio.** A Lucidchart-style diagram editor on an infinite canvas (React Flow): a searchable library of basic, flowchart, architecture, integration (Go/Java services, REST, SOAP, Kafka, Camel routes, Saga steps, OSGi bundles), UML (classes, actors, use cases), container, swimlane and note shapes; resize, rotate, inline text editing and several connection points per side; straight, Bézier and orthogonal connectors routed around nodes, with draggable ends, editable bends, arrowheads, dashes, labels and glowing data-flow pulses; alignment guides, snap to grid, multi-selection, group/ungroup, align/distribute, layers, locking, context menus, undo/redo and keyboard shortcuts; ELK auto-layout; a worked orchestrated-Saga example colored by role. A connector released on a shape attaches to it, and released on the empty canvas it grows a new connected shape, in line with the one it started from. Diagrams autosave as versioned JSON in the local store and export to PNG, SVG or JSON. Guide: `docs/DIAGRAM-STUDIO.md`.
-
-## [1.0.31] — 2026-11-09
-
-First published build since 1.0.29: the 1.0.30 tag never produced artifacts, so this release carries the 1.0.30 changes below too.
 
 ### API workspace
 
