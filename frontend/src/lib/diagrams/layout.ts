@@ -52,6 +52,8 @@ export function elkGraph(graph: DiagramGraph, options: LayoutOptions): ElkNode {
       'elk.layered.spacing.nodeNodeBetweenLayers': String(options.spacing * 1.4),
       'elk.edgeRouting': 'ORTHOGONAL',
       'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+      // Nodes of a layer keep the order they were declared in: a template reads top to bottom as written.
+      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
     },
     children: topLevel.map((node) => ({ id: node.id, ...nodeSize(node) })),
     edges: edges.map((edge) => ({ id: edge.id, sources: [edge.source], targets: [edge.target] })),

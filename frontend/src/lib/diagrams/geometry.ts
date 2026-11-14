@@ -37,6 +37,16 @@ function cloud(x: number, y: number, w: number, h: number): string {
   return `M ${px(start[0])} ${py(start[1])} ${curves.map((c) => `C ${px(c[0])} ${py(c[1])} ${px(c[2])} ${py(c[3])} ${px(c[4])} ${py(c[5])}`).join(' ')} Z`
 }
 
+/** A five-pointed star inscribed in the box. */
+function star(x: number, y: number, w: number, h: number): string {
+  const points = Array.from({ length: 10 }, (_, index) => {
+    const radius = index % 2 === 0 ? 0.5 : 0.2
+    const angle = (Math.PI / 5) * index - Math.PI / 2
+    return `${x + w * (0.5 + radius * Math.cos(angle))} ${y + h * (0.5 + radius * Math.sin(angle))}`
+  })
+  return `M ${points.join(' L ')} Z`
+}
+
 /** The outline of a geometry in a w×h box, inset so a stroke of the given width stays inside it. */
 export function outlineOf(geometry: ShapeGeometry, width: number, height: number, strokeWidth = 1.5): Outline {
   const s = strokeWidth / 2
@@ -96,6 +106,42 @@ export function outlineOf(geometry: ShapeGeometry, width: number, height: number
     case 'note': {
       const fold = Math.min(16, w * 0.15, h * 0.2)
       return { bodies: [`M ${x} ${y} H ${x + w - fold} L ${x + w} ${y + fold} V ${y + h} H ${x} Z`], lines: [`M ${x + w - fold} ${y} V ${y + fold} H ${x + w}`] }
+    }
+    case 'actor': {
+      // The figure keeps the top of the box; its name is written underneath.
+      const cx = x + w / 2
+      const figure = h * 0.72
+      const head = Math.min(w * 0.22, figure * 0.16)
+      const hips = y + figure * 0.68
+      return {
+        bodies: [ellipse(cx, y + head, head, head)],
+        lines: [`M ${cx} ${y + head * 2} V ${hips}`, `M ${x + w * 0.15} ${y + figure * 0.42} H ${x + w * 0.85}`, `M ${x + w * 0.2} ${y + figure} L ${cx} ${hips} L ${x + w * 0.8} ${y + figure}`],
+      }
+    }
+    case 'triangle':
+      return { bodies: [`M ${x + w / 2} ${y} L ${x + w} ${y + h} H ${x} Z`], lines: [] }
+    case 'star':
+      return { bodies: [star(x, y, w, h)], lines: [] }
+    case 'arrow': {
+      const head = Math.min(w * 0.4, h * 0.8)
+      const shaft = h * 0.25
+      return { bodies: [`M ${x} ${y + shaft} H ${x + w - head} V ${y} L ${x + w} ${y + h / 2} L ${x + w - head} ${y + h} V ${y + h - shaft} H ${x} Z`], lines: [] }
+    }
+    case 'subprocess': {
+      const bar = Math.min(12, w * 0.1)
+      return { bodies: [rect(x, y, w, h)], lines: [`M ${x + bar} ${y} V ${y + h}`, `M ${x + w - bar} ${y} V ${y + h}`] }
+    }
+    case 'manual-input': {
+      const slope = Math.min(18, h * 0.3)
+      return { bodies: [`M ${x} ${y + slope} L ${x + w} ${y} V ${y + h} H ${x} Z`], lines: [] }
+    }
+    case 'delay': {
+      const r = Math.min(h / 2, w / 2)
+      return { bodies: [`M ${x} ${y} H ${x + w - r} A ${r} ${h / 2} 0 0 1 ${x + w - r} ${y + h} H ${x} Z`], lines: [] }
+    }
+    case 'off-page': {
+      const tip = Math.min(h * 0.35, 24)
+      return { bodies: [`M ${x} ${y} H ${x + w} V ${y + h - tip} L ${x + w / 2} ${y + h} L ${x} ${y + h - tip} Z`], lines: [] }
     }
     case 'text':
       return NONE

@@ -98,11 +98,39 @@ describe('Diagram Studio editing', () => {
     expect(store.getState().notice).toMatch(/Could not import/)
   })
 
+  it('grows a connected shape of the same kind where a connector is dropped', async () => {
+    const store = await studio()
+    const source = store.getState().addShape('decision', { x: 0, y: 0 })!
+    const created = store.getState().connectToNew(source, 'right-50', { x: 400, y: 50 })
+    const { doc } = store.getState()
+    expect(doc?.nodes.find((node) => node.id === created)?.data.shape).toBe('decision')
+    expect(doc?.edges).toMatchObject([{ source, target: created, sourceHandle: 'right-50', targetHandle: null }])
+    store.getState().undo()
+    expect(store.getState().doc?.nodes).toHaveLength(1)
+    expect(store.getState().doc?.edges).toHaveLength(0)
+  })
+
+  it('puts the grown shape in line with a source that sits in a container', async () => {
+    const store = await studio()
+    store.getState().addShape('container', { x: 0, y: 0 })
+    const source = store.getState().addShape('process', { x: 100, y: 100 })!
+    store.getState().dropInContainer(source)
+    const nodes = () => store.getState().doc!.nodes
+    const from = nodes().find((node) => node.id === source)!
+    expect(from.parentId).toBeTruthy()
+    const parent = nodes().find((node) => node.id === from.parentId)!
+    const centerY = parent.position.y + from.position.y + from.height! / 2
+    const created = store.getState().connectToNew(source, 'right-50', { x: 600, y: centerY + 10 })
+    const grown = nodes().find((node) => node.id === created)!
+    expect(grown.parentId).toBeUndefined()
+    expect(grown.position.y + grown.height! / 2).toBe(centerY)
+  })
+
   it('creates a diagram from a template, laid out', async () => {
     const store = await studio()
-    await store.getState().create('microservices')
+    await store.getState().create('saga')
     const { doc } = store.getState()
-    expect(doc?.name).toBe('Go & Java microservices')
+    expect(doc?.name).toBe('Saga (orchestrated)')
     expect(doc?.nodes.length).toBeGreaterThan(5)
     expect(new Set(doc?.nodes.map((node) => `${node.position.x},${node.position.y}`)).size).toBe(doc?.nodes.length)
   })

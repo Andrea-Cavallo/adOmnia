@@ -7,6 +7,7 @@
 import { createEdge, createNode } from './graphOps'
 import { autoLayout, type LayoutOptions } from './layout'
 import type { DiagramEdgeData, DiagramGraph, DiagramNode, EdgeRouting } from './model'
+import { DEFAULT_NODE_STYLE, STYLE_PALETTE, shapeOf } from './shapes'
 
 export interface BlueprintNode {
   /** Stable key used by the links; not the node id. */
@@ -14,6 +15,8 @@ export interface BlueprintNode {
   shape: string
   label: string
   subtitle?: string
+  /** A tint of STYLE_PALETTE (`green`, `violet`…), for nodes that carry a meaning. */
+  color?: string
   /** Key of the container this node sits in. */
   parent?: string
 }
@@ -25,6 +28,8 @@ export interface BlueprintLink {
   /** Animated pulses: data flowing from `from` to `to`. */
   flow?: boolean
   dashed?: boolean
+  /** A tint of STYLE_PALETTE for the line. */
+  color?: string
 }
 
 export interface DiagramBlueprint {
@@ -39,6 +44,8 @@ export interface DiagramSource {
   describe: () => Promise<DiagramBlueprint>
 }
 
+const tint = (id: string | undefined) => STYLE_PALETTE.find((entry) => entry.id === id)
+
 /** Space between the nodes inside a container and between them and its border. */
 const CONTAINER_GAP = 40
 
@@ -46,7 +53,9 @@ const CONTAINER_GAP = 40
 export function graphFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRouting): DiagramGraph {
   const ids = new Map<string, string>()
   const created = blueprint.nodes.map((spec) => {
-    const node = createNode(spec.shape, { x: 0, y: 0 }, { label: spec.label, ...(spec.subtitle === undefined ? {} : { subtitle: spec.subtitle }) })
+    const color = tint(spec.color)
+    const style = color ? { style: { ...DEFAULT_NODE_STYLE, ...shapeOf(spec.shape).style, fill: color.fill, stroke: color.stroke } } : {}
+    const node = createNode(spec.shape, { x: 0, y: 0 }, { label: spec.label, ...(spec.subtitle === undefined ? {} : { subtitle: spec.subtitle }), ...style })
     ids.set(spec.key, node.id)
     return { spec, node }
   })
@@ -56,7 +65,7 @@ export function graphFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRou
     const source = ids.get(link.from)
     const target = ids.get(link.to)
     if (!source || !target) return []
-    const data: Partial<DiagramEdgeData> = { label: link.label ?? '', flow: link.flow ?? false, dashed: link.dashed ?? false }
+    const data: Partial<DiagramEdgeData> = { label: link.label ?? '', flow: link.flow ?? false, dashed: link.dashed ?? false, color: tint(link.color)?.stroke ?? '' }
     return [createEdge({ source, target, sourceHandle: null, targetHandle: null }, routing, data)]
   })
   // Containers first: React Flow needs a parent before its children.

@@ -17,6 +17,8 @@ export interface ShapeDefinition {
   /** Overrides of the theme defaults; empty colors follow the active theme. */
   style?: Partial<NodeStyle>
   subtitle?: string
+  /** Text a new shape starts with, when the library label would not fit in it. */
+  text?: string
   /** Lucide icon drawn next to the label (see components/diagrams/shapeIcons.ts). */
   icon?: string
   /** Rotation makes sense for outlines, not for boxes of text or containers. */
@@ -28,6 +30,7 @@ export interface ShapeDefinition {
 }
 
 export const SHAPE_CATEGORIES: ReadonlyArray<{ id: ShapeCategory; label: string }> = [
+  { id: 'basic', label: 'Basic shapes' },
   { id: 'flowchart', label: 'Flowchart' },
   { id: 'architecture', label: 'Architecture' },
   { id: 'integration', label: 'Integration & services' },
@@ -53,14 +56,31 @@ export const DEFAULT_NODE_STYLE: NodeStyle = { fill: '', stroke: '', strokeWidth
 const shape = (definition: ShapeDefinition): ShapeDefinition => definition
 
 export const SHAPES: readonly ShapeDefinition[] = [
+  // Basic shapes
+  shape({ id: 'rectangle', label: 'Rectangle', category: 'basic', keywords: 'box square', geometry: 'rectangle', width: 140, height: 80, text: '', rotatable: true }),
+  shape({ id: 'rounded-rectangle', label: 'Rounded', category: 'basic', keywords: 'rounded rectangle box', geometry: 'rounded', width: 140, height: 80, text: '', rotatable: true }),
+  shape({ id: 'ellipse', label: 'Ellipse', category: 'basic', keywords: 'oval use case', geometry: 'ellipse', width: 140, height: 80, text: '', rotatable: true }),
+  shape({ id: 'circle', label: 'Circle', category: 'basic', keywords: 'round dot', geometry: 'circle', width: 88, height: 88, text: '', rotatable: false }),
+  shape({ id: 'triangle', label: 'Triangle', category: 'basic', keywords: 'warning delta', geometry: 'triangle', width: 110, height: 96, text: '', rotatable: true }),
+  shape({ id: 'diamond', label: 'Diamond', category: 'basic', keywords: 'rhombus', geometry: 'diamond', width: 110, height: 110, text: '', rotatable: true }),
+  shape({ id: 'hexagon', label: 'Hexagon', category: 'basic', keywords: 'hex', geometry: 'hexagon', width: 130, height: 96, text: '', rotatable: true }),
+  shape({ id: 'star', label: 'Star', category: 'basic', keywords: 'favorite highlight', geometry: 'star', width: 96, height: 96, text: '', rotatable: true }),
+  shape({ id: 'block-arrow', label: 'Arrow', category: 'basic', keywords: 'block arrow direction right', geometry: 'arrow', width: 140, height: 64, text: '', rotatable: true }),
+  shape({ id: 'cloud', label: 'Cloud', category: 'basic', keywords: 'internet network', geometry: 'cloud', width: 160, height: 96, text: '', rotatable: false }),
+
   // Flowchart
   shape({ id: 'process', label: 'Process', category: 'flowchart', keywords: 'step action task box', geometry: 'rectangle', width: 160, height: 72, rotatable: true }),
   shape({ id: 'decision', label: 'Decision', category: 'flowchart', keywords: 'if branch condition choice', geometry: 'diamond', width: 140, height: 100, rotatable: true }),
   shape({ id: 'io', label: 'Input / Output', category: 'flowchart', keywords: 'data read write parallelogram', geometry: 'parallelogram', width: 170, height: 72, rotatable: true }),
   shape({ id: 'terminator', label: 'Start / End', category: 'flowchart', keywords: 'terminator begin finish stop pill', geometry: 'pill', width: 150, height: 56, rotatable: true }),
-  shape({ id: 'connector', label: 'Connector', category: 'flowchart', keywords: 'junction circle on-page reference', geometry: 'circle', width: 48, height: 48, rotatable: false }),
+  shape({ id: 'connector', label: 'Connector', category: 'flowchart', keywords: 'junction circle on-page reference', geometry: 'circle', width: 48, height: 48, text: '', rotatable: false }),
   shape({ id: 'document', label: 'Document', category: 'flowchart', keywords: 'file report page', geometry: 'document', width: 150, height: 84, rotatable: true }),
   shape({ id: 'stored-data', label: 'Stored data', category: 'flowchart', keywords: 'storage disk cylinder', geometry: 'cylinder', width: 120, height: 90, rotatable: false }),
+  shape({ id: 'subprocess', label: 'Subprocess', category: 'flowchart', keywords: 'predefined process subroutine function call', geometry: 'subprocess', width: 160, height: 72, rotatable: true }),
+  shape({ id: 'manual-input', label: 'Manual input', category: 'flowchart', keywords: 'keyboard user entry', geometry: 'manual-input', width: 160, height: 72, rotatable: true }),
+  shape({ id: 'preparation', label: 'Preparation', category: 'flowchart', keywords: 'setup initialize loop', geometry: 'hexagon', width: 170, height: 72, rotatable: true }),
+  shape({ id: 'delay', label: 'Delay', category: 'flowchart', keywords: 'wait pause timer', geometry: 'delay', width: 130, height: 72, rotatable: true }),
+  shape({ id: 'off-page', label: 'Off-page link', category: 'flowchart', keywords: 'off-page connector reference continue', geometry: 'off-page', width: 80, height: 80, text: '', rotatable: false }),
 
   // Architecture
   shape({ id: 'service', label: 'Service', category: 'architecture', keywords: 'microservice backend app server', geometry: 'rounded', width: 170, height: 76, icon: 'server', rotatable: false }),
@@ -88,11 +108,14 @@ export const SHAPES: readonly ShapeDefinition[] = [
   // UML
   shape({ id: 'uml-class', label: 'Class', category: 'uml', keywords: 'uml class attributes methods', geometry: 'uml-class', width: 200, height: 140, rotatable: false, compartments: { attributes: '- id: String\n- name: String', operations: '+ save(): void' } }),
   shape({ id: 'uml-interface', label: 'Interface', category: 'uml', keywords: 'uml interface contract', geometry: 'uml-class', width: 200, height: 110, subtitle: '«interface»', rotatable: false, compartments: { attributes: '', operations: '+ handle(event): void' } }),
+  shape({ id: 'uml-actor', label: 'Actor', category: 'uml', keywords: 'uml actor user person role stick figure', geometry: 'actor', width: 80, height: 120, rotatable: false }),
+  shape({ id: 'uml-use-case', label: 'Use case', category: 'uml', keywords: 'uml use case scenario ellipse', geometry: 'ellipse', width: 170, height: 80, rotatable: false }),
   shape({ id: 'uml-package', label: 'Package', category: 'uml', keywords: 'uml package namespace module', geometry: 'package', width: 200, height: 130, rotatable: false }),
   shape({ id: 'uml-component', label: 'Component', category: 'uml', keywords: 'uml component module', geometry: 'component', width: 180, height: 80, rotatable: false }),
 
   // Containers
   shape({ id: 'container', label: 'Container', category: 'containers', keywords: 'group frame area region', geometry: 'container', width: 360, height: 240, rotatable: false, container: true }),
+  shape({ id: 'swimlane', label: 'Swimlane', category: 'containers', keywords: 'swimlane lane pool role department', geometry: 'container', width: 260, height: 480, rotatable: false, container: true }),
   shape({ id: 'boundary', label: 'System boundary', category: 'containers', keywords: 'boundary bounded context namespace cluster', geometry: 'container', width: 420, height: 280, style: { dashed: true }, rotatable: false, container: true }),
 
   // Text & notes
@@ -104,7 +127,7 @@ const SHAPE_BY_ID = new Map(SHAPES.map((definition) => [definition.id, definitio
 
 /** The shape of an id; an unknown id (a newer file) falls back to a process box rather than failing. */
 export function shapeOf(id: string): ShapeDefinition {
-  return SHAPE_BY_ID.get(id) ?? SHAPES[0]
+  return SHAPE_BY_ID.get(id) ?? SHAPE_BY_ID.get('process') ?? SHAPES[0]
 }
 
 export const isKnownShape = (id: string) => SHAPE_BY_ID.has(id)
