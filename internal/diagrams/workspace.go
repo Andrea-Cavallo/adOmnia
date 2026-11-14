@@ -1,6 +1,7 @@
 package diagrams
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -323,7 +324,7 @@ func assignReachedOwners(entities map[string]WorkspaceEntity, links map[Workspac
 	for link := range links {
 		incoming[link.To] = append(incoming[link.To], link.From)
 	}
-	for hop := 0; hop < 2; hop++ {
+	for range 2 {
 		changed := false
 		for id := range entities {
 			if owner[id] != "" {
@@ -381,12 +382,7 @@ func sortedLinks(links map[WorkspaceLink]bool) []WorkspaceLink {
 }
 
 func containsString(values []string, value string) bool {
-	for _, candidate := range values {
-		if candidate == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, value)
 }
 
 // FindEntity returns one entity by its adapter id.

@@ -7,6 +7,7 @@ package diagrams
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -226,9 +227,10 @@ func (b *builder) node(raw string) string {
 
 func (b *builder) newNode(label, shape string) string {
 	inferred, color := inferShape(label)
-	if shape == "" {
+	switch shape {
+	case "":
 		shape = inferred
-	} else if shape == "decision" {
+	case "decision":
 		color = "amber"
 	}
 	key := b.uniqueKey(slug(label))
@@ -285,8 +287,8 @@ func (b *builder) addFence(language string, body []string) {
 			strings.HasPrefix(trimmed, "classDef") || strings.HasPrefix(trimmed, "class ") || strings.HasPrefix(trimmed, "style ") {
 			continue
 		}
-		if strings.HasPrefix(trimmed, "subgraph") {
-			b.heading(2, strings.TrimSpace(strings.TrimPrefix(trimmed, "subgraph")))
+		if group, ok := strings.CutPrefix(trimmed, "subgraph"); ok {
+			b.heading(2, strings.TrimSpace(group))
 			continue
 		}
 		if trimmed == "end" {
@@ -365,10 +367,8 @@ func inferShape(text string) (string, string) {
 		return false
 	}
 	for _, rule := range shapeRules {
-		for _, word := range rule.words {
-			if has(word) {
-				return rule.shape, rule.color
-			}
+		if slices.ContainsFunc(rule.words, has) {
+			return rule.shape, rule.color
 		}
 	}
 	return "service", "blue"
