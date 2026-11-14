@@ -34,6 +34,10 @@ jobs:
         with:
           fail-on-severity: high
           deny-licenses: GPL-3.0, AGPL-3.0
+          # elkjs (the ELK layout behind Diagram Studio) is dual-licensed "EPL-2.0 OR GPL-3.0-or-later".
+          # adOmnia uses it under EPL-2.0, so the GPL branch of the SPDX expression must not fail the
+          # license gate; deny-licenses still blocks any dependency licensed GPL-3.0 alone.
+          allow-dependencies-licenses: pkg:npm/elkjs
 
   scorecard:
     name: OSSF Scorecard
