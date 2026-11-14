@@ -1,5 +1,5 @@
 /** The right-click menu: the menu actions for the clicked element, plus Paste here and Add here. */
-import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { ClipboardPaste, Copy, Database, ExternalLink, GitBranch, ListTree, MessageSquare, MousePointerClick, Radio, RefreshCw, Square, StickyNote } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { absoluteRect } from '@/lib/diagrams/graphOps'
@@ -19,6 +19,11 @@ const MENU_ACTIONS = DIAGRAM_ACTIONS.filter((action) => action.places.includes('
 const RADIUS_PRESETS = [0, 4, 10, 20]
 /** Gap between a shape and the sticky note created beside it. */
 const STICKY_GAP = 32
+const ACTION_GROUPS = [
+  { label: 'Clipboard', ids: ['cut', 'copy', 'duplicate'] },
+  { label: 'Arrange', ids: ['group', 'ungroup', 'front', 'forward', 'backward', 'back'] },
+  { label: 'Selection', ids: ['lock', 'unlock', 'delete'] },
+]
 
 /** Opens towards the side with more room, so a menu near an edge of the window stays whole. */
 function menuPlacement(x: number, y: number): CSSProperties {
@@ -39,10 +44,24 @@ export function DiagramContextMenu() {
   const legendRows = useMemo(() => legendFromGraph(nodes ?? [], edges ?? []), [nodes, edges])
   const ref = useRef<HTMLDivElement>(null)
 
+  useLayoutEffect(() => {
+    const element = ref.current
+    if (!menu || !element) return
+    const box = element.getBoundingClientRect()
+    element.style.left = `${Math.max(8, Math.min(box.x, window.innerWidth - box.width - 8))}px`
+    element.style.top = `${Math.max(8, Math.min(box.y, window.innerHeight - box.height - 8))}px`
+    element.style.right = 'auto'
+    element.style.bottom = 'auto'
+  }, [menu])
+
   useEffect(() => {
     if (!menu) return undefined
     const close = (event: Event) => { if (!ref.current?.contains(event.target as Node)) openMenu(null) }
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') openMenu(null) }
+    const previousFocus = document.activeElement as HTMLElement | null
+    ref.current?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); openMenu(null); previousFocus?.focus() }
+    }
     window.addEventListener('pointerdown', close, true)
     window.addEventListener('keydown', onKey)
     return () => {
@@ -101,8 +120,21 @@ export function DiagramContextMenu() {
     if (id) editNode(id)
   }
 
+  const navigate = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || (event.target as HTMLElement).tagName === 'INPUT') return
+    const items = [...(ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])]
+    if (!items.length) return
+    event.preventDefault()
+    event.stopPropagation()
+    const current = items.indexOf(document.activeElement as HTMLButtonElement)
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+      : event.key === 'ArrowDown' ? (current + 1) % items.length : (current < 0 ? items.length - 1 : (current - 1 + items.length) % items.length)
+    items[index].focus()
+  }
+
   return (
-    <div ref={ref} className="diagram-menu diagram-no-export" role="menu" style={menuPlacement(menu.x, menu.y)}>
+    <div ref={ref} className="diagram-menu diagram-context-menu diagram-no-export" role="menu" aria-label={target.kind === 'node' ? 'Shape actions' : target.kind === 'edge' ? 'Connector actions' : 'Canvas actions'} tabIndex={-1} onKeyDown={navigate} style={menuPlacement(menu.x, menu.y)}>
+      <div className="diagram-context-heading"><strong>{target.kind === 'node' ? 'Shape' : target.kind === 'edge' ? 'Connector' : 'Canvas'}</strong><span>{context.nodes + context.edges > 1 ? `${context.nodes + context.edges} selected` : node?.data.label || 'Actions'}</span></div>
       {target.kind === 'node' && (
         <button type="button" role="menuitem" onClick={() => run(() => editNode(target.id))}><MousePointerClick size={12} /> Edit text<kbd>Double-click</kbd></button>
       )}
@@ -114,14 +146,15 @@ export function DiagramContextMenu() {
       )}
       {target.kind === 'node' && (
         <>
+          <div className="diagram-menu-group">Fill color</div>
           <div className="diagram-menu-swatches" role="group" aria-label="Fill color">
             {STYLE_PALETTE.map((entry) => (
               <button key={entry.id} type="button" className={entry.fill ? 'diagram-swatch' : 'diagram-swatch diagram-swatch--theme'} style={entry.fill ? { background: entry.fill, borderColor: entry.stroke } : undefined}
-                title={`Fill: ${entry.label}`} aria-label={`Fill ${entry.label}`} onClick={() => run(() => fillSelection(entry.fill, entry.stroke))} />
+                title={`Fill: ${entry.label}`} aria-label={`Fill ${entry.label}`} aria-pressed={node?.data.style.fill === entry.fill} onClick={() => run(() => fillSelection(entry.fill, entry.stroke))} />
             ))}
             <input type="color" className="diagram-swatch-custom" title="Custom fill" aria-label="Custom fill" onChange={(event) => fillSelection(event.target.value)} />
           </div>
-          <div className="diagram-menu-group">Corners</div>
+          <div className="diagram-menu-group">Corner radius <span>px</span></div>
           <div className="diagram-menu-radii" role="group" aria-label="Corner radius">
             {RADIUS_PRESETS.map((radius) => (
               <button
@@ -143,6 +176,7 @@ export function DiagramContextMenu() {
       )}
       {source && (
         <>
+          <div className="diagram-menu-group">Linked source</div>
           <div className="diagram-menu-divider" role="separator" />
           {source.file && (
             <button type="button" role="menuitem" onClick={() => run(() => void useDiagramCodeGraph.getState().openSource(node!.id))}>
@@ -174,13 +208,18 @@ export function DiagramContextMenu() {
           <div className="diagram-menu-divider" role="separator" />
         </>
       )}
-      {actions.map((action) => {
-        const Icon = action.icon
-        return (
-          <button key={action.id} type="button" role="menuitem" className={action.id === 'delete' ? 'is-danger' : undefined} onClick={() => run(() => action.run(store()))}>
-            <Icon size={12} /> {action.label}{action.shortcut && <kbd>{shortcutLabel(action.shortcut)}</kbd>}
-          </button>
-        )
+      {ACTION_GROUPS.map((group) => {
+        const grouped = actions.filter((action) => group.ids.includes(action.id))
+        if (!grouped.length) return null
+        return <div key={group.label} role="group" aria-label={group.label} className="diagram-context-section">
+          <div className="diagram-menu-group">{group.label}</div>
+          {grouped.map((action) => {
+            const Icon = action.icon
+            return <button key={action.id} type="button" role="menuitem" className={action.id === 'delete' ? 'is-danger' : undefined} onClick={() => run(() => action.run(store()))}>
+              <Icon size={14} /><span>{action.label}</span>{action.shortcut && <kbd>{shortcutLabel(action.shortcut)}</kbd>}
+            </button>
+          })}
+        </div>
       })}
       {target.kind === 'pane' && (
         <>

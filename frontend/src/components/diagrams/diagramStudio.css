@@ -28,8 +28,8 @@
 }
 
 /* ---- layout */
-.diagram-body { display: grid; grid-template-columns: 216px minmax(0, 1fr) 272px; flex: 1; min-height: 0; }
-.diagram-body--no-inspector { grid-template-columns: 216px minmax(0, 1fr); }
+.diagram-body { display: grid; grid-template-columns: 248px minmax(0, 1fr) 272px; flex: 1; min-height: 0; }
+.diagram-body--no-inspector { grid-template-columns: 248px minmax(0, 1fr); }
 .diagram-body--no-library { grid-template-columns: minmax(0, 1fr) 272px; }
 .diagram-body--no-library.diagram-body--no-inspector { grid-template-columns: minmax(0, 1fr); }
 .diagram-canvas-host { position: relative; min-width: 0; min-height: 0; border-left: 1px solid var(--color-border-1); border-right: 1px solid var(--color-border-1); }
@@ -268,8 +268,8 @@ textarea.diagram-input { height: auto; padding: 5px 7px; resize: vertical; line-
   .diagram-flow { display: none; }
 }
 @media (max-width: 1100px) {
-  .diagram-body { grid-template-columns: 180px minmax(0, 1fr) 240px; }
-  .diagram-body--no-inspector { grid-template-columns: 180px minmax(0, 1fr); }
+  .diagram-body { grid-template-columns: 224px minmax(0, 1fr) 240px; }
+  .diagram-body--no-inspector { grid-template-columns: 224px minmax(0, 1fr); }
   .diagram-body--no-library { grid-template-columns: minmax(0, 1fr) 240px; }
   .diagram-body--no-library.diagram-body--no-inspector { grid-template-columns: minmax(0, 1fr); }
 }
@@ -393,3 +393,50 @@ textarea.diagram-input { height: auto; padding: 5px 7px; resize: vertical; line-
   color: var(--color-warning, #d4a03a);
   pointer-events: none;
 }
+
+/* Asset browser */
+.diagram-library-heading { display: flex; flex-direction: column; gap: 4px; padding: 16px 12px 4px; }
+.diagram-library-heading strong { font-size: 13px; font-weight: 600; color: var(--color-text-1); }
+.diagram-library-heading > span { font-size: 11px; color: var(--color-text-3); }
+.diagram-library-tabs { margin: 8px 12px 0; padding: 3px; background: var(--color-surface-0); }
+.diagram-library-tabs button { display: flex; align-items: center; justify-content: center; gap: 8px; height: 30px; font-family: inherit; font-size: 11.5px; letter-spacing: 0; text-transform: none; }
+.diagram-library-tabs button[aria-selected='true'] { background: var(--color-surface-2); color: var(--color-text-1); }
+.diagram-library .diagram-search { flex-shrink: 0; height: 32px; margin: 12px; gap: 8px; }
+.diagram-library-scroll { min-height: 0; padding: 0 12px 16px; scrollbar-width: thin; scrollbar-color: var(--color-border-3) transparent; }
+.diagram-library-group + .diagram-library-group { margin-top: 16px; }
+.diagram-library-group h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 8px; font-family: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--color-text-2); }
+.diagram-library-group h3 > span { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--color-text-3); }
+.diagram-tiles { gap: 6px; }
+.diagram-tile { gap: 6px; padding: 10px 4px 8px; border-color: var(--color-border-1); border-radius: 6px; background: var(--color-surface-0); }
+.diagram-tile-preview { height: 40px; width: 100%; }
+.diagram-tile-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 26px; font-size: 10px; line-height: 13px; white-space: normal; text-align: center; color: var(--color-text-2); }
+.diagram-icon-sets { margin: 12px 12px 0; gap: 6px; }
+.diagram-icon-sets button { height: 30px; }
+.diagram-icon-filter { width: calc(100% - 24px); margin: 0 12px 12px; height: 30px; }
+.diagram-icon-chips { margin: 0 12px 8px; }
+.diagram-icon-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.diagram-icon-tile { gap: 8px; padding: 10px 4px 8px; border-color: var(--color-border-1); border-radius: 6px; background: var(--color-surface-0); }
+.diagram-icon-tile img { width: 32px; height: 32px; }
+.diagram-icon-tile span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 26px; font-size: 10px; line-height: 13px; text-align: center; white-space: normal; overflow-wrap: anywhere; color: var(--color-text-2); }
+.diagram-tile:hover, .diagram-icon-tile:hover { border-color: var(--color-border-3); background: var(--color-surface-2); }
+.diagram-library button:focus-visible, .diagram-library select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.diagram-icon-tile:active { cursor: grabbing; }
+
+/* Context actions use a wider, labelled layout than toolbar dropdowns. */
+.diagram-context-menu { width: 296px; max-width: calc(100vw - 16px); max-height: min(85vh, 880px); padding: 6px; outline: none; scrollbar-width: thin; }
+.diagram-context-heading { display: flex; align-items: baseline; gap: 12px; padding: 8px 10px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--color-border-2); }
+.diagram-context-heading strong { flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--color-text-1); }
+.diagram-context-heading > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--color-text-3); }
+.diagram-context-menu .diagram-menu-group { display: flex; justify-content: space-between; padding: 10px 10px 5px; font-family: inherit; font-size: 10px; letter-spacing: .04em; color: var(--color-text-3); }
+.diagram-context-menu button[role='menuitem'] { min-height: 32px; padding: 6px 10px; gap: 10px; font-size: 12px; }
+.diagram-context-menu button[role='menuitem'] > svg { flex-shrink: 0; width: 14px; height: 14px; color: var(--color-text-3); }
+.diagram-context-menu kbd { font-size: 10px; color: var(--color-text-3); }
+.diagram-context-section + .diagram-context-section { margin-top: 6px; border-top: 1px solid var(--color-border-1); }
+.diagram-context-menu button.is-danger { color: var(--color-error); }
+.diagram-context-menu button.is-danger > svg { color: inherit; }
+.diagram-context-menu button:focus-visible, .diagram-context-menu input:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; background-color: var(--color-surface-2); }
+.diagram-context-menu .diagram-menu-swatches { gap: 7px; padding: 6px 10px; }
+.diagram-context-menu .diagram-menu-swatches button { width: 20px; height: 20px; }
+.diagram-context-menu .diagram-menu-swatches button[aria-pressed='true'] { outline: 2px solid var(--color-text-1); outline-offset: 2px; }
+.diagram-context-menu .diagram-menu-radii { padding: 4px 10px 8px; gap: 6px; }
+.diagram-context-menu .diagram-menu-radii button { flex: 1; justify-content: center; height: 28px; }

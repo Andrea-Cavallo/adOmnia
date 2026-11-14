@@ -89,7 +89,7 @@ function CategoryGroup({ title, icons, open, onOpen, onAdd }: { title: string; i
   const shown = open ? icons : icons.slice(0, PREVIEW_COUNT)
   return (
     <section className="diagram-library-group">
-      <h3>{title} · {icons.length}</h3>
+      <h3>{title}<span>{icons.length}</span></h3>
       <div className="diagram-icon-tiles">{shown.map((icon) => <IconTile key={icon.p} icon={icon} onAdd={onAdd} />)}</div>
       {shown.length < icons.length && <button type="button" className="diagram-inspector-action" onClick={onOpen}>Show all {icons.length}</button>}
     </section>

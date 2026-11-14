@@ -6,9 +6,9 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
-## [1.0.32] — 2026-11-14
+## [1.0.31] — 2026-11-14
 
-Diagram Studio becomes a living view of the code. No 1.0.31 build was published, so this release carries the 1.0.31 changes below too.
+Diagram Studio becomes a living view of the code, WebSocket messages are readable and the Hub mini game is off by default.
 
 ### Diagram Studio
 
@@ -29,10 +29,6 @@ Diagram Studio becomes a living view of the code. No 1.0.31 build was published,
 - **draw.io and SVG.** Export and import `.drawio` (every page, styles, containers, connection points, bends); exported SVGs carry the editable diagram, and draw.io SVGs import as diagrams.
 - **From Markdown and over MCP.** *New → From Markdown* turns components, steps, links and Mermaid blocks into a colored, laid-out diagram; the same parser powers the new `diagram_from_markdown`, `diagram_create` and `diagram_shapes` MCP tools, which write a file Diagram Studio opens.
 - **Diagram Studio.** A Lucidchart-style diagram editor on an infinite canvas (React Flow): a searchable library of basic, flowchart, architecture, integration (Go/Java services, REST, SOAP, Kafka, Camel routes, Saga steps, OSGi bundles), UML (classes, actors, use cases), container, swimlane and note shapes; resize, rotate, inline text editing and several connection points per side; straight, Bézier and orthogonal connectors routed around nodes, with draggable ends, editable bends, arrowheads, dashes, labels and glowing data-flow pulses; alignment guides, snap to grid, multi-selection, group/ungroup, align/distribute, layers, locking, context menus, undo/redo and keyboard shortcuts; ELK auto-layout; a worked orchestrated-Saga example colored by role. A connector released on a shape attaches to it, and released on the empty canvas it grows a new connected shape, in line with the one it started from. Diagrams autosave as versioned JSON in the local store and export to PNG, SVG or JSON. Guide: `docs/DIAGRAM-STUDIO.md`.
-
-## [1.0.31] — 2026-11-09
-
-First published build since 1.0.29: the 1.0.30 tag never produced artifacts, so this release carries the 1.0.30 changes below too.
 
 ### API workspace
 

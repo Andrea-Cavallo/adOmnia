@@ -6,13 +6,9 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md` (local planning note; the published status is [ISSUES.md](ISSUES.md)). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
-## v1.0.32 — Diagram Studio linked to the code
+## v1.0.31 — Diagram Studio linked to the code, readable WebSocket messages
 
-[Release notes](releases/v1.0.32.md). Generate a diagram from the Code Studio project, open a node's source in a split, refresh it from code; plus pages, icons, sequence diagrams, draw.io and Markdown. No 1.0.31 build was published, so this release carries it too. Covered by automated tests; the desktop checks of the diagram + code split and of two projects with same-named symbols remain manual.
-
-## v1.0.31 — readable WebSocket messages, Hub game off by default (and everything in 1.0.30)
-
-[Release notes](releases/v1.0.31.md). The 1.0.30 tag never produced artifacts; this is the first published build with the Java decompiler, JUnit Plug-in Tests, WebSocket through the proxy and the Hub mini game. Native acceptance in the desktop app remains manual.
+[Release notes](releases/v1.0.31.md). Generate a diagram from the Code Studio project, open a node's source in a split, refresh it from code; pages, icons, sequence diagrams, draw.io, Markdown and presets drawn with technology icons; readable WebSocket messages; the Hub mini game off by default. Covered by automated tests and by a run of the desktop app on Windows (generation, split, callers and callees, reverse navigation, legend, presets); two projects with same-named symbols, a detached Code Studio and macOS/Linux remain manual.
 
 ## v1.0.30 — Java decompiler, JUnit Plug-in Tests, WebSocket through the proxy, Hub mini game
 
