@@ -52,7 +52,7 @@ Shortcuts work while the canvas has focus and never while you type in a field.
 - **UML:** class and interface (with attribute and operation compartments), actor, use case, package, component.
 - **Sequence (UML):** lifeline, actor lifeline, activation bar, loop, alt/else, opt (see *Sequence diagrams*).
 - **Containers:** container, swimlane, system boundary (dashed).
-- **Text & notes:** free text, note, sticky notes (yellow, pink, green, blue), **legend** (rows of color + meaning, solid or dashed, edited in the inspector).
+- **Text & notes:** free text, note, sticky notes (yellow, pink, green, blue), **legend** (rows of color + meaning, solid or dashed; double-click the title or a row to write in place, *+ Add row* on a selected legend, colors and dashes in the inspector).
 - **Icons tab:** two sets, chosen at the top. *Tech logos*: the 3,472 Simple Icons logos in their brand color, grouped in Languages, Runtimes & frameworks, Databases, Messaging & streaming (Kafka, RabbitMQ, Pulsar…), Cloud & hosting, Containers & infrastructure, Operating systems, CI/CD & dev tools, Observability, Security & identity, AI & data science, and *More brands* for the rest. *AWS*: 783 architecture icons (services, resources, categories) in 27 categories. A category menu narrows the list, search matches name, category and aliases (and tells you how many matches the other set has), and the last 12 icons you used stay on top. Drag an icon onto the canvas or click it; it becomes an image node with its name underneath. The pictures are static files (`frontend/public/diagram-icons`, manifest written by `node scripts/import-diagram-icons.mjs --aws <dir> --tech <simple-icons checkout>`) loaded only when the tab opens.
 
 ## Sequence diagrams
@@ -110,6 +110,10 @@ Unsaved Monaco buffers are not analysed: when a buffer becomes dirty the generat
 | Sequence | *Sequence (registration and login)* | Lifelines, sync calls, replies, activation bars and an `alt` fragment |
 | Architecture | *Service platform* | A system boundary with two services inside, a shared database, a cache, a topic and an external SOAP system |
 | Architecture | *Request across layers · swimlanes* | One `POST /orders` as five lanes — client, edge, service, database, event bus — with the steps of each layer |
+| Architecture | *Event-driven with Kafka* | Technology icons as nodes: an outbox relayed to a topic, three consumers, a search projection and a dead-letter topic |
+| Architecture | *Streaming analytics* | Kafka → Flink → ClickHouse and object storage, read by Grafana |
+| Architecture | *Microservices on Kubernetes* | Icons inside a cluster boundary, and the telemetry path to Jaeger, Prometheus and Grafana |
+| Patterns | *CQRS with a read model* | Shapes and icons mixed: command side, events, projector, read model, query side |
 | Patterns | *Saga (orchestrated)* | An orchestrator, its three local transactions, their compensations and the two outcomes, colored by role |
 
 A blueprint is laid out by ELK when it is created; swimlane presets place their lanes by declaration order instead (`lanesFromBlueprint`), because ELK orders top-level nodes by their edges and lanes must read in the order they were written. `templates.test.ts` builds every preset and fails on an unknown shape, an unknown color, a link to a node that does not exist or a fragment that is never closed.

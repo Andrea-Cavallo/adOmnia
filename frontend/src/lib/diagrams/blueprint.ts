@@ -5,7 +5,7 @@
  * stays outside the editor: this module never reads the workspace.
  */
 import { createEdge, createNode } from './graphOps'
-import { autoLayout, type LayoutOptions } from './layout'
+import { autoLayout, DEFAULT_LAYOUT, type LayoutOptions } from './layout'
 import type { DiagramCodeRef, DiagramEdgeData, DiagramGraph, DiagramNode, EdgeRouting, LinkConfidence } from './model'
 import { DEFAULT_NODE_STYLE, STYLE_PALETTE, shapeOf } from './shapes'
 
@@ -17,6 +17,8 @@ export interface BlueprintNode {
   subtitle?: string
   /** A tint of STYLE_PALETTE (`green`, `violet`…), for nodes that carry a meaning. */
   color?: string
+  /** A picture of the icon library (`tech/apachekafka.svg`) drawn instead of the shape, with the label under it. */
+  icon?: string
   /** Key of the container this node sits in. */
   parent?: string
   /** The analysed entity this node stands for (workspace generation only). */
@@ -57,6 +59,10 @@ const tint = (id: string | undefined) => STYLE_PALETTE.find((entry) => entry.id 
 /** Space between the nodes inside a container and between them and its border. */
 const CONTAINER_GAP = 40
 
+/** Where the icon library is served from; the paths are the ones of its manifest. */
+export const DIAGRAM_ICON_BASE = `${import.meta.env.BASE_URL}diagram-icons/`
+const ICON_NODE_SIZE = 64
+
 const TEXT_FIT = { labelChar: 8.2, subtitleChar: 6.8, padding: 56, max: 340 }
 
 /** A generated node is as wide as its name and its file:line, so neither wraps mid-word nor overflows. */
@@ -72,7 +78,10 @@ export function graphFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRou
   const created = blueprint.nodes.map((spec) => {
     const color = tint(spec.color)
     const style = color ? { style: { ...DEFAULT_NODE_STYLE, ...shapeOf(spec.shape).style, fill: color.fill, stroke: color.stroke } } : {}
-    const node = createNode(spec.shape, { x: 0, y: 0 }, {
+    const iconNode = spec.icon
+      ? { ...createNode('image', { x: 0, y: 0 }, { image: `${DIAGRAM_ICON_BASE}${spec.icon}`, label: spec.subtitle ? `${spec.label} · ${spec.subtitle}` : spec.label }), width: ICON_NODE_SIZE, height: ICON_NODE_SIZE }
+      : null
+    const node = iconNode ?? createNode(spec.shape, { x: 0, y: 0 }, {
       label: spec.label,
       ...(spec.subtitle === undefined ? {} : { subtitle: spec.subtitle }),
       ...(spec.source ? { source: spec.source, generated: true } : {}),
@@ -145,6 +154,14 @@ export function lanesFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRou
 }
 
 
-export async function diagramFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRouting, layout?: LayoutOptions): Promise<DiagramGraph> {
-  return autoLayout(graphFromBlueprint(blueprint, routing), layout)
+/** Room a connector label needs between two layers, so it never covers the shapes it joins. */
+const LABEL_CHAR = 6
+const LABEL_MARGIN = 28
+/** ELK puts 1.4 × spacing between layers (layout.ts). */
+const LAYER_FACTOR = 1.4
+
+export async function diagramFromBlueprint(blueprint: DiagramBlueprint, routing: EdgeRouting, layout: LayoutOptions = DEFAULT_LAYOUT): Promise<DiagramGraph> {
+  const longest = Math.max(0, ...blueprint.links.map((link) => link.label?.length ?? 0))
+  const spacing = Math.max(layout.spacing, Math.ceil((longest * LABEL_CHAR + LABEL_MARGIN) / LAYER_FACTOR))
+  return autoLayout(graphFromBlueprint(blueprint, routing), { ...layout, spacing })
 }

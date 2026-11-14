@@ -8,9 +8,10 @@
 import { memo, useEffect, useMemo, useState, type DragEvent } from 'react'
 import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DIAGRAM_ICON_BASE } from '@/lib/diagrams/blueprint'
 import { ICON_DRAG_TYPE } from './dragTypes'
 
-const BASE = `${import.meta.env.BASE_URL}diagram-icons/`
+const BASE = DIAGRAM_ICON_BASE
 /** Icons shown per category before "Show all", so a few thousand pictures never load at once. */
 const PREVIEW_COUNT = 16
 const RECENT_KEY = 'adomnia.diagrams.recentIcons'

@@ -2,12 +2,15 @@
  * The presets are data: a wrong shape id or a link to a node that does not exist fails silently at
  * runtime (the shape falls back, the link disappears), so every template is built here once.
  */
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { graphFromBlueprint, lanesFromBlueprint } from './blueprint'
 import { parseSequence, sequenceGraph } from './sequence'
 import { SHAPES, STYLE_PALETTE } from './shapes'
 import { DIAGRAM_TEMPLATES, templatesByCategory } from './templates'
 
+const ICONS = resolve(__dirname, '../../../public/diagram-icons')
 const shapeIds = new Set(SHAPES.map((shape) => shape.id))
 const colors = new Set(STYLE_PALETTE.map((entry) => entry.id))
 
@@ -39,6 +42,10 @@ describe('diagram templates', () => {
         if (node.color) expect(colors.has(node.color), `${node.key} → ${node.color}`).toBe(true)
       }
       for (const link of blueprint.links) if (link.color) expect(colors.has(link.color), `${link.from} → ${link.color}`).toBe(true)
+    })
+
+    it('uses icons that the library ships', () => {
+      for (const node of blueprint.nodes) if (node.icon) expect(existsSync(resolve(ICONS, node.icon)), `${node.key} → ${node.icon}`).toBe(true)
     })
 
     it('links and parents point at declared nodes', () => {
