@@ -266,10 +266,29 @@ imports, domains, no-cycles, violation report. `metrics.go` coupling metrics;
 Schema; producer/consumer drift and breaking message changes between revisions).
 
 ### 5.12 `agentreview` — AI-agent edit review
-At each agent turn the `Tracker` snapshots in-memory file fingerprints; at turn end it
-diffs. **Nothing touches disk unless the user accepts**: `AcceptFile`/`RejectFile`/
-`AcceptAll`/`RejectAll`, `SetBaseline` (partial accept), `WriteCurrent` (partial reject,
-`ErrStale` guard — never overwrites a later edit). Event `agentReview.changed`.
+At each built-in agent turn the `Tracker` captures file contents and fingerprints in memory;
+at turn end it records the diff. Accepting updates review state; rejecting restores the selected
+changes on disk. `AcceptFile`/`RejectFile`, `AcceptAll`/`RejectAll`, `SetBaseline` and `WriteCurrent`
+retain their contracts. `ApplySelection` additionally compares both the displayed baseline and
+current text before a partial decision (`ErrStale`), supports added/deleted text files, and checks
+that paths still resolve inside the project. Event `agentReview.changed` refreshes the UI.
+
+The frontend pairs replacement rows consistently with its split diff and applies selected changes
+from bottom to top. Function ranges come from document symbols (method/constructor/function),
+including nested symbols. The existing Wails facade exposes `ApplyAgentReviewSelection`; the
+store uses that checked path for both selections and hunk decisions. No review state is persisted
+on app exit.
+
+#### `agentcontrol` — local MCP to desktop bridge
+`internal/ide/agentcontrol` owns authenticated loopback transport, discovery, project-session
+routing, scoped debugger actions, bounded event history and external review capture intervals.
+It never imports language adapters or the Code Studio host. `code_studio_agentcontrol.go` wires
+existing host services through typed callbacks and starts the bridge after desktop attachment;
+`ServiceShutdown` stops it and removes discovery credentials. `internal/adomniacli/mcp_ide.go`
+registers the stdio tools, enforces `--write`, and connects to exactly one desktop process for the
+project. Source navigation is dispatched through the frontend entity router to the owning window.
+`internal/database/agent_query.go` reuses saved SQL connections and database-enforced read-only
+transactions, with statement, time and row limits. [API, setup and acceptance](AGENT-IDE-CONTROL.md).
 
 ### 5.13 `remote` — WSL / SSH / dev containers
 `Target{Kind, Name, Directory}` (WSL distro | SSH host | container); `Wrap()` translates

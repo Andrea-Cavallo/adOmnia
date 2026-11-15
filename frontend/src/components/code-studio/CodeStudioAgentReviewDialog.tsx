@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import { Check, Columns2, FileDiff, FileText, Loader2, Rows2, Undo2 } from 'lucide-react'
 import { CodeStudioModal } from './CodeStudioModal'
 import { confirm } from '@/lib/confirmDialog'
-import type { AgentReviewFile } from '@/lib/code-studio-api'
-import { agentReviewHunks, agentReviewSplitRows, agentReviewStats, type AgentReviewLine } from '@/lib/code-studio/agentReview'
+import { openGoIDEDocument, type AgentReviewFile } from '@/lib/code-studio-api'
+import { requestDocumentSymbols } from '@/lib/code-studio-lsp-api'
+import { agentReviewHunks, agentReviewSplitRows, agentReviewStats, selectedReviewHunks, reviewFunctions, type ReviewFunctionSymbol, type AgentReviewLine } from '@/lib/code-studio/agentReview'
 import type { AgentReviewComment, AgentTask } from '@/lib/agent-task-api'
 import { nextSelection, ReviewCommentComposer, TaskReviewPanel, useReviewTask, type ReviewSelection } from './CodeStudioAgentReviewComments'
 import { useAgentReviewStore, pendingAgentFiles } from '@/stores/codeStudioAgentReview'
@@ -42,7 +43,8 @@ function LineNumber({ side, number, picker }: { side: 'new' | 'old'; number?: nu
   if (number === undefined) return <span className="w-10 shrink-0 select-none pr-2" />
   if (!picker) return <span className="w-10 shrink-0 select-none pr-2 text-right text-text-4">{number}</span>
   const selected = picker.selection?.side === side && number >= picker.selection.start && number <= picker.selection.end
-  return <button type="button" title={`Comment on line ${number}${side === 'old' ? ' (before the agent)' : ''}`} aria-pressed={selected}
+  return <button type="button" title={`Select line ${number}${side === 'old' ? ' (before the agent)' : ''}`} aria-pressed={selected}
+    aria-label={`Select line ${number} ${side === 'old' ? 'before' : 'after'} the agent`}
     className={`w-10 shrink-0 select-none pr-2 text-right hover:text-accent focus-visible:outline-1 focus-visible:outline-accent ${selected ? 'bg-accent/25 text-accent' : 'text-text-4'}`}
     onClick={(event) => picker.pick(side, number, event.shiftKey)}>{number}</button>
 }
@@ -116,7 +118,10 @@ function FileReview({ root, file, busy, task, split, selection, setSelection }: 
   setSelection: (selection: ReviewSelection | null) => void
 }) {
   const store = useAgentReviewStore((state) => state)
-  const picker: LinePicker | undefined = task && file.reviewable
+  const [functionState, setFunctionState] = useState<{ path: string; current: string; items: ReviewFunctionSymbol[] } | null>(null)
+  const [functionError, setFunctionError] = useState('')
+  const [loadingFunctions, setLoadingFunctions] = useState(false)
+  const picker: LinePicker | undefined = file.reviewable && file.status !== 'renamed'
     ? { selection: selection?.path === file.path ? selection : null, pick: (side, line, extend) => setSelection(nextSelection(selection, file.path, side, line, extend)) }
     : undefined
   const Lines = split && file.status === 'modified' ? SplitLines : DiffLines
@@ -130,6 +135,31 @@ function FileReview({ root, file, busy, task, split, selection, setSelection }: 
   const { reviewable, status: fileStatus, baseline, current } = file
   const hunks = useMemo(() => (reviewable && fileStatus === 'modified' ? agentReviewHunks(baseline, current) : []), [reviewable, fileStatus, baseline, current])
   const canOpen = file.status !== 'deleted'
+  const activeSelection = selection?.path === file.path ? selection : null
+  const selectedCount = activeSelection ? selectedReviewHunks(baseline, current, activeSelection).length : 0
+  const functions = functionState?.path === file.path && functionState.current === current ? functionState.items : []
+  const loadFunctions = async () => {
+    setFunctionError('')
+    setLoadingFunctions(true)
+    try {
+      const session = useCodeStudioStore.getState().sessions.find(item => samePath(item.project.realPath, root) || samePath(item.project.rootPath, root))
+      if (!session) throw new Error('Open this project in Code Studio to load its functions')
+      const opened = await openGoIDEDocument(session.id, file.path)
+      if (opened.content !== current) throw new Error('The file changed. Refresh the review before selecting functions')
+      const result = await requestDocumentSymbols(session.id, opened.document.id)
+      const items = reviewFunctions(result.symbols)
+      setFunctionState({ path: file.path, current, items })
+      if (!items.length) setFunctionError('No functions returned by the language server. Select changed lines instead.')
+    } catch (error) {
+      setFunctionError(error instanceof Error ? error.message : String(error))
+    } finally { setLoadingFunctions(false) }
+  }
+  const decideSelection = async (accept: boolean) => {
+    if (!activeSelection || !selectedCount) return
+    await store.decideSelection(root, file, activeSelection, accept)
+    setSelection(null)
+  }
+
 
   const rejectFile = async () => {
     const what = file.status === 'added' ? `Delete ${file.path}, created by the agent?` : file.status === 'renamed' ? `Move ${file.path} back to ${file.from}?` : `Restore ${file.path} as it was before the agent?`
@@ -170,6 +200,24 @@ function FileReview({ root, file, busy, task, split, selection, setSelection }: 
         <button type="button" disabled={writeBlocked} title={unsavedReason} onClick={() => void rejectFile()} className="gs-btn gs-btn-secondary gs-btn-sm"><Undo2 size={12} />Reject file</button>
         <button type="button" disabled={busy} onClick={() => void store.acceptFile(root, file)} className="gs-btn gs-btn-primary gs-btn-sm"><Check size={12} />Accept file</button>
       </header>
+      {reviewable && fileStatus !== 'renamed' && <div className="flex flex-wrap items-center gap-2 border-b border-border-1 px-3 py-2 text-[11px]">
+        <span className="text-text-3">Select a line number; Shift+click selects a range.</span>
+        <button type="button" className="gs-btn gs-btn-secondary gs-btn-sm" disabled={busy || loadingFunctions || unsaved || fileStatus === 'deleted'} onClick={() => void loadFunctions()}>{loadingFunctions ? 'Loading functions…' : 'Load functions'}</button>
+        {functions.length > 0 && <select aria-label="Select function to review" className="gs-input max-w-64" value="" onChange={event => {
+          const symbol = functions[Number(event.target.value)]
+          if (symbol) setSelection({ path: file.path, side: 'new', start: symbol.range.startLine, end: symbol.range.endLine })
+        }}>
+          <option value="">Select function…</option>
+          {functions.map((symbol, index) => <option key={`${symbol.name}:${symbol.range.startLine}`} value={index}>{symbol.name} · {symbol.range.startLine}–{symbol.range.endLine}</option>)}
+        </select>}
+        {activeSelection && <>
+          <span className="text-text-2">{activeSelection.side === 'old' ? 'Before' : 'After'}: {activeSelection.start}–{activeSelection.end}</span>
+          <button type="button" className="gs-btn gs-btn-secondary gs-btn-sm" disabled={writeBlocked || !selectedCount} title={unsavedReason} onClick={() => void decideSelection(false)}>Reject selection</button>
+          <button type="button" className="gs-btn gs-btn-primary gs-btn-sm" disabled={writeBlocked || !selectedCount} title={unsavedReason} onClick={() => void decideSelection(true)}>Accept selection</button>
+          <button type="button" className="gs-btn gs-btn-ghost gs-btn-sm" onClick={() => setSelection(null)}>Clear selection</button>
+        </>}
+        {functionError && <p role="status" className="w-full text-text-3">{functionError}</p>}
+      </div>}
       <div className="min-h-0 flex-1 overflow-auto bg-surface-0">
         {task && selection?.path === file.path && <ReviewCommentComposer key={`${selection.side}:${selection.start}`} task={task} file={file} selection={selection} onDone={() => setSelection(null)} />}
         {body}

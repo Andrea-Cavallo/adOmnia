@@ -56,6 +56,20 @@
     if (event.type === 'reload') { report('reloading', event.paths); location.reload() }
   }
 
+  // Design Mode: the editing script is loaded on demand, once per page, and only talks to the
+  // IDE origin (it reads it from __adomniaHostOrigin and refuses to connect without it).
+  var designLoaded = false
+  function loadDesign() {
+    if (designLoaded || !parentOrigin) return
+    designLoaded = true
+    window.__adomniaHostOrigin = parentOrigin
+    var script = document.createElement('script')
+    script.src = '/__adomnia/design.js'
+    script.setAttribute('data-adomnia-design', '')
+    script.addEventListener('error', function () { designLoaded = false; report('design-failed', {}) })
+    ;(document.head || document.documentElement).appendChild(script)
+  }
+
   // Commands from the IDE toolbar.
   window.addEventListener('message', function (message) {
     var data = message.data
@@ -70,6 +84,8 @@
     else if (data.type === 'back') history.back()
     else if (data.type === 'forward') history.forward()
     else if (data.type === 'auto-reload') autoReload = data.enabled !== false
+    else if (data.type === 'design') loadDesign()
+    else if (data.type === 'scroll') window.scrollBy(Number(data.dx) || 0, Number(data.dy) || 0)
     else if (data.type === 'navigate' && typeof data.url === 'string') {
       try { var target = new URL(data.url, location.href); if (target.origin === location.origin) location.assign(target.toString()) } catch (e) { /* ignore */ }
     }

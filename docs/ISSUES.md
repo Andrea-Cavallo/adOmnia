@@ -42,6 +42,19 @@ The reproducible steps for every row live in
 
 ## New This Cycle
 
+### Agent-controlled IDE and selective AI diff review (2026-11-15)
+
+Implemented in the working tree: local authenticated MCP-to-desktop bridge for editor locations,
+tests, installed debuggers, recent logs and saved SQL connections; external before/after agent
+captures; line/range/function selections in the existing review, with baseline and disk conflict
+checks. This entry records implementation work, not a published release.
+
+Focused Go packages, 28 frontend tests, the full frontend TypeScript/production build, startup
+bundle check and Go build pass. Browser fixture exercised single-line rejection with neighboring
+edits preserved. Native desktop/MCP-client acceptance and disposable PostgreSQL/MySQL checks remain
+open in [AGENT-IDE-CONTROL.md](AGENT-IDE-CONTROL.md#verification).
+
+
 ### Live Development Session — implemented, manual verification open
 
 Backend, correlation and the Delve loop are covered end to end by `internal/codestudio/devsession_integration_test.go` (real Go service under real Delve; skipped without `dlv`). Details: [LIVE-SESSION.md](LIVE-SESSION.md).

@@ -274,3 +274,57 @@ func TestMovedFileIsShownAsARename(t *testing.T) {
 		t.Fatal("the moved file was not removed")
 	}
 }
+
+func TestSelectionRefusesStaleDiskAndBaseline(t *testing.T) {
+	root := t.TempDir()
+	tracker := NewTracker()
+	writeFile(t, root, "a.go", "before\n")
+	agentTurn(t, tracker, root, func() { writeFile(t, root, "a.go", "after\n") })
+	if err := tracker.ApplySelection(root, "a.go", "accepted\n", "wrong\n", "after\n", true); !errors.Is(err, ErrStale) {
+		t.Fatalf("stale baseline: %v", err)
+	}
+	if err := tracker.ApplySelection(root, "a.go", "accepted\n", "before\n", "wrong\n", false); !errors.Is(err, ErrStale) {
+		t.Fatalf("stale current: %v", err)
+	}
+	if got := readFile(t, root, "a.go"); got != "after\n" {
+		t.Fatal(got)
+	}
+	if err := tracker.ApplySelection(root, "a.go", "partial\n", "before\n", "after\n", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := tracker.ApplySelection(root, "a.go", "before\n", "before\n", "after\n", false); !errors.Is(err, ErrStale) {
+		t.Fatalf("concurrent baseline: %v", err)
+	}
+	if err := tracker.ApplySelection(root, "a.go", "partial\n", "partial\n", "after\n", false); err != nil {
+		t.Fatal(err)
+	}
+	if len(tracker.Get(root).Files) != 0 {
+		t.Fatal("review should be resolved")
+	}
+}
+
+func TestSelectionOnCreatedAndDeletedFiles(t *testing.T) {
+	root := t.TempDir()
+	tracker := NewTracker()
+	agentTurn(t, tracker, root, func() { writeFile(t, root, "new.go", "one\ntwo\n") })
+	if err := tracker.ApplySelection(root, "new.go", "one\n", "", "one\ntwo\n", true, StatusAdded); err != nil {
+		t.Fatal(err)
+	}
+	if err := tracker.ApplySelection(root, "new.go", "one\n", "one\n", "one\ntwo\n", false, StatusModified); err != nil {
+		t.Fatal(err)
+	}
+	if got := readFile(t, root, "new.go"); got != "one\n" {
+		t.Fatal(got)
+	}
+	agentTurn(t, tracker, root, func() {
+		if err := os.Remove(filepath.Join(root, "new.go")); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if err := tracker.ApplySelection(root, "new.go", "one\n", "one\n", "", false, StatusDeleted); err != nil {
+		t.Fatal(err)
+	}
+	if got := readFile(t, root, "new.go"); got != "one\n" {
+		t.Fatal(got)
+	}
+}

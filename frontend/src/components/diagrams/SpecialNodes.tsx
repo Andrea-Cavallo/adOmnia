@@ -84,9 +84,20 @@ export function LegendBody({ id, data, fontSize, selected, editingTitle }: { id:
       <ul>
         {rows.map((entry, index) => (
           <li key={index} onDoubleClick={(event) => { if (!editable) return; event.stopPropagation(); setEditingRow(index) }} title={editable ? 'Double-click to write' : undefined}>
+            <label className={`diagram-legend-color${editable ? ' nodrag nopan nowheel' : ''}`} title={editable ? `Change row ${index + 1} color` : undefined}
+              onPointerDown={(event) => { if (editable) event.stopPropagation() }}
+              onClick={(event) => { if (editable) event.stopPropagation() }}
+              onDoubleClick={(event) => { if (editable) event.stopPropagation() }}>
             <svg width="26" height="10" aria-hidden="true">
               <line x1="1" y1="5" x2="25" y2="5" stroke={entry.color || 'var(--diagram-edge)'} strokeWidth="3" strokeDasharray={entry.dashed ? '5 3' : undefined} strokeLinecap="round" />
             </svg>
+            {editable && <input type="color" className="diagram-legend-color-input diagram-no-export" value={entry.color || '#888888'} aria-label={`Row ${index + 1} color`}
+              onKeyDown={(event) => event.stopPropagation()}
+              onChange={(event) => {
+                const color = event.currentTarget.value
+                if (color !== entry.color) updateNodes([id], { legend: rows.map((row, at) => at === index ? { ...row, color } : row) })
+              }} />}
+            </label>
             {editingRow === index
               ? <LegendText value={entry.label} label={`Row ${index + 1} text`} onDone={(text) => saveRow(index, text)} />
               : <span className={entry.label ? undefined : 'diagram-legend-placeholder'}>{entry.label || 'Double-click to write'}</span>}

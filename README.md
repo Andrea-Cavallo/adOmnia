@@ -95,7 +95,7 @@ A step-by-step version is in [Getting started](docs/GETTING-STARTED.md).
 - **Request-level debugging.** *Debug Request* starts your service under Delve, waits for the port, sends the request and stops on the breakpoint that handles it. Requests can target a service by name, resolved to your local run, a Compose port or a remote URL, and show the SQL and Kafka traffic they cause.
 - **A full IDE for Go, Java and the web.** gopls completion, diagnostics and refactoring; run, test and debug from the gutter; pprof and escape-analysis workbenches; a Git workbench with hunk staging; several isolated projects open at once. Java/Spring, TypeScript/JavaScript and Python follow the same run, test and debug interface.
 - **Data and messaging beside the request.** Database Studio (PostgreSQL, MySQL/MariaDB, MongoDB, Redis), Broker Studio, Docker Lab, Mock Server, Proxy, Browser Debugging, load testing and WebSocket/SSE/gRPC/SOAP clients. Opening a tool from a detected service arrives already configured.
-- **Diagrams next to the code.** Diagram Studio is a Lucidchart-style editor on an infinite canvas: basic, flowchart, architecture, UML and swimlane shapes, connectors that attach to the shape you release them on or grow a new connected shape on the empty canvas, auto-layout, multiple pages, legends and sticky notes, 783 AWS architecture icons, UML sequence diagrams (lifelines, activation bars, loop/alt/opt) drawn from text, diagrams generated from Markdown (also by AI agents over MCP), and PNG, SVG, draw.io or JSON export and import. Diagrams autosave locally. **Generate from Workspace** draws the project open in Code Studio (services, endpoints, handlers, topics, tables, OSGi flows); a node opens its source in a split beside the diagram, and *Show in Diagram Studio* goes back from the code.
+- **Diagrams next to the code.** Diagram Studio is a Lucidchart-style editor on an infinite canvas: basic, flowchart, architecture, UML and swimlane shapes, connectors that attach to the shape you release them on or grow a new connected shape on the empty canvas, auto-layout, multiple pages, legends and sticky notes, 783 AWS architecture icons, UML sequence diagrams (lifelines, activation bars, loop/alt/opt) drawn from text, diagrams generated from Markdown (also by AI agents over MCP), and PNG, SVG, draw.io or JSON export and import. Presets include a hexagonal checkout and a resilient cache-aside catalog, each with a colored architecture view and a complex sequence with success, failure and recovery paths. Diagrams autosave locally. **Generate from Workspace** draws the project open in Code Studio (services, endpoints, handlers, topics, tables, OSGi flows); a node opens its source in a split beside the diagram, and *Show in Diagram Studio* goes back from the code.
 - **Enterprise protocols.** SOAP/WSDL, WS-Security, mTLS, JKS and certificate tools sit in the same workspace as modern HTTP APIs.
 - **Dependency security.** Security Center scans `pom.xml`, `go.mod` and Python manifests, separates severity from exploitation signals, and previews the impact of an upgrade. Fixes show the diff and apply only after review.
 - **Local-first and extensible.** No cloud, no account, no telemetry. Project tools run only after you trust a project, and every tool install shows its exact command first. Light and dark themes, importable skins, a JavaScript plugin system, shareable templates and Git-friendly workspaces. One portable executable.
@@ -156,7 +156,11 @@ Stop on a breakpoint and inspect goroutines, call stack, locals and globals, wit
 
 ### AI Assistant
 
-Ask Copilot, milk, Claude Code or OpenCode without leaving the editor. The assistant sees your project rules and the open file, and answers beside the code.
+Ask Copilot, milk, Claude Code or Pi without leaving the editor. The assistant sees your project rules and the open file, and answers beside the code.
+
+The built-in MCP server can also control the running IDE: open a source location, start tests, use installed debuggers, read recent execution logs and query saved SQL connections in a read-only transaction. Project AI policy and tooling authorization apply; execution and database tools require `--write`.
+
+**Review agent changes** compares edits with the snapshot from before the turn. Accept or reject individual lines, selected ranges, language-server function ranges, change blocks or files; neighboring edits remain pending. External agents use `ide_review_begin` / `ide_review_end` to capture their turn. Reviews stay in memory until the app closes. [Setup, tools and verification limits](docs/AGENT-IDE-CONTROL.md).
 
 <p align="center">
   <img src="assets/screenshots/ai-assistant.png" alt="AI Assistant panel next to a Go file, with a Git panel below" width="100%">
@@ -172,7 +176,7 @@ Every requirement shows inline actions (update, browse files, replace with local
 
 ### Live Preview
 
-Run a dev server and see the result inside Code Studio, next to the code, with navigation, device modes and the dev-server status in the footer.
+Run a dev server and see the result inside Code Studio, next to the code, with navigation, device modes and the dev-server status in the footer. React dev-server previews with the bridge enabled also expose **Design Mode** for source-aware visual editing, with style/text controls, layers and undo/redo. [Usage and verification limits](docs/DESIGN-MODE.md).
 
 <p align="center">
   <img src="assets/screenshots/live-preview.png" alt="Live Preview of a running app below the editor" width="100%">
@@ -397,6 +401,7 @@ LAN collaboration is **beta and opt-in**. Standalone LaTeX, Kubernetes/OpenShift
 | [Getting started](docs/GETTING-STARTED.md) · [Italian guide](docs/QUICKSTART.it.md) | Send requests, connect a Go project and debug a handler |
 | [Installation](docs/INSTALL.md) | Install, update and check platform requirements |
 | [Code Studio](docs/CODE-STUDIO.md) | Configure projects, tools, tests, debugger and editor |
+| [AI agent IDE control and change review](docs/AGENT-IDE-CONTROL.md) | Connect an MCP client to the running IDE and review AI edits selectively |
 | [Code Studio technical reference](docs/CODE-STUDIO-REFERENCE.md) | Understand the IDE platform: architecture, modules, language adapters, UI and bindings |
 | [Diagram Studio](docs/DIAGRAM-STUDIO.md) | Draw flowcharts, architectures and UML: shapes, connectors, layout, export and file format |
 | [Vault and local credentials](docs/VAULT.md) | Understand age+scrypt, the in-memory key, auto-lock, DPAPI/keychain seals and the threat model |

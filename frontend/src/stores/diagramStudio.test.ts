@@ -223,3 +223,18 @@ describe('Diagram Studio editing', () => {
     expect(store.getState().doc!.nodes[0].position).toEqual({ x: 120, y: 80 })
   })
 })
+
+it.each(['architecture-hexagonal-checkout', 'sequence-hexagonal-checkout', 'architecture-resilient-cache', 'sequence-resilient-cache'])('creates and persists the %s preset through the studio', async (id) => {
+  const backend = memoryBackend()
+  const repository = createDiagramRepository(backend)
+  const store = await studio(repository)
+  await store.getState().create(id)
+  const document = store.getState().doc!
+  expect(document.nodes.length).toBeGreaterThan(5)
+  expect(document.edges.length).toBeGreaterThan(5)
+  expect(store.getState().notice).not.toContain('could not')
+  await store.getState().flush()
+  const restored = await repository.load(document.id)
+  expect(restored?.nodes.length).toBe(document.nodes.length)
+  expect(restored?.edges.length).toBe(document.edges.length)
+})

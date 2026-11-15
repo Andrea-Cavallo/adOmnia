@@ -4,6 +4,7 @@ import path from 'path'
 import { execSync } from 'child_process'
 import { readFileSync } from 'fs'
 import { parse as parseYaml } from 'yaml'
+import { visualEditorAliases } from './src/features/visual-editor/aliases.ts'
 
 function getCommitHash(): string {
   try {
@@ -52,6 +53,19 @@ function manualChunks(id: string): string | undefined {
 export default defineConfig(async () => {
   const plugins = [react()]
 
+  // The transplanted parser tests of the Visual Editor read their fixtures through a
+  // runner-specific import.meta field and file API; map both to Node instead of editing them.
+  if (process.env.VITEST) {
+    plugins.push({
+      name: 'visual-editor-vendored-tests',
+      transform(code: string, id: string) {
+        if (!id.includes('/visual-editor/vendor/') || !id.endsWith('.test.ts')) return null
+        const shim = "import { readFileSync as __veRead } from 'fs'; const __veFile = (file) => ({ text: async () => __veRead(file, 'utf8') });\n"
+        return shim + code.replace(/import\.meta\.dir\b/g, 'import.meta.dirname').replace(/\bBun\.file\(/g, '__veFile(')
+      },
+    })
+  }
+
   if (process.env.VITE_ANALYZE === '1') {
     const { visualizer } = await import('rollup-plugin-visualizer')
     plugins.push(visualizer({ open: true, filename: 'dist/bundle-report.html' }))
@@ -65,7 +79,16 @@ export default defineConfig(async () => {
       __APP_VERSION__: JSON.stringify(getAppVersion()),
     },
     resolve: {
-      alias: {
+      alias: [
+        ...visualEditorAliases,
+        // The transplanted parser tests are written for another runner and import the package as 'src'.
+        ...(process.env.VITEST
+          ? [
+              { find: /^bun:test$/, replacement: 'vitest' },
+              { find: /^src(\/.*)?$/, replacement: `${path.resolve(import.meta.dirname, './src/features/visual-editor/vendor/packages/parser/src')}$1` },
+            ]
+          : []),
+        ...Object.entries({
         '@': path.resolve(import.meta.dirname, './src'),
         // Monaco 0.56's export map no longer exposes its legacy worker
         // subpaths to Vite. The aliases retain our bundled worker setup and
@@ -100,7 +123,8 @@ export default defineConfig(async () => {
           import.meta.dirname,
           './node_modules/monaco-editor/esm/vs/editor/common/commands/shiftCommand.js'
         ),
-      },
+        }).map(([find, replacement]) => ({ find, replacement })),
+      ],
     },
     build: {
       chunkSizeWarningLimit: 1000,

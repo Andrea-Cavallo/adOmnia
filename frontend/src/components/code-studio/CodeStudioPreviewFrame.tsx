@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { parseBridgeMessage, type BridgeMessage } from '@/lib/code-studio/livePreview'
 
@@ -8,6 +8,18 @@ export interface PreviewFrameHandle {
   back: () => void
   forward: () => void
   navigate: (url: string) => void
+  /** Scorre la pagina: in Design Mode il layer di selezione copre l'iframe e inoltra la rotella. */
+  scrollBy: (dx: number, dy: number) => void
+}
+
+/** Design Mode: il layer di selezione sopra la pagina e l'aggancio all'iframe. */
+export interface PreviewFrameDesign {
+  /** Id del contenitore su cui il layer misura le coordinate. */
+  containerId: string
+  /** Layer disegnato sopra l'iframe. */
+  overlay: ReactNode
+  /** La pagina è pronta (primo caricamento, navigazione, ricarica): l'editor si collega a questo iframe. */
+  onPage: (iframe: HTMLIFrameElement, origin: string) => void
 }
 
 interface PreviewFrameProps {
@@ -21,6 +33,8 @@ interface PreviewFrameProps {
   width: number | null
   height: number | null
   onMessage: (message: BridgeMessage) => void
+  /** Presente solo con Design Mode acceso. */
+  design?: PreviewFrameDesign
 }
 
 /**
@@ -28,7 +42,7 @@ interface PreviewFrameProps {
  * navigazione del contenitore (niente allow-top-navigation), quindi il frontend dell'IDE non si
  * ricarica mai. Il bridge nella pagina riporta console, errori e navigazione via postMessage.
  */
-export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFrameProps>(function CodeStudioPreviewFrame({ src, title, bridged, autoReload, width, height, onMessage }, ref) {
+export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFrameProps>(function CodeStudioPreviewFrame({ src, title, bridged, autoReload, width, height, onMessage, design }, ref) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [generation, setGeneration] = useState(0)
   const [loadedKey, setLoadedKey] = useState('')
@@ -48,9 +62,21 @@ export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFram
     back: () => send({ type: 'back' }),
     forward: () => send({ type: 'forward' }),
     navigate: (url) => send({ type: 'navigate', url }),
+    scrollBy: (dx, dy) => send({ type: 'scroll', dx, dy }),
   }), [bridged, send])
 
   useEffect(() => { send({ type: 'auto-reload', enabled: autoReload }) }, [autoReload, send])
+
+  // Design Mode: la pagina carica lo script di editing su richiesta, poi l'editor si collega.
+  // Vale per la pagina già aperta (accensione) e per ogni pagina successiva (messaggio 'ready').
+  const designOn = !!design
+  const onPage = design?.onPage
+  const connectDesign = useCallback(() => {
+    if (!onPage || !origin || !frame.current) return
+    send({ type: 'design' })
+    onPage(frame.current, origin)
+  }, [onPage, origin, send])
+  useEffect(() => { if (designOn) connectDesign() }, [designOn, connectDesign])
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -58,18 +84,22 @@ export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFram
       if (!origin || event.origin !== origin) return
       const message = parseBridgeMessage(event.data)
       if (!message) return
-      if (message.type === 'ready') send({ type: 'auto-reload', enabled: autoReload })
+      if (message.type === 'ready') {
+        send({ type: 'auto-reload', enabled: autoReload })
+        connectDesign()
+      }
       onMessage(message)
     }
     window.addEventListener('message', listener)
     return () => window.removeEventListener('message', listener)
-  }, [autoReload, onMessage, origin, send])
+  }, [autoReload, connectDesign, onMessage, origin, send])
 
   const sized = width !== null
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 items-start justify-center overflow-auto bg-[var(--gs-ground)] p-0" data-testid="preview-viewport">
       <div
-        className={sized ? 'my-3 shrink-0 overflow-hidden rounded-lg border border-border-2 shadow-lg' : 'h-full w-full'}
+        id={design?.containerId}
+        className={`relative ${sized ? 'my-3 shrink-0 overflow-hidden rounded-lg border border-border-2 shadow-lg' : 'h-full w-full'}`}
         style={sized ? { width, height: height ?? 'calc(100% - 24px)', minHeight: 240 } : undefined}
       >
         {/* bg-white below is intentional: the previewed page assumes a white canvas, whatever the IDE theme. */}
@@ -85,6 +115,7 @@ export const CodeStudioPreviewFrame = forwardRef<PreviewFrameHandle, PreviewFram
           // oxlint-disable-next-line react/iframe-missing-sandbox -- the previewed dev server needs its own origin (storage, cookies, fetch); it is a different origin from the IDE, never same-origin with it.
           sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-pointer-lock"
         />
+        {design?.overlay}
       </div>
       {loading && (
         <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-1.5 rounded-md bg-surface-2/90 px-2 py-1 text-[11px] text-text-3 shadow" role="status">

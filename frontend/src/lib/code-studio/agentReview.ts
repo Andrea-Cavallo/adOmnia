@@ -26,6 +26,7 @@ interface SplitText {
 
 /** Stesse righe di lineDiff (CRLF normalizzato, newline finale ignorata), più quanto serve per ricomporre il testo. */
 function split(text: string): SplitText {
+  if (text === '') return { lines: [], eol: '\n', finalNewline: false }
   const eol = text.includes('\r\n') ? '\r\n' : '\n'
   const normalized = text.replace(/\r\n/g, '\n')
   const lines = normalized.split('\n')
@@ -35,6 +36,7 @@ function split(text: string): SplitText {
 }
 
 function join({ lines, eol, finalNewline }: SplitText): string {
+  if (lines.length === 0) return ''
   return lines.join(eol) + (finalNewline ? eol : '')
 }
 
@@ -117,4 +119,61 @@ export function agentReviewSplitRows(lines: AgentReviewLine[]): AgentReviewSplit
   }
   flush()
   return rows
+}
+
+export interface AgentReviewSelection { side: 'old' | 'new'; start: number; end: number }
+
+/** Select the same paired replacement rows shown by the side-by-side diff. */
+export function selectedReviewHunks(baseline: string, current: string, selection: AgentReviewSelection): CodeStudioLineHunk[] {
+  if (selection.start < 1 || selection.end < selection.start) return []
+  const selected: CodeStudioLineHunk[] = []
+  for (const hunk of lineDiff(baseline, current)) {
+    const oldCount = hunk.oldEnd - hunk.oldStart + 1
+    const newCount = hunk.newEnd - hunk.newStart + 1
+    let first = -1
+    const flush = (last: number) => {
+      if (first < 0) return
+      const oldStart = hunk.oldStart + Math.min(first, oldCount)
+      const newStart = hunk.newStart + Math.min(first, newCount)
+      const oldEnd = hunk.oldStart + Math.min(last + 1, oldCount) - 1
+      const newEnd = hunk.newStart + Math.min(last + 1, newCount) - 1
+      selected.push({ kind: oldEnd < oldStart ? 'added' : newEnd < newStart ? 'deleted' : 'modified', oldStart, oldEnd, newStart, newEnd })
+      first = -1
+    }
+    for (let index = 0; index < Math.max(oldCount, newCount); index++) {
+      const count = selection.side === 'old' ? oldCount : newCount
+      const start = selection.side === 'old' ? hunk.oldStart : hunk.newStart
+      // Missing-side rows are selectable at their insertion/deletion anchor.
+      const line = start + Math.min(index, count)
+      if (line >= selection.start && line <= selection.end) {
+        if (first < 0) first = index
+      } else flush(index - 1)
+    }
+    flush(Math.max(oldCount, newCount) - 1)
+  }
+  return selected
+}
+
+export function applyReviewSelection(baseline: string, current: string, selection: AgentReviewSelection, accept: boolean): string {
+  const hunks = selectedReviewHunks(baseline, current, selection).reverse()
+  const result = hunks.reduce((text, hunk) => accept ? acceptHunk(text, current, hunk) : rejectHunk(baseline, text, hunk), accept ? baseline : current)
+  if (result === '') return ''
+  if ((accept ? baseline : current) === '') {
+    const format = split(accept ? current : baseline)
+    return join({ ...split(result), eol: format.eol, finalNewline: format.finalNewline })
+  }
+  return result
+}
+
+export interface ReviewFunctionSymbol {
+  name: string
+  kind: number
+  range: { startLine: number; endLine: number }
+  children?: ReviewFunctionSymbol[]
+}
+export function reviewFunctions(symbols: readonly ReviewFunctionSymbol[]): ReviewFunctionSymbol[] {
+  return symbols.flatMap((symbol) => [
+    ...([6, 9, 12].includes(symbol.kind) ? [symbol] : []),
+    ...reviewFunctions(symbol.children ?? []),
+  ])
 }

@@ -10,7 +10,7 @@
     "browser": true,
     "es2024": true
   },
-  "ignorePatterns": ["dist/**", "node_modules/**", "bindings/**", "coverage/**", "public/**"],
+  "ignorePatterns": ["dist/**", "node_modules/**", "bindings/**", "coverage/**", "public/**", "src/features/visual-editor/vendor/**"],
   "rules": {
     "typescript/no-explicit-any": "warn",
     "typescript/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "ignoreRestSiblings": true }],

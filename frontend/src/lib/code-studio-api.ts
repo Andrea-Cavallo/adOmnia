@@ -1260,3 +1260,6 @@ export type { CertificateInfo }
 
 /** Blocchi PEM del testo dell'editor: certificati con i dettagli, chiavi private solo come tipo, bit e cifratura. */
 export const inspectCertificate = (text: string): Promise<CertificateInfo[]> => GoIDEBindings.InspectCertificate(text).then((items) => items ?? [])
+
+export const applyAgentReviewSelection = (root: string, file: AgentReviewFile, content: string, accept: boolean): Promise<void> =>
+  Call.ByName('main.GoIDE.ApplyAgentReviewSelection', root, file.path, content, file.baseline, file.current, accept, file.status)

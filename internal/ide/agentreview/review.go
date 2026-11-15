@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/fileio"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/project"
 )
 
 // ChangedEvent è l'evento emesso quando la review di un progetto cambia.
@@ -438,4 +439,78 @@ func cleanRoot(root string) string {
 		return ""
 	}
 	return filepath.Clean(root)
+}
+
+// ApplySelection rejects stale baseline and disk versions before changing either side of a review.
+func (t *Tracker) ApplySelection(root, relative, content, expectedBaseline, expectedCurrent string, accept bool, expectedStatus ...FileStatus) error {
+	return t.update(root, func(project *projectReview) error {
+		if err := checkReviewPath(cleanRoot(root), relative); err != nil {
+			return err
+		}
+		file, err := pendingAt(project, relative)
+		if err != nil {
+			return err
+		}
+		if !file.reviewable {
+			return fmt.Errorf("%s must be reviewed as a whole file", relative)
+		}
+		current, exists, readable := readCurrent(cleanRoot(root), relative)
+		baseline := ""
+		if file.baseline != nil {
+			baseline = *file.baseline
+		}
+		status := StatusModified
+		if file.baseline == nil {
+			status = StatusAdded
+		} else if !exists {
+			status = StatusDeleted
+		}
+		wanted := StatusModified
+		if len(expectedStatus) > 0 {
+			wanted = expectedStatus[0]
+		}
+		if baseline != expectedBaseline || status != wanted || (exists && !readable) || current != expectedCurrent {
+			return ErrStale
+		}
+		if accept {
+			if status == StatusDeleted && content == "" {
+				delete(project.files, relative)
+				return nil
+			}
+			file.baseline = &content
+			return nil
+		}
+		if status == StatusAdded && content == "" {
+			return os.Remove(filepath.Join(cleanRoot(root), filepath.FromSlash(relative)))
+		}
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(cleanRoot(root), filepath.FromSlash(relative))), 0755); err != nil {
+			return err
+		}
+		return writeText(filepath.Join(cleanRoot(root), filepath.FromSlash(relative)), content)
+	})
+}
+
+func checkReviewPath(root, relative string) error {
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(root, filepath.FromSlash(relative))
+	if err := project.EnsureWithin(root, path); err != nil {
+		return err
+	}
+	for {
+		real, err := filepath.EvalSymlinks(path)
+		if err == nil {
+			return project.EnsureWithin(realRoot, real)
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			return err
+		}
+		path = parent
+	}
 }

@@ -191,6 +191,7 @@ func main() {
 	desktopApp := application.New(appOptions)
 	app.AttachDesktop(desktopApp)
 	goIDE.attachDesktop(desktopApp)
+	goIDE.startAgentControl()
 	devContext.attachDesktop(desktopApp)
 	devSession.attachDesktop(desktopApp)
 	copilotService.attachDesktop(desktopApp)

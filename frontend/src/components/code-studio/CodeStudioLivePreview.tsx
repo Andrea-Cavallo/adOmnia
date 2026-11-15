@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
-  AppWindow, ArrowLeft, ArrowRight, Columns2, ExternalLink, Laptop, MoreHorizontal, PanelBottom, Play, Radio, RotateCw, Smartphone, Square, Tablet, Terminal, Zap, ZapOff,
+  AppWindow, ArrowLeft, ArrowRight, Columns2, ExternalLink, Laptop, MoreHorizontal, PanelBottom, PencilRuler, Play, Radio, RotateCw, Smartphone, Square, Tablet, Terminal, Zap, ZapOff,
   type LucideIcon,
 } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
@@ -13,6 +13,7 @@ import type { GoIDESession } from '@/lib/code-studio-api'
 import { CodeStudioPreviewFrame, type PreviewFrameHandle } from './CodeStudioPreviewFrame'
 import { CodeStudioPreviewSetup } from './CodeStudioPreviewSetup'
 import { CodeStudioPreviewDrawer } from './CodeStudioPreviewDrawer'
+import { DESIGN_CONTAINER_ID, DesignCanvas, DesignPanel, useDesignMode } from '@/features/visual-editor/useDesignMode'
 
 interface LivePreviewProps {
   session: GoIDESession
@@ -78,6 +79,16 @@ export function CodeStudioLivePreview({ session, embedded = false }: LivePreview
   const problemCount = view.log.filter((entry) => entry.message.type === 'error' || (entry.message.type === 'console' && entry.message.level === 'error')).length
   const hmr = preview?.mode === 'devserver'
 
+  // Design Mode (visual editing of React sources): needs the bridge and a dev server with hot reload.
+  const design = useDesignMode(sessionId, relativeDirectory(session.project.realPath, preview?.root))
+  const designUnavailable = !live ? 'Start the preview first' : !preview?.bridged ? 'The preview bridge is off for this page' : !hmr ? 'Design Mode edits React sources: start the dev server instead of the static preview' : ''
+  const designOn = !!design.session && !designUnavailable
+  const stopDesign = design.stop
+  useEffect(() => { if (designUnavailable) stopDesign() }, [designUnavailable, stopDesign])
+  const toggleDesign = () => (designOn ? design.stop() : design.start())
+  const attachDesign = design.attach
+  const onDesignPage = useCallback((iframe: HTMLIFrameElement, origin: string) => attachDesign(iframe, origin, () => frame.current?.reload()), [attachDesign])
+
   const openMenu = (kind: MenuKind, element: HTMLElement) => {
     const rect = element.getBoundingClientRect()
     setMenu({ kind, x: Math.max(8, rect.right - 232), y: rect.bottom + 4 })
@@ -95,6 +106,7 @@ export function CodeStudioLivePreview({ session, embedded = false }: LivePreview
       { id: 'window', label: 'Open in a window', icon: AppWindow, disabled: !live, separatorBefore: true },
       { id: 'browser', label: 'Open in external browser', icon: ExternalLink, disabled: !live },
       { id: 'console', label: drawer ? 'Hide console' : 'Console and network', icon: Terminal },
+      { id: 'design', label: designOn ? 'Exit Design Mode' : 'Design Mode', icon: PencilRuler, disabled: !!designUnavailable, disabledReason: designUnavailable, checked: designOn },
       { id: 'restart', label: 'Restart server', icon: RotateCw, disabled: !preview || phase === 'stopping', separatorBefore: true },
     ]
   }
@@ -108,6 +120,7 @@ export function CodeStudioLivePreview({ session, embedded = false }: LivePreview
       case 'window': return void actions().openWindow(sessionId)
       case 'browser': return void actions().openExternal(sessionId)
       case 'console': return setDrawer((value) => !value)
+      case 'design': return toggleDesign()
       case 'restart': return void actions().restart(sessionId)
     }
   }
@@ -153,6 +166,7 @@ export function CodeStudioLivePreview({ session, embedded = false }: LivePreview
           <button type="button" className={ICON_BUTTON} onClick={(event) => openMenu('placement', event.currentTarget)} aria-label="Where to show the preview" title="Show preview in…" aria-haspopup="menu"><Columns2 size={14} /></button>
           <button type="button" className={ICON_BUTTON} disabled={!live} onClick={() => void actions().openWindow(sessionId)} aria-label="Open in a separate window" title="Open in a separate window"><AppWindow size={14} /></button>
           <button type="button" className={ICON_BUTTON} disabled={!live} onClick={() => void actions().openExternal(sessionId)} aria-label="Open in external browser" title="Open in external browser"><ExternalLink size={14} /></button>
+          <button type="button" className={`${ICON_BUTTON} ${designOn ? 'bg-surface-3 text-accent' : ''}`} aria-pressed={designOn} disabled={!!designUnavailable || design.starting} onClick={toggleDesign} aria-label="Design Mode" title={designUnavailable || (designOn ? 'Exit Design Mode' : 'Design Mode: select elements in the page and edit them visually')}><PencilRuler size={14} /></button>
           <button type="button" className={`${ICON_BUTTON} ${drawer ? 'bg-surface-3' : ''}`} aria-pressed={drawer} onClick={() => setDrawer((value) => !value)} aria-label="Console and network" title="Console, network and build problems"><Terminal size={14} /></button>
         </div>
         {phase === 'ready' || phase === 'starting' ? (
@@ -182,7 +196,18 @@ export function CodeStudioLivePreview({ session, embedded = false }: LivePreview
           {!preview.bridged && (
             <p role="status" className="shrink-0 border-b border-warning/30 bg-warning/10 px-3 py-1 text-[11px] text-text-2">The preview bridge could not start, so back/forward, console and error reporting are off. The page itself works normally.</p>
           )}
-          <CodeStudioPreviewFrame ref={frame} src={src} title={`Live preview of ${preview.label ?? 'the project'}`} bridged={preview.bridged} autoReload={view.autoReload} width={viewport.width} height={viewport.height} onMessage={onMessage} />
+          {design.error && <p role="alert" className="shrink-0 border-b border-danger/30 bg-danger/10 px-3 py-1 text-[11px] text-text-2">Design Mode could not start: {design.error}</p>}
+          <div className="flex min-h-0 min-w-0 flex-1">
+            <CodeStudioPreviewFrame
+              ref={frame} src={src} title={`Live preview of ${preview.label ?? 'the project'}`} bridged={preview.bridged} autoReload={view.autoReload} width={viewport.width} height={viewport.height} onMessage={onMessage}
+              design={designOn && design.session ? {
+                containerId: DESIGN_CONTAINER_ID,
+                onPage: onDesignPage,
+                overlay: <Suspense fallback={null}><DesignCanvas session={design.session} onScroll={(dx, dy) => frame.current?.scrollBy(dx, dy)} /></Suspense>,
+              } : undefined}
+            />
+            {designOn && design.session && <Suspense fallback={null}><DesignPanel session={design.session} onClose={design.stop} /></Suspense>}
+          </div>
         </>
       ) : (
         <CodeStudioPreviewSetup session={session} view={view} preview={preview} />
