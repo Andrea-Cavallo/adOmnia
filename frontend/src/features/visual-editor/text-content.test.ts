@@ -30,4 +30,3 @@ describe('visual editor text extraction', () => {
     expect(extractTextContent(el)).toBe('<script\n&lt;')
   })
 })
-
