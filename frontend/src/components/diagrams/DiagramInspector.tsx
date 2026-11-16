@@ -40,7 +40,7 @@ function DiagramSettingsPanel() {
       </Section>
       <Section title="Canvas">
         <Field label="Grid">
-          <SelectField value={settings.grid} options={[{ value: 'dots', label: 'Dots' }, { value: 'lines', label: 'Lines' }, { value: 'none', label: 'None' }]} onChange={(grid) => updateSettings({ grid })} />
+          <SelectField value={settings.grid} options={[{ value: 'none', label: 'None' }, { value: 'lines', label: 'Lines' }]} onChange={(grid) => updateSettings({ grid })} />
         </Field>
         <Field label="Grid size"><NumberField key={settings.gridSize} value={settings.gridSize} min={4} max={64} onCommit={(gridSize) => updateSettings({ gridSize })} /></Field>
         <Toggle label="Snap to grid" checked={settings.snapToGrid} onChange={(snapToGrid) => updateSettings({ snapToGrid })} />

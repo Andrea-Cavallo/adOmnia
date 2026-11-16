@@ -70,7 +70,8 @@ export function readDiagram(raw: unknown): DiagramDocument {
     viewport: active.viewport,
     pages,
     activePageId: active.id,
-    settings: { ...DEFAULT_SETTINGS, ...settings } as DiagramDocument['settings'],
+    // Only the line grid remains: a saved dotted grid (or anything unknown) opens as a clean canvas.
+    settings: { ...DEFAULT_SETTINGS, ...settings, grid: settings.grid === 'lines' ? 'lines' : 'none' } as DiagramDocument['settings'],
     ...(originOf(file.origin) ? { origin: originOf(file.origin)! } : {}),
     createdAt: finite(file.createdAt, now),
     updatedAt: finite(file.updatedAt, now),

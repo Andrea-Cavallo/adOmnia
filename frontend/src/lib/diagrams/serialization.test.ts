@@ -71,6 +71,13 @@ describe('diagram serialization', () => {
     expect(shapeOf('from-the-future').id).toBe('process')
   })
 
+  it('opens a diagram saved with the old dotted grid on a clean canvas, and keeps the line grid', () => {
+    const file = (grid: string) => JSON.stringify({ format: 'adomnia-diagram', version: 1, nodes: [], edges: [], settings: { grid, snapToGrid: true, gridSize: 16 } })
+    expect(parseDiagram(file('dots')).settings.grid).toBe('none')
+    expect(parseDiagram(file('lines')).settings.grid).toBe('lines')
+    expect(emptyDiagram().settings.grid).toBe('none')
+  })
+
   it('refuses what it cannot read, with a reason', () => {
     expect(() => parseDiagram('{oops')).toThrow(DiagramFormatError)
     expect(() => parseDiagram('{"format":"other"}')).toThrow(/not an adOmnia diagram/)
