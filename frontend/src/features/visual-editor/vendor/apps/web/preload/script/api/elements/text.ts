@@ -108,4 +108,6 @@ function updateTextContent(el: HTMLElement, content: string): void {
 
 export function isChildTextEditable(_oid: string): boolean | null {
     return true;
-}
+    const container = document.createElement('div');
+    container.innerHTML = content;
+    return container.textContent ?? '';
