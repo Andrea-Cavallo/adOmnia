@@ -30,7 +30,6 @@ const MAX_ZOOM = 4
 const MIN_DRAG_TO_ADD = 48
 /** Size of an architecture icon dropped on the canvas. */
 const ICON_SIZE = 64
-const BACKGROUND: Record<'dots' | 'lines', BackgroundVariant> = { dots: BackgroundVariant.Dots, lines: BackgroundVariant.Lines }
 
 /**
  * React Flow puts its color mode as a class on its root, and adOmnia's light tokens apply to any
@@ -229,7 +228,7 @@ export function DiagramCanvas() {
         }}
       >
         {settings.grid !== 'none' && (
-          <Background variant={BACKGROUND[settings.grid]} gap={settings.gridSize} size={settings.grid === 'dots' ? 1.2 : undefined} className="diagram-grid" />
+          <Background variant={BackgroundVariant.Lines} gap={settings.gridSize} className="diagram-grid" />
         )}
         <Controls position="bottom-right" showInteractive={false} className="diagram-controls diagram-no-export" />
         <GuideLines />

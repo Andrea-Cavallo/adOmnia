@@ -149,7 +149,7 @@ Two read-only tools expose the indexed workspace: `diagram_workspace_overview` (
   "activePageId": "page_…",
   "pages": [{ "id": "page_…", "name": "Page 1", "nodes": [], "edges": [], "viewport": { "x": 0, "y": 0, "zoom": 1 } }],
   "viewport": { "x": 0, "y": 0, "zoom": 1 },
-  "settings": { "grid": "dots", "snapToGrid": true, "gridSize": 16, "defaultRouting": "orthogonal" },
+  "settings": { "grid": "none", "snapToGrid": true, "gridSize": 16, "defaultRouting": "orthogonal" },
   "origin": { "sessionId": "go-…", "workspaceId": "…", "root": "/repo", "projectName": "payments", "fingerprint": "…",
               "generatedAt": 0, "view": "architecture", "focusId": "mod:payments (optional)", "sources": ["go", "flow"] },
   "nodes": [{ "id": "n_…", "type": "shape", "position": { "x": 0, "y": 0 }, "width": 170, "height": 76,

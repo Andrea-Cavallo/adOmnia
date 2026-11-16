@@ -158,7 +158,8 @@ export interface DiagramDocument extends DiagramGraph {
 }
 
 export interface DiagramSettings {
-  grid: 'lines' | 'dots' | 'none'
+  /** A clean canvas by default; lines on request. (The dotted grid was removed: files that saved it open clean.) */
+  grid: 'lines' | 'none'
   snapToGrid: boolean
   gridSize: number
   defaultRouting: EdgeRouting
@@ -171,7 +172,7 @@ export interface DiagramSummary {
   updatedAt: number
 }
 
-export const DEFAULT_SETTINGS: DiagramSettings = { grid: 'dots', snapToGrid: true, gridSize: 16, defaultRouting: 'orthogonal' }
+export const DEFAULT_SETTINGS: DiagramSettings = { grid: 'none', snapToGrid: true, gridSize: 16, defaultRouting: 'orthogonal' }
 export const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 }
 
 export const DEFAULT_EDGE_DATA: DiagramEdgeData = {
