@@ -10,7 +10,7 @@ import { parseSequence, sequenceGraph } from './sequence'
 import { SHAPES, STYLE_PALETTE } from './shapes'
 import { DIAGRAM_TEMPLATES, templatesByCategory } from './templates'
 
-const ICONS = resolve(__dirname, '../../../public/diagram-icons')
+const ICONS = resolve(process.cwd(), 'public/diagram-icons')
 const shapeIds = new Set(SHAPES.map((shape) => shape.id))
 const colors = new Set(STYLE_PALETTE.map((entry) => entry.id))
 

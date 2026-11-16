@@ -30,6 +30,8 @@
   <a href="https://github.com/Andrea-Cavallo/adOmnia/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/Andrea-Cavallo/adOmnia/codeql.yml?branch=main&label=CodeQL"></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/Andrea-Cavallo/adOmnia"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/Andrea-Cavallo/adOmnia/badge"></a>
   <a href=".github/dependabot.yml"><img alt="Dependabot enabled" src="https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot&logoColor=white"></a>
+  <br>
+  <a href="https://myslop.shop/a/adomnia"><img alt="Featured on My Slop" src="https://myslop.shop/badge/adomnia.svg"></a>
 </p>
 
 <p align="center">
