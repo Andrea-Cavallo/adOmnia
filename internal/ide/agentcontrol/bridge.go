@@ -73,17 +73,17 @@ func Start(directory string, handler Handler) (*Server, error) {
 		// Browser pages must never be able to invoke the desktop bridge.
 		provided := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if r.Header.Get("Origin") != "" || subtle.ConstantTimeCompare([]byte(provided), []byte(server.endpoint.Token)) != 1 {
-			http.Error(w, "unauthorized", 401)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 		var request Request
 		if err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, MaxMessage), &request); err != nil {
-			http.Error(w, "invalid request", 400)
+			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
 		}
 		value, err := handler(r.Context(), request)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -156,7 +156,7 @@ func Call(ctx context.Context, directory string, request Request) (any, error) {
 		if len(body) > MaxMessage {
 			return nil, errors.New("IDE response exceeds limit")
 		}
-		if response.StatusCode != 200 {
+		if response.StatusCode != http.StatusOK {
 			last = fmt.Errorf("IDE: %s", strings.TrimSpace(string(body)))
 			continue
 		}

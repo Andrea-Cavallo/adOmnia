@@ -34,7 +34,7 @@ func TestBridgeAuthenticationAndDiscovery(t *testing.T) {
 		}
 		io.Copy(io.Discard, response.Body)
 		response.Body.Close()
-		if response.StatusCode != 401 {
+		if response.StatusCode != http.StatusUnauthorized {
 			t.Fatalf("status %d", response.StatusCode)
 		}
 	}
@@ -114,7 +114,7 @@ func TestExternalReviewLifecycleAndBoundedLogs(t *testing.T) {
 	if _, err := router.Handle(context.Background(), request); err == nil {
 		t.Fatal("ended an absent turn")
 	}
-	for i := 0; i < 110; i++ {
+	for i := range 110 {
 		router.Record("session", i)
 	}
 	request.Operation = "ide_logs"
