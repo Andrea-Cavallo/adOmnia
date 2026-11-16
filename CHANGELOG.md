@@ -6,6 +6,16 @@ This project follows a pragmatic release log format inspired by Keep a Changelog
 
 ## [Unreleased]
 
+## [1.0.32] — 2026-11-16
+
+- Agent IDE control through MCP: source navigation, tests, installed debuggers, recent logs and bounded read-only SQL queries, with project authorization and AI-policy checks.
+- Selective AI review by line, range, function and file, with stale-source and unsaved-buffer protection.
+- Live Preview Design Mode for supported React projects, including text/style edits, layers, insertion, reordering, undo/redo and save.
+- Editable legend colors on the Diagram Studio canvas, plus Hexagonal checkout and Resilient catalog presets in architectural and complex sequence variants.
+- Go lint fixes in the agent-control bridge; visual-editor source and dependency license disclosures included.
+
+See [release notes](docs/releases/v1.0.32.md) for details and verification limits.
+
 ## [1.0.31] — 2026-11-14
 
 Diagram Studio becomes a living view of the code, WebSocket messages are readable and the Hub mini game is off by default.

@@ -6,6 +6,10 @@ See [v1.0.0 release notes](releases/v1.0.0.md). Published at the user’s explic
 
 The v1 frontend scope and reactivation gates are tracked in `mds/V1-RELEASE-SCOPE-TODO.md` (local planning note; the published status is [ISSUES.md](ISSUES.md)). Preparing that scope does not publish v1.0.0 or close its native acceptance gates.
 
+## v1.0.32 — Agent IDE control, selective AI review and visual editing
+
+[Release notes](releases/v1.0.32.md). MCP control of Code Studio, review by line/function/file, React Live Preview Design Mode, editable legend colors and four architectural/sequence examples. Version metadata is prepared; publication still requires the release tag and successful artifact workflows. Native visual editing, live database-driver enforcement and macOS/Linux acceptance remain manual.
+
 ## v1.0.31 — Diagram Studio linked to the code, readable WebSocket messages
 
 [Release notes](releases/v1.0.31.md). Generate a diagram from the Code Studio project, open a node's source in a split, refresh it from code; pages, icons, sequence diagrams, draw.io, Markdown and presets drawn with technology icons; readable WebSocket messages; the Hub mini game off by default. Covered by automated tests and by a run of the desktop app on Windows (generation, split, callers and callees, reverse navigation, legend, presets); two projects with same-named symbols, a detached Code Studio and macOS/Linux remain manual.
