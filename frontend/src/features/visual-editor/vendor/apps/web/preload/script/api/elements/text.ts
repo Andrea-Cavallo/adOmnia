@@ -1,3 +1,4 @@
+import { extractTextContent } from './text-content';
 import { EditorAttributes } from '@onlook/constants';
 import type { DomElement, EditTextResult, LayerNode } from '@onlook/models';
 import { getHtmlElement } from '../../helpers';
@@ -96,7 +97,7 @@ function updateTextContent(el: HTMLElement, content: string): void {
     const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const lines = normalized.split('\n');
 
-    el.innerHTML = '';
+    el.replaceChildren();
     lines.forEach((line, index) => {
         el.appendChild(document.createTextNode(line));
         if (index < lines.length - 1) {
@@ -105,14 +106,6 @@ function updateTextContent(el: HTMLElement, content: string): void {
     });
 }
 
-function extractTextContent(el: HTMLElement): string {
-    let content = el.innerHTML;
-    content = content.replace(/<br\s*\/?>/gi, '\n');
-    content = content.replace(/<[^>]*>/g, '');
-    const textArea = document.createElement('textarea');
-    textArea.innerHTML = content;
-    return textArea.value;
-}
 
 export function isChildTextEditable(_oid: string): boolean | null {
     return true;
