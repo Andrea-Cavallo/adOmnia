@@ -10,7 +10,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/agentcontrol"
 )
 
-func (g *GoIDE) startAgentControl() {
+func (g *GoIDE) agentControlRouter() *agentcontrol.Router {
 	router := &agentcontrol.Router{Sessions: g.service.ListSessions, Operations: map[string]agentcontrol.Operation{}}
 	router.Operations["ide_open_file"] = agentcontrol.Typed(func(ctx context.Context, session string, args agentcontrol.OpenFileRequest) (any, error) {
 		return agentcontrol.OpenFile(ctx, g.service, session, args, func(payload any) { g.desktop.Event.Emit("code-studio:agent-open", payload) })
@@ -79,6 +79,11 @@ func (g *GoIDE) startAgentControl() {
 			router.Record(string(event.SessionID), event)
 		}
 	})
+	return router
+}
+
+func (g *GoIDE) startAgentControl() {
+	router := g.agentControlRouter()
 	directory, err := agentcontrol.Directory()
 	if err == nil {
 		g.agentControl, err = agentcontrol.Start(directory, router.Handle)
