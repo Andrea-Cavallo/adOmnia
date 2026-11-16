@@ -18,6 +18,7 @@ export function isBinaryText(text: string): boolean {
 }
 
 function splitLines(text: string): string[] {
+  if (text === '') return []
   const lines = text.replace(/\r\n/g, '\n').split('\n')
   if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
   return lines

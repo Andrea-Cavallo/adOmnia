@@ -56,3 +56,40 @@ describe('agentReviewSplitRows', () => {
     ])
   })
 })
+import { applyReviewSelection, selectedReviewHunks, reviewFunctions } from './agentReview'
+
+describe('selective agent review', () => {
+  const oldText = 'head\nold one\nold two\ntail\n'
+  const newText = 'head\nnew one\nnew two\ntail\n'
+  it('accepts or rejects one replacement line without touching its neighbor', () => {
+    const selection = { side: 'new' as const, start: 2, end: 2 }
+    expect(applyReviewSelection(oldText, newText, selection, true)).toBe('head\nnew one\nold two\ntail\n')
+    expect(applyReviewSelection(oldText, newText, selection, false)).toBe('head\nold one\nnew two\ntail\n')
+  })
+  it('handles a selection on the baseline side and CRLF', () => {
+    expect(applyReviewSelection(oldText.replace(/\n/g, '\r\n'), newText, { side: 'old', start: 3, end: 3 }, true)).toBe('head\r\nold one\r\nnew two\r\ntail\r\n')
+  })
+  it('applies several changes in a function from bottom to top', () => {
+    const before = 'func a() {\n old\n keep\n old2\n}\nfunc b() {\n old3\n}\n'
+    const after = 'func a() {\n new\n keep\n new2\n}\nfunc b() {\n new3\n}\n'
+    const selection = { side: 'new' as const, start: 1, end: 5 }
+    expect(applyReviewSelection(before, after, selection, false)).toBe(before.replace('old3', 'new3'))
+    expect(applyReviewSelection(before, after, selection, true)).toBe(after.replace('new3', 'old3'))
+  })
+  it('handles insertion, deletion and unequal replacement lengths', () => {
+    expect(applyReviewSelection('a\nc\n', 'a\nb\nc\n', { side: 'new', start: 2, end: 2 }, false)).toBe('a\nc\n')
+    expect(applyReviewSelection('a\nb\nc\n', 'a\nc\n', { side: 'old', start: 2, end: 2 }, false)).toBe('a\nb\nc\n')
+    expect(applyReviewSelection('a\nold\nz\n', 'a\nx\ny\nz\n', { side: 'new', start: 3, end: 3 }, true)).toBe('a\nold\ny\nz\n')
+    expect(selectedReviewHunks(oldText, newText, { side: 'new', start: 4, end: 4 })).toEqual([])
+  })
+  it('uses language server methods, constructors and functions, including nested symbols', () => {
+    expect(reviewFunctions([{ name: 'Class', kind: 5, range: { startLine: 1, endLine: 9 }, children: [{ name: 'method', kind: 6, range: { startLine: 2, endLine: 8 } }] }]).map(item => item.name)).toEqual(['method'])
+  })
+})
+
+it('partially reviews new and deleted files with their original line endings', () => {
+  expect(applyReviewSelection('', 'a\r\nb\r\n', { side: 'new', start: 2, end: 2 }, true)).toBe('b\r\n')
+  expect(applyReviewSelection('', 'a\nb\n', { side: 'new', start: 1, end: 2 }, false)).toBe('')
+  expect(applyReviewSelection('a\nb\n', '', { side: 'old', start: 2, end: 2 }, false)).toBe('b\n')
+  expect(applyReviewSelection('a\nb\n', '', { side: 'old', start: 1, end: 2 }, true)).toBe('')
+})

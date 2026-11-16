@@ -6,7 +6,7 @@ export interface EntityRef {
   id: string
   label: string
   attrs: Record<string, string>
-  source?: { file: string; line: number }
+  source?: { file: string; line: number; column?: number }
   /** gO session the entity belongs to; source paths are relative to its root. */
   sessionId?: string
 }

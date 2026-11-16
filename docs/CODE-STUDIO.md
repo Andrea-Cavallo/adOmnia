@@ -1166,3 +1166,15 @@ Verification (2026-11-07): 8 focused tests passed; TypeScript, production fronte
 - [ ] Open nested Go/Java brackets and HTML/XML tags in light, dark and anthracite themes; verify matching pair colors and active guides.
 - [ ] Edit nesting, switch tabs and split editors; check colors refresh without stale decorations.
 - [ ] Check Java generics separately: bracket support follows Monaco's language configuration.
+
+### Agent-controlled IDE and selective AI review
+
+The built-in MCP server now connects to an open desktop Code Studio project through an authenticated loopback bridge: editor navigation, tests and their output, existing debug adapters, recent execution logs, saved SQL connections and read-only database queries. External agents can bracket a turn with `ide_review_begin` / `ide_review_end` to publish its diff alongside the existing ACP turn tracking.
+
+The review supports decisions on individual changed lines, selected ranges and function ranges supplied by the language server, as well as files and hunks. Partial decisions compare both the displayed baseline and current disk text, and reject stale versions. New/deleted text files support partial review; renamed and non-text files retain whole-file handling. Review remains in memory across turns, with the existing app-exit lifetime.
+
+Configuration, tool parameters, limits and remaining native acceptance: [AGENT-IDE-CONTROL.md](AGENT-IDE-CONTROL.md).
+
+### Live Preview Design Mode
+
+React dev-server previews with the preview bridge enabled now expose **Design Mode** in the toolbar and preview menu. It loads a visual selection overlay, source-aware style/text editing and a layers panel on demand, reuses the Code Studio file/buffer path, and provides undo/redo plus explicit saving controls. Static and unbridged previews keep the action disabled with a reason. Usage, source mapping, vendored-module license and build steps: [DESIGN-MODE.md](DESIGN-MODE.md). Native iframe/source-editing acceptance remains separate from parser tests and builds.

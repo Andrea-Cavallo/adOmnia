@@ -58,6 +58,8 @@ frontend/package.json.md5
 # Go generated output
 bin/
 vendor/
+!frontend/src/features/visual-editor/vendor/
+!frontend/src/features/visual-editor/vendor/**
 *.test
 *.out
 go.work

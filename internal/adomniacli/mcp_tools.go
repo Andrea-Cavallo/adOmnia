@@ -96,7 +96,7 @@ func mcpTools() []mcpTool {
 			"outputDir":  str("Directory to save the .md report (optional; content always returned even if omitted)."),
 		}), network},
 	}
-	return append(append(append(tools, mcpWorkspaceTools()...), mcpFlowTools()...), mcpDiagramTools()...)
+	return append(append(append(append(tools, mcpWorkspaceTools()...), mcpFlowTools()...), mcpDiagramTools()...), mcpIDETools()...)
 }
 
 func mcpKnownTool(name string) bool {
@@ -109,6 +109,9 @@ func mcpKnownTool(name string) bool {
 }
 
 func (s *mcpServer) callTool(name string, raw jsonv1.RawMessage) (string, error) {
+	if strings.HasPrefix(name, "ide_") {
+		return s.callIDETool(name, raw)
+	}
 	var args struct {
 		Collection  string            `json:"collection"`
 		Folder      string            `json:"folder"`

@@ -1,17 +1,16 @@
 import { create } from 'zustand'
 import {
   acceptAgentFile,
-  acceptAgentHunks,
+  applyAgentReviewSelection,
   acceptAllAgentChanges,
   getAgentReview,
   rejectAgentFile,
-  rejectAgentHunks,
   rejectAllAgentChanges,
   subscribeAgentReviewChanges,
   type AgentReview,
   type AgentReviewFile,
 } from '@/lib/code-studio-api'
-import { acceptHunk, rejectHunk } from '@/lib/code-studio/agentReview'
+import { acceptHunk, rejectHunk, applyReviewSelection, type AgentReviewSelection } from '@/lib/code-studio/agentReview'
 import type { CodeStudioLineHunk } from '@/lib/code-studio/codeStudioLineDiff'
 
 /** Revisione delle modifiche fatte dagli agenti ACP (milk, Claude Code), per cartella di progetto. */
@@ -30,6 +29,7 @@ interface AgentReviewState {
   acceptAll: (root: string) => Promise<void>
   rejectAll: (root: string) => Promise<void>
   acceptHunk: (root: string, file: AgentReviewFile, hunk: CodeStudioLineHunk) => Promise<void>
+  decideSelection: (root: string, file: AgentReviewFile, selection: AgentReviewSelection, accept: boolean) => Promise<void>
   rejectHunk: (root: string, file: AgentReviewFile, hunk: CodeStudioLineHunk) => Promise<void>
 }
 
@@ -86,8 +86,9 @@ export const useAgentReviewStore = create<AgentReviewState>((set, get) => {
     }),
     acceptAll: (root) => run(root, () => acceptAllAgentChanges(root)),
     rejectAll: (root) => run(root, () => rejectAllAgentChanges(root)),
-    acceptHunk: (root, file, hunk) => run(root, () => acceptAgentHunks(root, file.path, acceptHunk(file.baseline, file.current, hunk))),
-    rejectHunk: (root, file, hunk) => run(root, () => rejectAgentHunks(root, file.path, rejectHunk(file.baseline, file.current, hunk), file.current)),
+    decideSelection: (root, file, selection, accept) => run(root, () => applyAgentReviewSelection(root, file, applyReviewSelection(file.baseline, file.current, selection, accept), accept)),
+    acceptHunk: (root, file, hunk) => run(root, () => applyAgentReviewSelection(root, file, acceptHunk(file.baseline, file.current, hunk), true)),
+    rejectHunk: (root, file, hunk) => run(root, () => applyAgentReviewSelection(root, file, rejectHunk(file.baseline, file.current, hunk), false)),
   }
 })
 

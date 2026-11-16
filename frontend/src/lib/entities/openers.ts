@@ -10,7 +10,8 @@ import { detachedPanelOfThisWindow } from '@/lib/panel-windows-api'
 import { requestForEndpoint } from '@/lib/api-code-link/endpointRequest'
 import { WEBSOCKET_HANDOFF_INTENT, handoffToPanel } from './dispatch'
 import { showEntityNotice } from './notice'
-import { registerOpener } from './router'
+import { registerOpener, openEntity } from './router'
+import { Events } from '@wailsio/runtime'
 import { httpMethodForRoute, mockPathForRoute, withBaseUrl } from './routeRequest'
 import type { EntityRef } from './types'
 
@@ -41,7 +42,7 @@ export function websocketUrlFor(ref: EntityRef, baseUrl: string | undefined): st
 }
 const CONTRACT_RAILS: Record<string, RailItem> = { oas: 'apidocs', proto: 'grpc', wsdl: 'soap' }
 
-async function openInGo(file: string, line: number, sessionId?: string): Promise<void> {
+async function openInGo(file: string, line: number, sessionId?: string, column = 1): Promise<void> {
   // From a module window, the code opens in the main window's Code Studio.
   if (detachedPanelOfThisWindow() !== null) return showModule('codestudio', { kind: 'open-location', file, line, sessionId })
   if (sessionId) {
@@ -49,7 +50,7 @@ async function openInGo(file: string, line: number, sessionId?: string): Promise
     await useCodeStudioStore.getState().selectSession(sessionId)
   }
   useAppStore.getState().setActiveRail('codestudio')
-  await useCodeStudioStore.getState().openLocation(file, line, 1)
+  await useCodeStudioStore.getState().openLocation(file, line, column)
 }
 
 function sendRoute(ref: EntityRef): void {
@@ -103,6 +104,15 @@ function openRouteContract(ref: EntityRef): Promise<void> {
 /** Registers the v1 openers once; returns a disposer (used by HMR and tests). */
 export function registerDefaultOpeners(): () => void {
   const offs = [
+    Events.On('code-studio:agent-open', async (event) => {
+      const ref = event.data as EntityRef
+      if (ref?.kind !== 'symbol' || !ref.sessionId || !ref.source?.file || detachedPanelOfThisWindow() !== null) return
+      const { useCodeStudioWindowsStore } = await import('@/stores/codeStudioWindows')
+      await useCodeStudioWindowsStore.getState().load()
+      if (!useCodeStudioWindowsStore.getState().ownsSession(ref.sessionId)) return
+      await useCodeStudioStore.getState().initialize()
+      await openEntity(ref, 'open')
+    }),
     registerOpener('artifact', {
       intent: 'inspect-run-logs', title: 'Open in Log Inspector',
       available: ref => ref.attrs.type === 'run-log',
@@ -126,7 +136,7 @@ export function registerDefaultOpeners(): () => void {
       available: (ref) => ref.kind !== 'symbol' && !!ref.source,
       run: (ref) => openInGo(ref.source!.file, ref.source!.line),
     }),
-    registerOpener('symbol', { intent: 'open', title: 'Open in gO', isDefault: true, run: (ref) => openInGo(ref.source!.file, ref.source!.line, ref.sessionId) }),
+    registerOpener('symbol', { intent: 'open', title: 'Open in gO', isDefault: true, run: (ref) => openInGo(ref.source!.file, ref.source!.line, ref.sessionId, ref.source?.column) }),
     registerOpener('route', { intent: 'send', title: 'Send in API Client', isDefault: true, run: sendRoute }),
     registerOpener('route', {
       intent: 'workspace', title: 'Open in API Workspace',

@@ -16,7 +16,7 @@ The window has three parts: the **library** on the left (tabs *Shapes* and *Icon
 | Place a picture | Drop a PNG/JPEG/GIF/WebP/SVG file on the canvas (up to 4 MB, kept inside the diagram), or use **Import**. Resize it with the corner handles, move it freely, connect it like any shape. |
 | Fill color | Right-click a shape: the palette swatches and a custom color are at the top of the menu (and in the inspector). Under them, **Corners** offers 0, 4, 10 and 20 px with a glyph that shows the radius, so a block gets its rounding the same way it gets its color. |
 | Sticky note | Right-click a shape and choose **Add sticky note**: a yellow note appears beside it, already open for typing. **Add a sticky note here** does the same on the empty canvas. |
-| Legend | Right-click the empty canvas and choose **Add legend (colors in use)**: the legend arrives already filled with one row per palette color the diagram uses, most used first (eight at most), named after the palette entry. Colors outside the palette keep their hex. The item is disabled while nothing is colored. |
+| Legend | Right-click the empty canvas and choose **Add legend (colors in use)**: the legend arrives already filled with one row per palette color the diagram uses, most used first (eight at most), named after the palette entry. Colors outside the palette keep their hex. The item is disabled while nothing is colored. Click the line sample on a row to change its color directly on the canvas; Tab focuses the color control. Double-click the row text or title to rename it. Locked legends do not expose color controls. Changes use the existing undo/redo and autosave path. |
 | Pages | The tabs bottom left switch page; **+** adds one, double-click renames, × deletes the open page. Right-click a tab for **Rename page**, **Open this page**, **Add a page** and **Delete page**. Undo history belongs to the page. |
 | Resize / rotate | Select the shape and drag a handle; drag the round handle above it to rotate (15° steps, Shift for a free angle). Boxes of text and containers do not rotate. |
 | Bend a connector | Select it and drag a **+** to add a bend; drag a bend to move it, double-click it to remove it. *Reset bends* in the inspector routes it automatically again. |
@@ -107,6 +107,8 @@ Unsaved Monaco buffers are not analysed: when a buffer becomes dirty the generat
 | Sequence | *Debug request · sequence* | The adOmnia loop: API Workspace sends the request, Code Studio starts the service under Delve, the breakpoint stops it, SQL and the event are captured |
 | Sequence | *Kafka retry and DLQ · sequence* | Async arrows, a backoff loop on the retry topic and the dead-letter queue |
 | Sequence | *Saga (orchestrated) · sequence* | The Saga as a UML sequence: forward steps in blue, the failure in red, the compensations in amber |
+| Sequence | *Hexagonal checkout · sequence* | Eight participants; idempotency replay/in-progress handling, domain validation, local order/outbox transaction, database failure and asynchronous broker retry, with colored phases |
+| Sequence | *Resilient catalog · sequence* | Eight participants; fresh hits, concurrent misses joining one local refresh, timeout, stale-window fallback, hard expiry and a half-open circuit-breaker probe |
 | Sequence | *Sequence (registration and login)* | Lifelines, sync calls, replies, activation bars and an `alt` fragment |
 | Architecture | *Service platform* | A system boundary with two services inside, a shared database, a cache, a topic and an external SOAP system |
 | Architecture | *Request across layers · swimlanes* | One `POST /orders` as five lanes — client, edge, service, database, event bus — with the steps of each layer |
@@ -115,6 +117,10 @@ Unsaved Monaco buffers are not analysed: when a buffer becomes dirty the generat
 | Architecture | *Microservices on Kubernetes* | Icons inside a cluster boundary, and the telemetry path to Jaeger, Prometheus and Grafana |
 | Patterns | *CQRS with a read model* | Shapes and icons mixed: command side, events, projector, read model, query side |
 | Patterns | *Saga (orchestrated)* | An orchestrator, its three local transactions, their compensations and the two outcomes, colored by role |
+| Patterns | *Hexagonal checkout* | Four colored swimlanes: inbound adapters, application/domain ports, persistence adapter and asynchronous event delivery; order and outbox share one local transaction |
+| Patterns | *Resilient catalog · cache-aside* | A catalog service with Redis, a per-process single-flight gate, a circuit breaker, authoritative origin/database, degraded-response policy and telemetry |
+
+Each new worked example has separate architecture and sequence entries in **New → Patterns** and **New → Sequence**, following the same convention as Saga. The diagrams remain editable, use the existing autosave format and are available without a backend request. The checkout swimlanes reserve extra space for cross-lane labels.
 
 A blueprint is laid out by ELK when it is created; swimlane presets place their lanes by declaration order instead (`lanesFromBlueprint`), because ELK orders top-level nodes by their edges and lanes must read in the order they were written. `templates.test.ts` builds every preset and fails on an unknown shape, an unknown color, a link to a node that does not exist or a fragment that is never closed.
 

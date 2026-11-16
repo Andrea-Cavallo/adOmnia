@@ -42,6 +42,10 @@ Open another project from the project selector. Switch between open projects or 
 
 The main IDE remembers its last selected project per workspace after you select it in a build containing that fix. Detached project windows keep their own project.
 
+## AI agents and reviewing their changes
+
+Keep the project open in the desktop, authorize its tools, and configure an external MCP client with `adomnia.exe mcp "<project folder>" --write`. The `ide_*` tools use the open IDE session for source navigation, tests, debugger inspection and control, recent logs and read-only SQL queries. External agents bracket edits with `ide_review_begin` and `ide_review_end`; built-in agents already capture their turns. In **Review agent changes**, select line numbers (Shift+click for a range), or **Load functions**, then accept or reject the selection. [Setup, complete tool list and limits](AGENT-IDE-CONTROL.md).
+
 ## When something does not work
 
 | Symptom | Check |

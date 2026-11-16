@@ -8,6 +8,7 @@
  */
 import type { DiagramBlueprint } from './blueprint'
 import type { LayoutDirection } from './layout'
+import { SOFTWARE_ARCHITECTURE_TEMPLATES } from './softwareArchitectureTemplates'
 
 export interface DiagramTemplate {
   id: string
@@ -20,6 +21,8 @@ export interface DiagramTemplate {
   sequence?: string
   /** Layout of a blueprint; left to right unless the diagram reads better stacked, or 'lanes' for swimlanes. */
   layout?: LayoutDirection | 'lanes'
+  /** Space between swimlanes, for presets with labels crossing lane boundaries. */
+  laneGap?: number
 }
 
 export const DIAGRAM_TEMPLATES: readonly DiagramTemplate[] = [
@@ -386,6 +389,7 @@ end`,
       ],
     },
   },
+  ...SOFTWARE_ARCHITECTURE_TEMPLATES,
 ]
 
 /** The order the New menu reads: the worked example first, then the sequences, then the architectures. */

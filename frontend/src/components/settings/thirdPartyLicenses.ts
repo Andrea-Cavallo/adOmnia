@@ -7,6 +7,7 @@ export const THIRD_PARTY_LICENSES: ReadonlyArray<{ license: string; packages: re
   {
     license: 'MIT',
     packages: [
+      '@babel/standalone', 'css-tree', 'culori', 'lodash', 'mobx', 'mobx-react-lite', 'nanoid', 'penpal', 'zod',
       '@apidevtools/openapi-schemas', '@monaco-editor/react', '@radix-ui/react-tabs', '@taplo/lib', '@wailsio/runtime', '@xterm/addon-fit', '@xterm/addon-search', '@xterm/xterm', '@xyflow/react',
       'ajv', 'ajv-formats', 'clsx', 'emmet', 'html-to-image', 'mermaid', 'monaco-editor', 'monaco-emacs', 'monaco-vim', 'monaco-yaml', 'pdf-lib', 'prettier', 'react', 'react-dom', 'Tailwind CSS', 'tailwind-merge', 'y-monaco', 'y-protocols', 'yjs', 'zustand',
       'github.com/HdrHistogram/hdrhistogram-go', 'github.com/IBM/sarama', 'github.com/aymanbagabas/go-pty', 'github.com/dop251/goja', 'github.com/dustin/go-humanize', 'github.com/gabriel-vasile/mimetype', 'github.com/gaissmai/bart', 'github.com/jackc/pgx/v5', 'github.com/pavlo-v-chernykh/keystore-go/v4', 'github.com/tidwall/gjson', 'github.com/tidwall/sjson', 'github.com/wI2L/jsondiff', 'github.com/wailsapp/wails/v3', 'github.com/youmark/pkcs8', 'github.com/zalando/go-keyring', 'go.etcd.io/bbolt',
@@ -15,7 +16,7 @@ export const THIRD_PARTY_LICENSES: ReadonlyArray<{ license: string; packages: re
   {
     license: 'Apache-2.0',
     packages: [
-      'class-variance-authority', 'pdfjs-dist',
+      'class-variance-authority', 'pdfjs-dist', 'Onlook Visual Editor (vendored)',
       'github.com/aws/aws-sdk-go-v2', 'github.com/aws/aws-sdk-go-v2/config', 'github.com/aws/aws-sdk-go-v2/service/bedrock', 'github.com/aws/aws-sdk-go-v2/service/bedrockruntime', 'github.com/google/pprof', 'github.com/jchv/go-webview2', 'github.com/jhump/protoreflect', 'github.com/nats-io/nats.go', 'github.com/tetratelabs/wazero', 'github.com/xdg-go/scram', 'go.mongodb.org/mongo-driver/v2', 'go.opentelemetry.io/proto/otlp', 'google.golang.org/grpc',
     ],
   },

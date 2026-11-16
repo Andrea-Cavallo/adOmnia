@@ -231,7 +231,7 @@ export function createDiagramStudioStore(repository: DiagramRepository = diagram
         try {
           if (template?.blueprint) {
             const graph = template.layout === 'lanes'
-              ? lanesFromBlueprint(template.blueprint, doc.settings.defaultRouting)
+              ? lanesFromBlueprint(template.blueprint, doc.settings.defaultRouting, template.laneGap)
               : await diagramFromBlueprint(template.blueprint, doc.settings.defaultRouting, template.layout ? { ...DEFAULT_LAYOUT, direction: template.layout } : undefined)
             Object.assign(doc, graph)
           }

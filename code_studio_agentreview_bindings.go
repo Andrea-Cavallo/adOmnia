@@ -36,3 +36,7 @@ func (g *GoIDE) AcceptAgentHunks(root, path, content string) error {
 func (g *GoIDE) RejectAgentHunks(root, path, content, expected string) error {
 	return g.agentReview.WriteCurrent(root, path, content, expected)
 }
+
+func (g *GoIDE) ApplyAgentReviewSelection(root, path, content, expectedBaseline, expectedCurrent string, accept bool, status string) error {
+	return g.agentReview.ApplySelection(root, path, content, expectedBaseline, expectedCurrent, accept, agentreview.FileStatus(status))
+}

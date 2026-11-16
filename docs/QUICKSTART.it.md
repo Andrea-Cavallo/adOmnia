@@ -42,6 +42,10 @@ Apri altri progetti dal selettore di Code Studio. Puoi passare da uno all'altro 
 
 Il progetto selezionato nella finestra principale viene ricordato per workspace nelle build che includono la correzione; le finestre separate mantengono il proprio progetto.
 
+## Agenti AI e revisione delle modifiche
+
+Tieni il progetto aperto in adOmnia, autorizza i suoi strumenti e configura il client MCP esterno con `adomnia.exe mcp "<cartella progetto>" --write`. I tool `ide_*` usano la sessione IDE aperta per navigare nel codice, avviare test, usare il debugger, leggere i log recenti e interrogare connessioni SQL salvate in sola lettura. Gli agenti esterni delimitano le modifiche con `ide_review_begin` e `ide_review_end`; quelli integrati acquisiscono già lo snapshot del turno. In **Review agent changes**, seleziona i numeri di riga (Shift+clic per un intervallo) oppure usa **Load functions**, poi accetta o rifiuta la selezione. Le altre modifiche restano da rivedere; la review vive in memoria fino alla chiusura dell’app. [Configurazione, tool e limiti](AGENT-IDE-CONTROL.md).
+
 ## Se qualcosa manca
 
 | Problema | Cosa controllare |

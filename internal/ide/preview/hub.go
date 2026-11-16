@@ -19,9 +19,18 @@ import (
 //go:embed live.js
 var liveClientScript []byte
 
+// designClientScript è la metà "in pagina" del Visual Editor (Design Mode): ispezione del DOM,
+// stili calcolati, anteprima immediata delle modifiche. È generato da
+// `npm run build:design-bridge` (frontend) e la pagina lo carica solo quando l'IDE accende
+// Design Mode, quindi a riposo non pesa.
+//
+//go:embed design.js
+var designClientScript []byte
+
 const (
 	livePrefix       = "/__adomnia/"
 	liveScriptPath   = livePrefix + "live.js"
+	designScriptPath = livePrefix + "design.js"
 	liveEventsPath   = livePrefix + "events"
 	keepAliveEvery   = 20 * time.Second
 	subscriberBuffer = 8
@@ -117,6 +126,11 @@ func (h *hub) serveLive(w http.ResponseWriter, r *http.Request) bool {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		_, _ = w.Write(liveClientScript)
+		return true
+	case designScriptPath:
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write(designClientScript)
 		return true
 	case liveEventsPath:
 		h.serveEvents(w, r)

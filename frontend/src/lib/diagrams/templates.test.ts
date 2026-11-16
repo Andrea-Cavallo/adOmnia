@@ -77,7 +77,7 @@ describe('diagram templates', () => {
 
   describe.each(DIAGRAM_TEMPLATES.filter((template) => template.layout === 'lanes').map((template) => [template.id, template] as const))('%s (lanes)', (_id, template) => {
     it('places the lanes side by side in the declared order', () => {
-      const graph = lanesFromBlueprint(template.blueprint!, 'orthogonal')
+      const graph = lanesFromBlueprint(template.blueprint!, 'orthogonal', template.laneGap)
       const lanes = graph.nodes.filter((node) => !node.parentId)
       expect(lanes.length).toBeGreaterThan(1)
       for (let index = 1; index < lanes.length; index++) {
@@ -122,5 +122,24 @@ describe('diagram templates', () => {
       expect(lifelines).toHaveLength(spec.participants.length)
       expect(graph.edges).toHaveLength(spec.steps.filter((step) => step.type === 'message').length)
     })
+  })
+})
+
+describe('worked software architecture examples', () => {
+  it.each(['hexagonal-checkout', 'resilient-cache'])('offers %s as a colored architecture and a complex sequence', (name) => {
+    const architecture = DIAGRAM_TEMPLATES.find(template => template.id === `architecture-${name}`)!
+    const sequence = DIAGRAM_TEMPLATES.find(template => template.id === `sequence-${name}`)!
+    expect(architecture.category).toBe('Patterns')
+    expect(sequence.category).toBe('Sequence')
+    expect(architecture.blueprint!.nodes.length).toBeGreaterThanOrEqual(10)
+    expect(new Set(architecture.blueprint!.nodes.map(node => node.color)).size).toBeGreaterThanOrEqual(5)
+    expect(architecture.blueprint!.links.every(link => link.color)).toBe(true)
+    const spec = parseSequence(sequence.sequence!)
+    expect(spec.participants.length).toBeGreaterThanOrEqual(8)
+    expect(spec.steps.filter(step => step.type === 'message').length).toBeGreaterThanOrEqual(25)
+    expect(new Set(spec.steps.filter(step => step.type === 'rect').map(step => step.type === 'rect' ? step.color : '')).size).toBeGreaterThanOrEqual(4)
+    expect(spec.steps.some(step => step.type === 'open' && step.operator === 'loop')).toBe(true)
+    expect(spec.steps.some(step => step.type === 'open' && step.operator === 'alt')).toBe(true)
+    expect(spec.steps.some(step => step.type === 'message' && step.kind === 'async')).toBe(true)
   })
 })

@@ -17,6 +17,7 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/eclipsepde"
 	"github.com/Andrea-Cavallo/adOmnia/internal/flowintel"
 	"github.com/Andrea-Cavallo/adOmnia/internal/git"
+	"github.com/Andrea-Cavallo/adOmnia/internal/ide/agentcontrol"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/agentreview"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/apicontract"
 	"github.com/Andrea-Cavallo/adOmnia/internal/ide/graph"
@@ -34,6 +35,7 @@ import (
 )
 
 type GoIDE struct {
+	agentControl       *agentcontrol.Server
 	service            *codestudio.Service
 	desktop            *application.App
 	mainWindow         *application.WebviewWindow
@@ -1495,6 +1497,9 @@ func (g *GoIDE) FindSessionsForPath(sessionID, relativePath string) ([]codestudi
 
 // ServiceShutdown rilascia processi e risorse posseduti dal servizio.
 func (g *GoIDE) ServiceShutdown() error {
+	if g.agentControl != nil {
+		_ = g.agentControl.Close()
+	}
 	g.service.Shutdown()
 	// Chiusura pulita: il prossimo avvio non proporrà il ripristino dopo crash.
 	g.runtimeLock.Release()
