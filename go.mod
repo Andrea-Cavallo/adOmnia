@@ -25,7 +25,7 @@ require (
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/jhump/protoreflect v1.19.0
 	github.com/miekg/dns v1.1.73
-	github.com/nats-io/nats.go v1.55.0
+	github.com/nats-io/nats.go v1.56.0
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
 	github.com/rabbitmq/amqp091-go v1.16.0
 	github.com/redis/go-redis/v9 v9.23.0
