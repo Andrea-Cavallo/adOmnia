@@ -546,9 +546,18 @@ func grpcStreamHandler(w http.ResponseWriter, r *http.Request) {
 	var session *streamSession
 	if req.Interactive {
 		id, opened, done := registerStreamSession(stream, method.GetInputType())
-		defer done()
 		session = opened
 		emit(map[string]any{"type": "session", "id": id})
+		// Unregister before announcing the end: once the client sees "complete" the
+		// session must be gone, or a /send can race the deferred cleanup and answer
+		// 409 (send side closed) where the contract says 404 (stream no longer open).
+		terminal := emit
+		emit = func(value any) {
+			if event, ok := value.(map[string]any); ok && event["type"] == "complete" {
+				done()
+			}
+			terminal(value)
+		}
 	}
 	for index, raw := range inputs {
 		message := dynamic.NewMessage(method.GetInputType())
