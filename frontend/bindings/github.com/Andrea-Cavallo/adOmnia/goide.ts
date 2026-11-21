@@ -184,6 +184,10 @@ export function AnalyzeErrorHandling(sessionID: string): $CancellablePromise<cod
     });
 }
 
+export function ApplyAgentReviewSelection(root: string, path: string, content: string, expectedBaseline: string, expectedCurrent: string, accept: boolean, status: string): $CancellablePromise<void> {
+    return $Call.ByID(184570355, root, path, content, expectedBaseline, expectedCurrent, accept, status);
+}
+
 /**
  * ArchitectureDrift verifica le regole di .adomnia/architecture.json sul workspace graph.
  */
