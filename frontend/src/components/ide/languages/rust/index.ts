@@ -1,4 +1,5 @@
 import { rustDebugTargetOf } from '@/lib/code-studio/rustDebug'
+import { rustLiveTemplates } from './liveTemplates'
 import type { IdeLanguageContribution } from '../../languages'
 
 /** ID del language adapter backend (`internal/languages/rust`). */
@@ -14,6 +15,7 @@ export const RUST_LANGUAGE_ID = 'rust'
  */
 export const RUST_LANGUAGE: IdeLanguageContribution = {
   id: RUST_LANGUAGE_ID,
+  liveTemplates: rustLiveTemplates,
   name: 'Rust',
   icon: 'rust',
   fileIcon: name => /^(cargo\.(toml|lock)|rust-toolchain(\.toml)?)$/.test(name) || name.endsWith('.rs') ? { kind: 'brand', slug: 'rust' } : undefined,

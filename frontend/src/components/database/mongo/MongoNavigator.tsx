@@ -6,7 +6,7 @@ import { isValidDbObjectName } from '../dbShared'
 
 export interface MongoDbNode {
   name: string
-  collections: { name: string; count: number | null }[] | null
+  collections: { name: string; count: number | null; kind?: string; capped?: boolean }[] | null
   loading: boolean
   error: string
 }
@@ -151,6 +151,9 @@ export function MongoNavigator(props: MongoNavigatorProps) {
                         <button type="button" aria-current={isSelected} onClick={() => onSelect(db.name, c.name)} className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2 text-left">
                           <Table2 size={12} className={cn('flex-none', isSelected ? 'text-accent' : 'text-text-4 group-hover/coll:text-accent')} />
                           <span className="min-w-0 flex-1 truncate text-[11.5px]">{c.name}</span>
+                          {c.kind === 'view' && <Badge title="Read-only view">view</Badge>}
+                          {c.kind === 'timeseries' && <Badge title="Time-series collection">TS</Badge>}
+                          {c.capped && <Badge title="Capped collection">capped</Badge>}
                           {c.count != null && <span className="flex-none text-[10px] tabular-nums text-text-4 group-hover/coll:hidden">{c.count.toLocaleString()}</span>}
                         </button>
                         <button
@@ -173,4 +176,8 @@ export function MongoNavigator(props: MongoNavigatorProps) {
       </div>
     </aside>
   )
+}
+
+function Badge({ title, children }: { title: string; children: string }) {
+  return <span title={title} className="flex-none rounded border border-border-2 px-1 text-[9px] font-semibold uppercase leading-[14px] tracking-wide text-text-3">{children}</span>
 }

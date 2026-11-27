@@ -74,6 +74,7 @@ import { cancelBufferRecovery, scheduleBufferRecovery } from '@/lib/code-studio/
 import { scheduleAutoSave } from '@/lib/code-studio/codeStudioAutoSave'
 import { directoriesToRefresh, documentsToCheck, wasDeleted, type GoIDEFilesChanged } from '@/lib/code-studio/codeStudioDiskChanges'
 import { recordRecentFile } from '@/lib/recentFiles'
+import { useWorkspaceHistory } from './codeStudioWorkspaceHistory'
 
 const LAYOUT_KEY = 'adomnia.codestudio.layout.v1'
 const MAX_CLOSED_HISTORY = 20
@@ -811,6 +812,7 @@ export const useCodeStudioStore = create<GoIDEState>((set, get) => ({
         return false
       }
       await closeGoIDESession(sessionId)
+      useWorkspaceHistory.getState().clear(sessionId)
       // La diagnostica (LSP, lint, build) della sessione chiusa non deve riaffiorare alla riapertura.
       useCodeStudioLspStore.getState().clearSession(sessionId)
       set((state) => {

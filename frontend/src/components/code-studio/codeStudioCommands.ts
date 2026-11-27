@@ -19,6 +19,8 @@ export type CodeStudioCommandId =
   | 'window.openInNewWindow' | 'window.moveBack'
   | 'file.closeOthers' | 'file.closeAll' | 'file.pinTab' | 'file.reopenClosed' | 'file.autoSave' | 'file.trimWhitespace'
   | 'edit.undo' | 'edit.redo' | 'edit.find' | 'edit.replace' | 'edit.gotoLine' | 'edit.toggleComment'
+  | 'edit.undoWorkspace' | 'edit.redoWorkspace'
+  | 'code.insertLiveTemplate' | 'code.surroundWith' | 'code.importLiveTemplates' | 'code.exportLiveTemplates'
   | 'edit.duplicateLine' | 'edit.deleteLine' | 'edit.nextOccurrence' | 'edit.allOccurrences' | 'edit.moveLineUp' | 'edit.moveLineDown' | 'edit.columnSelection'
   | 'file.localHistory' | 'view.todo'
   | 'view.splitRight' | 'view.splitDown' | 'view.unsplit' | 'view.terminal'
@@ -83,6 +85,10 @@ export const CODE_STUDIO_MENUS: ReadonlyArray<{ id: CodeStudioMenuId; label: str
 ]
 
 export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
+  { id: 'code.insertLiveTemplate', menu: 'code', label: 'Insert Live Template…', binding: { key: 'j', mod: true }, editorOwned: true },
+  { id: 'code.surroundWith', menu: 'code', label: 'Surround With…', binding: { key: 't', mod: true, alt: true }, editorOwned: true },
+  { id: 'code.importLiveTemplates', menu: 'code', label: 'Import Live Templates…' },
+  { id: 'code.exportLiveTemplates', menu: 'code', label: 'Export Live Templates…' },
   { id: 'file.openProject', menu: 'file', label: 'Open Project…', binding: { key: 'o', mod: true } },
   { id: 'file.newProject', menu: 'file', label: 'New Project…' },
   { id: 'file.clone', menu: 'file', label: 'Clone Repository…' },
@@ -102,6 +108,8 @@ export const CODE_STUDIO_COMMANDS: ReadonlyArray<CodeStudioCommand> = [
   { id: 'window.moveBack', menu: 'file', label: 'Move Project Back to Main Window' },
   { id: 'edit.undo', menu: 'edit', label: 'Undo', binding: { key: 'z', mod: true }, editorOwned: true },
   { id: 'edit.redo', menu: 'edit', label: 'Redo', binding: { key: 'z', mod: true, shift: true }, editorOwned: true },
+  { id: 'edit.undoWorkspace', menu: 'edit', label: 'Undo Workspace Change' },
+  { id: 'edit.redoWorkspace', menu: 'edit', label: 'Redo Workspace Change' },
   { id: 'edit.find', menu: 'edit', label: 'Find', binding: { key: 'f', mod: true }, editorOwned: true, separatorBefore: true },
   { id: 'edit.replace', menu: 'edit', label: 'Replace', binding: { key: 'h', mod: true }, editorOwned: true },
   { id: 'edit.gotoLine', menu: 'edit', label: 'Go to Line…', binding: { key: 'g', mod: true }, editorOwned: true },
@@ -354,6 +362,8 @@ export function commandShortcut(command: CodeStudioCommand): string {
 }
 
 export interface CodeStudioCommandContext {
+  workspaceUndo?: boolean
+  workspaceRedo?: boolean
   hasSession: boolean
   documentCount: number
   hasClosedDocuments: boolean
@@ -481,6 +491,10 @@ export function commandAvailability(id: CodeStudioCommandId, context: CodeStudio
   if (id === 'web.installDebugger') return context.authorized ? true : 'Trust this project to install the JavaScript debugger'
   if (id === 'rust.selectToolchain' || id === 'rust.dependencyTree') return true
   if (id === 'python.attach' || id === 'rust.attach') return context.authorized ? true : 'Trust this project to attach the debugger'
+  if (id === 'code.importLiveTemplates' || id === 'code.exportLiveTemplates') return true
+  if (id === 'code.insertLiveTemplate' || id === 'code.surroundWith') return context.hasEditor ? true : 'Open an editable file first'
+  if (id === 'edit.undoWorkspace') return context.workspaceUndo ? true : 'No workspace change to undo'
+  if (id === 'edit.redoWorkspace') return context.workspaceRedo ? true : 'No workspace change to redo'
   if (id.startsWith('edit.')) return context.hasEditor ? true : 'Open a file first'
   switch (id) {
     case 'nav.back': return context.canGoBack ? true : 'No earlier location'

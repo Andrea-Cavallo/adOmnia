@@ -27,9 +27,11 @@ interface SchemaTabProps {
   /** Current documents filter so the sample matches what the user is looking at. */
   filter: BsonDoc | null
   onUseField: (path: string) => void
+  /** Adds `{ path: value }` to the Documents filter. */
+  onUseValue: (path: string, value: unknown) => void
 }
 
-export function SchemaTab({ runMongo, db, collection, filter, onUseField }: SchemaTabProps) {
+export function SchemaTab({ runMongo, db, collection, filter, onUseField, onUseValue }: SchemaTabProps) {
   const [size, setSize] = useState('1000')
   const [fields, setFields] = useState<SchemaField[] | null>(null)
   const [sampled, setSampled] = useState(0)
@@ -54,14 +56,14 @@ export function SchemaTab({ runMongo, db, collection, filter, onUseField }: Sche
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-12 flex-none items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
-        <span className="text-[11.5px] text-text-3">Sample size</span>
+    <div className="@container flex min-h-0 flex-1 flex-col">
+      <div className="flex h-12 flex-none items-center gap-2 overflow-hidden whitespace-nowrap border-b border-border-1 bg-surface-1 px-3">
+        <span className="hidden text-[11.5px] text-text-3 @md:inline">Sample size</span>
         <input value={size} onChange={(e) => setSize(e.target.value.replace(/\D/g, ''))} className={cn(fieldInput, 'w-20 font-mono')} aria-label="Sample size" />
         <button type="button" onClick={() => void analyze()} disabled={loading} className={primaryButton}>
-          {loading ? <Loader2 size={13} className="animate-spin" /> : <ScanSearch size={13} />} Analyze schema
+          {loading ? <Loader2 size={13} className="animate-spin" /> : <ScanSearch size={13} />} <span className="hidden @lg:inline">Analyze schema</span>
         </button>
-        {fields && <span className="ml-auto text-[11px] text-text-3">{fields.length} fields · {sampled.toLocaleString()} documents sampled{filter && Object.keys(filter).length ? ' · filtered' : ''}</span>}
+        {fields && <span className="ml-auto min-w-0 truncate text-[11px] text-text-3">{fields.length} fields · {sampled.toLocaleString()} documents sampled{filter && Object.keys(filter).length ? ' · filtered' : ''}</span>}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         <ErrorBox message={error} className="m-3" />
@@ -71,7 +73,7 @@ export function SchemaTab({ runMongo, db, collection, filter, onUseField }: Sche
           <EmptyState title="No documents sampled" text="The collection is empty or the filter matches nothing." />
         ) : (
           <div className="divide-y divide-border-1">
-            {fields.map((field) => <SchemaRow key={field.path} field={field} onUseField={onUseField} />)}
+            {fields.map((field) => <SchemaRow key={field.path} field={field} total={sampled} onUseField={onUseField} onUseValue={onUseValue} />)}
           </div>
         )}
       </div>
@@ -79,12 +81,12 @@ export function SchemaTab({ runMongo, db, collection, filter, onUseField }: Sche
   )
 }
 
-function SchemaRow({ field, onUseField }: { field: SchemaField; onUseField: (path: string) => void }) {
+function SchemaRow({ field, total, onUseField, onUseValue }: { field: SchemaField; total: number; onUseField: (path: string) => void; onUseValue: (path: string, value: unknown) => void }) {
   const name = field.path.split('.').pop() ?? field.path
   const totalTyped = field.types.reduce((sum, t) => sum + t.count, 0) || 1
   const pct = Math.round(field.probability * 100)
   return (
-    <div className="grid grid-cols-[minmax(180px,1.1fr)_minmax(220px,1.4fr)_minmax(160px,1fr)] items-start gap-4 px-4 py-2.5 hover:bg-surface-1">
+    <div className="grid grid-cols-1 items-start gap-2 px-4 py-2.5 hover:bg-surface-1 @3xl:grid-cols-[minmax(160px,1.1fr)_minmax(200px,1.4fr)_minmax(160px,1fr)] @3xl:gap-4">
       <div className="min-w-0" style={{ paddingLeft: field.depth * 14 }}>
         <button type="button" onClick={() => onUseField(field.path)} title="Filter on this field" className="max-w-full truncate font-mono text-[12px] font-semibold text-text-1 hover:text-accent">{name}</button>
         {field.depth > 0 && <div className="truncate font-mono text-[10px] text-text-4">{field.path}</div>}
@@ -108,9 +110,19 @@ function SchemaRow({ field, onUseField }: { field: SchemaField; onUseField: (pat
           ))}
         </div>
       </div>
-      <div className="flex min-w-0 flex-wrap gap-1">
-        {field.samples.map((sample) => (
-          <span key={sample} title={sample} className="max-w-[180px] truncate rounded border border-border-1 bg-surface-2 px-1.5 py-px font-mono text-[10.5px] text-text-2">{sample}</span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        {field.top.map((t) => (
+          <button
+            key={t.text}
+            type="button"
+            onClick={() => onUseValue(field.path, t.value)}
+            title={`Filter on ${field.path} = ${t.text}`}
+            className="group/v relative flex h-[18px] min-w-0 items-center overflow-hidden rounded text-left hover:ring-1 hover:ring-accent/50"
+          >
+            <span className="absolute inset-y-0 left-0 bg-accent/15" style={{ width: `${Math.max(4, (t.count / Math.max(1, total)) * 100)}%` }} />
+            <span className="relative min-w-0 flex-1 truncate px-1.5 font-mono text-[10.5px] text-text-2 group-hover/v:text-text-1">{t.text}</span>
+            <span className="relative flex-none px-1.5 text-[10px] tabular-nums text-text-4">{t.count.toLocaleString()}</span>
+          </button>
         ))}
       </div>
     </div>

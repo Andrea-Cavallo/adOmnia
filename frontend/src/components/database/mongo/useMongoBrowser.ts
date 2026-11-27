@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DbConnection, DbResult } from '../dbShared'
 import { extractCount, extractNames } from '../dbShared'
 import { parseEditorDocuments, parseShellDoc, type BsonDoc } from './bson'
+import { extractAffected } from './bulk'
 import type { MongoDbNode } from './MongoNavigator'
 import { EMPTY_MONGO_QUERY, type MongoQueryState } from './MongoQueryBar'
 
@@ -19,6 +20,19 @@ export interface FindSpec {
   sort: BsonDoc | null
   skip: number
   limit: number
+  collation: BsonDoc | null
+  /** Index name or key document. */
+  hint: string | BsonDoc | null
+  maxTimeMS: number | null
+}
+
+/** Read options as runner command fields, only the ones that are set. */
+export function readOptions(spec: FindSpec): Record<string, unknown> {
+  return {
+    ...(spec.collation ? { collation: spec.collation } : {}),
+    ...(spec.hint ? { hint: spec.hint } : {}),
+    ...(spec.maxTimeMS ? { maxTimeMS: spec.maxTimeMS } : {}),
+  }
 }
 
 /** Parses the query bar into driver arguments; throws a readable error. */
@@ -29,6 +43,9 @@ export function findSpec(state: MongoQueryState): FindSpec {
     sort: parseShellDoc(state.sort, 'Sort', null),
     skip: Number(state.skip) || 0,
     limit: Math.min(1000, Math.max(1, Number(state.limit) || 20)),
+    collation: parseShellDoc(state.collation ?? '', 'Collation', null),
+    hint: (state.hint ?? '').trim().startsWith('{') ? parseShellDoc(state.hint ?? '', 'Hint', null) : (state.hint ?? '').trim() || null,
+    maxTimeMS: Number(state.maxTimeMS) > 0 ? Number(state.maxTimeMS) : null,
   }
 }
 
@@ -61,15 +78,18 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
   const loadCollections = useCallback(async (db: string) => {
     patchDb(db, { loading: true, error: '' })
     try {
-      const names = extractNames(await runMongo({ operation: 'listCollections', database: db })).sort((a, b) => a.localeCompare(b))
-      patchDb(db, { collections: names.map((name) => ({ name, count: null })), loading: false })
+      const listed = await runMongo({ operation: 'listCollections', database: db })
+      const names = extractNames(listed).sort((a, b) => a.localeCompare(b))
+      // Tipo (view / timeseries) e capped dal backend, per i badge dell'albero.
+      const meta = new Map((listed.rows ?? []).map((row) => [String(row.collection ?? ''), { kind: typeof row.type === 'string' ? row.type : undefined, capped: row.capped === true }]))
+      patchDb(db, { collections: names.map((name) => ({ name, count: null, ...meta.get(name) })), loading: false })
       // ponytail: estimated counts for the first 50 collections only; lazy per-row counts if huge DBs need them.
       const counts = await Promise.allSettled(names.slice(0, COUNT_CAP).map((name) => runMongo({ operation: 'estimatedCount', database: db, collection: name })))
       setDatabases((prev) => prev.map((node) => node.name !== db ? node : {
         ...node,
         collections: names.map((name, i) => {
           const r = counts[i]
-          return { name, count: r && r.status === 'fulfilled' ? extractCount(r.value) : null }
+          return { name, count: r && r.status === 'fulfilled' ? extractCount(r.value) : null, ...meta.get(name) }
         }),
       }))
     } catch (e) {
@@ -92,7 +112,8 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
     setLoading(true)
     setError('')
     const empty = Object.keys(filter).length === 0
-    const countPromise = runMongo(empty ? { operation: 'estimatedCount', ...scope } : { operation: 'count', ...scope, filter })
+    const opts = readOptions(spec)
+    const countPromise = runMongo(empty && !spec.hint && !spec.collation ? { operation: 'estimatedCount', ...scope } : { operation: 'count', ...scope, filter, ...opts })
       .then(extractCount)
       .catch(() => null)
     try {
@@ -100,7 +121,7 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
         operation: 'find', ...scope, filter,
         ...(project ? { projection: project } : {}),
         ...(sort ? { sort } : {}),
-        skip: baseSkip + pageIndex * limit, limit, canonical: true,
+        skip: baseSkip + pageIndex * limit, limit, canonical: true, ...opts,
       })
       if (seq !== findSeq.current) return
       setDocs(result.documents ?? [])
@@ -165,6 +186,8 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
   const runFind = () => { setPage(0); void find(selected, query, 0) }
   const resetQuery = () => { setQuery(EMPTY_MONGO_QUERY); setPage(0); void find(selected, EMPTY_MONGO_QUERY, 0) }
   const goToPage = (index: number) => { setPage(index); void find(selected, query, index) }
+  /** Loads a query (e.g. from history) into the bar and runs it. */
+  const runQuery = (state: MongoQueryState) => { setQuery(state); setPage(0); void find(selected, state, 0) }
 
   const mutate = async (command: Record<string, unknown>, countDelta = 0) => {
     if (!selected) throw new Error('Select a collection first')
@@ -182,6 +205,12 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
     if (!('_id' in original)) throw new Error('Documents without _id cannot be edited safely')
     const [next] = parseEditorDocuments(text)
     await mutate({ operation: 'replaceOne', filter: { _id: original._id }, document: next })
+  }
+
+  /** $set / $unset of one field path, addressed by _id. */
+  const updateField = async (original: BsonDoc, update: BsonDoc) => {
+    if (!('_id' in original)) throw new Error('Documents without _id cannot be edited safely')
+    await mutate({ operation: 'updateOne', filter: { _id: original._id }, update })
   }
 
   const deleteDocument = async (original: BsonDoc) => {
@@ -237,6 +266,36 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
     return all
   }
 
+  /** updateMany on the current filter; the backend asks for confirmation on every "many" write. */
+  const bulkUpdate = async (update: BsonDoc) => {
+    if (!selected) throw new Error('Select a collection first')
+    const { filter } = findSpec(query)
+    setBusy(true)
+    try {
+      const r = await runMongo({ operation: 'updateMany', database: selected.db, collection: selected.collection, filter, update }, { confirm: true })
+      await find()
+      return extractAffected(r)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const bulkDelete = async () => {
+    if (!selected) throw new Error('Select a collection first')
+    const { filter } = findSpec(query)
+    setBusy(true)
+    try {
+      const r = await runMongo({ operation: 'deleteMany', database: selected.db, collection: selected.collection, filter }, { confirm: true })
+      const { modified } = extractAffected(r)
+      if (modified) patchCount(selected.db, selected.collection, -modified)
+      setPage(0)
+      await find(selected, query, 0)
+      return modified
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const dropCollection = async (db: string, name: string) => {
     await runMongo({ operation: 'dropCollection', database: db, collection: name }, { confirm: true })
     if (selected?.db === db && selected.collection === name) { setSelected(null); setDocs([]); setTotal(null) }
@@ -252,8 +311,8 @@ export function useMongoBrowser(connection: DbConnection, runMongo: RunMongo, re
   return {
     databases, expanded, treeLoading, treeError, selected,
     query, setQuery, page, docs, total, loading, busy, error, durationMs,
-    refreshDatabases, toggleDb, selectCollection, runFind, resetQuery, goToPage,
-    replaceDocument, deleteDocument, insertDocuments, importDocuments, exportDocuments,
+    refreshDatabases, toggleDb, selectCollection, runFind, resetQuery, goToPage, runQuery, bulkUpdate, bulkDelete,
+    replaceDocument, updateField, deleteDocument, insertDocuments, importDocuments, exportDocuments,
     createCollection, dropCollection,
   }
 }

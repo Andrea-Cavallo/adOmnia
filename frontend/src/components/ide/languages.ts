@@ -1,5 +1,6 @@
 import type { GoIDERunConfiguration } from '@/lib/code-studio-api'
 import type { RunTemplate } from '@/lib/code-studio/runFormTypes'
+import type { LiveTemplate } from '@/lib/code-studio/liveTemplates'
 import type { BrandIconSlug } from '@/lib/brandIcons.generated'
 import type { IdeFileIcon } from '@/lib/code-studio/fileIconTypes'
 import { DECLARED_LANGUAGES } from './languages/declared'
@@ -16,6 +17,7 @@ import { WEB_LANGUAGES } from './languages/web'
  * `languages/<id>/` più una riga in IDE_LANGUAGES (docs/architecture/ide-package-rules.md).
  */
 export interface IdeLanguageContribution {
+  liveTemplates?: readonly LiveTemplate[]
   fileIcon?: (lowerName: string) => IdeFileIcon | undefined
   runTemplates?: readonly RunTemplate[]
   canDebugRun?: (config: GoIDERunConfiguration) => boolean

@@ -1,5 +1,46 @@
 # Code Studio
 
+## Live templates and workspace Undo (2026-11-26)
+
+**Code → Insert Live Template…** (`Ctrl/Cmd+J`) opens a searchable palette for the
+current editor language. **Surround With…** (`Ctrl/Cmd+Alt+T`) wraps selected code.
+The editor context menu exposes both actions. Twenty built-in templates cover Go,
+Java, Python, Rust and TypeScript/JavaScript. Fields with the same name stay linked;
+Tab moves to the next field. Neither action needs a language server or starts a process.
+
+Typing an abbreviation also offers a snippet in normal completion. This follows
+Monaco's completion acceptance rather than taking over Tab globally. Automatic
+suggestions skip comments/strings and stop tokenizing when the prefix or current
+line exceeds 131,072 UTF-16 code units; the explicit palette remains available.
+Postfix completion is not part of this first implementation.
+
+**Code → Export Live Templates…** exports a JSON array. Edit the exported data and
+use **Import Live Templates…** to merge custom templates by id: matching ids replace
+their previous definitions, other custom templates stay. The supported fields are
+`id`, `abbreviation`, `description`, `body`, and `languages` (Monaco language ids).
+Bodies use `$NAME$` for linked fields, `$SELECTION$` for selected code, `$END$` for
+the final caret and `$$` for a literal dollar. Template bodies are data, never
+evaluated as expressions or commands. Import is limited to 1 MiB, 200 templates
+and 32,768 characters per body. Invalid imports or storage failures leave the old
+set intact. The new localStorage key is `adomnia.codestudio.liveTemplates.v1`;
+there is no change to existing settings or workspace formats.
+
+After a text-only refactoring of several existing documents, **Edit → Undo
+Workspace Change / Redo Workspace Change** restores all its buffers together.
+These actions keep ordinary editor Undo/Redo intact. History is local to the
+session and window, bounded to ten entries and approximately 16 MiB of UTF-16
+snapshots, and cleared on project close. If a target was changed, closed or became
+read-only, the entire undo/redo is refused. Restored buffers use normal dirty/save
+and autosave behavior; history does not roll back external disk changes.
+Refactorings that create files remain supported but explicitly do not provide
+workspace Undo. Filesystem transactions for creation/deletion/moves are still pending.
+
+Focused tests and a browser fixture with real Monaco exercise insertion, linked
+fields, indentation, keyboard palette navigation, cancellation, both themes and
+multi-model Undo/Redo with conflict refusal. Native Wails acceptance, including
+file dialogs, editor emulation and detached windows, remains open in
+`mds/OPENIDEA-IDE-PORT.md` (local plan).
+
 ## Source and runtime Context (2026-10-10)
 
 The Context side pane connects a source line to goroutines created or waiting there. It shows their actual channel/mutex waits, links to debugger threads and labels source-only findings as STATIC. Error lines show the matching paused frame's error values and reuse the on-demand Unwrap inspector. Runtime values are optional and appear only for the matching paused frame.

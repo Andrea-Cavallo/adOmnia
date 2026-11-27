@@ -6,6 +6,11 @@ export interface PlanStage {
   indexName?: string
   keyPattern?: BsonDoc
   children: PlanStage[]
+  /** Per-stage execution stats, when the plan came from executionStats. */
+  nReturned?: number | null
+  docsExamined?: number | null
+  keysExamined?: number | null
+  timeMs?: number | null
 }
 
 export interface ExplainSummary {
@@ -32,6 +37,10 @@ function toStage(node: BsonDoc | undefined): PlanStage | null {
     indexName: typeof node.indexName === 'string' ? node.indexName : undefined,
     keyPattern: node.keyPattern as BsonDoc | undefined,
     children,
+    nReturned: numberValue(node.nReturned),
+    docsExamined: numberValue(node.docsExamined),
+    keysExamined: numberValue(node.keysExamined),
+    timeMs: numberValue(node.executionTimeMillisEstimate),
   }
 }
 
@@ -43,8 +52,11 @@ function walk(stage: PlanStage | null, visit: (s: PlanStage) => void) {
 
 export function summarizeExplain(explain: BsonDoc): ExplainSummary {
   const planner = (explain.queryPlanner ?? {}) as BsonDoc
-  const plan = toStage(planner.winningPlan as BsonDoc | undefined)
   const stats = (explain.executionStats ?? {}) as BsonDoc
+  // executionStages carries per-stage numbers; SBE engines report lower-case stage names there, so fall back to the winning plan.
+  const executed = stats.executionStages as BsonDoc | undefined
+  const classic = !!executed && /^[A-Z_]+$/.test(String(executed.stage ?? ''))
+  const plan = toStage(classic ? executed : planner.winningPlan as BsonDoc | undefined)
   const indexes: string[] = []
   let collectionScan = false
   let inMemorySort = false

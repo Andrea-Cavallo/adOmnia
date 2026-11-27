@@ -84,6 +84,16 @@ var mongoOpHandlers = map[string]mongoOpHandler{
 // mongoFindOptions builds the find options from the command.
 func mongoFindOptions(cmd mongoQueryCommand, limit int64) (*options.FindOptionsBuilder, error) {
 	findOpts := options.Find().SetLimit(limit)
+	collation, hint, err := mongoReadOptions(cmd)
+	if err != nil {
+		return nil, err
+	}
+	if collation != nil {
+		findOpts.SetCollation(collation)
+	}
+	if hint != nil {
+		findOpts.SetHint(hint)
+	}
 	if cmd.Skip > 0 {
 		findOpts.SetSkip(cmd.Skip)
 	}
@@ -137,7 +147,18 @@ func mongoOpAggregate(o *mongoOpCtx) error {
 	if err != nil {
 		return err
 	}
-	cursor, err := coll.Aggregate(o.ctx, pipeline)
+	aggOpts := options.Aggregate()
+	collation, hint, err := mongoReadOptions(o.cmd)
+	if err != nil {
+		return err
+	}
+	if collation != nil {
+		aggOpts.SetCollation(collation)
+	}
+	if hint != nil {
+		aggOpts.SetHint(hint)
+	}
+	cursor, err := coll.Aggregate(o.ctx, pipeline, aggOpts)
 	if err != nil {
 		return err
 	}
@@ -263,7 +284,18 @@ func mongoOpCount(o *mongoOpCtx) error {
 	if err != nil {
 		return err
 	}
-	count, err := coll.CountDocuments(o.ctx, filter)
+	countOpts := options.Count()
+	collation, hint, err := mongoReadOptions(o.cmd)
+	if err != nil {
+		return err
+	}
+	if collation != nil {
+		countOpts.SetCollation(collation)
+	}
+	if hint != nil {
+		countOpts.SetHint(hint)
+	}
+	count, err := coll.CountDocuments(o.ctx, filter, countOpts)
 	if err != nil {
 		return err
 	}
@@ -284,13 +316,31 @@ func mongoOpEstimatedCount(o *mongoOpCtx) error {
 	return nil
 }
 
+// mongoOpListCollections returns name, type (collection / view / timeseries) and capped, so the
+// Explorer tree can badge them; "collection" stays the first column for name-only readers.
 func mongoOpListCollections(o *mongoOpCtx) error {
-	names, err := o.db.ListCollectionNames(o.ctx, bson.D{})
+	specs, err := o.db.ListCollectionSpecifications(o.ctx, bson.D{})
 	if err != nil {
 		return err
 	}
-	o.setNames("collection", names)
+	o.resp.Columns = []string{"collection", "type", "capped"}
+	o.resp.Rows = make([]map[string]any, 0, len(specs))
+	for _, spec := range specs {
+		o.resp.Rows = append(o.resp.Rows, map[string]any{"collection": spec.Name, "type": spec.Type, "capped": mongoSpecCapped(spec.Options)})
+	}
 	return nil
+}
+
+func mongoSpecCapped(options bson.Raw) bool {
+	if len(options) == 0 {
+		return false
+	}
+	v, err := options.LookupErr("capped")
+	if err != nil {
+		return false
+	}
+	capped, ok := v.BooleanOK()
+	return ok && capped
 }
 
 func mongoOpListDatabases(o *mongoOpCtx) error {

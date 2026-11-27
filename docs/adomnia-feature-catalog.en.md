@@ -1046,6 +1046,8 @@ A Code Studio inside adOmnia. Projects open without running anything; local tool
 | J2.8 | **File Icons** | Gopher for Go sources (test marker), Go logo for module files, Simple Icons brands for Docker, Git, GitHub Actions, `.env` and common formats; readable on both themes. |
 | J2.9 | **Markdown & Mermaid documents** | `.md` files open in Preview with the eye / split / editor switch remembered per file; `.mmd`/`.mermaid` render as diagrams with the same switch and show syntax errors under the diagram. **Markdown tools** side panels: outline with click-to-jump, backlinks found by project search, and a local graph of the note with unresolved/orphan toggles and a folder filter. Covered by automated tests; manual check pending. |
 | J2.10 | **Auto save** | Save on focus change and auto save after a pause in typing (1/2/5/10 seconds, off by default), independent and combinable. The delay restarts at every keystroke and never overlaps an in-flight save; save actions (format, imports, lint) still run. |
+| J2.11 | **Live templates and Surround With** | Twenty built-in templates for Go, Java, Python, Rust and TypeScript/JavaScript; searchable insertion and selection wrapping, linked fields, snippet completion and validated local JSON import/export. No language server required. Postfix and graphical template editing are not included yet. Native acceptance pending. |
+| J2.12 | **Workspace Undo/Redo** | Text-only refactorings across existing documents can be undone/redone together from Edit. Session-local bounded history refuses the whole operation if any target changed, closed or became read-only. File creation/deletion/move transactions are not covered yet. Native acceptance pending. |
 
 ### J3. Lint & AI
 

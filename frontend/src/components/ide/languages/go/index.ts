@@ -1,4 +1,5 @@
 import { goRunTemplates } from './runTemplates'
+import { goLiveTemplates } from './liveTemplates'
 import { GO_LANGUAGE_ID } from '@/lib/code-studio/goLanguage'
 import { goSyntacticTokens } from '@/lib/code-studio/goSyntacticTokens'
 import type { IdeLanguageContribution } from '../../languages'
@@ -7,6 +8,7 @@ export { GO_LANGUAGE_ID }
 
 export const GO_LANGUAGE: IdeLanguageContribution = {
   id: GO_LANGUAGE_ID,
+  liveTemplates: goLiveTemplates,
   name: 'Go',
   icon: 'go',
   fileIcon: name => name.endsWith('.go') ? { kind: 'gopher', test: name.endsWith('_test.go') }

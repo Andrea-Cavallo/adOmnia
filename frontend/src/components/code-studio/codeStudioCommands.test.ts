@@ -70,6 +70,15 @@ describe('Code Studio command availability', () => {
     debugState: 'none', vcsAvailable: false, vcsChanges: 0, vcsConflicts: 0, canGoBack: false, canGoForward: false, bookmarkCount: 0,
   }
 
+  it('allows local templates and workspace history without a language server', () => {
+    const offline = { ...ready, lspState: 'stopped' as const, goplsAvailable: false, authorized: false, workspaceUndo: true, workspaceRedo: true }
+    for (const id of ['code.insertLiveTemplate', 'code.surroundWith', 'code.importLiveTemplates', 'code.exportLiveTemplates', 'edit.undoWorkspace', 'edit.redoWorkspace'] as const) {
+      expect(commandAvailability(id, offline), id).toBe(true)
+    }
+    expect(commandAvailability('code.insertLiveTemplate', { ...offline, hasEditor: false })).toMatch(/Open/)
+    expect(commandAvailability('edit.undoWorkspace', { ...offline, workspaceUndo: false })).toMatch(/No workspace/)
+  })
+
   it('disables editor features the running gopls does not provide', () => {
     expect(commandAvailability('code.semanticHighlighting', ready)).toBe(true)
     expect(commandAvailability('code.inlayHints', ready)).toMatch(/does not provide/)

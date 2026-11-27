@@ -17,6 +17,7 @@ import { useCodeStudioStore, type GoIDEEditorDocument } from '@/stores/codeStudi
 import { useSettingsStore } from '@/stores/settings'
 import { registerCodeStudioEditor } from './codeStudioEditorRegistry'
 import { installCodeStudioEditorActions } from './codeStudioEditorActions'
+import { registerLiveTemplateCompletions } from './codeStudioLiveTemplates'
 import { installCodeStudioAIActions } from './codeStudioAIActionsRunner'
 import { documentForModel, registerCodeStudioLanguageFeatures } from './codeStudioLanguageFeatures'
 import { registerCodeStudioCodeLens } from './codeStudioCodeLens'
@@ -79,6 +80,7 @@ registerCodeStudioDebugHover()
 registerCodeStudioExtraLanguages()
 startCodeStudioExtensions()
 registerCodeStudioSettingsJson()
+registerLiveTemplateCompletions()
 
 const RUN_TARGET_DEBOUNCE_MS = 250
 

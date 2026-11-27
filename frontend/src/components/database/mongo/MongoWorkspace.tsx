@@ -1,23 +1,28 @@
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { ResizeHandle } from '@/components/ui/ResizeHandle'
 import { useResizableSize } from '@/hooks/useResizableSize'
-import { Braces, ChevronLeft, ChevronRight, Code2, Download, FileJson, Gauge, List, ListTree, Loader2, Maximize2, Minimize2, Plus, RefreshCw, Table2, Upload, X } from 'lucide-react'
+import { Braces, ChevronLeft, ChevronRight, ChevronsDownUp, ChevronsUpDown, Code2, Download, FileJson, Gauge, List, ListTree, Loader2, Maximize2, Minimize2, PencilLine, Plus, RefreshCw, Table2, Trash2, Upload, X } from 'lucide-react'
+import { confirm } from '@/lib/confirmDialog'
 import { cn } from '@/lib/utils'
-import { download, type DbConnection } from '../dbShared'
+import { csvEscape, download, type DbConnection } from '../dbShared'
 import { AggregationsTab } from './AggregationsTab'
-import { documentColumns, stringifyEditable, toEditable, type BsonDoc } from './bson'
+import { documentColumns, parseShellDoc, stringifyEditable, toEditable, type BsonDoc } from './bson'
+import { validateUpdate } from './bulk'
+import { entriesFor, loadHistory, recordQuery, removeEntry, saveHistory, toggleFavorite, type MongoQueryEntry } from './queryHistory'
 import type { CodeRequest } from './codegen'
 import { CodeExportDialog } from './CodeExportDialog'
 import { DocumentCard } from './DocumentCard'
 import { DocumentEditor } from './DocumentEditor'
 import { ExplainDialog } from './ExplainDialog'
-import { parseImportFile } from './importExport'
+import { documentsToCsv, parseImportFile } from './importExport'
 import { IndexesTab } from './IndexesTab'
 import { MongoNavigator } from './MongoNavigator'
 import { MongoQueryBar } from './MongoQueryBar'
+import { PerformanceTab } from './PerformanceTab'
 import { SchemaTab } from './SchemaTab'
+import { addFilterValue, analyzeSchema } from './schema'
 import { EmptyState, ErrorBox, errorText, firstDocument, formatBytes, numberValue } from './ui'
-import { findSpec, useMongoBrowser, type RunMongo } from './useMongoBrowser'
+import { findSpec, readOptions, useMongoBrowser, type RunMongo } from './useMongoBrowser'
 import { ValidationTab } from './ValidationTab'
 import { ValueCell } from '../ValueCell'
 import { ValueInspector, type CellInspectorRequest } from '../ValueInspector'
@@ -28,7 +33,7 @@ import { useColumnWidths } from '../useColumnWidths'
 import { JsonTree } from '@/components/loginspector/JsonTree'
 
 type ViewMode = 'list' | 'table' | 'json'
-type WorkspaceTab = 'documents' | 'aggregations' | 'schema' | 'indexes' | 'validation'
+type WorkspaceTab = 'documents' | 'aggregations' | 'schema' | 'indexes' | 'validation' | 'performance'
 
 interface MongoWorkspaceProps {
   connection: DbConnection
@@ -49,6 +54,7 @@ const TABS: { id: WorkspaceTab; label: string }[] = [
   { id: 'schema', label: 'Schema' },
   { id: 'indexes', label: 'Indexes' },
   { id: 'validation', label: 'Validation' },
+  { id: 'performance', label: 'Performance' },
 ]
 
 interface CollectionStats {
@@ -78,6 +84,15 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
   const [transfer, setTransfer] = useState('')
   const [inspector, setInspector] = useState<CellInspectorRequest | null>(null)
   const [expandNested, setExpandNested] = useState(false)
+  // Expand/Collapse all della vista Tree: il numero rimonta le card con il nuovo stato iniziale.
+  const [treeOpen, setTreeOpen] = useState({ open: false, n: 0 })
+  const [history, setHistory] = useState<MongoQueryEntry[]>(loadHistory)
+  const [bulkUpdateText, setBulkUpdateText] = useState<string | null>(null)
+  const [bulkError, setBulkError] = useState('')
+  // Campi per l'autocomplete: dal campione della pagina corrente, array come path senza `[]`.
+  const fieldPaths = useMemo(() => [...new Set(analyzeSchema(m.docs).map((f) => f.path.replace(/\[\]/g, '')))], [m.docs])
+  const updateHistory = (next: MongoQueryEntry[]) => { setHistory(next); saveHistory(next) }
+  const collectionHistory = useMemo(() => (m.selected ? entriesFor(history, m.selected.db, m.selected.collection) : { favorites: [], recent: [] }), [history, m.selected])
   const { expanded, toggle, containerRef, focusProps } = useResultsFullscreen<HTMLElement>()
   // Virtualizzazione (DB-1.6) e colonne ridimensionabili (DB-1.7) della vista tabella.
   const tableRows = useMemo<Record<string, unknown>[]>(() => {
@@ -143,12 +158,16 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
     }
   }
 
-  const exportCollection = async () => {
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportCollection = async (format: 'json' | 'csv') => {
+    setExportOpen(false)
     if (!selected) return
     try {
       setTransfer('Exporting 0')
       const docs = await m.exportDocuments((n) => setTransfer(`Exporting ${n.toLocaleString()}`))
-      download(`${selected.db}.${selected.collection}.json`, JSON.stringify(docs.map(toEditable), null, 2), 'application/json')
+      const plain = docs.map((doc) => toEditable(doc))
+      if (format === 'csv') download(`${selected.db}.${selected.collection}.csv`, documentsToCsv(plain, csvEscape), 'text/csv')
+      else download(`${selected.db}.${selected.collection}.json`, JSON.stringify(plain, null, 2), 'application/json')
       setNotice(`${docs.length.toLocaleString()} documents exported`)
     } catch (e) {
       setNotice(`Export failed: ${errorText(e)}`)
@@ -161,6 +180,55 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
     const field = path.replace(/\[\]/g, '')
     m.setQuery({ ...m.query, filter: `{ ${/^[A-Za-z_$][\w$]*$/.test(field) ? field : JSON.stringify(field)}: { $exists: true } }` })
     setTab('documents')
+  }
+
+  const runFind = () => {
+    if (selected) updateHistory(recordQuery(history, selected.db, selected.collection, m.query))
+    m.runFind()
+  }
+
+  const filterLabel = () => (m.query.filter.trim() ? 'matching the current filter' : 'in the collection (no filter)')
+
+  const submitBulkUpdate = async (text: string) => {
+    setBulkError('')
+    try {
+      const update = validateUpdate(parseShellDoc(text, 'Update'))
+      const ok = await confirm({
+        title: 'Update documents',
+        message: `Apply this update to ${m.total != null ? m.total.toLocaleString() : 'every'} document(s) ${filterLabel()}?`,
+        confirmLabel: 'Update documents',
+        variant: 'danger',
+      })
+      if (!ok) return
+      const r = await m.bulkUpdate(update)
+      setBulkUpdateText(null)
+      setNotice(`${r.matched.toLocaleString()} matched · ${r.modified.toLocaleString()} modified`)
+    } catch (e) {
+      setBulkError(errorText(e))
+    }
+  }
+
+  const bulkDelete = async () => {
+    const ok = await confirm({
+      title: 'Delete documents',
+      message: `Permanently delete ${m.total != null ? m.total.toLocaleString() : 'every'} document(s) ${filterLabel()}? This cannot be undone.`,
+      confirmLabel: 'Delete documents',
+      variant: 'danger',
+    })
+    if (!ok) return
+    try {
+      const n = await m.bulkDelete()
+      setNotice(`${n.toLocaleString()} documents deleted`)
+    } catch (e) {
+      setNotice(`Delete failed: ${errorText(e)}`)
+    }
+  }
+
+  const useSchemaValue = (path: string, value: unknown) => {
+    const nextQuery = { ...m.query, filter: addFilterValue(m.query.filter, path, toEditable(value)) }
+    setTab('documents')
+    if (selected) updateHistory(recordQuery(history, selected.db, selected.collection, nextQuery))
+    m.runQuery(nextQuery)
   }
 
   let schemaFilter: BsonDoc | null = null
@@ -187,7 +255,7 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
         ref={containerRef}
         onMouseDownCapture={focusProps.onMouseDownCapture}
         className={cn(
-          'flex min-h-0 min-w-0 flex-1 flex-col bg-surface-0',
+          '@container flex min-h-0 min-w-0 flex-1 flex-col bg-surface-0',
           // Schermo intero vero (DB-1.5), come i risultati SQL.
           expanded && 'fixed inset-0 z-[240]',
         )}
@@ -195,27 +263,27 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
         {/* header: breadcrumb, stats, mode switch */}
         <div className="flex h-11 flex-none items-center gap-3 border-b border-border-1 bg-surface-1 px-3">
           {selected ? (
-            <div className="flex min-w-0 items-baseline gap-1.5">
-              <span className="truncate text-[12px] text-text-3">{selected.db}</span>
+            <div className="flex min-w-0 flex-1 items-baseline gap-1.5 whitespace-nowrap">
+              <span className="min-w-0 shrink truncate text-[12px] text-text-3">{selected.db}</span>
               <span className="text-text-4">/</span>
-              <span className="truncate text-[13px] font-semibold text-text-1">{selected.collection}</span>
+              <span className="min-w-0 truncate text-[13px] font-semibold text-text-1">{selected.collection}</span>
             </div>
           ) : (
-            <span className="text-[12px] text-text-3">Select a collection</span>
+            <span className="min-w-0 flex-1 truncate text-[12px] text-text-3">Select a collection</span>
           )}
           {selected && stats && (
-            <div className="hidden min-w-0 items-center gap-3 text-[11px] text-text-3 xl:flex">
+            <div className="hidden flex-none items-center gap-3 text-[11px] text-text-3 @4xl:flex">
               <Stat label="documents" value={stats.count?.toLocaleString()} />
               <Stat label="storage" value={formatBytes(stats.size)} />
               <Stat label="avg doc" value={formatBytes(stats.avgObjSize)} />
               <Stat label={stats.nindexes === 1 ? 'index' : 'indexes'} value={stats.nindexes != null ? `${stats.nindexes} · ${formatBytes(stats.totalIndexSize)}` : undefined} />
             </div>
           )}
-          <div className="ml-auto">{modeSwitch}</div>
+          <div className="ml-auto flex-none">{modeSwitch}</div>
         </div>
 
         {selected && (
-          <div role="tablist" aria-label="Collection views" className="flex h-9 flex-none items-end gap-1 border-b border-border-1 bg-surface-1 px-2">
+          <div role="tablist" aria-label="Collection views" className="flex h-9 flex-none items-end gap-1 overflow-x-auto overflow-y-hidden border-b border-border-1 bg-surface-1 px-2 [scrollbar-width:none]">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -223,7 +291,7 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={cn('relative h-9 px-3 text-[12px] font-medium transition-colors', tab === t.id ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
+                className={cn('relative h-9 flex-none whitespace-nowrap px-3 text-[12px] font-medium transition-colors', tab === t.id ? 'text-text-1' : 'text-text-3 hover:text-text-2')}
               >
                 {t.label}
                 {tab === t.id && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent" />}
@@ -237,37 +305,61 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
         ) : tab === 'aggregations' ? (
           <AggregationsTab key={`${selected.db}.${selected.collection}`} runMongo={runMongo} db={selected.db} collection={selected.collection} onExportCode={(pipeline) => setCodeRequest({ kind: 'aggregate', db: selected.db, collection: selected.collection, pipeline })} />
         ) : tab === 'schema' ? (
-          <SchemaTab key={`${selected.db}.${selected.collection}`} runMongo={runMongo} db={selected.db} collection={selected.collection} filter={schemaFilter} onUseField={useSchemaField} />
+          <SchemaTab key={`${selected.db}.${selected.collection}`} runMongo={runMongo} db={selected.db} collection={selected.collection} filter={schemaFilter} onUseField={useSchemaField} onUseValue={useSchemaValue} />
         ) : tab === 'indexes' ? (
           <IndexesTab runMongo={runMongo} db={selected.db} collection={selected.collection} />
+        ) : tab === 'performance' ? (
+          <PerformanceTab runMongo={runMongo} db={selected.db} />
         ) : tab === 'validation' ? (
           <ValidationTab runMongo={runMongo} db={selected.db} collection={selected.collection} />
         ) : (
           <>
-            <MongoQueryBar value={m.query} running={m.loading} disabled={false} onChange={m.setQuery} onFind={m.runFind} onReset={m.resetQuery} />
+            <MongoQueryBar
+              value={m.query}
+              running={m.loading}
+              disabled={false}
+              onChange={m.setQuery}
+              onFind={runFind}
+              onReset={m.resetQuery}
+              history={collectionHistory}
+              onPickHistory={(entry) => { updateHistory(recordQuery(history, entry.db, entry.collection, entry.query)); m.runQuery(entry.query) }}
+              onToggleFavorite={(entry) => updateHistory(toggleFavorite(history, entry.id))}
+              onRemoveHistory={(entry) => updateHistory(removeEntry(history, entry.id))}
+              fields={fieldPaths}
+            />
 
-            <div className="flex h-10 flex-none items-center gap-1 border-b border-border-1 bg-surface-1 px-3">
-              <button type="button" onClick={() => openInsert()} className="flex h-7 items-center gap-1.5 rounded-md bg-accent/15 px-2.5 text-[11.5px] font-semibold text-accent hover:bg-accent/25">
-                <Plus size={13} /> Add data
+            <div className="flex h-10 flex-none items-center gap-1 overflow-hidden whitespace-nowrap border-b border-border-1 bg-surface-1 px-3">
+              <button type="button" onClick={() => openInsert()} title="Add data" className="flex h-7 flex-none items-center gap-1.5 rounded-md bg-accent/15 px-2.5 text-[11.5px] font-semibold text-accent hover:bg-accent/25">
+                <Plus size={13} /> <span className="hidden @2xl:inline">Add data</span>
               </button>
-              <ToolbarButton icon={<Download size={13} />} label="Export" onClick={() => void exportCollection()} disabled={!!transfer} title="Export every document matching the filter (JSON)" />
-              <ToolbarButton icon={<Gauge size={13} />} label="Explain" onClick={() => withSpec((s) => setExplainCommand({ find: selected.collection, filter: s.filter, ...(s.projection ? { projection: s.projection } : {}), ...(s.sort ? { sort: s.sort } : {}), skip: s.skip, limit: s.limit }))} />
+              <div className="relative flex-none" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setExportOpen(false) }}>
+                <ToolbarButton icon={<Download size={13} />} label="Export" onClick={() => setExportOpen((v) => !v)} disabled={!!transfer} title="Export every document matching the filter" />
+                {exportOpen && (
+                  <div role="menu" className="fixed z-40 mt-1 w-44 rounded-md border border-border-2 bg-surface-2 py-1 shadow-2xl">
+                    <button type="button" role="menuitem" onClick={() => void exportCollection('json')} className="block w-full px-3 py-1.5 text-left text-[11.5px] text-text-1 hover:bg-surface-3">JSON <span className="text-text-4">· full types</span></button>
+                    <button type="button" role="menuitem" onClick={() => void exportCollection('csv')} className="block w-full px-3 py-1.5 text-left text-[11.5px] text-text-1 hover:bg-surface-3">CSV <span className="text-text-4">· dotted columns</span></button>
+                  </div>
+                )}
+              </div>
+              <ToolbarButton icon={<PencilLine size={13} />} label="Update" onClick={() => { setBulkError(''); setBulkUpdateText('{\n  $set: {\n    \n  }\n}') }} disabled={m.busy || m.docs.length === 0} title="Update every document matching the filter (updateMany)" />
+              <ToolbarButton icon={<Trash2 size={13} />} label="Delete" onClick={() => void bulkDelete()} disabled={m.busy || m.docs.length === 0} title="Delete every document matching the filter (deleteMany)" />
+              <ToolbarButton icon={<Gauge size={13} />} label="Explain" onClick={() => withSpec((s) => setExplainCommand({ find: selected.collection, filter: s.filter, ...(s.projection ? { projection: s.projection } : {}), ...(s.sort ? { sort: s.sort } : {}), skip: s.skip, limit: s.limit, ...readOptions(s) }))} />
               <ToolbarButton icon={<Code2 size={13} />} label="To code" onClick={() => withSpec((s) => setCodeRequest({ kind: 'find', db: selected.db, collection: selected.collection, ...s }))} />
-              {transfer && <span className="ml-2 flex items-center gap-1.5 text-[11px] text-text-3"><Loader2 size={12} className="animate-spin" />{transfer}</span>}
-              <div className="ml-auto flex items-center gap-1.5">
+              {transfer && <span className="ml-2 flex min-w-0 items-center gap-1.5 text-[11px] text-text-3"><Loader2 size={12} className="flex-none animate-spin" /><span className="truncate">{transfer}</span></span>}
+              <div className="ml-auto flex min-w-0 items-center gap-1.5">
                 {m.loading && <Loader2 size={13} className="animate-spin text-text-4" />}
-                <span className="text-[11px] tabular-nums text-text-3">
+                <span className="min-w-0 truncate text-[11px] tabular-nums text-text-3">
                   {from}–{to}{m.total != null && <> of <b className="font-semibold text-text-1">{m.total.toLocaleString()}</b></>}
-                  {m.durationMs != null && <span className="text-text-4"> · {m.durationMs} ms</span>}
+                  {m.durationMs != null && <span className="hidden text-text-4 @3xl:inline"> · {m.durationMs} ms</span>}
                   {m.total != null && m.docs.length < m.total && (
                     // Quanto è caricato davvero (DB-1.5): l'Explorer porta in memoria solo la pagina.
-                    <span className="text-warning" title="Only the current page is loaded. Use the pager to load more."> · only the current page is loaded: {m.docs.length} of {m.total.toLocaleString()}</span>
+                    <span className="hidden text-warning @5xl:inline" title="Only the current page is loaded. Use the pager to load more."> · only the current page is loaded: {m.docs.length} of {m.total.toLocaleString()}</span>
                   )}
                 </span>
-                <button type="button" aria-label="Previous page" onClick={() => m.goToPage(m.page - 1)} disabled={m.page === 0 || m.loading} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><ChevronLeft size={14} /></button>
-                <button type="button" aria-label="Next page" onClick={() => m.goToPage(m.page + 1)} disabled={!hasNext || m.loading} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><ChevronRight size={14} /></button>
-                <button type="button" aria-label="Refresh documents" onClick={() => m.goToPage(m.page)} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1"><RefreshCw size={13} /></button>
-                <div role="tablist" aria-label="Document view" className="ml-1 flex rounded-md border border-border-2 p-0.5">
+                <button type="button" aria-label="Previous page" onClick={() => m.goToPage(m.page - 1)} disabled={m.page === 0 || m.loading} className="grid h-7 w-7 flex-none place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><ChevronLeft size={14} /></button>
+                <button type="button" aria-label="Next page" onClick={() => m.goToPage(m.page + 1)} disabled={!hasNext || m.loading} className="grid h-7 w-7 flex-none place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1 disabled:opacity-30"><ChevronRight size={14} /></button>
+                <button type="button" aria-label="Refresh documents" onClick={() => m.goToPage(m.page)} className="grid h-7 w-7 flex-none place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1"><RefreshCw size={13} /></button>
+                <div role="tablist" aria-label="Document view" className="ml-1 flex flex-none rounded-md border border-border-2 p-0.5">
                   {VIEW_MODES.map((mode) => (
                     <button
                       key={mode.id}
@@ -283,10 +375,15 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => setExpandNested((value) => !value)} aria-pressed={expandNested} title={expandNested ? 'Show nested fields as one cell' : 'Expand nested values into dotted columns'} className={cn('grid h-7 w-7 place-items-center rounded-md hover:bg-surface-2', expandNested ? 'text-accent' : 'text-text-3 hover:text-text-1')}>
+                {view === 'list' && (
+                  <button type="button" onClick={() => setTreeOpen((s) => ({ open: !s.open, n: s.n + 1 }))} title={treeOpen.open ? 'Collapse all fields' : 'Expand all fields'} aria-label={treeOpen.open ? 'Collapse all fields' : 'Expand all fields'} className="grid h-7 w-7 flex-none place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
+                    {treeOpen.open ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
+                  </button>
+                )}
+                <button type="button" onClick={() => setExpandNested((value) => !value)} aria-pressed={expandNested} title={expandNested ? 'Show nested fields as one cell' : 'Expand nested values into dotted columns'} className={cn('grid h-7 w-7 flex-none place-items-center rounded-md hover:bg-surface-2', expandNested ? 'text-accent' : 'text-text-3 hover:text-text-1')}>
                   <ListTree size={13} />
                 </button>
-                <button type="button" onClick={toggle} title={expanded ? 'Exit full screen (Esc)' : 'Full screen (Ctrl+Shift+F)'} className="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
+                <button type="button" onClick={toggle} title={expanded ? 'Exit full screen (Esc)' : 'Full screen (Ctrl+Shift+F)'} className="grid h-7 w-7 flex-none place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text-1">
                   {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
                 </button>
               </div>
@@ -300,8 +397,17 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
                 <div className="space-y-2 p-3">
                   {m.docs.map((doc, i) => (
                     <DocumentCard
-                      key={JSON.stringify(doc._id ?? i)}
+                      key={`${treeOpen.n}:${JSON.stringify(doc._id ?? i)}`}
                       doc={doc}
+                      defaultOpen={treeOpen.open}
+                      fieldEdit={{
+                        set: (path, value) => m.updateField(doc, { $set: { [path]: value } }),
+                        unset: async (path) => {
+                          if (await confirm({ title: 'Remove field', message: `Remove ${path} from this document?`, confirmLabel: 'Remove field', variant: 'danger' })) {
+                            try { await m.updateField(doc, { $unset: { [path]: '' } }) } catch (e) { setNotice(errorText(e)) }
+                          }
+                        },
+                      }}
                       busy={m.busy}
                       onSave={(text) => m.replaceDocument(doc, text)}
                       onDelete={() => m.deleteDocument(doc)}
@@ -357,6 +463,31 @@ export function MongoWorkspace({ connection, runMongo, reloadToken, modeSwitch }
         </div>
       )}
 
+      {bulkUpdateText != null && selected && (
+        <div className="fixed inset-0 z-[260] grid place-items-center bg-black/55 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setBulkUpdateText(null) }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="mongo-bulk-title" className="w-full max-w-2xl overflow-hidden rounded-md border border-border-2 bg-surface-2 shadow-2xl">
+            <div className="flex h-11 items-center gap-2 border-b border-border-1 px-3.5">
+              <PencilLine size={14} className="text-accent" />
+              <h3 id="mongo-bulk-title" className="min-w-0 truncate text-[13px] font-semibold text-text-1">Update documents in {selected.collection}</h3>
+              <button type="button" onClick={() => setBulkUpdateText(null)} aria-label="Close update dialog" className="ml-auto grid h-7 w-7 flex-none place-items-center rounded text-text-3 hover:bg-surface-3 hover:text-text-1"><X size={14} /></button>
+            </div>
+            <div className="border-b border-border-1 bg-surface-1 px-3.5 py-2 text-[11px] text-text-3">
+              Filter <code className="font-mono text-text-1">{m.query.filter.trim() || '{}'}</code>
+              {m.total != null && <> · <b className="font-semibold text-text-1">{m.total.toLocaleString()}</b> documents</>}
+            </div>
+            <DocumentEditor
+              initial={bulkUpdateText}
+              busy={m.busy}
+              submitLabel="Update documents"
+              hint="Update operators: $set, $unset, $inc, $push… · Ctrl+Enter to apply"
+              onCancel={() => setBulkUpdateText(null)}
+              onSubmit={submitBulkUpdate}
+            />
+            {bulkError && <div className="border-t border-error/30 bg-error/10 px-3.5 py-2 text-[11px] text-error">{bulkError}</div>}
+          </div>
+        </div>
+      )}
+
       {explainCommand && selected && <ExplainDialog runMongo={runMongo} db={selected.db} command={explainCommand} onClose={() => setExplainCommand(null)} />}
       {codeRequest && <CodeExportDialog request={codeRequest} onClose={() => setCodeRequest(null)} />}
       {inspector && <ValueInspector request={inspector} onClose={() => setInspector(null)} />}
@@ -375,8 +506,8 @@ function Stat({ label, value }: { label: string; value: string | undefined }) {
 
 function ToolbarButton({ icon, label, onClick, disabled, title }: { icon: ReactNode; label: string; onClick: () => void; disabled?: boolean; title?: string }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} title={title ?? label} className="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
-      {icon} {label}
+    <button type="button" onClick={onClick} disabled={disabled} title={title ?? label} aria-label={label} className="flex h-7 flex-none items-center gap-1.5 rounded-md px-2 text-[11.5px] text-text-2 hover:bg-surface-2 hover:text-text-1 disabled:opacity-40">
+      {icon} <span className="hidden @3xl:inline">{label}</span>
     </button>
   )
 }

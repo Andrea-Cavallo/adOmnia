@@ -451,6 +451,10 @@ type mongoQueryCommand struct {
 	Skip       int64               `json:"skip"`
 	Upsert     bool                `json:"upsert"`
 	Canonical  bool                `json:"canonical"`
+	// Read options for find / count / aggregate.
+	MaxTimeMS int64             `json:"maxTimeMS"`
+	Collation jsonv1.RawMessage `json:"collation"`
+	Hint      jsonv1.RawMessage `json:"hint"`
 }
 
 func isMongoDriver(driver string) bool {
@@ -556,14 +560,13 @@ func runMongoQuery(parent context.Context, req dbQueryRequest) (dbQueryResponse,
 		return dbQueryResponse{}, fmt.Errorf("MongoDB query requires operation")
 	}
 	destructive, strict := mongoDestructiveOperation(op)
+	if op == "runcommand" && mongoReadOnlyCommand(cmd.Command) {
+		destructive, strict = false, false
+	}
 	if strict && !req.Confirm {
 		return dbQueryResponse{}, fmt.Errorf("dangerous MongoDB operation requires confirmation")
 	}
-	timeout := time.Duration(req.TimeoutMS) * time.Millisecond
-	if timeout <= 0 {
-		timeout = 30 * time.Second
-	}
-	ctx, cancel := context.WithTimeout(parent, timeout)
+	ctx, cancel := context.WithTimeout(parent, mongoTimeout(int64(req.TimeoutMS), cmd.MaxTimeMS))
 	defer cancel()
 	start := time.Now()
 	client, db, cleanup, err := mongoOpenTarget(ctx, req, cmd)

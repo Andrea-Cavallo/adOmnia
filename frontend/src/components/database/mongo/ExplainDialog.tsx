@@ -57,7 +57,7 @@ export function ExplainDialog({ runMongo, db, command, onClose }: ExplainDialogP
                   ? 'Collection scan: no index supports this query. Consider creating one on the filtered/sorted fields.'
                   : `Query uses ${summary.indexesUsed.length ? summary.indexesUsed.join(', ') : 'an index'}.`}
               </div>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Stat label="Returned" value={summary.nReturned} />
                 <Stat label="Docs examined" value={summary.totalDocsExamined} warn={examinedRatio != null && examinedRatio > 10} />
                 <Stat label="Keys examined" value={summary.totalKeysExamined} />
@@ -91,6 +91,14 @@ function StageNode({ stage }: { stage: PlanStage }) {
       <div className={cn('rounded-md border px-2.5 py-1.5 font-mono text-[11.5px]', stage.stage === 'COLLSCAN' ? 'border-warning/50 text-warning' : stage.indexName ? 'border-success/50 text-success' : 'border-border-2 text-text-1')}>
         {stage.stage}
         {stage.indexName && <span className="ml-2 text-text-3">{stage.indexName}</span>}
+        {stage.nReturned != null && (
+          <span className="ml-3 font-sans text-[10.5px] text-text-3">
+            {stage.nReturned.toLocaleString()} returned
+            {stage.docsExamined != null && stage.docsExamined > 0 && <> · {stage.docsExamined.toLocaleString()} docs</>}
+            {stage.keysExamined != null && stage.keysExamined > 0 && <> · {stage.keysExamined.toLocaleString()} keys</>}
+            {stage.timeMs != null && <> · {stage.timeMs} ms</>}
+          </span>
+        )}
       </div>
       {stage.children.length > 0 && (
         <div className="ml-4 border-l border-border-2 pl-4 pt-2">

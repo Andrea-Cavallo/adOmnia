@@ -145,15 +145,15 @@ export function AggregationsTab({ runMongo, db, collection, onExportCode }: Aggr
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-12 flex-none items-center gap-2 border-b border-border-1 bg-surface-1 px-3">
+    <div className="@container flex min-h-0 flex-1 flex-col">
+      <div className="flex h-12 flex-none items-center gap-2 overflow-hidden whitespace-nowrap border-b border-border-1 bg-surface-1 px-3">
         <button type="button" onClick={() => void run()} disabled={running} className={primaryButton}>
-          {running ? <Loader2 size={13} className="animate-spin" /> : <Play size={11} fill="currentColor" />} Run pipeline
+          {running ? <Loader2 size={13} className="animate-spin" /> : <Play size={11} fill="currentColor" />} <span className="hidden @md:inline">Run pipeline</span>
         </button>
-        <button type="button" onClick={() => setStages([...stages, newStage('$project')])} className={secondaryButton}><Plus size={13} /> Add stage</button>
-        <button type="button" onClick={() => void copyPipeline()} className={secondaryButton}>{copied ? <Check size={12} className="text-success" /> : <Copy size={12} />} Copy pipeline</button>
-        <button type="button" onClick={() => { try { onExportCode(buildPipeline(stages)) } catch (e) { setError(errorText(e)) } }} className={secondaryButton}><Code2 size={12} /> To code</button>
-        <span className="ml-auto text-[11px] text-text-3">{stages.filter((s) => s.enabled).length} of {stages.length} stages enabled · previews show {PREVIEW_DOCS} docs</span>
+        <button type="button" onClick={() => setStages([...stages, newStage('$project')])} title="Add stage" className={secondaryButton}><Plus size={13} /> <span className="hidden @xl:inline">Add stage</span></button>
+        <button type="button" onClick={() => void copyPipeline()} className={secondaryButton}>{copied ? <Check size={12} className="text-success" /> : <Copy size={12} />} <span className="hidden @2xl:inline">Copy pipeline</span></button>
+        <button type="button" onClick={() => { try { onExportCode(buildPipeline(stages)) } catch (e) { setError(errorText(e)) } }} title="To code" className={secondaryButton}><Code2 size={12} /> <span className="hidden @2xl:inline">To code</span></button>
+        <span className="ml-auto hidden min-w-0 truncate text-[11px] text-text-3 @4xl:inline">{stages.filter((s) => s.enabled).length} of {stages.length} stages enabled · previews show {PREVIEW_DOCS} docs</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
@@ -162,19 +162,19 @@ export function AggregationsTab({ runMongo, db, collection, onExportCode }: Aggr
           {stages.map((stage, index) => {
             const preview = previews[stage.id]
             return (
-              <div key={stage.id} className={cn('grid grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)] overflow-hidden rounded-md border bg-surface-1', stage.enabled ? 'border-border-1' : 'border-dashed border-border-2 opacity-60')}>
-                <div className="flex min-w-0 flex-col border-r border-border-1">
+              <div key={stage.id} className={cn('grid grid-cols-1 overflow-hidden rounded-md border bg-surface-1 @3xl:grid-cols-[minmax(300px,0.9fr)_minmax(0,1.1fr)]', stage.enabled ? 'border-border-1' : 'border-dashed border-border-2 opacity-60')}>
+                <div className="flex min-w-0 flex-col border-b border-border-1 @3xl:border-b-0 @3xl:border-r">
                   <div className="flex h-10 items-center gap-1.5 border-b border-border-1 px-2.5">
                     <span className="grid h-5 w-5 place-items-center rounded bg-surface-3 text-[10px] font-semibold tabular-nums text-text-2">{index + 1}</span>
                     <select
                       value={stage.operator}
                       aria-label={`Stage ${index + 1} operator`}
                       onChange={(e) => update(stage.id, { operator: e.target.value, body: STAGE_TEMPLATES[e.target.value] ?? stage.body })}
-                      className={cn(fieldInput, 'h-7 font-mono text-[11.5px]')}
+                      className={cn(fieldInput, 'h-7 min-w-0 font-mono text-[11.5px]')}
                     >
                       {STAGE_OPERATORS.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
-                    <div className="ml-auto flex items-center">
+                    <div className="ml-auto flex flex-none items-center">
                       <IconButton label={stage.enabled ? 'Disable stage' : 'Enable stage'} onClick={() => update(stage.id, { enabled: !stage.enabled })}>{stage.enabled ? <Eye size={13} /> : <EyeOff size={13} />}</IconButton>
                       <IconButton label="Move stage up" disabled={index === 0} onClick={() => move(index, -1)}><ArrowUp size={13} /></IconButton>
                       <IconButton label="Move stage down" disabled={index === stages.length - 1} onClick={() => move(index, 1)}><ArrowDown size={13} /></IconButton>

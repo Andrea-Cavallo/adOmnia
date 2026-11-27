@@ -71,3 +71,19 @@ function parseCsvDocuments(text: string): BsonDoc[] {
     return doc
   })
 }
+
+/** Dotted columns for nested objects; arrays and empty objects stay one JSON cell (re-importable as CSV). */
+function flattenForCsv(value: unknown, prefix: string, out: Record<string, unknown>): void {
+  if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0) {
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) flattenForCsv(v, prefix ? `${prefix}.${k}` : k, out)
+    return
+  }
+  out[prefix] = value
+}
+
+/** Serializes relaxed (toEditable) documents as CSV, header = union of dotted paths in first-seen order. */
+export function documentsToCsv(docs: unknown[], escape: (v: unknown) => string): string {
+  const rows = docs.map((doc) => { const out: Record<string, unknown> = {}; flattenForCsv(doc, '', out); return out })
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))]
+  return [columns.map((c) => escape(c)).join(','), ...rows.map((row) => columns.map((c) => escape(row[c])).join(','))].join('\n')
+}

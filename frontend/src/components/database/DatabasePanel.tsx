@@ -785,9 +785,9 @@ export function DatabasePanel() {
           role="tab"
           aria-selected={mongoView === id}
           onClick={() => setMongoView(id)}
-          className={cn('flex h-6 items-center gap-1.5 rounded px-2 text-[11px] font-medium', mongoView === id ? 'bg-surface-3 text-text-1' : 'text-text-3 hover:text-text-1')}
+          title={label} className={cn('flex h-6 items-center gap-1.5 whitespace-nowrap rounded px-2 text-[11px] font-medium', mongoView === id ? 'bg-surface-3 text-text-1' : 'text-text-3 hover:text-text-1')}
         >
-          {icon} {label}
+          {icon} <span className="hidden @xl:inline">{label}</span>
         </button>
       ))}
     </div>
@@ -820,7 +820,7 @@ export function DatabasePanel() {
         <MongoWorkspace connection={active} runMongo={runMongo} reloadToken={mongoReload} modeSwitch={mongoModeSwitch} />
       ) : (<>
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {isMongo && <div className="flex h-9 items-center justify-end border-b border-border-1 bg-surface-1 px-3">{mongoModeSwitch}</div>}
+        {isMongo && <div className="@container flex h-9 items-center justify-end border-b border-border-1 bg-surface-1 px-3">{mongoModeSwitch}</div>}
         <div className="flex min-h-0 flex-none" style={{ height: editorPane.size }}>
         {consoleOpen && (
           <QueryConsole

@@ -1,6 +1,8 @@
 import type { monaco } from '@/lib/monacoSetup'
 
 const MONACO_ACTIONS = {
+  'code.insertLiveTemplate': 'codeStudio.insertLiveTemplate',
+  'code.surroundWith': 'codeStudio.surroundWith',
   'edit.undo': 'undo',
   'edit.redo': 'redo',
   'edit.find': 'actions.find',

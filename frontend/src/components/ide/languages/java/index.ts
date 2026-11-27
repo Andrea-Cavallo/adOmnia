@@ -1,4 +1,5 @@
 import { javaDebugTargetOf } from '@/lib/code-studio/javaDebug'
+import { javaLiveTemplates } from './liveTemplates'
 import { javaRunTemplates } from './runTemplates'
 import type { IdeLanguageContribution } from '../../languages'
 
@@ -14,6 +15,7 @@ export const JAVA_LANGUAGE_ID = 'java'
  */
 export const JAVA_LANGUAGE: IdeLanguageContribution = {
   id: JAVA_LANGUAGE_ID,
+  liveTemplates: javaLiveTemplates,
   name: 'Java',
   icon: 'openjdk',
   fileIcon: name => name.endsWith('.java') ? { kind: 'java' }

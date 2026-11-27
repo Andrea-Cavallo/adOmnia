@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { FolderOpen } from 'lucide-react'
+import { Code2, FolderOpen } from 'lucide-react'
 import { useCodeStudioFilePickStore, filterFilePickItems } from '@/lib/codeStudioFilePicker'
 import { CodeStudioPalette } from './CodeStudioModal'
 import { quickOpenIndex } from './CodeStudioQuickOpen'
@@ -37,6 +37,7 @@ export function CodeStudioFilePicker() {
   }
 
   if (!pick.open) return null
+  const templates = pick.kind === 'template'
 
   const choose = (id: string | undefined) => {
     if (!id) return
@@ -64,7 +65,7 @@ export function CodeStudioFilePicker() {
       open
       onClose={() => pick.settle(null)}
       ariaLabel={pick.title}
-      icon={FolderOpen}
+      icon={templates ? Code2 : FolderOpen}
       prefix={pick.prefix || undefined}
       input={
         <input
@@ -72,7 +73,7 @@ export function CodeStudioFilePicker() {
           value={query}
           onChange={(event) => updateQuery(event.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Go to file"
+          placeholder={templates ? 'Search templates' : 'Go to file'}
           role="combobox"
           aria-expanded="true"
           aria-controls="code-studio-file-pick-results"
@@ -80,9 +81,9 @@ export function CodeStudioFilePicker() {
           className="gs-palette-input"
         />
       }
-      meta={`${results.length} file${results.length === 1 ? '' : 's'}`}
+      meta={`${results.length} ${templates ? 'template' : 'file'}${results.length === 1 ? '' : 's'}`}
     >
-      <div id="code-studio-file-pick-results" role="listbox" aria-label="Files">
+      <div id="code-studio-file-pick-results" role="listbox" aria-label={templates ? 'Templates' : 'Files'}>
         {results.map((item, index) => (
           <button
             key={item.id}
@@ -96,12 +97,12 @@ export function CodeStudioFilePicker() {
             onClick={() => choose(item.id)}
             className="gs-palette-item"
           >
-            <CodeStudioFileIcon name={item.name} relativePath={item.detail} />
+            {templates ? <Code2 size={13} aria-hidden="true" /> : <CodeStudioFileIcon name={item.name} relativePath={item.detail} />}
             <span className="gs-palette-item-title">{item.name}</span>
             <span className="gs-palette-item-detail">{item.detail}</span>
           </button>
         ))}
-        {results.length === 0 && <p className="gs-palette-empty">No matching files.</p>}
+        {results.length === 0 && <p className="gs-palette-empty">{templates ? 'No matching templates.' : 'No matching files.'}</p>}
       </div>
     </CodeStudioPalette>
   )

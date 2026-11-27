@@ -12,9 +12,11 @@ export interface GoIDEFilePickOptions {
   /** Testo fisso prima del campo di ricerca, es. il modulo e la sua versione. */
   prefix?: string
   items: GoIDEFilePickItem[]
+  kind?: 'file' | 'template'
 }
 
 interface GoIDEFilePickState {
+  kind: 'file' | 'template'
   open: boolean
   title: string
   prefix: string
@@ -33,6 +35,7 @@ interface GoIDEFilePickState {
  */
 export const useCodeStudioFilePickStore = create<GoIDEFilePickState>((set, get) => ({
   open: false,
+  kind: 'file',
   title: '',
   prefix: '',
   items: [],
@@ -41,7 +44,7 @@ export const useCodeStudioFilePickStore = create<GoIDEFilePickState>((set, get) 
     new Promise<string | null>((resolve) => {
       const previous = get().resolve
       if (previous) previous(null)
-      set({ open: true, title: options.title, prefix: options.prefix ?? '', items: options.items, resolve })
+      set({ open: true, kind: options.kind ?? 'file', title: options.title, prefix: options.prefix ?? '', items: options.items, resolve })
     }),
   settle: (id) => {
     const resolve = get().resolve

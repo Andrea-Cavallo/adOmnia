@@ -16,3 +16,13 @@ describe('parseImportFile', () => {
     ])
   })
 })
+
+describe('documentsToCsv', () => {
+  it('flattens nested objects into dotted columns and round-trips through the CSV import', async () => {
+    const { documentsToCsv } = await import('./importExport')
+    const { csvEscape } = await import('../dbShared')
+    const csv = documentsToCsv([{ name: 'Ada', address: { zip: 'x1' }, tags: ['a'] }, { name: 'Bob, Jr', age: 3 }], csvEscape)
+    expect(csv.split('\n')[0]).toBe('name,address.zip,tags,age')
+    expect(parseImportFile('a.csv', csv)[1]).toEqual({ name: 'Bob, Jr', age: 3 })
+  })
+})

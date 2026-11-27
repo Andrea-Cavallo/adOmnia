@@ -1,4 +1,5 @@
 import type { IdeLanguageContribution } from '../../languages'
+import { pythonLiveTemplates } from './liveTemplates'
 
 /** ID del language adapter backend (`internal/languages/python`). */
 export const PYTHON_LANGUAGE_ID = 'python'
@@ -11,6 +12,7 @@ export const PYTHON_LANGUAGE_ID = 'python'
  */
 export const PYTHON_LANGUAGE: IdeLanguageContribution = {
   id: PYTHON_LANGUAGE_ID,
+  liveTemplates: pythonLiveTemplates,
   name: 'Python',
   icon: 'python',
   fileIcon: name => /^(pyproject\.toml|poetry\.lock|uv\.lock|requirements([.-].+)?\.txt|pipfile(\.lock)?)$/.test(name) || /\.(py|pyi|pyw)$/.test(name) ? { kind: 'brand', slug: 'python' } : undefined,

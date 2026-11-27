@@ -25,6 +25,9 @@ import { CodeStudioRuntimeEnrichment } from './CodeStudioRuntimeEnrichment'
 import { ConflictResolverDialog } from '@/components/workspace/git/ConflictResolverDialog'
 import { CodeStudioQuickOpen } from './CodeStudioQuickOpen'
 import { CodeStudioFilePicker } from './CodeStudioFilePicker'
+import { restoreWorkspaceChange } from './codeStudioWorkspaceEdits'
+import { useWorkspaceHistory } from '@/stores/codeStudioWorkspaceHistory'
+import { exportLiveTemplates, importLiveTemplates } from './codeStudioLiveTemplates'
 import { CodeStudioRecoveryBanner } from './CodeStudioRecoveryBanner'
 import { CodeStudioCrashRecoveryDialog } from './CodeStudioCrashRecoveryDialog'
 import { CodeStudioSettingsDialog } from './CodeStudioSettingsDialog'
@@ -211,6 +214,7 @@ export function CodeStudioPanel() {
   // Kept mounted while hidden: its shortcuts must not fire from other tools.
   const panelActive = usePanelActiveRef()
   const store = useCodeStudioStore(useShallow(selectPanelState))
+  const workspaceHistory = useWorkspaceHistory(state => store.activeSessionId ? state.sessions[store.activeSessionId] : undefined)
   useActivityScope(store.activeSessionId ? `code-studio:${store.activeSessionId}` : null, usePanelVisible())
   const summary = useCodeStudioStore(useShallow(selectDocumentSummary))
   const setCursor = useCodeStudioCursorStore((state) => state.setCursor)
@@ -768,6 +772,8 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
   const authorized = activeSessionTrusted
   const lspStatus = activeSession ? lsp.statusInfo : undefined
   const commandContext: CodeStudioCommandContext = {
+    workspaceUndo: !!workspaceHistory?.undo.length,
+    workspaceRedo: !!workspaceHistory?.redo.length,
     hasSession: !!activeSession,
     webOnly: !!activeSession && isWebOnlyProject(activeSession.project),
     // Solo con unità non-Go: una cartella libera (nessuna unità) può ancora ospitare sorgenti Go sparsi.
@@ -957,6 +963,10 @@ Trusting lets Code Studio run gopls, go build, tests, the debugger and the termi
     if (id === 'code.quality') return void setQualityOpen(true)
     if (runNavigationCommand(id, activeSession?.id ?? null, activeCodeStudioEditor(), (mode) => { setLocationsMode(mode); setBookmarksOpen(true) })) return
     switch (id) {
+      case 'edit.undoWorkspace': return restoreWorkspaceChange()
+      case 'edit.redoWorkspace': return restoreWorkspaceChange(true)
+      case 'code.importLiveTemplates': return importLiveTemplates()
+      case 'code.exportLiveTemplates': return void exportLiveTemplates()
       case 'file.openProject': return void store.openProject()
       case 'file.newProject': return setCreateOpen(true)
       case 'file.clone': return setCloneOpen(true)

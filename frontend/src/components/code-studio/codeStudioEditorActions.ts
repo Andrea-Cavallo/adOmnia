@@ -14,6 +14,7 @@ import { goToSuperMethod } from './codeStudioImplementationMarkers'
 import { openChangeSignature } from './CodeStudioChangeSignatureDialog'
 import { openMoveSymbol } from './CodeStudioMoveSymbolDialog'
 import { installCodeStudioBlameAction } from './codeStudioBlameAction'
+import { insertLiveTemplate } from './codeStudioLiveTemplates'
 
 export const CODE_STUDIO_ACTIONS = {
   findUsages: 'codeStudio.findUsages',
@@ -113,6 +114,8 @@ function requestRename(editor: Monaco.editor.ICodeEditor): void {
 export function installCodeStudioEditorActions(editor: Monaco.editor.IStandaloneCodeEditor): void {
   const { KeyMod, KeyCode } = monaco
   installCodeStudioBlameAction(editor)
+  editor.addAction({ id: 'codeStudio.insertLiveTemplate', label: 'Insert Live Template…', precondition: '!editorReadonly', keybindings: [KeyMod.CtrlCmd | KeyCode.KeyJ], contextMenuGroupId: '1_modification', run: target => insertLiveTemplate(target, false) })
+  editor.addAction({ id: 'codeStudio.surroundWith', label: 'Surround With…', precondition: '!editorReadonly && editorHasSelection', keybindings: [KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyT], contextMenuGroupId: '1_modification', run: target => insertLiveTemplate(target, true) })
   const semantic = (id: string, label: string, keybindings: number[], run: (target: Monaco.editor.ICodeEditor) => void | Promise<void>) => {
     editor.addAction({ id, label, keybindings, contextMenuGroupId: 'navigation', run: (target) => { void run(target) } })
   }
