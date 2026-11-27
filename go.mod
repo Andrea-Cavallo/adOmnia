@@ -28,7 +28,7 @@ require (
 	github.com/nats-io/nats.go v1.56.0
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
 	github.com/rabbitmq/amqp091-go v1.16.0
-	github.com/redis/go-redis/v9 v9.23.0
+	github.com/redis/go-redis/v9 v9.24.0
 	github.com/romshark/jscan v1.2.0
 	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/tetratelabs/wazero v1.12.0
@@ -47,7 +47,7 @@ require (
 	golang.org/x/mod v0.43.0
 	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.25.0
-	golang.org/x/sys v0.49.0
+	golang.org/x/sys v0.50.0
 	golang.org/x/tools v0.52.0
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
