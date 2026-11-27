@@ -65,7 +65,7 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.5.438",
     "penpal": "^7.0.6",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tailwind-merge": "^3.7.0",
