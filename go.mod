@@ -32,7 +32,7 @@ require (
 	github.com/romshark/jscan v1.2.0
 	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/tetratelabs/wazero v1.12.0
-	github.com/tidwall/gjson v1.20.2
+	github.com/tidwall/gjson v1.20.6
 	github.com/tidwall/sjson v1.2.9
 	github.com/ulikunitz/xz v0.5.17
 	github.com/wI2L/jsondiff v0.7.1
