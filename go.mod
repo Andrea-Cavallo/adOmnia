@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.19
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.74.7
-	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.13
+	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.64.0
 	github.com/aymanbagabas/go-pty v0.2.3
 	github.com/digitorus/pdf v0.3.0
 	github.com/digitorus/pdfsign v1.0.0
