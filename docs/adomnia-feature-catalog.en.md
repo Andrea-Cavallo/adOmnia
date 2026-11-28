@@ -419,6 +419,7 @@ WebSocket connections live in the API workspace, with the same layout as REST re
 | C4.6 | **Warm-up and ramp-up** | Warm-up iterations are sent but not measured; in duration mode a ramp-up stage brings the VUs from 0 to the target and is not measured either. Throughput is computed over the measured window only. |
 | C4.7 | **Think time** | Pause of each virtual user between two iterations. |
 | C4.8 | **Live progress and Stop** | While a run is going: elapsed, VUs, sent, req/s and p95 of the last second, error rate. Stop cancels the requests in flight and keeps the partial result, marked as stopped. One run at a time. |
+| C4.14 | **Fixed rate (open model)** | *Rate* mode in the Composer drawer and the Stress dock: N requests (or flow runs) per second whatever the API does, from a VU pool. Arrivals the pool cannot start are reported as dropped, never queued; a late start is timed from its scheduled instant (coordinated omission), and a saturated generator is flagged. Also in CI plans (`mode: "rate"`). |
 | C4.9 | **Export Report** | JSON, Markdown (tabella), HTML (pagina dark stilizzata). |
 | C4.10 | **Save/Load Scenario** | Saves configuration as a named scenario; lists and loads scenarios. |
 | C4.11 | **Error groups** | Failures grouped by cause (HTTP_5xx, HTTP_4xx, TIMEOUT, CONN_ERR…) with a count, alongside the status code breakdown. |

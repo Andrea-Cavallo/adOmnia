@@ -7,7 +7,7 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
 import { prepareExecution } from '@/lib/sendRequest'
 import { runLoadTest, type LoadTestProgress, type LoadTestResult, type LoadTestRun } from '@/lib/loadtest-api'
-import { buildLoadPlan, MAX_PROBE, MAX_VUS, type LoadMode } from './loadTestPlan'
+import { buildLoadPlan, MAX_PROBE, MAX_RPS, MAX_VUS, type LoadMode } from './loadTestPlan'
 import { PercentileRow, ThroughputChart, Waterfall } from './loadTestParts'
 import './loadTestDrawer.css'
 
@@ -30,6 +30,7 @@ const MODE_HINT: Record<LoadMode, string> = {
   burst: 'Fires N copies of this request at the same instant, to see what happens when they race.',
   gap: 'Sends the same request a few times, each one starting a fixed gap after the previous (no waiting for the answer).',
   load: 'Virtual users repeat the request for a number of iterations or for a time, with an optional ramp-up and think time.',
+  rate: 'A fixed number of requests per second, whatever the server does: if it slows down, requests keep arriving and the ones the VU pool cannot start are reported as dropped.',
 }
 
 interface LoadTestDrawerProps {
@@ -54,6 +55,8 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   const [warmupReqs, setWarmupReqs] = useState(5)
   const [rampUpS, setRampUpS] = useState(0)
   const [thinkTimeMs, setThinkTimeMs] = useState(0)
+  const [rps, setRps] = useState(50)
+  const [maxVUs, setMaxVUs] = useState(100)
   const [progress, setProgress] = useState<LoadTestProgress | null>(null)
   const runRef = useRef<LoadTestRun | null>(null)
 
@@ -70,7 +73,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   const vars = getResolvedVars()
   const resolvedUrl = substVars(request.url, vars)
   const unresolved = resolvedUrl.match(/\{\{[^{}]+\}\}/)?.[0]
-  const inputs = { concurrency, totalReqs, durationS, useDuration, warmupReqs, rampUpS, thinkTimeMs, burst, gapRequests, gapMs }
+  const inputs = { concurrency, totalReqs, durationS, useDuration, warmupReqs, rampUpS, thinkTimeMs, burst, gapRequests, gapMs, rps, maxVUs }
   // A run still going when the drawer closes is stopped: nobody would see its result.
   useEffect(() => () => runRef.current?.stop(), [])
 
@@ -204,7 +207,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   }
 
   const maxP = result ? Math.max(result.p50Ms, result.p75Ms, result.p90Ms, result.p95Ms, result.p99Ms, result.p999Ms, 1) : 1
-  const probe = mode !== 'load'
+  const probe = mode === 'burst' || mode === 'gap'
   const firstError = result?.timeline?.find((t) => t.error)?.error
   const numberField = (label: string, value: number, set: (n: number) => void, min = 1, max?: number) => (
     <label className="ltd-field">
@@ -223,7 +226,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
       </div>
 
       <div className="ltd-modes" role="group" aria-label="Test type">
-        {([['burst', 'Parallel'], ['gap', 'Repeat with gap'], ['load', 'Load']] as const).map(([id, label]) => (
+        {([['burst', 'Parallel'], ['gap', 'Repeat with gap'], ['load', 'Load'], ['rate', 'Rate']] as const).map(([id, label]) => (
           <button key={id} type="button" className="ltd-mode" aria-pressed={mode === id} onClick={() => setMode(id)}>{label}</button>
         ))}
       </div>
@@ -242,6 +245,12 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
           {!(useDuration && rampUpS > 0) && numberField('Warmup', warmupReqs, setWarmupReqs, 0)}
           {numberField('Think (ms)', thinkTimeMs, setThinkTimeMs, 0)}
         </>}
+        {mode === 'rate' && <>
+          {numberField('Requests/s', rps, setRps, 1, MAX_RPS)}
+          {numberField('Duration (s)', durationS, setDurationS)}
+          {numberField('Ramp-up (s)', rampUpS, setRampUpS, 0)}
+          {numberField('Max VUs', maxVUs, setMaxVUs, 1, MAX_VUS)}
+        </>}
         {numberField('Timeout (ms)', timeoutMs, setTimeoutMs, 100)}
         {loading
           ? <button type="button" className="ltd-run" data-running onClick={() => runRef.current?.stop()}><Square size={11} /> <span className="ltd-run-label">Stop</span></button>
@@ -256,6 +265,8 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
 
         {result && (
           <>
+            {(result.droppedIterations ?? 0) > 0 && <div className="ltd-note" data-tone="warn"><b>{result.droppedIterations}</b> requests were not sent: all {result.maxVUs} VUs were busy. The server could not keep up with the rate, or the VU pool is too small.</div>}
+            {(result.schedulerLagP99Ms ?? 0) > 10 && <div className="ltd-note" data-tone="warn">Requests started up to {result.schedulerLagP99Ms?.toFixed(0)} ms late (p99): this machine is saturated, so the latencies include its own delay. Lower the rate or the VUs.</div>}
             {result.aborted && <div className="ltd-note" data-tone="warn">Stopped before the end: these are the results up to the stop.</div>}
             {result.failed > 0 && result.successful === 0 && firstError && <div className="ltd-note" data-tone="error">Every request failed: {firstError}</div>}
             <div className="ltd-stats">
@@ -268,6 +279,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
                 { label: 'Max', value: `${result.maxMs.toFixed(1)}ms`, bad: false },
                 ...(probe ? [] : [
                   { label: 'Peak VUs', value: String(result.maxVUs ?? 0), bad: false },
+                  ...(mode === 'rate' ? [{ label: 'Dropped', value: String(result.droppedIterations ?? 0), bad: (result.droppedIterations ?? 0) > 0 }] : []),
                   { label: 'Throughput', value: `${result.throughput.toFixed(1)}/s`, bad: false },
                   { label: 'Error %', value: `${result.errorRate.toFixed(1)}%`, bad: result.errorRate > 1 },
                 ]),
@@ -392,14 +404,15 @@ function LiveProgress({ progress }: { progress: LoadTestProgress | null }) {
     ['req/s', progress.rps.toFixed(0)],
     ['p95 (1s)', `${progress.p95Ms.toFixed(1)}ms`],
     ['Errors', `${progress.errorRate.toFixed(1)}%`],
-  ] as const
+    ...(progress.dropped ? [['Dropped', String(progress.dropped)] as const] : []),
+  ]
   return (
     <div className="ltd-section" aria-live="polite">
       <div className="ltd-section-head">{progress.measuring ? 'Running' : 'Warming up (not measured)'}</div>
       <div className="ltd-stats">
         {cells.map(([label, value]) => (
           <div key={label} className="ltd-stat">
-            <div className="ltd-stat-value" data-bad={label === 'Errors' && progress.errorRate > 1}>{value}</div>
+            <div className="ltd-stat-value" data-bad={(label === 'Errors' && progress.errorRate > 1) || label === 'Dropped'}>{value}</div>
             <div className="ltd-stat-label">{label}</div>
           </div>
         ))}

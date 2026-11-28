@@ -1,6 +1,6 @@
 import type { LoadTestWorkload } from '@/lib/loadtest-api'
 
-export type LoadMode = 'burst' | 'gap' | 'load'
+export type LoadMode = 'burst' | 'gap' | 'load' | 'rate'
 
 export interface LoadInputs {
   concurrency: number
@@ -13,11 +13,14 @@ export interface LoadInputs {
   burst: number
   gapRequests: number
   gapMs: number
+  rps: number
+  maxVUs: number
 }
 
 /** Engine limits (internal/loadtest/scenario.go). */
 export const MAX_VUS = 2000
 export const MAX_PROBE = 2000
+export const MAX_RPS = 100_000
 const MAX_DURATION_S = 24 * 60 * 60
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, Math.round(Number.isFinite(n) ? n : min)))
@@ -30,6 +33,7 @@ const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(ma
 export function buildLoadPlan(mode: LoadMode, input: LoadInputs): LoadTestWorkload {
   if (mode === 'burst') return { executor: 'probe', count: clamp(input.burst, 1, MAX_PROBE) }
   if (mode === 'gap') return { executor: 'probe', count: clamp(input.gapRequests, 2, 50), gapMs: clamp(input.gapMs, 0, 60000) }
+  if (mode === 'rate') return ratePlan(input)
 
   const vus = clamp(input.concurrency, 1, MAX_VUS)
   const thinkTimeMs = clamp(input.thinkTimeMs, 0, 60000)
@@ -48,4 +52,17 @@ export function buildLoadPlan(mode: LoadMode, input: LoadInputs): LoadTestWorklo
   }
   // With a ramp the warm-up is the ramp itself: it is sent, not measured.
   return { ...common, stages: [{ durationS: rampUpS, targetVUs: vus, unmeasured: true }, { durationS, targetVUs: vus }] }
+}
+
+/**
+ * Open model: iterations start at `rps` per second whatever the target does, from a pool of
+ * up to `maxVUs`. A ramp-up is a first, unmeasured stage from 0 to the rate.
+ */
+function ratePlan(input: LoadInputs): LoadTestWorkload {
+  const rps = Math.max(0.1, Math.min(MAX_RPS, Number.isFinite(input.rps) ? input.rps : 1))
+  const maxVUs = clamp(input.maxVUs, 1, MAX_VUS)
+  const durationS = clamp(input.durationS, 1, MAX_DURATION_S)
+  const rampUpS = clamp(input.rampUpS, 0, MAX_DURATION_S)
+  if (rampUpS === 0) return { executor: 'arrival-rate', rps, durationS, maxVUs }
+  return { executor: 'arrival-rate', maxVUs, stages: [{ durationS: rampUpS, targetRps: rps, unmeasured: true }, { durationS, targetRps: rps }] }
 }

@@ -188,7 +188,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
           </div>
         </div>
         {config.mode !== 'stages' && <div className="grid grid-cols-2 gap-2">
-          <NumberField label={`Users (max ${MAX_STRESS_VUS})`} value={config.vus} min={1} max={MAX_STRESS_VUS} disabled={running} onChange={(vus) => patch({ vus })} />
+          <NumberField label={config.mode === 'rate' ? `VU pool (max ${MAX_STRESS_VUS})` : `Users (max ${MAX_STRESS_VUS})`} value={config.vus} min={1} max={MAX_STRESS_VUS} disabled={running} onChange={(vus) => patch({ vus })} />
           <NumberField label="Ramp-up (s)" value={config.rampUpS} min={0} max={600} disabled={running} onChange={(rampUpS) => patch({ rampUpS })} />
         </div>}
         <div className="border-t border-border-1 pt-2.5">
@@ -199,8 +199,8 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
             <NumberField label="RPS ≥" value={config.minRps ?? 0} min={0} max={1000000} step={0.1} disabled={running} onChange={(minRps) => patch({ minRps })} />
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-1 rounded-lg border border-border-2 bg-surface-0 p-0.5" role="radiogroup" aria-label="Workload model">
-          {(['iterations', 'duration', 'stages'] as const).map((mode) => (
+        <div className="grid grid-cols-4 gap-1 rounded-lg border border-border-2 bg-surface-0 p-0.5" role="radiogroup" aria-label="Workload model">
+          {(['iterations', 'duration', 'stages', 'rate'] as const).map((mode) => (
             <button
               key={mode} role="radio" aria-checked={config.mode === mode} disabled={running}
               onClick={() => patch({ mode })}
@@ -213,11 +213,14 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
         <div className="grid grid-cols-2 gap-2">
           {config.mode === 'iterations'
             ? <NumberField label="Total iterations" value={config.iterations} min={1} max={100000} disabled={running} onChange={(iterations) => patch({ iterations })} />
-            : config.mode === 'duration'
-              ? <NumberField label="Duration (s)" value={config.durationS} min={1} max={3600} disabled={running} onChange={(durationS) => patch({ durationS })} />
+            : config.mode === 'duration' || config.mode === 'rate'
+              ? <NumberField label="Duration (s)" value={config.durationS} min={1} max={86400} disabled={running} onChange={(durationS) => patch({ durationS })} />
               : <NumberField label="Peak users" value={Math.max(0, ...(config.stages ?? []).map((item) => item.targetVus))} min={0} max={MAX_STRESS_VUS} disabled={true} onChange={() => undefined} />}
-          <NumberField label="Think time (ms)" value={config.thinkTimeMs} min={0} max={60000} step={50} disabled={running} onChange={(thinkTimeMs) => patch({ thinkTimeMs })} />
+          {config.mode === 'rate'
+            ? <NumberField label="Flow runs / s" value={config.rps ?? 10} min={0.1} max={100000} step={0.1} disabled={running} onChange={(rps) => patch({ rps })} />
+            : <NumberField label="Think time (ms)" value={config.thinkTimeMs} min={0} max={60000} step={50} disabled={running} onChange={(thinkTimeMs) => patch({ thinkTimeMs })} />}
         </div>
+        {config.mode === 'rate' && <p className="text-[10.5px] leading-snug text-text-4">Open model: the flow starts at this rate whatever the API does. Runs the pool cannot start are reported as dropped, not queued.</p>}
         {config.mode !== 'stages' && <NumberField label="Exclude warm-up (s)" value={config.warmupS ?? 0} min={0} max={3600} disabled={running} onChange={(warmupS) => patch({ warmupS })} />}
         <div className="grid grid-cols-2 gap-2">
           <NumberField label="APDEX T (ms)" value={config.apdexTMs ?? 500} min={1} max={600000} disabled={running} onChange={(apdexTMs) => patch({ apdexTMs })} />
@@ -341,6 +344,8 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
             )}
 
             {stats.excludedRequests > 0 && <p className="text-[11px] text-info">{stats.excludedRequests} warm-up/cooldown requests generated load but were excluded from release metrics.</p>}
+            {(stats?.droppedIterations ?? 0) > 0 && <p className="text-[11px] text-warning">{stats?.droppedIterations} flow runs were not started: every VU of the pool was busy. The API could not keep up with the rate, or the pool is too small.</p>}
+            {(stats?.schedulerLagP99Ms ?? 0) > 10 && <p className="text-[11px] text-warning">Runs started up to {stats?.schedulerLagP99Ms?.toFixed(0)} ms late (p99): this machine is saturated, the latencies include its own delay.</p>}
             {truncated && <p className="text-[11px] text-warning">Raw request log is capped; statistics still cover every measured request.</p>}
 
             {run && (

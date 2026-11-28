@@ -135,7 +135,7 @@ export function stressHtml(run: StressRun, flowName: string): string {
   const { stats, config } = run
   const assessment = analyzeStressRun(stats, config)
   const name = escapeHtml(flowName)
-  const load = config.mode === 'iterations' ? `${config.iterations} iterations` : `${config.durationS}s`
+  const load = config.mode === 'iterations' ? `${config.iterations} iterations` : config.mode === 'rate' ? `${config.rps ?? 0}/s for ${config.durationS}s` : `${config.durationS}s`
   const cards = [
     ['Requests', String(stats.totalRequests)],
     ['Errors', `${stats.totalErrors} (${stats.totalRequests ? Math.round((stats.totalErrors / stats.totalRequests) * 1000) / 10 : 0}%)`],

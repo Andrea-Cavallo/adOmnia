@@ -63,6 +63,8 @@ export function toStressStats(result: LoadTestResult): StressStats {
     })),
     apdex: result.apdex ?? { thresholdMs: 500, satisfied: 0, tolerated: 0, frustrated: 0, score: 0 },
     slowestStep: slowest?.step,
+    droppedIterations: result.droppedIterations ?? 0,
+    schedulerLagP99Ms: result.schedulerLagP99Ms ?? 0,
   }
 }
 

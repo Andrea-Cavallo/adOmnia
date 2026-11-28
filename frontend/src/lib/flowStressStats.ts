@@ -72,4 +72,7 @@ export interface StressStats {
   distribution: Array<{ fromMs: number; toMs: number; count: number; percentage: number; overflow?: boolean }>
   apdex: { thresholdMs: number; satisfied: number; tolerated: number; frustrated: number; score: number }
   slowestStep?: string
+  /** Rate mode: flow runs the pool could not start, and how late runs started (p99, ms). */
+  droppedIterations?: number
+  schedulerLagP99Ms?: number
 }

@@ -467,7 +467,12 @@ export class Scenario {
 export class Stage {
     "label"?: string;
     "durationS": number;
-    "targetVUs": number;
+    "targetVUs"?: number;
+
+    /**
+     * arrival-rate stages
+     */
+    "targetRps"?: number;
     "rampS"?: number | null;
 
     /**
@@ -479,9 +484,6 @@ export class Stage {
     constructor($$source: Partial<Stage> = {}) {
         if (!("durationS" in $$source)) {
             this["durationS"] = 0;
-        }
-        if (!("targetVUs" in $$source)) {
-            this["targetVUs"] = 0;
         }
 
         Object.assign(this, $$source);
@@ -504,9 +506,14 @@ export class StressConfig {
     "rampUpS"?: number;
 
     /**
-     * iterations | duration | stages
+     * iterations | duration | stages | rate
      */
     "mode": string;
+
+    /**
+     * rate: iterations started per second; VUs is the pool
+     */
+    "rps"?: number;
     "iterations"?: number;
     "durationS"?: number;
     "thinkTimeMs"?: number;
@@ -539,10 +546,10 @@ export class StressConfig {
      * Creates a new StressConfig instance from a string or object.
      */
     static createFrom($$source: any = {}): StressConfig {
-        const $$createField7_0 = $$createType25;
+        const $$createField8_0 = $$createType25;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stages" in $$parsedSource) {
-            $$parsedSource["stages"] = $$createField7_0($$parsedSource["stages"]);
+            $$parsedSource["stages"] = $$createField8_0($$parsedSource["stages"]);
         }
         return new StressConfig($$parsedSource as Partial<StressConfig>);
     }
@@ -648,6 +655,12 @@ export class Workload {
      * pause of a VU between iterations
      */
     "thinkTimeMs"?: number;
+
+    /**
+     * arrival-rate: constant RPS for DurationS, or Stages with TargetRPS; MaxVUs bounds the pool.
+     */
+    "rps"?: number;
+    "maxVUs"?: number;
 
     /**
      * probe

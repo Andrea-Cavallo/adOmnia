@@ -25,7 +25,9 @@ export interface FlowStressConfig {
   scenario?: StressScenario
   vus: number
   rampUpS: number
-  mode: 'iterations' | 'duration' | 'stages'
+  mode: 'iterations' | 'duration' | 'stages' | 'rate'
+  /** Rate mode: flow runs started per second (open model); `vus` is the pool size. */
+  rps?: number
   /** Total iterations across all VUs (iterations mode) */
   iterations: number
   durationS: number
@@ -88,7 +90,8 @@ export function validateStressConfig(config: FlowStressConfig): string[] {
   if (!Number.isInteger(config.vus) || !between(config.vus, 1, MAX_STRESS_VUS)) errors.push(`Virtual users must be a whole number between 1 and ${MAX_STRESS_VUS}.`)
   if (!between(config.rampUpS, 0, 600)) errors.push('Ramp-up must be between 0 and 600 seconds.')
   if (config.mode === 'iterations' && (!Number.isInteger(config.iterations) || !between(config.iterations, 1, 10_000_000))) errors.push('Iterations must be a whole number between 1 and 10000000.')
-  if (config.mode === 'duration' && !between(config.durationS, 1, 86_400)) errors.push('Duration must be between 1 and 86400 seconds.')
+  if ((config.mode === 'duration' || config.mode === 'rate') && !between(config.durationS, 1, 86_400)) errors.push('Duration must be between 1 and 86400 seconds.')
+  if (config.mode === 'rate' && !between(config.rps ?? 0, 0.1, 100_000)) errors.push('The rate must be between 0.1 and 100000 flow runs per second.')
   if (config.mode === 'stages') {
     if (!config.stages?.length || config.stages.length > 8) errors.push('A staged workload needs between 1 and 8 stages.')
     if (config.stages?.length && Math.max(...config.stages.map((item) => item.targetVus)) < 1) errors.push('At least one stage must target one or more virtual users.')

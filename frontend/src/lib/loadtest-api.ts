@@ -68,6 +68,10 @@ export interface LoadTestResult {
   warmupSkipped?: number
   iterations?: number
   failedIterations?: number
+  /** Arrivals the open model could not start: every VU of the pool was busy. */
+  droppedIterations?: number
+  /** p99 of how late open-model iterations started; above ~10 ms the generator is saturated. */
+  schedulerLagP99Ms?: number
   measuredTimeMs?: number
   bytesReceived?: number
   maxVUs?: number
@@ -103,6 +107,7 @@ export interface LoadTestProgress {
   stageLabel?: string
   measuring: boolean
   iterations: number
+  dropped?: number
   sent: number
   failed: number
   rps: number

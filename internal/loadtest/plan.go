@@ -22,7 +22,8 @@ type Plan struct {
 type StressConfig struct {
 	VUs         int           `json:"vus"`
 	RampUpS     float64       `json:"rampUpS,omitzero"`
-	Mode        string        `json:"mode"` // iterations | duration | stages
+	Mode        string        `json:"mode"`         // iterations | duration | stages | rate
+	RPS         float64       `json:"rps,omitzero"` // rate: iterations started per second; VUs is the pool
 	Iterations  int           `json:"iterations,omitzero"`
 	DurationS   float64       `json:"durationS,omitzero"`
 	ThinkTimeMs int           `json:"thinkTimeMs,omitzero"`
@@ -112,8 +113,17 @@ func (c StressConfig) workload() (Workload, error) {
 		if peak < 1 {
 			return w, errors.New("at least one stage must target one or more virtual users")
 		}
+	case "rate":
+		// Open model: the flow starts RPS times a second from a pool of up to VUs.
+		w = Workload{Executor: ExecutorArrivalRate, MaxVUs: c.VUs, WarmupS: c.WarmupS}
+		if c.RampUpS > 0 {
+			w.Stages = []Stage{{Label: "ramp", DurationS: c.RampUpS, TargetRPS: c.RPS}, {DurationS: c.DurationS, TargetRPS: c.RPS}}
+			w.WarmupS = max(w.WarmupS, c.RampUpS) // the ramp is not measured, as in the other modes
+		} else {
+			w.RPS, w.DurationS = c.RPS, c.DurationS
+		}
 	default:
-		return w, fmt.Errorf("unknown mode %q (use iterations, duration or stages)", c.Mode)
+		return w, fmt.Errorf("unknown mode %q (use iterations, duration, stages or rate)", c.Mode)
 	}
 	return w, nil
 }

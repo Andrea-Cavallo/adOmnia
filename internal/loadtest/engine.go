@@ -48,7 +48,7 @@ func Run(ctx context.Context, s Scenario, progress func(Progress)) (Result, erro
 	if err := s.Validate(); err != nil {
 		return Result{}, err
 	}
-	conns := max(s.Workload.VUs, s.Workload.Count, 1)
+	conns := max(s.Workload.VUs, s.Workload.Count, s.Workload.MaxVUs, 1)
 	for _, st := range s.Workload.Stages {
 		conns = max(conns, st.TargetVUs)
 	}
@@ -85,9 +85,12 @@ func run(ctx context.Context, s Scenario, t target, progress func(Progress)) Res
 		reportProgress(rec, state, s.Workload, start, stopProgress, progress)
 	}()
 
-	if s.Workload.Executor == ExecutorProbe {
+	switch s.Workload.Executor {
+	case ExecutorProbe:
 		runProbe(ctx, s.Workload, t, rec, state)
-	} else {
+	case ExecutorArrivalRate:
+		runArrival(ctx, s.Workload, t, rec, state)
+	default:
 		runVUs(ctx, s.Workload, t, rec, state)
 	}
 	close(stopProgress)
@@ -158,7 +161,7 @@ func reportProgress(rec *recorder, state *runState, w Workload, start time.Time,
 			if progress == nil {
 				continue
 			}
-			sent, failed, measured, iterations := rec.totals()
+			sent, failed, measured, iterations, dropped := rec.totals()
 			stage := int(state.stage.Load())
 			p := Progress{
 				ElapsedS:   round2(now.Sub(start).Seconds()),
@@ -168,6 +171,7 @@ func reportProgress(rec *recorder, state *runState, w Workload, start time.Time,
 				Sent:       sent,
 				Failed:     failed,
 				Iterations: iterations,
+				Dropped:    dropped,
 				RPS:        float64(b.Reqs),
 				P95Ms:      b.P95Ms,
 				Last:       b,

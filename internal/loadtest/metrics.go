@@ -23,14 +23,20 @@ type Result struct {
 	EndedAt   string `json:"endedAt"`
 	Aborted   bool   `json:"aborted,omitzero"`
 
-	TotalRequests    int   `json:"totalRequests"` // sent, warm-up included
-	Successful       int   `json:"successful"`
-	Failed           int   `json:"failed"`
-	WarmupSkipped    int   `json:"warmupSkipped,omitzero"`
-	Iterations       int   `json:"iterations"`       // measured iterations
-	FailedIterations int   `json:"failedIterations"` // measured iterations with a failed step
-	BytesReceived    int64 `json:"bytesReceived"`
-	MaxVUs           int   `json:"maxVUs,omitzero"`
+	TotalRequests    int `json:"totalRequests"` // sent, warm-up included
+	Successful       int `json:"successful"`
+	Failed           int `json:"failed"`
+	WarmupSkipped    int `json:"warmupSkipped,omitzero"`
+	Iterations       int `json:"iterations"`       // measured iterations
+	FailedIterations int `json:"failedIterations"` // measured iterations with a failed step
+	// DroppedIterations are arrivals the open model could not start: every VU of the pool was
+	// busy. Non-zero means the target (or the pool) could not keep up with the rate.
+	DroppedIterations int `json:"droppedIterations,omitzero"`
+	// SchedulerLagP99Ms is how late iterations started against their scheduled instant
+	// (open model). Above ~10 ms the generator itself is saturated: the numbers are suspect.
+	SchedulerLagP99Ms float64 `json:"schedulerLagP99Ms,omitzero"`
+	BytesReceived     int64   `json:"bytesReceived"`
+	MaxVUs            int     `json:"maxVUs,omitzero"`
 
 	TotalTimeMs    float64 `json:"totalTimeMs"`
 	MeasuredTimeMs float64 `json:"measuredTimeMs"`
@@ -141,6 +147,7 @@ type Progress struct {
 	Sent       int     `json:"sent"`
 	Failed     int     `json:"failed"`
 	Iterations int     `json:"iterations"`
+	Dropped    int     `json:"dropped,omitzero"`
 	RPS        float64 `json:"rps"`   // last second
 	P95Ms      float64 `json:"p95Ms"` // last second
 	ErrorRate  float64 `json:"errorRate"`
@@ -189,6 +196,8 @@ type recorder struct {
 
 	sent, ok, failed, warmup     int
 	iterations, failedIters      int
+	dropped                      int
+	lag                          *hdr.Histogram
 	bytes                        int64
 	satisfied, tolerated         int
 	status                       map[int]int
@@ -219,6 +228,7 @@ func newRecorder(start time.Time, apdexTMs float64, timelineCap int) *recorder {
 		timelineN: timelineCap,
 		hist:      newHist(),
 		window:    newHist(),
+		lag:       newHist(),
 		status:    make(map[int]int),
 		errors:    make(map[string]*ErrorGroup),
 		steps:     make(map[string]*stepStats),
@@ -382,6 +392,20 @@ func (r *recorder) addTimeline(s sample, ended time.Time, measured bool, vu, ite
 	r.timeline = append(r.timeline, point)
 }
 
+// drop counts an arrival the pool could not start.
+func (r *recorder) drop(_ bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.dropped++
+}
+
+// schedulerLag records how late an open-model iteration started.
+func (r *recorder) schedulerLag(d time.Duration) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_ = r.lag.RecordValue(max(d.Microseconds(), 1)) // > 60 s is out of range and dropped
+}
+
 // tick closes the current second and returns it.
 func (r *recorder) tick(vus int) Bucket {
 	r.mu.Lock()
@@ -413,10 +437,10 @@ func (r *recorder) closeWindow(vus int) Bucket {
 	return b
 }
 
-func (r *recorder) totals() (sent, failed, measured, iterations int) {
+func (r *recorder) totals() (sent, failed, measured, iterations, dropped int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.sent, r.failed, r.ok + r.failed, r.iterations
+	return r.sent, r.failed, r.ok + r.failed, r.iterations, r.dropped
 }
 
 func (r *recorder) result(end time.Time) Result { return r.report(end, true) }
@@ -439,6 +463,7 @@ func (r *recorder) report(end time.Time, withTimeline bool) Result {
 		WarmupSkipped:      r.warmup,
 		Iterations:         r.iterations,
 		FailedIterations:   r.failedIters,
+		DroppedIterations:  r.dropped,
 		BytesReceived:      r.bytes,
 		MaxVUs:             r.maxVUs,
 		TotalTimeMs:        round2(ms(end.Sub(r.start))),
@@ -447,6 +472,9 @@ func (r *recorder) report(end time.Time, withTimeline bool) Result {
 		ThroughputTimeline: slices.Clone(r.buckets),
 		ErrorGroups:        r.sortedErrors(),
 		Steps:              r.stepResults(),
+	}
+	if r.lag.TotalCount() > 0 {
+		res.SchedulerLagP99Ms = usToMs(r.lag.ValueAtQuantile(99))
 	}
 	if withTimeline {
 		res.Timeline = slices.Clone(r.timeline)

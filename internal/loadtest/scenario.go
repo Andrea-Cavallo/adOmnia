@@ -13,6 +13,9 @@ import (
 const (
 	ExecutorVUs   = "vus"   // closed model: N virtual users repeat the request
 	ExecutorProbe = "probe" // N single requests at once, or a fixed gap apart
+	// ExecutorArrivalRate is the open model: iterations start at a fixed rate whatever the
+	// target does, from a pool of up to MaxVUs; when the pool is busy they are dropped.
+	ExecutorArrivalRate = "arrival-rate"
 )
 
 // Limits of one run. They protect the machine running adOmnia, not the target.
@@ -21,6 +24,7 @@ const (
 	MaxProbeCount   = 2000
 	MaxDurationS    = 24 * 60 * 60
 	MaxGapMs        = 60_000
+	MaxRPS          = 100_000
 	maxThinkTimeMs  = 60_000
 	maxTimelineSize = 20_000 // per-request points kept for the waterfall and the raw log
 )
@@ -58,6 +62,10 @@ type Workload struct {
 	WarmupS          float64 `json:"warmupS,omitzero"`          // without stages: the first S seconds are not measured
 	ThinkTimeMs      int     `json:"thinkTimeMs,omitzero"`      // pause of a VU between iterations
 
+	// arrival-rate: constant RPS for DurationS, or Stages with TargetRPS; MaxVUs bounds the pool.
+	RPS    float64 `json:"rps,omitzero"`
+	MaxVUs int     `json:"maxVUs,omitzero"`
+
 	// probe
 	Count int `json:"count,omitzero"`
 	GapMs int `json:"gapMs,omitzero"`
@@ -68,7 +76,8 @@ type Workload struct {
 type Stage struct {
 	Label      string   `json:"label,omitempty"`
 	DurationS  float64  `json:"durationS"`
-	TargetVUs  int      `json:"targetVUs"`
+	TargetVUs  int      `json:"targetVUs,omitzero"`
+	TargetRPS  float64  `json:"targetRps,omitzero"` // arrival-rate stages
 	RampS      *float64 `json:"rampS,omitempty"`
 	Unmeasured bool     `json:"unmeasured,omitzero"` // warm-up or cool-down: sent, not measured
 }
@@ -102,10 +111,12 @@ func (s Scenario) Validate() error {
 			return fmt.Errorf("gap must be between 0 and %d ms", MaxGapMs)
 		}
 		return nil
+	case ExecutorArrivalRate:
+		return validateArrival(w)
 	case ExecutorVUs:
 		return validateVUs(w)
 	default:
-		return fmt.Errorf("unknown executor %q (use %q or %q)", w.Executor, ExecutorVUs, ExecutorProbe)
+		return fmt.Errorf("unknown executor %q (use %q, %q or %q)", w.Executor, ExecutorVUs, ExecutorArrivalRate, ExecutorProbe)
 	}
 }
 
@@ -164,6 +175,48 @@ func validateVUs(w Workload) error {
 			return fmt.Errorf("stage %d: the ramp must fit inside the stage", i+1)
 		}
 		total += st.DurationS
+	}
+	if total > MaxDurationS {
+		return fmt.Errorf("stages cannot exceed %d s in total", MaxDurationS)
+	}
+	return nil
+}
+
+func validateArrival(w Workload) error {
+	if w.MaxVUs < 1 || w.MaxVUs > MaxVUs {
+		return fmt.Errorf("the VU pool (max VUs) must be between 1 and %d", MaxVUs)
+	}
+	if w.WarmupS < 0 {
+		return errors.New("warm-up cannot be negative")
+	}
+	if len(w.Stages) == 0 {
+		if w.RPS <= 0 || w.RPS > MaxRPS {
+			return fmt.Errorf("the rate must be between 0 and %d requests per second", MaxRPS)
+		}
+		if w.DurationS <= 0 || w.DurationS > MaxDurationS {
+			return fmt.Errorf("the duration must be between 0 and %d s", MaxDurationS)
+		}
+		if w.WarmupS >= w.DurationS {
+			return errors.New("the warm-up must be shorter than the duration, or nothing is measured")
+		}
+		return nil
+	}
+	total, peak := 0.0, 0.0
+	for i, st := range w.Stages {
+		if st.DurationS <= 0 {
+			return fmt.Errorf("stage %d: duration must be positive", i+1)
+		}
+		if st.TargetRPS < 0 || st.TargetRPS > MaxRPS {
+			return fmt.Errorf("stage %d: the rate must be between 0 and %d requests per second", i+1, MaxRPS)
+		}
+		if st.RampS != nil && (*st.RampS < 0 || *st.RampS > st.DurationS) {
+			return fmt.Errorf("stage %d: the ramp must fit inside the stage", i+1)
+		}
+		total += st.DurationS
+		peak = max(peak, st.TargetRPS)
+	}
+	if peak <= 0 {
+		return errors.New("at least one stage must have a rate above zero")
 	}
 	if total > MaxDurationS {
 		return fmt.Errorf("stages cannot exceed %d s in total", MaxDurationS)

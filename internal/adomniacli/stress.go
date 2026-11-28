@@ -37,6 +37,7 @@ type stressStats struct {
 	Excluded         int                `json:"excludedRequests"`
 	Iterations       int64              `json:"iterations"`
 	FailedIterations int64              `json:"failedIterations"`
+	Dropped          int                `json:"droppedIterations,omitzero"`
 	ElapsedMs        int64              `json:"elapsedMs"`
 	RPS              float64            `json:"rps"`
 	P50              int64              `json:"p50"`
@@ -201,7 +202,7 @@ func stressStatsOf(r loadtest.Result) stressStats {
 	}
 	stats := stressStats{
 		Requests: r.Successful + r.Failed, Errors: r.Failed, Excluded: r.WarmupSkipped,
-		Iterations: int64(r.Iterations), FailedIterations: int64(r.FailedIterations),
+		Iterations: int64(r.Iterations), FailedIterations: int64(r.FailedIterations), Dropped: r.DroppedIterations,
 		ElapsedMs: int64(math.Round(r.TotalTimeMs)), RPS: math.Round(r.Throughput*10) / 10,
 		P50: int64(math.Round(r.P50Ms)), P95: int64(math.Round(r.P95Ms)), P99: int64(math.Round(r.P99Ms)),
 		Statuses: statuses, ErrorGroups: groups, GateFailures: r.GateFailures,
@@ -223,6 +224,9 @@ func renderStressResult(result stressCLIResult, reporter string) ([]byte, error)
 		var b strings.Builder
 		fmt.Fprintf(&b, "adOmnia stress: %s\n", result.FlowName)
 		fmt.Fprintf(&b, "requests: %d, errors: %d, p95: %dms, p99: %dms, rps: %.1f, APDEX: %.3f\n", result.Stats.Requests, result.Stats.Errors, result.Stats.P95, result.Stats.P99, result.Stats.RPS, result.Stats.Apdex)
+		if result.Stats.Dropped > 0 {
+			fmt.Fprintf(&b, "dropped: %d iterations could not start (every VU of the pool was busy)\n", result.Stats.Dropped)
+		}
 		for _, group := range result.Stats.ErrorGroups {
 			fmt.Fprintf(&b, "error ×%d: %s\n", group.Count, group.Message)
 		}
