@@ -215,6 +215,7 @@ func main() {
 		// the drop handlers never fire and App.ReadDroppedFiles is unreachable.
 		EnableFileDrop: true,
 	})
+	windowfit.FitWhenStarted(desktopApp, mainWindow, 1400, 900, 900, 600)
 	configureNativeWindowIcon(mainWindow)
 	confirmUpdateWhenWindowReady(mainWindow)
 	app.SetMainWindow(mainWindow)
