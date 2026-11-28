@@ -411,18 +411,19 @@ WebSocket connections live in the API workspace, with the same layout as REST re
 
 | # | Feature | Description |
 |---|-------------|-------------|
-| C4.1 | **HTTP Load Test** | URL, method, headers, body, concurrency (1–200), total requests (1–50,000), duration mode, timeout, ramp-up, cooldown. |
-| C4.2 | **gRPC Load Test** | From the gRPC call's *Load test* section: concurrency, total calls, timeout, TLS, and the call's schema (reflection, .proto, protoset). |
-| C4.3 | **Metriche HDR Histogram** | Distribuzione latenza: avg, min, max, P50, P75, P90, P95, P99, P99.9. Precisione ms, 3 cifre significative. |
-| C4.4 | **Timeline Chart** | Per-request timeline: elapsed, latency, status code, success/failure flag. |
-| C4.5 | **Timeline Throughput** | Bucket per-secondo: req/s e latenza media. |
-| C4.6 | **Warmup** | First N requests excluded from final metrics. |
-| C4.7 | **Cooldown** | Delay in ms after the test before calculating metrics. |
-| C4.8 | **Rate Limiter QPS** | Ticker-based pacing for target queries-per-second. |
+| C4.1 | **HTTP Load Test** | Runs on the Go engine (`internal/loadtest`): the request is resolved exactly like Send (variables, vault, auth incl. OAuth2/AWS4, cookies, hosts map, mTLS, PSD2 re-signed per call) and sent over one keep-alive pool. Modes: *Parallel* (N at once), *Repeat with gap*, *Load* (1–2,000 virtual users for N iterations or a duration). |
+| C4.2 | **gRPC Load Test** | From the gRPC call's *Load test* section: concurrency, total calls, timeout, TLS, and the call's schema (reflection, .proto, protoset). Still on its own path; moves to the engine in LT-6. |
+| C4.3 | **HDR latency metrics** | avg, min, max, P50, P75, P90, P95, P99, P99.9 from an HDR histogram in microseconds (3 significant digits), so sub-millisecond answers are measured. |
+| C4.4 | **Timeline Chart** | Per-request waterfall (start, latency, status, error) for short runs; kept up to 2,000 requests. |
+| C4.5 | **Per-second timeline** | One bucket per second: req/s, errors, avg/p95/p99 and active VUs. |
+| C4.6 | **Warm-up and ramp-up** | Warm-up iterations are sent but not measured; in duration mode a ramp-up stage brings the VUs from 0 to the target and is not measured either. Throughput is computed over the measured window only. |
+| C4.7 | **Think time** | Pause of each virtual user between two iterations. |
+| C4.8 | **Live progress and Stop** | While a run is going: elapsed, VUs, sent, req/s and p95 of the last second, error rate. Stop cancels the requests in flight and keeps the partial result, marked as stopped. One run at a time. |
 | C4.9 | **Export Report** | JSON, Markdown (tabella), HTML (pagina dark stilizzata). |
 | C4.10 | **Save/Load Scenario** | Saves configuration as a named scenario; lists and loads scenarios. |
-| C4.11 | **Confronto Side-by-Side** | Confronta due risultati: delta percentuali throughput, latenza avg, P95, tasso errore. |
-| C4.12 | **Quick Drawer** | Slide-out panel for load tests directly from the Composer. |
+| C4.11 | **Error groups** | Failures grouped by cause (HTTP_5xx, HTTP_4xx, TIMEOUT, CONN_ERR…) with a count, alongside the status code breakdown. |
+| C4.12 | **Confronto Side-by-Side** | Confronta due risultati: delta percentuali throughput, latenza avg, P95, tasso errore. |
+| C4.13 | **Quick Drawer** | Slide-out panel for load tests directly from the Composer. |
 
 ---
 

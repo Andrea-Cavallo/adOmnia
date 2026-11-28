@@ -183,54 +183,13 @@ func mustJSON(v any) string {
 }
 
 func executeHTTPRequest(parent context.Context, req HTTPExecRequest) HTTPExecResponse {
-	tlsCfg := &tls.Config{InsecureSkipVerify: req.SkipTLSVerify} //nolint:gosec
-	if err := preparePSD2(&req, tlsCfg); err != nil {
-		return HTTPExecResponse{Error: &HTTPExecError{Code: "PSD2_ERR", Message: err.Error()}}
-	}
-
-	// mTLS: load a client certificate when a PEM path is configured.
-	if strings.TrimSpace(req.ClientCertPEM) != "" && (req.PSD2 == nil || !req.PSD2.Enabled) {
-		cert, err := loadClientCert(req.ClientCertPEM, req.ClientCertPassphrase)
-		if err != nil {
-			return HTTPExecResponse{Error: &HTTPExecError{Code: "MTLS_ERR", Message: err.Error()}}
-		}
-		tlsCfg.Certificates = []tls.Certificate{cert}
-	}
-
-	transport := &http.Transport{
-		TLSClientConfig: tlsCfg,
-		DialContext:     buildDialerWithHosts(req.HostsMap),
+	client, transport, execErr := buildClient(&req)
+	if execErr != nil {
+		return HTTPExecResponse{Error: execErr}
 	}
 	// Each call owns its transport (TLS, hosts map and PSD2 differ per request),
 	// so the idle sockets must be released here instead of waiting for the GC.
 	defer transport.CloseIdleConnections()
-	// Proxy e CA aziendali di adOmnia; le richieste dell'utente non sono bloccate dal modo offline.
-	if err := netpolicy.Apply(transport); err != nil {
-		return HTTPExecResponse{Error: &HTTPExecError{Code: "NETWORK_SETTINGS", Message: err.Error()}}
-	}
-
-	client := &http.Client{Transport: transport, Jar: getCookieJar(req.CookieJarID)}
-	if !req.FollowRedirects {
-		client.CheckRedirect = func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	} else {
-		maxRedirects := req.MaxRedirects
-		if maxRedirects <= 0 {
-			maxRedirects = 10
-		}
-		client.CheckRedirect = func(r *http.Request, via []*http.Request) error {
-			if len(via) >= maxRedirects {
-				return http.ErrUseLastResponse
-			}
-			// Drop credentials when redirected to a different host.
-			if req.StripAuthOnRedirect && len(via) > 0 && r.URL.Host != via[0].URL.Host {
-				r.Header.Del("Authorization")
-				r.Header.Del("Cookie")
-			}
-			return nil
-		}
-	}
 
 	timeoutMs := req.TimeoutMs
 	if timeoutMs <= 0 {
@@ -306,6 +265,59 @@ func executeHTTPRequest(parent context.Context, req HTTPExecRequest) HTTPExecRes
 		Ms:          elapsed,
 		Size:        len(bodyBytes),
 	}
+}
+
+// buildClient prepares the transport and client for req: PSD2 headers and QWAC, mTLS, hosts
+// map, adOmnia's proxy/CA policy and the redirect rules. Execute builds one per call; the load
+// test Client builds one and reuses it, so both send with the same configuration.
+func buildClient(req *HTTPExecRequest) (*http.Client, *http.Transport, *HTTPExecError) {
+	tlsCfg := &tls.Config{InsecureSkipVerify: req.SkipTLSVerify} //nolint:gosec
+	if err := preparePSD2(req, tlsCfg); err != nil {
+		return nil, nil, &HTTPExecError{Code: "PSD2_ERR", Message: err.Error()}
+	}
+
+	// mTLS: load a client certificate when a PEM path is configured.
+	if strings.TrimSpace(req.ClientCertPEM) != "" && (req.PSD2 == nil || !req.PSD2.Enabled) {
+		cert, err := loadClientCert(req.ClientCertPEM, req.ClientCertPassphrase)
+		if err != nil {
+			return nil, nil, &HTTPExecError{Code: "MTLS_ERR", Message: err.Error()}
+		}
+		tlsCfg.Certificates = []tls.Certificate{cert}
+	}
+
+	transport := &http.Transport{
+		TLSClientConfig: tlsCfg,
+		DialContext:     buildDialerWithHosts(req.HostsMap),
+	}
+	// Proxy e CA aziendali di adOmnia; le richieste dell'utente non sono bloccate dal modo offline.
+	if err := netpolicy.Apply(transport); err != nil {
+		return nil, nil, &HTTPExecError{Code: "NETWORK_SETTINGS", Message: err.Error()}
+	}
+
+	client := &http.Client{Transport: transport, Jar: getCookieJar(req.CookieJarID)}
+	if !req.FollowRedirects {
+		client.CheckRedirect = func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+		return client, transport, nil
+	}
+	maxRedirects := req.MaxRedirects
+	if maxRedirects <= 0 {
+		maxRedirects = 10
+	}
+	stripAuth := req.StripAuthOnRedirect
+	client.CheckRedirect = func(r *http.Request, via []*http.Request) error {
+		if len(via) >= maxRedirects {
+			return http.ErrUseLastResponse
+		}
+		// Drop credentials when redirected to a different host.
+		if stripAuth && len(via) > 0 && r.URL.Host != via[0].URL.Host {
+			r.Header.Del("Authorization")
+			r.Header.Del("Cookie")
+		}
+		return nil
+	}
+	return client, transport, nil
 }
 
 func preparePSD2(req *HTTPExecRequest, tlsCfg *tls.Config) error {

@@ -1,37 +1,11 @@
 import { useEffect } from 'react'
 
-export interface ThroughputBucket { second: number; reqs: number; avgMs: number }
+import type { LoadTestBucket, LoadTestTimelinePoint } from '@/lib/loadtest-api'
 
-export interface TimelinePoint {
-  startMs?: number
-  timeMs: number
-  latencyMs: number
-  status: number
-  ok: boolean
-  error?: string
-}
-
-export interface LoadTestResult {
-  totalRequests: number
-  successful: number
-  failed: number
-  totalTimeMs: number
-  avgMs: number
-  minMs: number
-  maxMs: number
-  p50Ms: number
-  p75Ms: number
-  p90Ms: number
-  p95Ms: number
-  p99Ms: number
-  p999Ms: number
-  throughput: number
-  errorRate: number
-  statusCodes: Record<number, number>
-  timeline?: TimelinePoint[]
-  throughputTimeline?: ThroughputBucket[]
-  warmupSkipped?: number
-}
+// The chart reads only second/reqs/avgMs, so a bucket from any source with those fits.
+export type ThroughputBucket = Pick<LoadTestBucket, 'second' | 'reqs' | 'avgMs'>
+export type TimelinePoint = LoadTestTimelinePoint
+export type { LoadTestResult } from '@/lib/loadtest-api'
 
 function drawThroughputChart(canvas: HTMLCanvasElement, timeline: ThroughputBucket[]) {
   const ctx = canvas.getContext('2d')

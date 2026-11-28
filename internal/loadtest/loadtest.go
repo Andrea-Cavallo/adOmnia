@@ -1,9 +1,12 @@
-// Package loadtest runs HTTP load tests from the sidecar: configurable workers, latency histograms and timelines, saved scenarios, result comparison and HTML, Markdown or JSON reports.
+// Package loadtest is adOmnia's load testing engine (Run, Manager: virtual users, stages, probes,
+// HDR latency histograms, live progress) plus the sidecar handlers for saved scenarios and
+// results, comparison, reports and the gRPC load test. Plan: mds/LOAD-TESTING.md.
 package loadtest
 
 import (
 	"bytes"
 	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
 	"io"
@@ -13,68 +16,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Andrea-Cavallo/adOmnia/internal/devlog"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	hdr "github.com/HdrHistogram/hdrhistogram-go"
 )
 
-type loadTestRequest struct {
-	URL         string            `json:"url"`
-	Method      string            `json:"method"`
-	Headers     map[string]string `json:"headers"`
-	Body        string            `json:"body"`
-	Concurrency int               `json:"concurrency"`
-	TotalReqs   int               `json:"totalReqs"`
-
-	RampUpMs   int     `json:"rampUpMs"`
-	StaggerMs  int     `json:"staggerMs"` // fixed gap between the start of two requests
-	TimeoutMs  int     `json:"timeoutMs"`
-	WarmupReqs int     `json:"warmupReqs"`
-	CooldownMs int     `json:"cooldownMs"`
-	QpsTarget  float64 `json:"qpsTarget"`
-	DurationS  int     `json:"durationS"` // if > 0, run for duration instead of TotalReqs
-}
-
-type loadTestResult struct {
-	TotalRequests      int                `json:"totalRequests"`
-	Successful         int                `json:"successful"`
-	Failed             int                `json:"failed"`
-	TotalTimeMs        float64            `json:"totalTimeMs"`
-	AvgMs              float64            `json:"avgMs"`
-	MinMs              float64            `json:"minMs"`
-	MaxMs              float64            `json:"maxMs"`
-	P50Ms              float64            `json:"p50Ms"`
-	P75Ms              float64            `json:"p75Ms"`
-	P90Ms              float64            `json:"p90Ms"`
-	P95Ms              float64            `json:"p95Ms"`
-	P99Ms              float64            `json:"p99Ms"`
-	P999Ms             float64            `json:"p999Ms"`
-	Throughput         float64            `json:"throughput"`
-	ErrorRate          float64            `json:"errorRate"`
-	StatusCodes        map[int]int        `json:"statusCodes"`
-	Timeline           []timelinePoint    `json:"timeline"`
-	WarmupSkipped      int                `json:"warmupSkipped,omitzero"`
-	CooldownMs         int                `json:"cooldownMs,omitzero"`
-	ThroughputTimeline []throughputBucket `json:"throughputTimeline,omitempty"`
-}
-
-type throughputBucket struct {
-	Second int     `json:"second"`
-	Reqs   int     `json:"reqs"`
-	AvgMs  float64 `json:"avgMs"`
-}
-
-type timelinePoint struct {
-	StartMs   float64 `json:"startMs"` // when the request left, from the start of the run
-	Error     string  `json:"error,omitempty"`
-	TimeMs    float64 `json:"timeMs"`
-	LatencyMs float64 `json:"latencyMs"`
-	Status    int     `json:"status"`
-	Ok        bool    `json:"ok"`
-}
-
-var loadTestRunning bool
-var loadTestMu sync.Mutex
+// loadTestResult is the report the sidecar handlers (report, compare, saved results, gRPC)
+// read and write: the engine's Result, so a saved run keeps every field.
+type loadTestResult = Result
 
 var (
 	putValue     func(string, string, []byte) error
@@ -100,336 +48,6 @@ func Configure(
 	deleteValue = deleteFn
 	sidecarPort = port
 	sidecarToken = token
-}
-
-func loadTestHandler(w http.ResponseWriter, r *http.Request) {
-	devlog.Log("loadTestHandler", "richiesta load test ricevuta", map[string]any{"method": r.Method, "remote": r.RemoteAddr})
-	loadTestMu.Lock()
-	if loadTestRunning {
-		loadTestMu.Unlock()
-		devlog.Log("loadTestHandler", "load test già in esecuzione, richiesta rifiutata", nil)
-		http.Error(w, "a load test is already running", http.StatusTooManyRequests)
-		return
-	}
-	loadTestRunning = true
-	loadTestMu.Unlock()
-	defer func() { loadTestMu.Lock(); loadTestRunning = false; loadTestMu.Unlock() }()
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST required", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req loadTestRequest
-	if err := json.UnmarshalRead(r.Body, &req); err != nil {
-		devlog.Err("loadTestHandler", "decode JSON payload fallito", err, nil)
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	devlog.Log("loadTestHandler", "parametri load test decodificati", map[string]any{
-		"url":         req.URL,
-		"method":      req.Method,
-		"concurrency": req.Concurrency,
-		"totalReqs":   req.TotalReqs,
-		"durationS":   req.DurationS,
-		"timeoutMs":   req.TimeoutMs,
-		"warmupReqs":  req.WarmupReqs,
-	})
-
-	if req.URL == "" {
-		http.Error(w, "url required", http.StatusBadRequest)
-		return
-	}
-	normalizeLoadTestRequest(&req)
-
-	run := newLoadRun(req)
-	run.execute()
-	result := run.result()
-
-	devlog.Info("loadTestHandler", "load test completato", map[string]any{
-		"totalRequests": result.TotalRequests,
-		"successful":    result.Successful,
-		"failed":        result.Failed,
-		"avgMs":         result.AvgMs,
-		"p99Ms":         result.P99Ms,
-		"throughput":    result.Throughput,
-		"errorRate":     result.ErrorRate,
-	})
-	w.Header().Set("Content-Type", "application/json")
-	jsonutil.MarshalWrite(w, result)
-}
-
-// normalizeLoadTestRequest clamps the user's numbers to the supported ranges and fills the defaults.
-func normalizeLoadTestRequest(req *loadTestRequest) {
-	if req.Concurrency < 1 {
-		req.Concurrency = 1
-	}
-	if req.Concurrency > 200 {
-		req.Concurrency = 200
-	}
-	if req.DurationS > 0 {
-		req.TotalReqs = req.DurationS * req.Concurrency * 2 // approximate: max 2x concurrency per second
-	}
-	if req.TotalReqs < 1 {
-		req.TotalReqs = 10
-	}
-	if req.TotalReqs > 50000 {
-		req.TotalReqs = 50000
-	}
-	if req.TimeoutMs < 100 {
-		req.TimeoutMs = 10000
-	}
-	if req.Method == "" {
-		req.Method = "GET"
-	}
-
-	if req.WarmupReqs < 0 {
-		req.WarmupReqs = 0
-	}
-	// A warmup that swallows every request leaves nothing to measure (an all-zero report).
-	if req.WarmupReqs >= req.TotalReqs {
-		req.WarmupReqs = 0
-	}
-}
-
-// loadRun is one load test in flight: the normalized request plus everything the workers record
-// under mu (latency histogram, timeline, status counters).
-type loadRun struct {
-	req    loadTestRequest
-	client *http.Client
-	start  time.Time
-
-	mu            sync.Mutex
-	hist          *hdr.Histogram
-	timeline      []timelinePoint
-	statusCodes   map[int]int
-	successful    int
-	failed        int
-	warmupSkipped int
-	totalTimeMs   float64
-}
-
-func newLoadRun(req loadTestRequest) *loadRun {
-	return &loadRun{
-		req:    req,
-		client: &http.Client{Timeout: time.Duration(req.TimeoutMs) * time.Millisecond},
-		// HDR Histogram: microseconds from 1us to 60s with 3 significant digits, so
-		// sub-millisecond answers are measured instead of dropped.
-		hist:        hdr.New(1, 60_000_000, 3),
-		timeline:    make([]timelinePoint, 0, req.TotalReqs),
-		statusCodes: make(map[int]int),
-	}
-}
-
-// execute fires every request (paced by ramp-up, stagger and QPS target, bounded by the
-// concurrency semaphore and, in duration mode, by the deadline) and waits for them to finish.
-func (l *loadRun) execute() {
-	req := l.req
-	l.start = time.Now()
-	sem := make(chan struct{}, req.Concurrency)
-
-	// QPS rate limiter
-	var qpsLimiter *time.Ticker
-	if req.QpsTarget > 0 {
-		interval := time.Duration(float64(time.Second) / req.QpsTarget)
-		qpsLimiter = time.NewTicker(interval)
-		defer qpsLimiter.Stop()
-	}
-
-	var wg sync.WaitGroup
-
-	rampDelay := time.Duration(0)
-	if req.RampUpMs > 0 && req.TotalReqs > 1 {
-		rampDelay = time.Duration(req.RampUpMs) * time.Millisecond / time.Duration(req.TotalReqs-1)
-	}
-
-	// Duration-based mode: stop after DurationS
-	// A nil channel never fires: count mode runs every request.
-	var done chan struct{}
-	if req.DurationS > 0 {
-		done = make(chan struct{})
-		go func() {
-			time.Sleep(time.Duration(req.DurationS) * time.Second)
-			close(done)
-		}()
-	}
-
-requests:
-	for i := 0; i < req.TotalReqs; i++ {
-		select {
-		case <-done:
-			break requests // duration elapsed
-		default:
-		}
-
-		if rampDelay > 0 && i > 0 {
-			time.Sleep(rampDelay)
-		}
-		if req.StaggerMs > 0 && i > 0 {
-			time.Sleep(time.Duration(req.StaggerMs) * time.Millisecond)
-		}
-
-		// QPS rate limiting
-		if qpsLimiter != nil {
-			<-qpsLimiter.C
-		}
-
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(idx int) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			l.fire(idx)
-		}(i)
-	}
-
-	wg.Wait()
-
-	// Cooldown phase
-	if req.CooldownMs > 0 {
-		time.Sleep(time.Duration(req.CooldownMs) * time.Millisecond)
-	}
-	l.totalTimeMs = float64(time.Since(l.start).Microseconds()) / 1000.0
-}
-
-// fire sends request number idx and records its outcome; warmup requests are sent but not measured.
-func (l *loadRun) fire(idx int) {
-	req := l.req
-	var bodyReader io.Reader
-	if req.Body != "" {
-		bodyReader = strings.NewReader(req.Body)
-	}
-
-	httpReq, err := http.NewRequest(strings.ToUpper(req.Method), req.URL, bodyReader)
-	if err != nil {
-		l.mu.Lock()
-		l.failed++
-
-		l.timeline = append(l.timeline, timelinePoint{
-			StartMs: float64(time.Since(l.start).Microseconds()) / 1000.0,
-			TimeMs:  float64(time.Since(l.start).Milliseconds()),
-			Error:   err.Error(),
-			Ok:      false,
-		})
-		l.mu.Unlock()
-		return
-	}
-
-	for k, v := range req.Headers {
-		httpReq.Header.Set(k, v)
-	}
-
-	reqStart := time.Now()
-	startMs := float64(reqStart.Sub(l.start).Microseconds()) / 1000.0
-	resp, err := l.client.Do(httpReq)
-	latencyMs := float64(time.Since(reqStart).Microseconds()) / 1000.0
-	elapsed := float64(time.Since(l.start).Microseconds()) / 1000.0
-
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	// Warmup: skip recording latency
-	if idx < req.WarmupReqs {
-		l.warmupSkipped++
-		if err == nil {
-			_, _ = io.Copy(io.Discard, resp.Body) // drain only, to reuse the connection
-			resp.Body.Close()
-		}
-		return
-	}
-
-	_ = l.hist.RecordValue(max(int64(latencyMs*1000), 1)) // out-of-range samples are dropped, the run goes on
-
-	if err != nil {
-		l.failed++
-		l.timeline = append(l.timeline, timelinePoint{
-			StartMs:   startMs,
-			Error:     err.Error(),
-			TimeMs:    elapsed,
-			LatencyMs: latencyMs,
-			Ok:        false,
-		})
-		return
-	}
-	_, _ = io.Copy(io.Discard, resp.Body) // drain only, to reuse the connection
-	resp.Body.Close()
-	status := resp.StatusCode
-	l.statusCodes[status]++
-	ok := status >= 200 && status < 400
-	if ok {
-		l.successful++
-	} else {
-		l.failed++
-	}
-
-	l.timeline = append(l.timeline, timelinePoint{
-		StartMs:   startMs,
-		TimeMs:    elapsed,
-		LatencyMs: latencyMs,
-		Status:    status,
-		Ok:        ok,
-	})
-}
-
-// throughputTimeline buckets the measured requests per second of the run.
-func (l *loadRun) throughputTimeline() []throughputBucket {
-	throughputMap := make(map[int]struct {
-		count   int
-		totalMs float64
-	})
-	for _, t := range l.timeline {
-		sec := int(t.TimeMs / 1000)
-		b := throughputMap[sec]
-		b.count++
-		b.totalMs += t.LatencyMs
-		throughputMap[sec] = b
-	}
-	buckets := make([]throughputBucket, 0)
-	for sec := 0; sec <= int(l.totalTimeMs/1000); sec++ {
-		if b, ok := throughputMap[sec]; ok {
-			buckets = append(buckets, throughputBucket{
-				Second: sec,
-				Reqs:   b.count,
-				AvgMs:  math.Round(b.totalMs/float64(b.count)*100) / 100,
-			})
-		}
-	}
-	return buckets
-}
-
-// result turns what the workers recorded into the report sent to the UI.
-func (l *loadRun) result() loadTestResult {
-	totalTime := l.totalTimeMs
-	measured := l.successful + l.failed
-
-	result := loadTestResult{
-		TotalRequests:      l.req.TotalReqs,
-		Successful:         l.successful,
-		Failed:             l.failed,
-		TotalTimeMs:        math.Round(totalTime*100) / 100,
-		StatusCodes:        l.statusCodes,
-		Timeline:           l.timeline,
-		WarmupSkipped:      l.warmupSkipped,
-		CooldownMs:         l.req.CooldownMs,
-		ThroughputTimeline: l.throughputTimeline(),
-	}
-
-	if measured > 0 {
-		hist := l.hist
-		ms := func(us int64) float64 { return math.Round(float64(us)/10) / 100 }
-		result.AvgMs = math.Round(hist.Mean()/10) / 100
-		result.MinMs = ms(hist.Min())
-		result.MaxMs = ms(hist.Max())
-		result.P50Ms = ms(hist.ValueAtQuantile(50))
-		result.P75Ms = ms(hist.ValueAtQuantile(75))
-		result.P90Ms = ms(hist.ValueAtQuantile(90))
-		result.P95Ms = ms(hist.ValueAtQuantile(95))
-		result.P99Ms = ms(hist.ValueAtQuantile(99))
-		result.P999Ms = ms(hist.ValueAtQuantile(99.9))
-		result.ErrorRate = math.Round(float64(l.failed)/float64(measured)*10000) / 100
-	}
-	if totalTime > 0 {
-		result.Throughput = math.Round(float64(measured)/(totalTime/1000)*100) / 100
-	}
-	return result
 }
 
 // loadTestReportHandler generates an exportable report in JSON, HTML, or Markdown.
@@ -525,8 +143,8 @@ func loadTestScenarioSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Name   string          `json:"name"`
-		Config loadTestRequest `json:"config"`
+		Name   string         `json:"name"`
+		Config jsontext.Value `json:"config"` // the drawer's settings, stored as sent
 	}
 	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -536,8 +154,14 @@ func loadTestScenarioSaveHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	data, _ := jsonutil.Marshal(req.Config)
-	_ = putValue("workspace", "scenario/"+req.Name, data)
+	if len(req.Config) == 0 {
+		http.Error(w, "config required", http.StatusBadRequest)
+		return
+	}
+	if err := putValue("workspace", "scenario/"+req.Name, req.Config); err != nil {
+		http.Error(w, "save failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	jsonutil.MarshalWrite(w, map[string]any{"ok": true, "name": req.Name})
@@ -772,7 +396,7 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 	var mu sync.Mutex
 	successful, failed := 0, 0
 	statusCodes := make(map[int]int)
-	timeline := make([]timelinePoint, 0)
+	timeline := make([]TimelinePoint, 0)
 	start := time.Now()
 	sem := make(chan struct{}, req.Concurrency)
 	var wg sync.WaitGroup
@@ -837,7 +461,7 @@ func loadTestGrpcHandler(w http.ResponseWriter, r *http.Request) {
 				failed++
 				statusCodes[grpcStatusCode(grpcStatus)]++
 			}
-			timeline = append(timeline, timelinePoint{TimeMs: elapsed, LatencyMs: latencyMs, Ok: ok})
+			timeline = append(timeline, TimelinePoint{TimeMs: elapsed, LatencyMs: latencyMs, Ok: ok})
 			mu.Unlock()
 		}(i)
 	}
@@ -901,7 +525,6 @@ func grpcStatusCode(status string) int {
 
 // RegisterHandlers registers HTTP and gRPC load testing endpoints.
 func RegisterHandlers(mux *http.ServeMux) {
-	mux.HandleFunc("/loadtest", loadTestHandler)
 	mux.HandleFunc("/loadtest/report", loadTestReportHandler)
 	mux.HandleFunc("/loadtest/scenario/save", loadTestScenarioSaveHandler)
 	mux.HandleFunc("/loadtest/scenario/list", loadTestScenarioListHandler)

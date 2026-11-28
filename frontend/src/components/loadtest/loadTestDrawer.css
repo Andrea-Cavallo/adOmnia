@@ -73,3 +73,7 @@
 .ltd-delta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 10px; font-family: var(--font-mono); font-size: 11px; }
 .ltd-delta [data-bad="true"] { color: var(--color-warning, #f5a524); }
 .ltd-delta [data-bad="false"] { color: var(--color-success); }
+.ltd-error-row { display: grid; grid-template-columns: 88px 1fr auto; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--color-border-1); font-family: var(--font-mono); font-size: 11px; }
+.ltd-error-row b { font-weight: 600; color: var(--color-error); }
+.ltd-error-row span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-2); }
+.ltd-error-row span:last-child { color: var(--color-text-3); font-variant-numeric: tabular-nums; }

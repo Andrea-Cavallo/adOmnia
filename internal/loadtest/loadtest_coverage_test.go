@@ -80,9 +80,12 @@ func TestConfigureWiresPersistenceAndSidecar(t *testing.T) {
 	if gotBucket != "workspace" || gotKey != "scenario/smoke" {
 		t.Fatalf("put called with %q/%q", gotBucket, gotKey)
 	}
-	var stored loadTestRequest
+	var stored struct {
+		URL       string `json:"url"`
+		TotalReqs int    `json:"totalReqs"`
+	}
 	if err := json.Unmarshal(gotValue, &stored); err != nil {
-		t.Fatalf("stored config is not a loadTestRequest: %v (%s)", err, gotValue)
+		t.Fatalf("stored config is not the JSON that was sent: %v (%s)", err, gotValue)
 	}
 	if stored.URL != "https://api.test" || stored.TotalReqs != 5 {
 		t.Fatalf("stored config = %+v", stored)
@@ -398,7 +401,11 @@ func TestLoadTestScenarioSaveListLoad(t *testing.T) {
 	if loadRecorder.Code != http.StatusOK {
 		t.Fatalf("load status = %d", loadRecorder.Code)
 	}
-	var config loadTestRequest
+	var config struct {
+		URL       string `json:"url"`
+		Method    string `json:"method"`
+		TotalReqs int    `json:"totalReqs"`
+	}
 	if err := json.Unmarshal(loadRecorder.Body.Bytes(), &config); err != nil {
 		t.Fatal(err)
 	}
@@ -642,7 +649,6 @@ func TestRegisterHandlersRoutesEveryEndpoint(t *testing.T) {
 		target string
 		want   int
 	}{
-		{http.MethodGet, "/loadtest", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/loadtest/report", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/loadtest/scenario/save", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/loadtest/scenario/list", http.StatusOK},

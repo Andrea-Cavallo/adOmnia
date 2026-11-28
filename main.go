@@ -129,6 +129,7 @@ func main() {
 	agentTasks := NewAgentTasks(milkService.manager, claudeService.manager, piService.manager)
 	agentTasks.configure(filepath.Join(dataDir(), "code-studio", "worktrees"), goIDE.service)
 	collabService := NewCollab(goIDE.sessionRoot)
+	loadTest := NewLoadTest()
 
 	var mainWindow *application.WebviewWindow
 	appOptions := application.Options{
@@ -159,6 +160,7 @@ func main() {
 			application.NewService(piService),
 			application.NewService(agentTasks),
 			application.NewService(collabService),
+			application.NewService(loadTest),
 		},
 		// Only one process may hold the bbolt lock. Additional launches focus
 		// the running main window instead of starting with an empty workspace.
@@ -200,6 +202,7 @@ func main() {
 	piService.attachDesktop(desktopApp)
 	agentTasks.attachDesktop(desktopApp)
 	collabService.attachDesktop(desktopApp)
+	loadTest.attachDesktop(desktopApp)
 
 	winW, winH, winMinW, winMinH := windowfit.Size(desktopApp, 1400, 900, 900, 600)
 	mainWindow = desktopApp.Window.NewWithOptions(application.WebviewWindowOptions{

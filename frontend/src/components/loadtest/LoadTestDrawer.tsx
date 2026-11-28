@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Download, FileJson, Trash2 } from 'lucide-react'
+import { X, Download, FileJson, Square, Trash2 } from 'lucide-react'
 import type { RequestItem } from '@/lib/types'
 import { useServerPort, serverUrl, sidecarFetch } from '@/lib/useServerPort'
 import { substVars } from '@/lib/substVars'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useSettingsStore } from '@/stores/settings'
-import { buildLoadPlan, type LoadMode } from './loadTestPlan'
-import { PercentileRow, ThroughputChart, Waterfall, type LoadTestResult } from './loadTestParts'
+import { prepareExecution } from '@/lib/sendRequest'
+import { runLoadTest, type LoadTestProgress, type LoadTestResult, type LoadTestRun } from '@/lib/loadtest-api'
+import { buildLoadPlan, MAX_PROBE, MAX_VUS, type LoadMode } from './loadTestPlan'
+import { PercentileRow, ThroughputChart, Waterfall } from './loadTestParts'
 import './loadTestDrawer.css'
 
 interface SavedResultSummary {
@@ -27,7 +29,7 @@ interface CompareResult {
 const MODE_HINT: Record<LoadMode, string> = {
   burst: 'Fires N copies of this request at the same instant, to see what happens when they race.',
   gap: 'Sends the same request a few times, each one starting a fixed gap after the previous (no waiting for the answer).',
-  load: 'Classic load test: many requests with a concurrency limit, percentiles and throughput.',
+  load: 'Virtual users repeat the request for a number of iterations or for a time, with an optional ramp-up and think time.',
 }
 
 interface LoadTestDrawerProps {
@@ -50,6 +52,10 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   const [useDuration, setUseDuration] = useState(false)
   const [timeoutMs, setTimeoutMs] = useState(5000)
   const [warmupReqs, setWarmupReqs] = useState(5)
+  const [rampUpS, setRampUpS] = useState(0)
+  const [thinkTimeMs, setThinkTimeMs] = useState(0)
+  const [progress, setProgress] = useState<LoadTestProgress | null>(null)
+  const runRef = useRef<LoadTestRun | null>(null)
 
   const [result, setResult] = useState<LoadTestResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -64,7 +70,9 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   const vars = getResolvedVars()
   const resolvedUrl = substVars(request.url, vars)
   const unresolved = resolvedUrl.match(/\{\{[^{}]+\}\}/)?.[0]
-  const inputs = { concurrency, totalReqs, durationS, useDuration, warmupReqs, burst, gapRequests, gapMs }
+  const inputs = { concurrency, totalReqs, durationS, useDuration, warmupReqs, rampUpS, thinkTimeMs, burst, gapRequests, gapMs }
+  // A run still going when the drawer closes is stopped: nobody would see its result.
+  useEffect(() => () => runRef.current?.stop(), [])
 
   const callApi = async <T,>(path: string, init?: RequestInit): Promise<T> => {
     const url = serverUrl(port, path)
@@ -90,13 +98,12 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   }
   useEffect(() => { void loadCatalogs() }, [port])
 
-  const headersObj = () => Object.fromEntries(request.headers.filter((h) => h.enabled && h.key).map((h) => [h.key, substVars(h.value, vars)]))
 
   const saveScenario = async () => {
     if (!scenarioName.trim()) return
     try {
-      const plan = buildLoadPlan('load', inputs)
-      await callApi('/loadtest/scenario/save', post({ name: scenarioName.trim(), config: { url: resolvedUrl, method: request.method, timeoutMs, headers: headersObj(), totalReqs: 0, durationS: 0, ...plan } }))
+      const config = { url: resolvedUrl, method: request.method, timeoutMs, concurrency, totalReqs, durationS, useDuration, warmupReqs, rampUpS, thinkTimeMs, workload: buildLoadPlan('load', inputs) }
+      await callApi('/loadtest/scenario/save', post({ name: scenarioName.trim(), config }))
       setScenarioName('')
       await loadCatalogs()
     } catch (e) { fail(e) }
@@ -110,7 +117,10 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
       setDurationS(Number(data.durationS ?? durationS))
       setTimeoutMs(Number(data.timeoutMs ?? timeoutMs))
       setWarmupReqs(Number(data.warmupReqs ?? warmupReqs))
-      setUseDuration(Number(data.durationS ?? 0) > 0 && Number(data.totalReqs ?? 0) === 0)
+      setRampUpS(Number(data.rampUpS ?? 0))
+      setThinkTimeMs(Number(data.thinkTimeMs ?? 0))
+      // Scenarios saved before useDuration existed meant "duration" when totalReqs was 0.
+      setUseDuration(typeof data.useDuration === 'boolean' ? data.useDuration : Number(data.durationS ?? 0) > 0 && Number(data.totalReqs ?? 0) === 0)
       setMode('load')
       setError('')
     } catch (e) { fail(e) }
@@ -159,19 +169,17 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   }
 
   const handleRun = async () => {
-    const apiUrl = serverUrl(port, '/loadtest')
-    if (!apiUrl) { setError('Backend not ready'); return }
     if (!resolvedUrl) { setError('URL is empty'); return }
-    setLoading(true); setError(''); setResult(null); setComparison(null)
+    setLoading(true); setError(''); setResult(null); setComparison(null); setProgress(null)
     try {
-      const activeBody = request.bodies[request.activeBodyIdx]
-      const body = activeBody?.type !== 'none' ? activeBody?.raw : undefined
-      const payload = { url: resolvedUrl, method: request.method, timeoutMs, headers: headersObj(), body: body || undefined, ...buildLoadPlan(mode, inputs) }
-      const res = await sidecarFetch(apiUrl, post(payload))
-      const text = await res.text()
-      if (!res.ok) { setError(text || 'Load test failed'); return }
-      setResult(JSON.parse(text))
-    } catch (e) { fail(e) } finally { setLoading(false) }
+      // The same resolution as Send: vault, auth (OAuth2, AWS4…), cookies, hosts map, TLS, PSD2.
+      const prepared = await prepareExecution(request, vars)
+      if (prepared.kind === 'error') { setError(prepared.response.error?.message || 'The request could not be prepared'); return }
+      if (prepared.kind === 'browser') { setError('Multipart form-data bodies cannot be load tested yet: use a raw, JSON or URL-encoded body.'); return }
+      const run = runLoadTest({ ...prepared.exec, timeoutMs }, buildLoadPlan(mode, inputs), setProgress, request.name)
+      runRef.current = run
+      setResult(await run.result)
+    } catch (e) { fail(e) } finally { runRef.current = null; setLoading(false) }
   }
 
   const exportJson = () => {
@@ -198,10 +206,10 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
   const maxP = result ? Math.max(result.p50Ms, result.p75Ms, result.p90Ms, result.p95Ms, result.p99Ms, result.p999Ms, 1) : 1
   const probe = mode !== 'load'
   const firstError = result?.timeline?.find((t) => t.error)?.error
-  const numberField = (label: string, value: number, set: (n: number) => void, min = 1) => (
+  const numberField = (label: string, value: number, set: (n: number) => void, min = 1, max?: number) => (
     <label className="ltd-field">
       <span className="ltd-label">{label}</span>
-      <input type="number" className="ltd-input" value={value} min={min} disabled={loading} onChange={(e) => set(Number(e.target.value))} />
+      <input type="number" className="ltd-input" value={value} min={min} max={max} disabled={loading} onChange={(e) => set(Number(e.target.value))} />
     </label>
   )
 
@@ -222,29 +230,33 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
       <p className="ltd-hint">{MODE_HINT[mode]}</p>
 
       <div className="ltd-config">
-        {mode === 'burst' && numberField('At once', burst, setBurst)}
+        {mode === 'burst' && numberField('At once', burst, setBurst, 1, MAX_PROBE)}
         {mode === 'gap' && <>{numberField('Requests', gapRequests, setGapRequests, 2)}{numberField('Gap (ms)', gapMs, setGapMs, 0)}</>}
         {mode === 'load' && <>
-          {numberField('Concurrency', concurrency, setConcurrency)}
+          {numberField('Virtual users', concurrency, setConcurrency, 1, MAX_VUS)}
           <div className="ltd-field">
             <span className="ltd-label">{useDuration ? 'Duration (s)' : 'Requests'} <button type="button" className="ltd-link" onClick={() => setUseDuration(!useDuration)}>{useDuration ? '→ count' : '→ time'}</button></span>
             <input type="number" className="ltd-input" min={1} disabled={loading} value={useDuration ? durationS : totalReqs} onChange={(e) => (useDuration ? setDurationS : setTotalReqs)(Number(e.target.value))} />
           </div>
-          {numberField('Warmup', warmupReqs, setWarmupReqs, 0)}
+          {useDuration && numberField('Ramp-up (s)', rampUpS, setRampUpS, 0)}
+          {!(useDuration && rampUpS > 0) && numberField('Warmup', warmupReqs, setWarmupReqs, 0)}
+          {numberField('Think (ms)', thinkTimeMs, setThinkTimeMs, 0)}
         </>}
         {numberField('Timeout (ms)', timeoutMs, setTimeoutMs, 100)}
-        <button type="button" className="ltd-run" data-running={loading} onClick={() => void handleRun()} disabled={loading || !port || !resolvedUrl}>
-          <span className="ltd-run-label">{loading ? 'Running' : 'Run'}</span>
-        </button>
+        {loading
+          ? <button type="button" className="ltd-run" data-running onClick={() => runRef.current?.stop()}><Square size={11} /> <span className="ltd-run-label">Stop</span></button>
+          : <button type="button" className="ltd-run" onClick={() => void handleRun()} disabled={!resolvedUrl}><span className="ltd-run-label">Run</span></button>}
       </div>
 
       <div className="ltd-body">
         {unresolved && <div className="ltd-note" data-tone="warn">The URL still contains <b>{unresolved}</b>: that variable has no value (is the service or environment running?), so requests will fail.</div>}
         {error && <div className="ltd-note" data-tone="error">{error}</div>}
         {!result && !loading && !error && <div className="ltd-empty">Pick a test type and press Run.</div>}
+        {loading && <LiveProgress progress={progress} />}
 
         {result && (
           <>
+            {result.aborted && <div className="ltd-note" data-tone="warn">Stopped before the end: these are the results up to the stop.</div>}
             {result.failed > 0 && result.successful === 0 && firstError && <div className="ltd-note" data-tone="error">Every request failed: {firstError}</div>}
             <div className="ltd-stats">
               {[
@@ -255,6 +267,7 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
                 { label: 'Min', value: `${result.minMs.toFixed(1)}ms`, bad: false },
                 { label: 'Max', value: `${result.maxMs.toFixed(1)}ms`, bad: false },
                 ...(probe ? [] : [
+                  { label: 'Peak VUs', value: String(result.maxVUs ?? 0), bad: false },
                   { label: 'Throughput', value: `${result.throughput.toFixed(1)}/s`, bad: false },
                   { label: 'Error %', value: `${result.errorRate.toFixed(1)}%`, bad: result.errorRate > 1 },
                 ]),
@@ -285,6 +298,17 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
                 <div className="ltd-section-head">Latency percentiles</div>
                 {([['p50', result.p50Ms], ['p75', result.p75Ms], ['p90', result.p90Ms], ['p95', result.p95Ms], ['p99', result.p99Ms], ['p99.9', result.p999Ms]] as const).map(([label, value]) => (
                   <PercentileRow key={label} label={label} value={value} max={maxP} />
+                ))}
+              </div>
+            )}
+
+            {result.errorGroups && result.errorGroups.length > 0 && (
+              <div className="ltd-section">
+                <div className="ltd-section-head">Errors</div>
+                {result.errorGroups.map((g) => (
+                  <div key={`${g.code}:${g.message}`} className="ltd-error-row">
+                    <b>{g.code}</b><span title={g.message}>{g.message}</span><span>×{g.count}</span>
+                  </div>
                 ))}
               </div>
             )}
@@ -354,6 +378,31 @@ export function LoadTestDrawer({ request, onClose }: LoadTestDrawerProps) {
             ))}
           </details>
         )}
+      </div>
+    </div>
+  )
+}
+
+function LiveProgress({ progress }: { progress: LoadTestProgress | null }) {
+  if (!progress) return <div className="ltd-empty">Starting…</div>
+  const cells = [
+    ['Elapsed', `${progress.elapsedS.toFixed(0)}s`],
+    ['VUs', String(progress.vus)],
+    ['Sent', String(progress.sent)],
+    ['req/s', progress.rps.toFixed(0)],
+    ['p95 (1s)', `${progress.p95Ms.toFixed(1)}ms`],
+    ['Errors', `${progress.errorRate.toFixed(1)}%`],
+  ] as const
+  return (
+    <div className="ltd-section" aria-live="polite">
+      <div className="ltd-section-head">{progress.measuring ? 'Running' : 'Warming up (not measured)'}</div>
+      <div className="ltd-stats">
+        {cells.map(([label, value]) => (
+          <div key={label} className="ltd-stat">
+            <div className="ltd-stat-value" data-bad={label === 'Errors' && progress.errorRate > 1}>{value}</div>
+            <div className="ltd-stat-label">{label}</div>
+          </div>
+        ))}
       </div>
     </div>
   )

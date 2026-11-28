@@ -53,7 +53,7 @@ internal/adomniacli/stress.go       diventa un wrapper: legge il file, chiama lo
 - **Coordinated omission**: nell'open model la latenza si misura dall'*istante pianificato* di
   partenza, non da quando un VU si libera. Le iterazioni perse perché il pool `maxVUs` è esaurito
   vengono contate (`droppedIterations`) e mostrate, non nascoste.
-- **Warm-up / cool-down** come stage marcati `measured: false`.
+- **Warm-up / cool-down** come stage marcati `unmeasured: true`.
 - **Limiti**: niente cap fisso a 200. Il massimo si calcola da CPU, file descriptor e porte effimere
   (default prudente: 2.000 VU / 20.000 RPS). Oltre serve una conferma esplicita con il motivo.
   Il generatore misura la propria saturazione (CPU > 85%, scheduler in ritardo > 10 ms) e la
@@ -76,7 +76,7 @@ chiavi stabili, condiviso via Git come le run configuration):
     "executor": "arrival-rate",
     "maxVUs": 300,
     "stages": [
-      { "durationS": 30, "targetRps": 50, "measured": false },
+      { "durationS": 30, "targetRps": 50, "unmeasured": true },
       { "durationS": 300, "targetRps": 200 }
     ]
   },
@@ -128,7 +128,7 @@ stesso hash di scenario sono confrontabili, altrimenti il confronto lo segnala.
 
 | # | Contenuto | Fatto quando |
 |---|---|---|
-| LT-1 | Motore: `Scenario`, executor `vus` + `probe`, target HTTP via `httpexec`, metriche per step, binding Start/Stop/progress. Il drawer attuale passa al motore nuovo. | test Go: conteggi esatti per stage, cancellazione, HDR contro un server `httptest` con latenza nota (±5%) |
+| LT-1 ✅ | Motore: `Scenario`, executor `vus` + `probe`, target HTTP via `httpexec.Client`, binding `LoadTest` Start/Stop/Running, eventi `loadtest:progress`/`loadtest:finished`. Il drawer passa al motore nuovo. | fatto 2026-11-28, vedi §10 |
 | LT-2 | Target flow (logica da `adomniacli/stress.go`) + `adomnia stress` come wrapper. Flow Stress UI sul motore Go, `flowStress.ts` rimosso. | stesso scenario, stesso server: app e CLI riportano gli stessi conteggi e p95 entro il 5% |
 | LT-3 | Executor `arrival-rate` con correzione coordinated omission, `droppedIterations`, saturazione del generatore. | test: server che si blocca 2 s → il p99 lo riflette; RPS raggiunto entro ±2% |
 | LT-4 | File scenario `.adomnia/loadtests`, seed, dataset, manifest, storico bbolt + migrazione. | stesso seed → stessa sequenza di dati e think time (test deterministico) |
@@ -158,3 +158,25 @@ Ogni fase si chiude con: test focalizzati Go/Vitest, `npx tsc --noEmit`, aggiorn
 Generatori distribuiti su più macchine, script di carico in JS stile k6, carico WebSocket/Kafka/SSE,
 monitoraggio delle risorse del server target (CPU/memoria via agent), esportazione verso
 Prometheus/InfluxDB.
+
+## 10. Stato
+
+**LT-1 — fatto (2026-11-28).**
+
+- `internal/httpexec`: `buildClient` è condiviso da `Execute` e dal nuovo `Client` (stesso TLS, mTLS,
+  PSD2, hosts map, proxy/CA, redirect); `Client` tiene vive le connessioni, scarta il body senza
+  bufferizzarlo, misura in µs e rifirma PSD2 a ogni chiamata.
+- `internal/loadtest`: `scenario.go` (tipi, limiti, `Validate`), `engine.go` (`Run`, executor `vus`
+  con stage lineari e `probe`, think time, warm-up, Stop), `metrics.go` (HDR globale + finestra da
+  1 s, bucket, error group, timeline limitata a 2.000 punti), `manager.go` (una run alla volta, eventi).
+  Il vecchio `POST /loadtest` e il suo motore sono stati rimossi; gli altri handler sidecar (report,
+  confronto, scenari, risultati, gRPC) leggono `Result`, che mantiene i campi JSON di prima.
+- `loadtest_bindings.go` + `main.go`: servizio Wails `LoadTest`.
+- Frontend: `lib/loadtest-api.ts` (`runLoadTest`, eventi bufferizzati fino al run id); il drawer usa
+  `prepareExecution` (auth come Send — prima si perdeva), VU fino a 2.000, ramp-up, think time,
+  avanzamento live, Stop, gruppi di errori. Gli scenari salvati prima continuano a caricarsi.
+- Verifiche: `go test -race ./internal/loadtest`, test `httpexec`/`adomniacli`, golangci-lint 0
+  issues, `tsc`, Vitest `loadTestPlan`, `oxlint`, `check:startup`.
+- **Da verificare in app:** LT-M1 e LT-M4 (non ancora eseguiti).
+
+**Prossimo: LT-2** — target flow sul motore Go e `adomnia stress` come wrapper.
