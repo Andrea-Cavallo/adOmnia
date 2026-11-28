@@ -22,6 +22,9 @@ type Result struct {
 	StartedAt string `json:"startedAt"`
 	EndedAt   string `json:"endedAt"`
 	Aborted   bool   `json:"aborted,omitzero"`
+	// AbortReason is set when a gate with abortOnFail stopped the run (empty for a manual Stop).
+	AbortReason string    `json:"abortReason,omitempty"`
+	Manifest    *Manifest `json:"manifest,omitempty"`
 
 	TotalRequests    int `json:"totalRequests"` // sent, warm-up included
 	Successful       int `json:"successful"`
@@ -162,7 +165,8 @@ type sample struct {
 	step     string
 	started  time.Time
 	latency  time.Duration
-	status   int // 0: no HTTP response
+	status   int    // 0: no HTTP response (a gRPC code when label is set)
+	label    string // gRPC: the status name the server answered with
 	bytes    int64
 	errCode  string // empty when the request passed
 	errMsg   string
@@ -175,7 +179,9 @@ func (s sample) ok() bool { return s.errCode == "" }
 // latencyCounts says whether a sample has a latency worth measuring: a response arrived, or
 // the request timed out. A refused connection takes a few ms and would make a broken target
 // look fast; a slow 5xx or a timeout must stay in the percentiles.
-func (s sample) latencyCounts() bool { return s.sent && (s.status > 0 || s.errCode == "TIMEOUT") }
+func (s sample) latencyCounts() bool {
+	return s.sent && (s.status > 0 || s.label != "" || s.errCode == "TIMEOUT")
+}
 
 type stepStats struct {
 	name          string
@@ -279,7 +285,10 @@ func (r *recorder) record(s sample, measured bool, vu, iteration int) {
 	st := r.step(s.stepID, s.step)
 	st.count++
 	code := "ERR"
-	if s.status > 0 {
+	if s.label != "" {
+		code = s.label
+		r.status[s.status]++
+	} else if s.status > 0 {
 		code = strconv.Itoa(s.status)
 		r.status[s.status]++
 	}
@@ -338,7 +347,7 @@ func fingerprint(message string) string {
 
 func (r *recorder) addError(s sample) {
 	code, msg := s.errCode, firstLine(s.errMsg)
-	if code == "HTTP" || (msg == "" && s.status > 0) {
+	if code == "HTTP" || (msg == "" && s.status > 0 && s.label == "") {
 		code, msg = httpClass(s.status), "HTTP "+strconv.Itoa(s.status)
 	}
 	if msg == "" {

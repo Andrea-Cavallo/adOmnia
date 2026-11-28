@@ -14,8 +14,12 @@ function drawThroughputChart(canvas: HTMLCanvasElement, timeline: ThroughputBuck
   const accent = style.getPropertyValue('--color-accent').trim() || '#ffffff'
   const grid = style.getPropertyValue('--color-border-1').trim() || '#242424'
   const ink = style.getPropertyValue('--color-text-4').trim() || '#777777'
-  const W = canvas.width
-  const H = canvas.height
+  const ratio = Math.min(window.devicePixelRatio || 1, 2)
+  const W = Math.max(300, canvas.getBoundingClientRect().width)
+  const H = 180
+  canvas.width = Math.round(W * ratio)
+  canvas.height = H * ratio
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
   const pad = { top: 10, right: 10, bottom: 18, left: 38 }
   const maxReqs = Math.max(...timeline.map((b) => b.reqs), 1)
   const areaW = W - pad.left - pad.right
@@ -29,7 +33,10 @@ function drawThroughputChart(canvas: HTMLCanvasElement, timeline: ThroughputBuck
     const y = pad.top + areaH * (i / 4)
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke()
   }
-  ctx.fillStyle = accent
+  const fill = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom)
+  fill.addColorStop(0, accent)
+  fill.addColorStop(1, 'transparent')
+  ctx.fillStyle = fill
   timeline.forEach((b, i) => {
     const barH = Math.max(2, (b.reqs / maxReqs) * areaH)
     ctx.fillRect(pad.left + i * barW + 0.5, H - pad.bottom - barH, Math.max(barW - 2, 1), barH)
@@ -48,9 +55,16 @@ function drawThroughputChart(canvas: HTMLCanvasElement, timeline: ThroughputBuck
 export function ThroughputChart({ timeline, canvasRef }: { timeline: ThroughputBucket[]; canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
   useEffect(() => {
     const canvas = canvasRef.current
-    if (canvas && timeline.length > 0) drawThroughputChart(canvas, timeline)
+    if (!canvas || !timeline.length) return
+    const draw = () => drawThroughputChart(canvas, timeline)
+    draw()
+    const resize = new ResizeObserver(draw)
+    resize.observe(canvas)
+    const theme = new MutationObserver(draw)
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class', 'data-theme', 'data-skin'] })
+    return () => { resize.disconnect(); theme.disconnect() }
   }, [timeline, canvasRef])
-  return <canvas ref={canvasRef} width={640} height={90} style={{ width: '100%', height: 90 }} />
+  return <canvas ref={canvasRef} width={640} height={180} style={{ width: '100%', height: 180 }} role="img" aria-label={`Completed requests per second. Peak ${Math.max(0, ...timeline.map((bucket) => bucket.reqs))} requests per second.`} />
 }
 
 export function PercentileRow({ label, value, max }: { label: string; value: number; max: number }) {

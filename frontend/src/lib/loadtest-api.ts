@@ -1,11 +1,35 @@
 import { Events } from '@wailsio/runtime'
 import * as LoadTest from '../../bindings/github.com/Andrea-Cavallo/adOmnia/loadtest'
-import type { FlowInput, Plan, Scenario, Workload } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/loadtest/models'
+import type { Comparison, FlowInput, Gates, Plan, RunSummary, Scenario, ScenarioFile, ScenarioFileEntry, Workload } from '../../bindings/github.com/Andrea-Cavallo/adOmnia/internal/loadtest/models'
 import type { HTTPExecPayload } from '@/lib/requestExecutionContract'
 
 export type LoadTestWorkload = Workload
 export type LoadTestPlan = Plan
 export type LoadTestFlowInput = FlowInput
+export type LoadTestGates = Gates
+export type LoadTestRunSummary = RunSummary
+export type LoadTestComparison = Comparison
+export type LoadTestScenarioFile = ScenarioFile
+export type LoadTestScenarioFileEntry = ScenarioFileEntry
+export type LoadTestReportFormat = 'json' | 'md' | 'html' | 'junit' | 'csv' | 'samples'
+
+/** The conditions of a run: same scenarioHash = same test, seed replays the random values. */
+export interface LoadTestManifest {
+  appVersion: string
+  commit?: string
+  scenarioHash: string
+  datasetHash?: string
+  datasetRows?: number
+  seed: number
+  target: 'request' | 'flow' | 'grpc' | string
+  targetLabel: string
+  os: string
+  arch: string
+  cpus: number
+  goVersion: string
+  vars?: Record<string, string>
+  saturated?: boolean
+}
 
 /** One second of a run (measured requests only). */
 export interface LoadTestBucket {
@@ -62,6 +86,9 @@ export interface LoadTestResult {
   startedAt?: string
   endedAt?: string
   aborted?: boolean
+  /** Set when a gate with abortOnFail stopped the run. */
+  abortReason?: string
+  manifest?: LoadTestManifest
   totalRequests: number
   successful: number
   failed: number
@@ -118,7 +145,7 @@ export interface LoadTestProgress {
   snapshot?: LoadTestResult
 }
 
-interface Finished { runId: string; result?: LoadTestResult; error?: string }
+interface Finished { runId: string; result?: LoadTestResult; error?: string; saved?: RunSummary }
 
 export interface LoadTestRun {
   /** Resolves with the result (aborted after stop) or rejects when the run could not start. */
@@ -127,8 +154,8 @@ export interface LoadTestRun {
 }
 
 /** Runs one resolved request on the Go engine. */
-export function runLoadTest(request: HTTPExecPayload, workload: LoadTestWorkload, onProgress: (p: LoadTestProgress) => void, name?: string): LoadTestRun {
-  const scenario: Scenario = { name, request, workload }
+export function runLoadTest(request: HTTPExecPayload, workload: LoadTestWorkload, onProgress: (p: LoadTestProgress) => void, name?: string, gates?: Gates): LoadTestRun {
+  const scenario: Scenario = { name, request, workload, gates }
   return startOnEngine(() => LoadTest.Start(scenario), onProgress)
 }
 
@@ -184,4 +211,51 @@ function startOnEngine(start: () => Promise<string>, onProgress: (p: LoadTestPro
       if (runId) void LoadTest.Stop(runId)
     },
   }
+}
+
+/** Runs a scenario file (the one Git shares and `adomnia stress` runs) with the app's variables. */
+export function runScenarioFile(file: LoadTestScenarioFile, input: LoadTestFlowInput, onProgress: (p: LoadTestProgress) => void): LoadTestRun {
+  return startOnEngine(() => LoadTest.StartFile(file, input), onProgress)
+}
+
+// The run history (bbolt): every finished run lands there by itself.
+export const listRuns = async (): Promise<LoadTestRunSummary[]> => (await LoadTest.Runs()) ?? []
+export const loadRun = (id: string): Promise<LoadTestResult> => LoadTest.Run(id) as unknown as Promise<LoadTestResult>
+export const deleteRun = (id: string): Promise<void> => LoadTest.DeleteRun(id)
+export const importRun = (result: LoadTestResult): Promise<LoadTestRunSummary> => LoadTest.ImportRun(result as never)
+
+/** base → head; tolerance in percent (0 = 10%). */
+export const compareRuns = (baseId: string, headId: string, tolerancePct = 0): Promise<LoadTestComparison> => LoadTest.Compare(baseId, headId, tolerancePct)
+export const compareResults = (base: LoadTestResult, head: LoadTestResult, tolerancePct = 0): Promise<LoadTestComparison> => LoadTest.CompareResults(base as never, head as never, tolerancePct)
+
+/** A report rendered by the engine from the canonical result. */
+export const renderReport = (result: LoadTestResult, format: LoadTestReportFormat): Promise<string> => LoadTest.Report(result as never, format)
+
+// Scenario files: <folder>/.adomnia/loadtests/<name>.loadtest.json
+export const saveScenarioFile = (folder: string, file: LoadTestScenarioFile): Promise<string> => LoadTest.SaveScenarioFile(folder, file)
+export const listScenarioFiles = async (folder: string): Promise<LoadTestScenarioFileEntry[]> => (await LoadTest.ScenarioFiles(folder)) ?? []
+export const readScenarioFile = (path: string): Promise<LoadTestScenarioFile> => LoadTest.ReadScenarioFile(path)
+export const planScenarioFile = (plan: LoadTestPlan): Promise<LoadTestScenarioFile> => LoadTest.PlanScenarioFile(plan)
+
+// The drawer's settings saved by name.
+export const listSavedSettings = async (): Promise<string[]> => (await LoadTest.SavedSettings()) ?? []
+export const saveSettings = (name: string, config: Record<string, unknown>): Promise<void> => LoadTest.SaveSettings(name, config)
+export async function loadSettings(name: string): Promise<Record<string, unknown>> {
+  const value: unknown = await LoadTest.LoadSettings(name)
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {}
+}
+
+const FOLDER_KEY = 'adomnia.loadtest.folder'
+/** The workspace folder scenario files are saved in, remembered per machine. */
+export function scenarioFolder(): string {
+  try { return localStorage.getItem(FOLDER_KEY) ?? '' } catch { return '' }
+}
+export function rememberScenarioFolder(folder: string): void {
+  try { localStorage.setItem(FOLDER_KEY, folder) } catch { /* private mode: asked again next time */ }
+}
+
+/** Runs one gRPC call (internal/grpc request shape) on the engine: same metrics, history and reports as HTTP. */
+export function runGrpcLoadTest(call: Record<string, unknown>, workload: LoadTestWorkload, onProgress: (p: LoadTestProgress) => void, name?: string, gates?: Gates): LoadTestRun {
+  const scenario = { name, grpc: call, workload, gates } as unknown as Scenario
+  return startOnEngine(() => LoadTest.Start(scenario), onProgress)
 }

@@ -13,6 +13,7 @@ import (
 	"math"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/headless"
@@ -61,7 +62,8 @@ type stressCLIResult struct {
 func Stress(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("adomnia stress", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	reporter := fs.String("reporter", "cli", "reporter: cli, json or junit")
+	reporter := fs.String("reporter", "cli", "reporter: cli, json, junit, html, md or csv")
+	seed := fs.Uint64("seed", 0, "seed for think time, random dataset rows and {{__uuid}} (0 = the file's, or a new one)")
 	outPath := fs.String("out", "", "write report to file")
 	datasetPath := fs.String("dataset", "", "CSV dataset with variable names in the header")
 	envVars := envVarFlags{}
@@ -71,7 +73,7 @@ func Stress(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if planPath == "" {
-		fmt.Fprintln(stderr, "usage: adomnia stress <flow.stress.json> [--dataset data.csv] [--env-var KEY=VALUE] [--reporter cli|json|junit] [--out file]")
+		fmt.Fprintln(stderr, "usage: adomnia stress <flow.stress.json | name.loadtest.json> [--dataset data.csv] [--env-var KEY=VALUE] [--seed N] [--reporter cli|json|junit|html|md|csv] [--out file]")
 		return 2
 	}
 	data, err := os.ReadFile(planPath)
@@ -79,22 +81,28 @@ func Stress(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "adomnia stress: %v\n", err)
 		return 2
 	}
-	var plan loadtest.Plan
-	if err := json.Unmarshal(data, &plan); err != nil || plan.Format != loadtest.PlanFormat || plan.Version != 1 {
-		fmt.Fprintln(stderr, "adomnia stress: invalid or unsupported stress plan")
+	file, err := readStressInput(data)
+	if err != nil {
+		fmt.Fprintf(stderr, "adomnia stress: %v\n", err)
 		return 2
+	}
+	if *seed != 0 {
+		file.Workload.Seed = *seed
+	}
+	if *datasetPath == "" && file.Data != nil && file.Data.File != "" {
+		*datasetPath = filepath.Join(filepath.Dir(planPath), filepath.FromSlash(file.Data.File))
 	}
 	rows, err := readStressDataset(*datasetPath)
 	if err != nil {
 		fmt.Fprintf(stderr, "adomnia stress: %v\n", err)
 		return 2
 	}
-	result, err := executeStressPlan(plan, envVars, rows)
+	result, res, err := executeStressFile(file, envVars, rows)
 	if err != nil {
 		fmt.Fprintf(stderr, "adomnia stress: %v\n", err)
 		return 2
 	}
-	rendered, err := renderStressResult(result, *reporter)
+	rendered, err := renderStressResult(result, res, *reporter)
 	if err != nil {
 		fmt.Fprintf(stderr, "adomnia stress: %v\n", err)
 		return 2
@@ -107,7 +115,7 @@ func Stress(args []string, stdout, stderr io.Writer) int {
 	} else {
 		_, _ = stdout.Write(rendered)
 	}
-	if result.Stats.Errors > 0 || len(result.Stats.GateFailures) > 0 {
+	if result.Stats.Errors > 0 || len(loadtest.Failures(res)) > 0 {
 		return 1
 	}
 	return 0
@@ -118,7 +126,7 @@ func splitStressArgs(args []string) ([]string, string) {
 	path := ""
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		takesValue := arg == "--reporter" || arg == "-reporter" || arg == "--out" || arg == "-out" || arg == "--dataset" || arg == "-dataset" || arg == "--env-var" || arg == "-env-var"
+		takesValue := arg == "--reporter" || arg == "-reporter" || arg == "--out" || arg == "-out" || arg == "--dataset" || arg == "-dataset" || arg == "--env-var" || arg == "-env-var" || arg == "--seed" || arg == "-seed"
 		if strings.HasPrefix(arg, "-") {
 			flags = append(flags, arg)
 			if takesValue && i+1 < len(args) {
@@ -165,27 +173,56 @@ func readStressDataset(path string) ([]map[string]string, error) {
 	return rows, nil
 }
 
-// executeStressPlan runs the plan; Ctrl+C stops it and reports what was measured.
+// readStressInput reads a scenario file, or a Flow Stress CI plan turned into one.
+func readStressInput(data []byte) (loadtest.ScenarioFile, error) {
+	var head struct {
+		Format string `json:"format"`
+	}
+	if err := json.Unmarshal(data, &head); err != nil {
+		return loadtest.ScenarioFile{}, errors.New("invalid or unsupported stress plan")
+	}
+	if head.Format == loadtest.ScenarioFormat {
+		return loadtest.ParseScenarioFile(data)
+	}
+	var plan loadtest.Plan
+	if err := json.Unmarshal(data, &plan); err != nil || plan.Format != loadtest.PlanFormat || plan.Version != 1 {
+		return loadtest.ScenarioFile{}, errors.New("invalid or unsupported stress plan")
+	}
+	return loadtest.ScenarioFileOf(plan)
+}
+
+// executeStressPlan runs a CI plan (the tests and the MCP bench call it).
 func executeStressPlan(plan loadtest.Plan, baseVars map[string]string, dataset []map[string]string) (stressCLIResult, error) {
-	vars, err := headless.ResolveVaultVars(baseVars)
+	file, err := loadtest.ScenarioFileOf(plan)
 	if err != nil {
 		return stressCLIResult{}, err
 	}
-	scenario, err := plan.Scenario(loadtest.FlowInput{Vars: vars, Dataset: dataset})
+	result, _, err := executeStressFile(file, baseVars, dataset)
+	return result, err
+}
+
+// executeStressFile runs the scenario; Ctrl+C stops it and reports what was measured.
+func executeStressFile(file loadtest.ScenarioFile, baseVars map[string]string, dataset []map[string]string) (stressCLIResult, loadtest.Result, error) {
+	vars, err := headless.ResolveVaultVars(baseVars)
 	if err != nil {
-		return stressCLIResult{}, err
+		return stressCLIResult{}, loadtest.Result{}, err
+	}
+	scenario, err := file.Scenario(loadtest.FlowInput{Vars: vars, Dataset: dataset})
+	if err != nil {
+		return stressCLIResult{}, loadtest.Result{}, err
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	res, err := loadtest.Run(ctx, scenario, nil)
 	if err != nil {
-		return stressCLIResult{}, err
+		return stressCLIResult{}, res, err
 	}
 	if res.Successful+res.Failed == 0 {
 		// A plan with no reachable request would otherwise pass its gates over nothing.
-		return stressCLIResult{}, errors.New("flow executed no request: no reachable start node or request step")
+		return stressCLIResult{}, res, errors.New("flow executed no request: no reachable start node or request step")
 	}
-	return stressCLIResult{Format: "adomnia-flow-stress-result", Version: 1, FlowName: plan.FlowName, StartedAt: res.StartedAt, FinishedAt: res.EndedAt, Stats: stressStatsOf(res)}, nil
+	out := stressCLIResult{Format: "adomnia-flow-stress-result", Version: 1, FlowName: file.Name, StartedAt: res.StartedAt, FinishedAt: res.EndedAt, Stats: stressStatsOf(res)}
+	return out, res, nil
 }
 
 // stressStatsOf keeps the CLI report's shape (integer ms, "ERR" for no response).
@@ -205,7 +242,7 @@ func stressStatsOf(r loadtest.Result) stressStats {
 		Iterations: int64(r.Iterations), FailedIterations: int64(r.FailedIterations), Dropped: r.DroppedIterations,
 		ElapsedMs: int64(math.Round(r.TotalTimeMs)), RPS: math.Round(r.Throughput*10) / 10,
 		P50: int64(math.Round(r.P50Ms)), P95: int64(math.Round(r.P95Ms)), P99: int64(math.Round(r.P99Ms)),
-		Statuses: statuses, ErrorGroups: groups, GateFailures: r.GateFailures,
+		Statuses: statuses, ErrorGroups: groups, GateFailures: loadtest.Failures(r),
 	}
 	if r.Apdex != nil {
 		stats.Apdex, stats.ApdexTMs = r.Apdex.Score, r.Apdex.ThresholdMs
@@ -213,8 +250,10 @@ func stressStatsOf(r loadtest.Result) stressStats {
 	return stats
 }
 
-func renderStressResult(result stressCLIResult, reporter string) ([]byte, error) {
+func renderStressResult(result stressCLIResult, res loadtest.Result, reporter string) ([]byte, error) {
 	switch reporter {
+	case "html", "md", "markdown", "csv":
+		return loadtest.Render(res, reporter)
 	case "json":
 		data, err := jsonutil.Marshal(result, jsontext.WithIndent("  "))
 		return append(data, '\n'), err
@@ -235,6 +274,9 @@ func renderStressResult(result stressCLIResult, reporter string) ([]byte, error)
 		}
 		if len(result.Stats.GateFailures) == 0 {
 			b.WriteString("PASS: release gates\n")
+		}
+		if m := res.Manifest; m != nil {
+			fmt.Fprintf(&b, "seed: %d, scenario: %.12s\n", m.Seed, m.ScenarioHash)
 		}
 		return []byte(b.String()), nil
 	default:

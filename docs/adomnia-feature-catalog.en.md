@@ -412,7 +412,7 @@ WebSocket connections live in the API workspace, with the same layout as REST re
 | # | Feature | Description |
 |---|-------------|-------------|
 | C4.1 | **HTTP Load Test** | Runs on the Go engine (`internal/loadtest`): the request is resolved exactly like Send (variables, vault, auth incl. OAuth2/AWS4, cookies, hosts map, mTLS, PSD2 re-signed per call) and sent over one keep-alive pool. Modes: *Parallel* (N at once), *Repeat with gap*, *Load* (1–2,000 virtual users for N iterations or a duration). |
-| C4.2 | **gRPC Load Test** | From the gRPC call's *Load test* section: concurrency, total calls, timeout, TLS, and the call's schema (reflection, .proto, protoset). Still on its own path; moves to the engine in LT-6. |
+| C4.2 | **gRPC Load Test** | From the gRPC call's *Load test* section, on the same engine as HTTP: up to 2,000 virtual users for N calls or a duration, timeout, TLS and the call's schema (reflection, .proto, protoset). Live progress, Stop, error groups by gRPC status, HTML report and the shared run history. |
 | C4.3 | **HDR latency metrics** | avg, min, max, P50, P75, P90, P95, P99, P99.9 from an HDR histogram in microseconds (3 significant digits), so sub-millisecond answers are measured. |
 | C4.4 | **Timeline Chart** | Per-request waterfall (start, latency, status, error) for short runs; kept up to 2,000 requests. |
 | C4.5 | **Per-second timeline** | One bucket per second: req/s, errors, avg/p95/p99 and active VUs. |
@@ -420,11 +420,16 @@ WebSocket connections live in the API workspace, with the same layout as REST re
 | C4.7 | **Think time** | Pause of each virtual user between two iterations. |
 | C4.8 | **Live progress and Stop** | While a run is going: elapsed, VUs, sent, req/s and p95 of the last second, error rate. Stop cancels the requests in flight and keeps the partial result, marked as stopped. One run at a time. |
 | C4.14 | **Fixed rate (open model)** | *Rate* mode in the Composer drawer and the Stress dock: N requests (or flow runs) per second whatever the API does, from a VU pool. Arrivals the pool cannot start are reported as dropped, never queued; a late start is timed from its scheduled instant (coordinated omission), and a saturated generator is flagged. Also in CI plans (`mode: "rate"`). |
-| C4.9 | **Export Report** | JSON, Markdown (tabella), HTML (pagina dark stilizzata). |
-| C4.10 | **Save/Load Scenario** | Saves configuration as a named scenario; lists and loads scenarios. |
+| C4.9 | **Export Report** | Rendered by the engine from the canonical JSON result: JSON, self-contained HTML (light/dark, verdict, throughput chart, steps, errors, run conditions), Markdown, JUnit (one case per broken gate or live abort), CSV per step and CSV per request. `adomnia stress --reporter html`, `md`, `csv` or `junit` writes the same files. |
+| C4.10 | **Save/Load Scenario** | The drawer's settings saved by name on this machine, plus **scenario files**: *Save to workspace* writes `<folder>/.adomnia/loadtests/<name>.loadtest.json` (format `adomnia-loadtest` v1, pretty JSON, request kept as written with `{{variables}}`, never resolved secrets). The drawer lists and runs them; the Stress dock saves flows the same way; `adomnia stress <file>` runs them in CI, dataset path relative to the file. |
 | C4.11 | **Error groups** | Failures grouped by cause (HTTP_5xx, HTTP_4xx, TIMEOUT, CONN_ERR…) with a count, alongside the status code breakdown. |
-| C4.12 | **Confronto Side-by-Side** | Confronta due risultati: delta percentuali throughput, latenza avg, P95, tasso errore. |
+| C4.12 | **Run comparison** | Any two runs of the history, or the current run against a baseline: global and per-step deltas (p50/p95/p99/avg, errors, req/s), steps only in one run, a *regression* verdict when p95 or the error rate worsen beyond 10%, and warnings when the scenarios differ (hash), a generator was saturated or a run was stopped. |
 | C4.13 | **Quick Drawer** | Slide-out panel for load tests directly from the Composer. |
+| C4.15 | **Performance lab workspace** | Theme-aware workload sidebar and report workspace for HTTP tests and multi-step flow stress tests. HTTP runs include a live throughput chart and optional engine-evaluated p95, error-rate and minimum-throughput gates. Scenario save/load preserves all four workload modes and their settings. |
+| C4.16 | **Request sample inspector** | HTTP and completed flow runs share a paginated sample table with text/error filters, slowest-first sorting, per-sample VU/iteration/status/error details and the engine's latency distribution. Capped logs are explicitly labelled; aggregate metrics remain independent of the sample log. |
+| C4.17 | **Run history** | Every finished run (HTTP, flow, gRPC) is saved by the engine in bbolt (`loadtest` bucket, last 200, per-request log capped at 5,000). Shared list in the drawer, the Stress dock and the gRPC section: open, set base, compare, delete. Results saved by name before, and the Stress dock's localStorage history, are imported once (old keys kept). |
+| C4.18 | **Reproducible runs** | A `seed` drives think-time jitter (`thinkTimeMaxMs`), random dataset rows and `{{__uuid}}`: the same seed gives each VU iteration the same values. Every result carries a manifest: adOmnia version and commit, SHA-256 of the scenario (target, workload, gates; not tokens or seed) and of the dataset, seed, OS/arch/CPUs, variables with secrets as `***`, generator saturation. |
+| C4.19 | **Live thresholds** | With *Stop as soon as p95 or errors break*, the error-rate and p95 gates are checked every second over the last 10 measured seconds; a breach stops the run, the result says why, and JUnit/CLI count it as a failure (exit 1). |
 
 ---
 

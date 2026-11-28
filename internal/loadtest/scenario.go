@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/grpc"
 	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
 )
 
@@ -29,13 +30,14 @@ const (
 	maxTimelineSize = 20_000 // per-request points kept for the waterfall and the raw log
 )
 
-// Scenario is everything a run needs. It is the unit that LT-4 saves as a workspace file.
-// The target is either one Request (resolved by the app: auth, cookies, TLS already applied)
-// or a Flow (a graph whose steps the engine resolves headless, like `adomnia stress`).
+// Scenario is everything a run needs. The target is one Request (resolved by the app: auth,
+// cookies, TLS already applied), a Flow (a graph whose steps the engine resolves headless,
+// like `adomnia stress`) or one gRPC call. File form: ScenarioFile.
 type Scenario struct {
 	Name     string                    `json:"name,omitempty"`
 	Request  *httpexec.HTTPExecRequest `json:"request,omitempty"`
 	Flow     *Flow                     `json:"flow,omitempty"`
+	Grpc     *grpc.CallRequest         `json:"grpc,omitempty"`
 	Workload Workload                  `json:"workload"`
 	Gates    *Gates                    `json:"gates,omitempty"`
 }
@@ -47,6 +49,9 @@ type Gates struct {
 	MaxP95Ms    float64  `json:"maxP95Ms,omitzero"`    // 0 disables
 	MaxErrorPct *float64 `json:"maxErrorPct,omitzero"` // nil disables; 0 means no error tolerated
 	MinRPS      float64  `json:"minRps,omitzero"`      // 0 disables
+	// AbortOnFail stops the run as soon as p95 or the error rate break their gate over the
+	// last 10 measured seconds, instead of letting a broken target take the whole load.
+	AbortOnFail bool `json:"abortOnFail,omitzero"`
 }
 
 // Workload says how the requests are generated.
@@ -61,6 +66,10 @@ type Workload struct {
 	WarmupIterations int     `json:"warmupIterations,omitzero"` // the first N are sent but not measured
 	WarmupS          float64 `json:"warmupS,omitzero"`          // without stages: the first S seconds are not measured
 	ThinkTimeMs      int     `json:"thinkTimeMs,omitzero"`      // pause of a VU between iterations
+	ThinkTimeMaxMs   int     `json:"thinkTimeMaxMs,omitzero"`   // > ThinkTimeMs: a random pause in [ThinkTimeMs, ThinkTimeMaxMs]
+	// Seed drives everything random in a run (think time, random dataset rows, {{__uuid}}):
+	// the same seed gives iteration i of VU v the same values. 0 = a new seed, kept in the manifest.
+	Seed uint64 `json:"seed,omitzero"`
 
 	// arrival-rate: constant RPS for DurationS, or Stages with TargetRPS; MaxVUs bounds the pool.
 	RPS    float64 `json:"rps,omitzero"`
@@ -84,9 +93,19 @@ type Stage struct {
 
 // Validate rejects a scenario that cannot run, with a reason the UI can show as is.
 func (s Scenario) Validate() error {
+	targets := 0
+	for _, set := range []bool{s.Request != nil, s.Flow != nil, s.Grpc != nil} {
+		if set {
+			targets++
+		}
+	}
 	switch {
-	case s.Request != nil && s.Flow != nil:
-		return errors.New("a scenario targets a request or a flow, not both")
+	case targets > 1:
+		return errors.New("a scenario targets one request, one flow or one gRPC call, not more")
+	case s.Grpc != nil:
+		if s.Grpc.Address == "" || s.Grpc.Service == "" || s.Grpc.Method == "" {
+			return errors.New("the gRPC call needs an address, a service and a method")
+		}
 	case s.Flow != nil:
 		if err := s.Flow.validate(); err != nil {
 			return err
@@ -96,11 +115,14 @@ func (s Scenario) Validate() error {
 			return err
 		}
 	default:
-		return errors.New("nothing to test: the scenario has no request and no flow")
+		return errors.New("nothing to test: the scenario has no request, flow or gRPC call")
 	}
 	w := s.Workload
 	if w.ThinkTimeMs < 0 || w.ThinkTimeMs > maxThinkTimeMs {
 		return fmt.Errorf("think time must be between 0 and %d ms", maxThinkTimeMs)
+	}
+	if w.ThinkTimeMaxMs != 0 && (w.ThinkTimeMaxMs < w.ThinkTimeMs || w.ThinkTimeMaxMs > maxThinkTimeMs) {
+		return fmt.Errorf("the think time range must go from the minimum up to at most %d ms", maxThinkTimeMs)
 	}
 	switch w.Executor {
 	case ExecutorProbe:

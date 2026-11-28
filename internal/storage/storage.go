@@ -43,6 +43,7 @@ var storeBuckets = []string{
 	"diagrams",           // Diagram Studio documents: meta:<id> summaries and doc:<id> versioned JSON
 	"goide",              // Code Studio session metadata; project files remain on disk
 	"collab",             // encrypted collaboration recovery snapshots
+	"loadtest",           // load test run history: run:<key> summaries, result:<key> full reports
 }
 
 const storagePutMaxBodyBytes = 100 * 1024 * 1024

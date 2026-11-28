@@ -117,3 +117,48 @@ func TestStressPreservesDataHandoffsAndFailureBranches(t *testing.T) {
 		t.Fatalf("unexpected calls: %v", seen)
 	}
 }
+
+func TestStressRunsAScenarioFileWithItsDatasetAndFailsTheGateInJUnit(t *testing.T) {
+	var users sync.Map
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		users.Store(r.URL.Query().Get("u"), true)
+		time.Sleep(20 * time.Millisecond)
+	}))
+	defer srv.Close()
+	dir := t.TempDir()
+	file := loadtest.ScenarioFile{
+		Name:     "users",
+		Target:   loadtest.ScenarioTarget{Kind: "request", Request: &requestcontract.Request{ID: "u", Name: "User", Method: "GET", URL: "{{base}}/user?u={{user}}"}},
+		Workload: loadtest.Workload{Executor: loadtest.ExecutorVUs, VUs: 2, Iterations: 4},
+		Gates:    &loadtest.Gates{MaxP95Ms: 1},
+		Data:     &loadtest.DataRef{File: "data/users.csv"},
+	}
+	path, err := loadtest.SaveScenarioFile(dir, file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataDir := filepath.Join(filepath.Dir(path), "data")
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "users.csv"), []byte("user\nann\nbob\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	code := Stress([]string{path, "--env-var", "base=" + srv.URL, "--reporter", "junit", "--seed", "5"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1 (p95 gate broken); stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), `failures="1"`) || !strings.Contains(stdout.String(), "p95") {
+		t.Fatalf("junit = %s", stdout.String())
+	}
+	for _, u := range []string{"ann", "bob"} {
+		if _, ok := users.Load(u); !ok {
+			t.Fatalf("dataset row %q never sent", u)
+		}
+	}
+	stdout.Reset()
+	if code := Stress([]string{path, "--env-var", "base=" + srv.URL, "--reporter", "html"}, &stdout, &stderr); code != 1 || !strings.Contains(stdout.String(), "<!doctype html>") {
+		t.Fatalf("html reporter: exit %d, %.80s", code, stdout.String())
+	}
+}

@@ -48,6 +48,12 @@ func Run(ctx context.Context, s Scenario, progress func(Progress)) (Result, erro
 	if err := s.Validate(); err != nil {
 		return Result{}, err
 	}
+	if s.Workload.Seed == 0 {
+		s.Workload.Seed = newSeed()
+	}
+	if s.Grpc != nil {
+		return run(ctx, s, newGrpcTarget(*s.Grpc), progress), nil
+	}
 	conns := max(s.Workload.VUs, s.Workload.Count, s.Workload.MaxVUs, 1)
 	for _, st := range s.Workload.Stages {
 		conns = max(conns, st.TargetVUs)
@@ -55,7 +61,7 @@ func Run(ctx context.Context, s Scenario, progress func(Progress)) (Result, erro
 	if s.Flow != nil {
 		pool := httpexec.NewPool(conns)
 		defer pool.Close()
-		return run(ctx, s, newFlowTarget(s.Flow, pool), progress), nil
+		return run(ctx, s, newFlowTarget(s.Flow, pool, s.Workload.Seed), progress), nil
 	}
 	client, err := httpexec.NewClient(*s.Request, conns)
 	if err != nil {
@@ -69,7 +75,9 @@ func Run(ctx context.Context, s Scenario, progress func(Progress)) (Result, erro
 	return run(ctx, s, requestTarget{send: client, step: step}, progress), nil
 }
 
-func run(ctx context.Context, s Scenario, t target, progress func(Progress)) Result {
+func run(parent context.Context, s Scenario, t target, progress func(Progress)) Result {
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
 	start := time.Now()
 	apdexT := 0.0
 	if s.Gates != nil {
@@ -77,12 +85,16 @@ func run(ctx context.Context, s Scenario, t target, progress func(Progress)) Res
 	}
 	rec := newRecorder(start, apdexT, maxTimelineSize)
 	state := &runState{}
+	abort := func(reason string) { // a gate with abortOnFail broke during the run
+		state.abortReason.Store(reason)
+		cancel()
+	}
 
 	stopProgress := make(chan struct{})
 	progressDone := make(chan struct{})
 	go func() {
 		defer close(progressDone)
-		reportProgress(rec, state, s.Workload, start, stopProgress, progress)
+		reportProgress(rec, state, s, start, stopProgress, progress, abort)
 	}()
 
 	switch s.Workload.Executor {
@@ -101,6 +113,11 @@ func run(ctx context.Context, s Scenario, t target, progress func(Progress)) Res
 	res.Name = s.Name
 	res.Executor = s.Workload.Executor
 	res.Aborted = ctx.Err() != nil
+	if reason, _ := state.abortReason.Load().(string); reason != "" {
+		res.AbortReason = reason
+	}
+	res.Manifest = newManifest(s)
+	res.Manifest.Saturated = res.SchedulerLagP99Ms > saturationLagMs
 	res.MaxVUs = max(res.MaxVUs, int(state.peak.Load()))
 	res.GateFailures = evaluateGates(s.Gates, res)
 	return res
@@ -133,10 +150,11 @@ func evaluateGates(g *Gates, r Result) []string {
 
 // runState is what the progress reporter reads while the executor runs.
 type runState struct {
-	vus       atomic.Int64
-	stage     atomic.Int64
-	measuring atomic.Bool
-	peak      atomic.Int64 // most VUs at once, even between two progress ticks
+	vus         atomic.Int64
+	stage       atomic.Int64
+	measuring   atomic.Bool
+	peak        atomic.Int64 // most VUs at once, even between two progress ticks
+	abortReason atomic.Value // string
 }
 
 func (s *runState) setVUs(n int) {
@@ -149,7 +167,8 @@ func (s *runState) setVUs(n int) {
 	}
 }
 
-func reportProgress(rec *recorder, state *runState, w Workload, start time.Time, stop <-chan struct{}, progress func(Progress)) {
+func reportProgress(rec *recorder, state *runState, s Scenario, start time.Time, stop <-chan struct{}, progress func(Progress), abort func(string)) {
+	w := s.Workload
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
@@ -158,6 +177,11 @@ func reportProgress(rec *recorder, state *runState, w Workload, start time.Time,
 			return
 		case now := <-ticker.C:
 			b := rec.tick(int(state.vus.Load()))
+			if s.Gates != nil && s.Gates.AbortOnFail && state.measuring.Load() {
+				if reason := liveGateFailure(s.Gates, rec.recentBuckets(liveWindowS)); reason != "" {
+					abort(reason)
+				}
+			}
 			if progress == nil {
 				continue
 			}
@@ -219,8 +243,8 @@ func runVUs(ctx context.Context, w Workload, t target, rec *recorder, state *run
 		closeOnce  sync.Once
 	)
 	vu := func(id int, stop <-chan struct{}) {
-		for first := true; ; first = false {
-			if !first && w.ThinkTimeMs > 0 && !sleepCtx(ctx, time.Duration(w.ThinkTimeMs)*time.Millisecond) {
+		for k := 0; ; k++ { // k: this VU's own iteration count, what the seeded think time keys on
+			if k > 0 && (w.ThinkTimeMs > 0 || w.ThinkTimeMaxMs > 0) && !sleepCtx(ctx, thinkTime(w, id, k)) {
 				return
 			}
 			select {

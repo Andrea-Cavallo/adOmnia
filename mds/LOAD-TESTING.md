@@ -39,8 +39,7 @@ internal/adomniacli/stress.go       diventa un wrapper: legge il file, chiama lo
   comportano come nel Composer, per costruzione.
 - **Eventi live**: `loadtest.progress` (1 Hz: RPS, p50/p95/p99 della finestra, errori, VU attivi,
   stage) e `loadtest.finished`, instradati per `runId`. Il renderer mostra soltanto, non misura.
-- **Il sidecar HTTP `/loadtest/*` resta** come alias finché il drawer non passa ai binding, poi viene
-  rimosso.
+- Il sidecar HTTP `/loadtest/*` è stato rimosso (LT-6): tutto passa dal servizio Wails `LoadTest`.
 
 ## 3. Modello di carico
 
@@ -131,9 +130,9 @@ stesso hash di scenario sono confrontabili, altrimenti il confronto lo segnala.
 | LT-1 ✅ | Motore: `Scenario`, executor `vus` + `probe`, target HTTP via `httpexec.Client`, binding `LoadTest` Start/Stop/Running, eventi `loadtest:progress`/`loadtest:finished`. Il drawer passa al motore nuovo. | fatto 2026-11-28, vedi §10 |
 | LT-2 ✅ | Target flow (logica da `adomniacli/stress.go`) + `adomnia stress` come wrapper. Flow Stress UI sul motore Go, runner JS rimosso. | stesso scenario, stesso server: app e CLI riportano gli stessi conteggi e p95 entro il 5% |
 | LT-3 ✅ | Executor `arrival-rate` con correzione coordinated omission, `droppedIterations`, saturazione del generatore. | test: server che si blocca 2 s → il p99 lo riflette; RPS raggiunto entro ±2% |
-| LT-4 | File scenario `.adomnia/loadtests`, seed, dataset, manifest, storico bbolt + migrazione. | stesso seed → stessa sequenza di dati e think time (test deterministico) |
-| LT-5 | Soglie live + abort, confronto run, export HTML/JUnit/CSV dal JSON canonico. | JUnit fallisce in CI quando una soglia salta; exit code 1 |
-| LT-6 | Pannello unico Load Test, avvii rapidi dal Composer/gRPC/Flow, gRPC sul motore. Rimozione sidecar `/loadtest/*`. | check manuali LT-M1…M8 |
+| LT-4 ✅ | File scenario `.adomnia/loadtests`, seed, dataset, manifest, storico bbolt + migrazione. | fatto 2026-11-28, vedi §10 |
+| LT-5 ✅ | Soglie live + abort, confronto run, export HTML/JUnit/CSV dal JSON canonico. | fatto 2026-11-28, vedi §10 |
+| LT-6 ✅ (codice) | Storico e confronto condivisi da Composer/gRPC/Flow, gRPC sul motore. Rimozione sidecar `/loadtest/*`. | in attesa dei check manuali LT-M1…M8 |
 
 Ogni fase si chiude con: test focalizzati Go/Vitest, `npx tsc --noEmit`, aggiornamento di
 `docs/adomnia-feature-catalog.en.md` (A5.17, A5.21, B1.10 e la voce Load Testing) e dei check qui sotto.
@@ -179,4 +178,52 @@ Prometheus/InfluxDB.
   issues, `tsc`, Vitest `loadTestPlan`, `oxlint`, `check:startup`.
 - **Da verificare in app:** LT-M1 e LT-M4 (non ancora eseguiti).
 
-**Prossimo: LT-2** — target flow sul motore Go e `adomnia stress` come wrapper.
+**LT-2 e LT-3 — fatti (2026-11-28).** Flow sul motore Go con `adomnia stress` come wrapper
+(commit `a99587b5`); modello aperto a ritmo fisso con iterazioni perse e correzione della
+coordinated omission (commit `1451f59b`).
+
+**LT-4 — fatto (2026-11-28).**
+
+- `scenariofile.go`: formato `adomnia-loadtest` v1 (`target` request | flow | grpc, `workload`,
+  `gates`, `data.file`/`mode`), salvato in `<cartella>/.adomnia/loadtests/<nome>.loadtest.json`
+  (`scenariofs.go`). La richiesta resta com'è scritta (`{{variabili}}`, impostazioni auth): un file
+  committato non contiene mai segreti risolti. Un target request gira come flow di un passo, quindi
+  nella stessa pipeline headless della CLI. Un piano CI Flow Stress si converte (`ScenarioFileOf`).
+- `seed.go`: `Workload.Seed` (0 = nuovo seed, registrato) e `ThinkTimeMaxMs`. La sorgente casuale
+  dipende solo da (seed, VU, iterazione), quindi la stessa iterazione riceve gli stessi valori a
+  prescindere dallo scheduling: think time, riga `random` del dataset, `{{__uuid}}`.
+  `{{$randomInt}}`/`{{$uuid}}` dentro gli script restano non deterministici (runtime degli script).
+- `manifest.go`: versione e commit, hash dello scenario (target, workload, gate; esclusi token e
+  seed) e del dataset, seed, OS/arch/CPU/Go, variabili con i segreti come `***`, generatore saturo.
+- `history.go`: bucket bbolt `loadtest` (`run:` riepiloghi, `result:` report completi), retention 200,
+  log per richiesta limitato a 5.000 punti. Il Manager salva ogni run finita. Migrazione una tantum
+  dei risultati salvati per nome (`workspace/ltresult/`) e, dal frontend, dello storico Flow Stress in
+  localStorage (le chiavi vecchie restano).
+
+**LT-5 — fatto (2026-11-28).**
+
+- `live_gates.go`: con `gates.abortOnFail` errori e p95 si valutano ogni secondo sugli ultimi 10 s
+  misurati (almeno 20 richieste); la violazione ferma la run con `abortReason`.
+- `compare.go`: delta globali e per step, step presenti in una sola run, verdetto regressione
+  (p95 o errori peggiori oltre il 10%), avvisi per scenario diverso, generatore saturo o run fermata.
+- `report.go`: JSON, HTML autocontenuto, Markdown, JUnit (gate e abort live), CSV per step e per
+  richiesta. `adomnia stress` accetta piani e file scenario, `--seed`, `--reporter html|md|csv`;
+  exit 1 con un gate violato o un abort live.
+
+**LT-6 — codice fatto (2026-11-28), check manuali aperti.**
+
+- gRPC sul motore (`target_grpc.go`, `Scenario.Grpc`): VU fino a 2.000, chiamate o durata,
+  avanzamento live, Stop, storico. Rimossi gli handler sidecar `/loadtest/*` e il vecchio motore gRPC.
+- Servizio `LoadTest`: `StartFile`, `Runs`/`Run`/`DeleteRun`/`ImportRun`, `Compare`/`CompareResults`,
+  `Report`, `SaveScenarioFile`/`ScenarioFiles`/`ReadScenarioFile`/`PlanScenarioFile`, impostazioni salvate.
+- UI: `LoadTestHistory` + `ComparisonView` condivisi da drawer, dock Stress e sezione gRPC; il drawer
+  ha soglie con stop live, export dal motore, condizioni della run, salvataggio ed esecuzione dei file
+  del workspace.
+- **Scelta:** niente pannello separato nella rail. Le tre superfici di avvio condividono lo stesso
+  storico, lo stesso confronto e gli stessi report; un pannello a sé si aggiunge se servirà gestire
+  gli scenari fuori dal contesto della richiesta o del flow.
+- Verifiche: `go test -race` (loadtest, adomniacli, sidecar, storage, headless, httpexec), test nuovi
+  per seed, abort live, manifest, storico/retention/migrazione, confronto, report, file scenario,
+  gRPC senza server e CLI con dataset + gate JUnit; golangci-lint 0; `tsc`, `oxlint`, `check:startup`,
+  Vitest.
+- **Da verificare in app:** LT-M1…LT-M8 (§8).

@@ -3,7 +3,8 @@
 
 /**
  * LoadTest is the Wails service of the load testing engine (internal/loadtest).
- * Progress and results arrive as loadtest:progress / loadtest:finished events.
+ * Progress and results arrive as loadtest:progress / loadtest:finished events; every
+ * finished run lands in the history.
  * @module
  */
 
@@ -13,7 +14,85 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as jsontext$0 from "../../../encoding/json/jsontext/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as loadtest$0 from "./internal/loadtest/models.js";
+
+/**
+ * Compare compares two saved runs (base → head); tolerance in percent, 0 = default 10%.
+ */
+export function Compare(baseID: string, headID: string, tolerancePct: number): $CancellablePromise<loadtest$0.Comparison> {
+    return $Call.ByID(3693281051, baseID, headID, tolerancePct).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * CompareResults compares two reports the caller already has.
+ */
+export function CompareResults(base: loadtest$0.Result, head: loadtest$0.Result, tolerancePct: number): $CancellablePromise<loadtest$0.Comparison> {
+    return $Call.ByID(947571763, base, head, tolerancePct).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+/**
+ * DeleteRun removes a run from the history.
+ */
+export function DeleteRun(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3606185952, id);
+}
+
+/**
+ * ImportRun adds a run made elsewhere (old Flow Stress history, a JSON report) to the history.
+ */
+export function ImportRun(result: loadtest$0.Result): $CancellablePromise<loadtest$0.RunSummary> {
+    return $Call.ByID(3921707182, result).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
+ * LoadSettings returns the drawer's settings saved under name.
+ */
+export function LoadSettings(name: string): $CancellablePromise<jsontext$0.Value> {
+    return $Call.ByID(1779137949, name);
+}
+
+/**
+ * PlanScenarioFile turns a Flow Stress CI plan into a scenario file (not yet saved).
+ */
+export function PlanScenarioFile(plan: loadtest$0.Plan): $CancellablePromise<loadtest$0.ScenarioFile> {
+    return $Call.ByID(2778496331, plan).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
+ * ReadScenarioFile reads one scenario file.
+ */
+export function ReadScenarioFile(path: string): $CancellablePromise<loadtest$0.ScenarioFile> {
+    return $Call.ByID(197679308, path).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
+ * Report renders a report: json, md, html, junit, csv (per step) or samples (per request).
+ */
+export function Report(result: loadtest$0.Result, format: string): $CancellablePromise<string> {
+    return $Call.ByID(2318082814, result, format);
+}
+
+/**
+ * Run returns a saved run's full report.
+ */
+export function Run(id: string): $CancellablePromise<loadtest$0.Result> {
+    return $Call.ByID(3986253769, id).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
 
 /**
  * Running returns the id of the run in progress, or "".
@@ -23,10 +102,58 @@ export function Running(): $CancellablePromise<string> {
 }
 
 /**
+ * Runs lists the history, newest first.
+ */
+export function Runs(): $CancellablePromise<loadtest$0.RunSummary[]> {
+    return $Call.ByID(3263056334).then(($result: any) => {
+        return $$createType4($result);
+    });
+}
+
+/**
+ * SaveScenarioFile writes a scenario to <folder>/.adomnia/loadtests and returns its path.
+ */
+export function SaveScenarioFile(folder: string, file: loadtest$0.ScenarioFile): $CancellablePromise<string> {
+    return $Call.ByID(501847477, folder, file);
+}
+
+/**
+ * SaveSettings stores the drawer's settings under name.
+ */
+export function SaveSettings(name: string, config: jsontext$0.Value): $CancellablePromise<void> {
+    return $Call.ByID(3693686996, name, config);
+}
+
+/**
+ * SavedSettings lists the drawer's saved settings (scenarios saved by name).
+ */
+export function SavedSettings(): $CancellablePromise<string[]> {
+    return $Call.ByID(1511714538).then(($result: any) => {
+        return $$createType5($result);
+    });
+}
+
+/**
+ * ScenarioFiles lists the scenario files of a workspace folder.
+ */
+export function ScenarioFiles(folder: string): $CancellablePromise<loadtest$0.ScenarioFileEntry[]> {
+    return $Call.ByID(3542397217, folder).then(($result: any) => {
+        return $$createType7($result);
+    });
+}
+
+/**
  * Start runs the scenario in the background and returns its run id.
  */
 export function Start(scenario: loadtest$0.Scenario): $CancellablePromise<string> {
     return $Call.ByID(884954848, scenario);
+}
+
+/**
+ * StartFile runs a scenario file with the app's variables, data rows and transport settings.
+ */
+export function StartFile(file: loadtest$0.ScenarioFile, input: loadtest$0.FlowInput): $CancellablePromise<string> {
+    return $Call.ByID(3607410134, file, input);
 }
 
 /**
@@ -43,3 +170,13 @@ export function StartPlan(plan: loadtest$0.Plan, input: loadtest$0.FlowInput): $
 export function Stop(runID: string): $CancellablePromise<void> {
     return $Call.ByID(291376164, runID);
 }
+
+// Private type creation functions
+const $$createType0 = loadtest$0.Comparison.createFrom;
+const $$createType1 = loadtest$0.RunSummary.createFrom;
+const $$createType2 = loadtest$0.ScenarioFile.createFrom;
+const $$createType3 = loadtest$0.Result.createFrom;
+const $$createType4 = $Create.Array($$createType1);
+const $$createType5 = $Create.Array($Create.Any);
+const $$createType6 = loadtest$0.ScenarioFileEntry.createFrom;
+const $$createType7 = $Create.Array($$createType6);

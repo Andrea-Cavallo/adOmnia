@@ -17,6 +17,13 @@ import { FlowStressAdvancedConfig } from '@/components/flows/FlowStressAdvancedC
 import { parseStressDataset, type StressDataset } from '@/lib/flowStressDataset'
 import { loadStressHistory, saveStressHistory, type StressHistoryEntry } from '@/lib/flowStressHistory'
 import { safeSetItem } from '@/lib/safeLocalStorage'
+import { LoadTestInspector } from '@/components/loadtest/LoadTestInspector'
+import { LoadTestHistory } from '@/components/loadtest/LoadTestHistory'
+import { importRun, planScenarioFile, rememberScenarioFolder, saveScenarioFile, scenarioFolder, type LoadTestPlan } from '@/lib/loadtest-api'
+import { fromStressStats, toStressSamples, toStressStats } from '@/lib/flowStressResult'
+import { pickFolder } from '@/lib/fileDialogs'
+import '@/components/loadtest/loadTestDrawer.css'
+import './flowStressPanel.css'
 
 interface FlowStressPanelProps {
   graph: FlowGraphDefinition
@@ -91,6 +98,8 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
   const datasetInputRef = useRef<HTMLInputElement>(null)
   const [dataset, setDataset] = useState<StressDataset | null>(null)
   const [history, setHistory] = useState<StressHistoryEntry[]>(() => loadStressHistory(flowName))
+  const [historyKey, setHistoryKey] = useState(0)
+  const [resultView, setResultView] = useState<'overview' | 'samples'>('overview')
 
   useEffect(() => () => abortRef.current?.abort(), [])
   useEffect(() => {
@@ -99,6 +108,14 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
   }, [configKey])
   useEffect(() => { safeSetItem(configKey, JSON.stringify(config)) }, [config, configKey])
   useEffect(() => { setHistory(loadStressHistory(flowName)) }, [flowName])
+  // The runs kept in localStorage before the engine had a history move there once (the old key stays).
+  useEffect(() => {
+    const marker = `adomnia.flow-stress.migrated.${encodeURIComponent(flowName.trim().toLowerCase())}`
+    if (!flowName.trim() || localStorage.getItem(marker)) return
+    const entries = loadStressHistory(flowName)
+    void Promise.all(entries.map((entry) => importRun(fromStressStats(flowName, entry.startedAt, entry.status === 'stopped', entry.stats))))
+      .then(() => { safeSetItem(marker, '1'); setHistoryKey((n) => n + 1) }, () => { /* retried next time the dock opens */ })
+  }, [flowName])
 
   const configErrors = validateStressConfig(config)
   const problem = configErrors[0] ?? blockedReason
@@ -117,6 +134,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
       const nextRun = await runFlowStress(graph, config, { initialVars: getInitialVars(), flowName, signal: controller.signal, onProgress: setProgress, dataset: dataset ?? undefined })
       setRun(nextRun)
       if (nextRun.stats.totalRequests > 0) setHistory(saveStressHistory(flowName, nextRun))
+      setHistoryKey((n) => n + 1)
     } catch (error) {
       setNotice({ text: error instanceof Error ? error.message : String(error), ok: false })
     } finally {
@@ -143,6 +161,20 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
       setDataset(next)
       setNotice({ text: `Loaded ${next.rows.length} dataset rows with ${next.columns.length} variables.`, ok: true })
     } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Could not read the dataset.', ok: false }) }
+  }
+
+  const saveToWorkspace = async () => {
+    let folder = scenarioFolder()
+    if (!folder) {
+      folder = await pickFolder('Workspace folder for load test scenarios (.adomnia/loadtests)')
+      if (!folder) return
+      rememberScenarioFolder(folder)
+    }
+    try {
+      const plan = JSON.parse(stressPlanJson(graph, config, flowName)) as LoadTestPlan
+      const path = await saveScenarioFile(folder, await planScenarioFile(plan))
+      setNotice({ text: `Saved ${path}. Commit it; CI: adomnia stress "${path}" --reporter junit`, ok: true })
+    } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Could not save the scenario file', ok: false }) }
   }
 
   const exportPlan = async () => {
@@ -174,8 +206,15 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
   const assessment = stats ? analyzeStressRun(stats, config, baseline?.stats) : null
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-      <section aria-label="Stress test configuration" className="flex shrink-0 flex-col gap-2.5 border-b border-border-1 p-3 lg:w-[272px] lg:overflow-y-auto lg:border-b-0 lg:border-r">
+    <div className="stress-lab">
+      <header className="stress-lab-header">
+        <div className="stress-lab-mark"><Gauge size={24} strokeWidth={1.6} /></div>
+        <div><h2>Performance lab</h2><p>Multi-step scenarios · {flowName || 'Untitled flow'}</p></div>
+        <span className="stress-lab-state" data-running={running}>{running ? 'Test in progress' : run ? run.status === 'stopped' ? 'Stopped' : 'Run complete' : 'Ready to configure'}</span>
+      </header>
+      <div className="stress-lab-workspace">
+      <section aria-label="Stress test configuration" className="stress-lab-config flex shrink-0 flex-col gap-2.5 border-b border-border-1 p-3 lg:w-[292px] lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <div className="stress-lab-section-label">Workload configuration</div>
         <div>
           <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-text-4">Scenario</div>
           <div className="grid grid-cols-2 gap-1.5">
@@ -232,6 +271,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
           <p className="flex items-start gap-1.5 text-[11px] text-warning"><AlertTriangle size={12} className="mt-0.5 shrink-0" />{problem}</p>
         )}
         <button type="button" onClick={() => void exportPlan()} disabled={running || configErrors.length > 0} className={`${exportButton} justify-center disabled:opacity-40`}><FileJson size={12} /> Export CI plan</button>
+        <button type="button" onClick={() => void saveToWorkspace()} disabled={running || configErrors.length > 0} title="A .adomnia/loadtests file to commit and run with adomnia stress" className={`${exportButton} justify-center disabled:opacity-40`}><FileJson size={12} /> Save to workspace</button>
         <button
           onClick={() => running ? abortRef.current?.abort() : void start()}
           disabled={!running && Boolean(problem)}
@@ -242,12 +282,16 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
         </button>
       </section>
 
-      <section aria-label="Stress test results" aria-live="polite" className="flex min-w-0 flex-1 flex-col gap-2.5 p-3 lg:overflow-y-auto">
+      <section aria-label="Stress test results" className="stress-lab-results flex min-w-0 flex-1 flex-col gap-2.5 p-3 lg:overflow-y-auto">
+        {stats && <div className="stress-lab-result-nav" role="group" aria-label="Result view"><button type="button" aria-pressed={resultView === 'overview'} onClick={() => setResultView('overview')}>Overview & analysis</button><button type="button" aria-pressed={resultView === 'samples'} onClick={() => setResultView('samples')}>Request inspector {run ? `(${run.samples.length})` : ''}</button><span>{stats.totalRequests.toLocaleString()} measured requests</span></div>}
         {!stats ? (
-          <div className="grid flex-1 place-items-center rounded-xl border border-dashed border-border-2 px-4 py-6 text-center text-xs text-text-3">
+          <div className="stress-lab-empty grid flex-1 place-items-center px-4 py-6 text-center text-xs text-text-3">
             <div className="max-w-md space-y-1">
-              <p className="text-text-2">Run this flow under concurrent load.</p>
-              <p>Each virtual user repeats the whole flow with its own variables. Latency is the HTTP time measured by the executor; step time also includes app overhead.</p>
+              <Gauge size={44} strokeWidth={1.1} className="mx-auto mb-6 text-accent" />
+              <h3>Test the whole journey.</h3>
+              <p>From the first request to the last assertion. Each virtual user runs the entire flow with isolated variables.</p>
+              <div className="stress-lab-empty-features"><span>Smoke & spike presets</span><span>CSV datasets</span><span>SLO release gates</span><span>Baseline comparison</span></div>
+              <p className="stress-lab-empty-help">Choose a scenario on the left, adjust your targets, then start the test.</p>
             </div>
           </div>
         ) : (
@@ -303,7 +347,9 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
               </div>
             )}
 
-            <FlowStressCharts stats={stats} config={config} baseline={baseline} history={history} />
+            {resultView === 'overview' && <FlowStressCharts stats={stats} config={config} baseline={baseline} history={history} />}
+
+            {resultView === 'samples' && (run ? <LoadTestInspector result={{ timelineTruncated: run.truncated, distribution: stats.distribution, timeline: run.samples.map((sample) => ({ timeMs: sample.t, startMs: Math.max(0, sample.t - sample.stepMs), latencyMs: sample.latencyMs ?? sample.stepMs, status: sample.httpStatus ?? 0, ok: sample.status === 'success', step: sample.step, vu: sample.vu, iteration: sample.iteration, bytes: sample.bytes, measured: sample.measured, error: sample.error })) }} /> : <p className="text-xs text-text-3">The request log becomes available when the run finishes. Live aggregate metrics continue updating above.</p>)}
 
             <div className="overflow-x-auto rounded-lg border border-border-1">
               <table className="w-full font-mono text-[11px]">
@@ -378,8 +424,13 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
             )}
           </>
         )}
+        <LoadTestHistory refreshKey={historyKey} targetLabel={flowName} disabled={running} onOpen={(saved) => setRun({
+          config, startedAt: saved.startedAt ?? '', finishedAt: saved.endedAt ?? saved.startedAt ?? '', status: saved.aborted ? 'stopped' : 'completed',
+          stats: toStressStats(saved), samples: toStressSamples(saved.timeline), truncated: saved.timelineTruncated ?? false,
+        })} />
         {notice && <p className={cn('truncate text-[11px]', notice.ok ? 'text-text-3' : 'text-error')} title={notice.text}>{notice.text}</p>}
       </section>
+      </div>
     </div>
   )
 }

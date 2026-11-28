@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LoadTestResult } from './loadtest-api'
-import { toStressSamples, toStressStats } from './flowStressResult'
+import { fromStressStats, toStressSamples, toStressStats } from './flowStressResult'
 
 const result: LoadTestResult = {
   totalRequests: 12, successful: 8, failed: 2, warmupSkipped: 2, iterations: 5, failedIterations: 1,
@@ -34,5 +34,14 @@ describe('Go result → Stress dock stats', () => {
 
   it('turns the timeline into the raw request log with 0-based VU and iteration', () => {
     expect(toStressSamples(result.timeline)).toEqual([{ t: 16, vu: 1, iteration: 2, nodeId: 'login', step: 'Login', status: 'success', httpStatus: 200, latencyMs: 12, stepMs: 12, bytes: 10, error: undefined, measured: true }])
+  })
+
+  it('imports an old history entry so it reads back the same in the dock', () => {
+    const stats = toStressStats(result)
+    const back = toStressStats(fromStressStats('Checkout', '2026-01-01T00:00:00Z', false, stats))
+    expect(back.overall).toEqual(stats.overall)
+    expect(back.totalRequests).toBe(stats.totalRequests)
+    expect(back.totalErrors).toBe(stats.totalErrors)
+    expect(back.steps.map((step) => step.p95)).toEqual(stats.steps.map((step) => step.p95))
   })
 })

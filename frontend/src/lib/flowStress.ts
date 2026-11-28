@@ -1,7 +1,7 @@
 import type { FlowGraphDefinition } from '@/lib/flowStorage'
 import type { StressSample, StressStats } from '@/lib/flowStressStats'
 import type { StressDataset, StressDatasetMode } from '@/lib/flowStressDataset'
-import { runStressPlan, type LoadTestPlan } from '@/lib/loadtest-api'
+import { runStressPlan, type LoadTestFlowInput, type LoadTestPlan } from '@/lib/loadtest-api'
 import { toStressSamples, toStressStats } from '@/lib/flowStressResult'
 import { resolveVaultReferences } from '@/lib/vaultRefs'
 import { useSettingsStore } from '@/stores/settings'
@@ -112,6 +112,26 @@ export function validateStressConfig(config: FlowStressConfig): string[] {
 }
 
 /**
+ * What the app adds to a headless run (flow, scenario file): the variables with the vault
+ * resolved, the data rows, and the TLS, client certificate and hosts map of the settings.
+ */
+export async function appRunInput(initialVars: Record<string, string>, dataset?: Array<Record<string, string>>): Promise<LoadTestFlowInput> {
+  const vars = await resolveVaultReferences(initialVars)
+  const requests = useSettingsStore.getState().settings.requests
+  const hostsMap = useHostsStore.getState().getActiveEntries().map((e) => ({ host: e.host, ip: e.ip, enabled: e.enabled }))
+  return {
+    vars,
+    dataset,
+    transport: {
+      skipTlsVerify: requests.skipCertVerify ?? false,
+      clientCertPem: requests.clientCertPem ?? '',
+      clientCertPassphrase: requests.clientCertPassphrase ?? '',
+      hostsMap,
+    },
+  }
+}
+
+/**
  * Runs the flow on the Go load testing engine with the very plan the CI export writes, so
  * the dock and `adomnia stress` measure the same thing. Variables are resolved here (vault),
  * the app's TLS, client certificate and hosts map go with them.
@@ -122,20 +142,8 @@ export async function runFlowStress(graph: FlowGraphDefinition, config: FlowStre
   if (options.signal?.aborted) throw new Error('Stopped before start')
 
   const startedAt = new Date().toISOString()
-  const vars = await resolveVaultReferences(options.initialVars)
-  const requests = useSettingsStore.getState().settings.requests
-  const hostsMap = useHostsStore.getState().getActiveEntries().map((e) => ({ host: e.host, ip: e.ip, enabled: e.enabled }))
   const plan = { format: 'adomnia-flow-stress-plan', version: 1, flowName: options.flowName ?? '', graph, config } as unknown as LoadTestPlan
-  const run = runStressPlan(plan, {
-    vars,
-    dataset: options.dataset?.rows,
-    transport: {
-      skipTlsVerify: requests.skipCertVerify ?? false,
-      clientCertPem: requests.clientCertPem ?? '',
-      clientCertPassphrase: requests.clientCertPassphrase ?? '',
-      hostsMap,
-    },
-  }, (p) => {
+  const run = runStressPlan(plan, await appRunInput(options.initialVars, options.dataset?.rows), (p) => {
     if (!p.snapshot) return
     options.onProgress?.({ stats: toStressStats(p.snapshot), iterationsDone: p.iterations, activeVus: p.vus, elapsedMs: Math.round(p.elapsedS * 1000), truncated: p.snapshot.timelineTruncated ?? false })
   })

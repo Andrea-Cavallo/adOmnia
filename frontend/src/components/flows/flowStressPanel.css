@@ -1,0 +1,38 @@
+.stress-lab { --font-ui: var(--font-sans); display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; background: var(--color-surface-0); container-type: inline-size; font-family: var(--skin-font-ui, var(--font-sans)); }
+.stress-lab-header { display: flex; align-items: center; gap: 14px; min-height: 78px; padding: 16px 24px; border-bottom: 1px solid var(--color-border-1); background: var(--color-surface-1); }
+.stress-lab-mark { color: var(--color-accent); }
+.stress-lab-header h2 { font-size: 19px; font-weight: 650; letter-spacing: -.5px; color: var(--color-text-1); }
+.stress-lab-header p { margin-top: 3px; font-size: 11px; color: var(--color-text-3); }
+.stress-lab-state { margin-left: auto; padding: 6px 10px; border: 1px solid var(--color-border-2); border-radius: 5px; font-size: 11px; white-space: nowrap; color: var(--color-text-3); }
+.stress-lab-state[data-running="true"] { color: var(--color-accent); border-color: var(--color-accent); }
+.stress-lab-workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+.stress-lab-config { padding: 22px 18px; gap: 18px; background: var(--color-surface-1); }
+.stress-lab-section-label { font-size: 13px; font-weight: 600; color: var(--color-text-1); }
+.stress-lab-config button { min-height: 32px; }
+.stress-lab-config > button:last-child { min-height: 42px; flex-shrink: 0; }
+.stress-lab-config > button:last-child:not(.bg-error) { color: var(--color-accent-contrast, var(--color-surface-0)); }
+.stress-lab-config > div > .grid.grid-cols-2 button { min-height: 66px; padding: 12px; border-radius: 6px; }
+.stress-lab-config > div > .grid.grid-cols-2 button span:last-child { white-space: normal; overflow: visible; line-height: 1.5; }
+.stress-lab-results { padding: 20px 24px 28px; gap: 18px; }
+.stress-lab-result-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; border-bottom: 1px solid var(--color-border-1); }
+.stress-lab-result-nav button { border-bottom: 2px solid transparent; padding: 0 0 12px; font-size: 12px; color: var(--color-text-3); }
+.stress-lab-result-nav button[aria-pressed="true"] { color: var(--color-accent); border-color: var(--color-accent); }
+.stress-lab-result-nav > span { margin-left: auto; padding-bottom: 12px; font: 10px var(--font-mono); color: var(--color-text-3); }
+.stress-lab-empty { min-height: 360px; }
+.stress-lab-empty h3 { font-size: clamp(24px, 3cqi, 36px); font-weight: 650; line-height: 1.2; letter-spacing: -.8px; color: var(--color-text-1); margin-bottom: 16px; }
+.stress-lab-empty p { font-size: 13px; line-height: 1.8; }
+.stress-lab-empty-features { display: grid; grid-template-columns: 1fr 1fr; text-align: left; gap: 14px 22px; margin: 28px auto; max-width: 330px; color: var(--color-text-2); font-size: 11px; }
+.stress-lab-empty-features span { padding-bottom: 10px; border-bottom: 1px solid var(--color-border-1); }
+.stress-lab-empty .stress-lab-empty-help { font-size: 11px; color: var(--color-text-4); }
+.stress-lab-results article { padding: 18px; border-radius: 8px; }
+.stress-lab-results article h3 { font-size: 13px; }
+.stress-lab-results article > div:first-child p { margin-top: 4px; line-height: 1.6; }
+.stress-lab-results > .grid > .min-w-0 { padding: 16px; background: var(--color-surface-1); border-radius: 7px; }
+.stress-lab-results > .grid > .min-w-0 > div:last-child { margin-top: 8px; font-size: 16px; font-weight: 500; }
+.stress-lab-results .ltd-inspector button:focus-visible, .stress-lab button:focus-visible, .stress-lab input:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+@container (max-width: 800px) {
+  .stress-lab-workspace { flex-direction: column; overflow-y: auto; }
+  .stress-lab-config { width: 100%; overflow: visible; border-right: 0; border-bottom: 1px solid var(--color-border-1); }
+  .stress-lab-results { overflow: visible; flex: 0 0 auto; padding: 18px; }
+  .stress-lab-header { padding: 14px 18px; flex-wrap: wrap; }
+}

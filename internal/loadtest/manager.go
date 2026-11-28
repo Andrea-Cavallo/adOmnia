@@ -21,6 +21,8 @@ type Finished struct {
 	RunID  string  `json:"runId"`
 	Result *Result `json:"result,omitempty"`
 	Error  string  `json:"error,omitempty"`
+	// Saved is the run's entry in the history (empty without a history or when saving failed).
+	Saved *RunSummary `json:"saved,omitempty"`
 }
 
 // ErrBusy is returned while another run is going: two runs on one machine skew each other.
@@ -34,6 +36,7 @@ type Manager struct {
 	cancel  context.CancelFunc
 	done    chan struct{}
 	runFn   func(context.Context, Scenario, func(Progress)) (Result, error)
+	history *History
 }
 
 func NewManager() *Manager { return &Manager{runFn: Run} }
@@ -43,6 +46,20 @@ func (m *Manager) SetEmitter(emit func(event string, payload any)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.emit = emit
+}
+
+// SetHistory makes every finished run land in h.
+func (m *Manager) SetHistory(h *History) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.history = h
+}
+
+// History is where finished runs are saved, or nil.
+func (m *Manager) History() *History {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.history
 }
 
 // Start validates the scenario and runs it in the background; progress and the result arrive
@@ -78,7 +95,15 @@ func (m *Manager) execute(ctx context.Context, id string, s Scenario, done chan 
 		return
 	}
 	devlog.Info("loadtest", "run finished", map[string]any{"runId": id, "sent": res.TotalRequests, "failed": res.Failed, "p95Ms": res.P95Ms, "aborted": res.Aborted})
-	m.send(EventFinished, Finished{RunID: id, Result: &res})
+	finished := Finished{RunID: id, Result: &res}
+	if h := m.History(); h != nil {
+		if saved, err := h.Save(id, res); err != nil {
+			devlog.Err("loadtest", "run not saved to the history", err, map[string]any{"runId": id})
+		} else {
+			finished.Saved = &saved
+		}
+	}
+	m.send(EventFinished, finished)
 }
 
 func (m *Manager) finish(id string) {

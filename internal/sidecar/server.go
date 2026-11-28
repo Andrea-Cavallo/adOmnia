@@ -16,7 +16,6 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/kafka"
 	"github.com/Andrea-Cavallo/adOmnia/internal/kube"
-	"github.com/Andrea-Cavallo/adOmnia/internal/loadtest"
 	"github.com/Andrea-Cavallo/adOmnia/internal/logindex"
 	"github.com/Andrea-Cavallo/adOmnia/internal/logstream"
 	"github.com/Andrea-Cavallo/adOmnia/internal/mock"
@@ -80,10 +79,6 @@ func Start() int {
 	// WebSocket Client
 	ws.RegisterHandlers(mux)
 	sse.RegisterHandlers(mux)
-
-	// Load Test
-	loadtest.Configure(storage.Put, storage.Get, storage.List, storage.Delete, port, Token())
-	loadtest.RegisterHandlers(mux)
 
 	// Mock server control
 	mock.SetPersistConfig(func(data []byte) error {

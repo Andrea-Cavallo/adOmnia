@@ -2,12 +2,10 @@ package loadtest
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"maps"
-	mathrand "math/rand/v2"
 	"strconv"
 	"strings"
 	"time"
@@ -164,14 +162,15 @@ type flowTarget struct {
 	flow  *Flow
 	nodes map[string]Node
 	pool  *httpexec.Pool
+	seed  uint64
 }
 
-func newFlowTarget(f *Flow, pool *httpexec.Pool) *flowTarget {
+func newFlowTarget(f *Flow, pool *httpexec.Pool, seed uint64) *flowTarget {
 	nodes := make(map[string]Node, len(f.Graph.Nodes))
 	for _, n := range f.Graph.Nodes {
 		nodes[n.ID] = n
 	}
-	return &flowTarget{flow: f, nodes: nodes, pool: pool}
+	return &flowTarget{flow: f, nodes: nodes, pool: pool, seed: seed}
 }
 
 func (t *flowTarget) iterate(ctx context.Context, vu, iteration int) ([]sample, bool) {
@@ -304,20 +303,21 @@ func (t *flowTarget) vars(vu, iteration int) map[string]string {
 	if vars == nil {
 		vars = map[string]string{}
 	}
+	rnd := iterationRand(t.seed, vu, iteration)
 	if rows := t.flow.Dataset; len(rows) > 0 {
 		index := iteration % len(rows)
 		switch t.flow.DatasetMode {
 		case "per-vu":
 			index = vu % len(rows)
 		case "random":
-			index = mathrand.IntN(len(rows)) //nolint:gosec // picking a test data row, not a secret
+			index = rnd.IntN(len(rows))
 		}
 		maps.Copy(vars, rows[index])
 	}
 	vars["__vu"] = strconv.Itoa(vu + 1)
 	vars["__iteration"] = strconv.Itoa(iteration + 1)
 	vars["__timestamp"] = strconv.FormatInt(time.Now().UnixMilli(), 10)
-	vars["__uuid"] = newUUID()
+	vars["__uuid"] = seededUUID(rnd)
 	return vars
 }
 
@@ -436,12 +436,4 @@ func compareNumbers(op, left, right string) bool {
 	default:
 		return l <= r
 	}
-}
-
-func newUUID() string {
-	var v [16]byte
-	_, _ = rand.Read(v[:]) // crypto/rand.Read never fails on supported platforms
-	v[6] = (v[6] & 0x0f) | 0x40
-	v[8] = (v[8] & 0x3f) | 0x80
-	return fmt.Sprintf("%x-%x-%x-%x-%x", v[0:4], v[4:6], v[6:8], v[8:10], v[10:16])
 }
