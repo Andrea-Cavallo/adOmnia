@@ -46,8 +46,8 @@
 
 /* Main column */
 .hub-main { position: relative; z-index: 1; grid-column: 2; grid-row: 1; min-width: 0; overflow-y: auto; padding: 0 44px 40px 60px; }
-.hub-laser { grid-column: 2; grid-row: 1; width: 100%; height: 100%; min-width: 0; min-height: 0; pointer-events: none; }
 .hub-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 190px; min-height: 280px; align-items: flex-start; justify-content: space-between; gap: 24px; padding-top: 48px; }
+.hub-hero-background { position: absolute; inset: 0 -44px 0 -60px; overflow: hidden; pointer-events: none; opacity: 0.45; mask-image: linear-gradient(to bottom, #000 45%, transparent 100%); }
 .hub-greeting { position: relative; z-index: 1; min-width: 0; }
 .hub-greeting h1 { margin: 48px 0 0; font-family: var(--hub-dots); font-size: clamp(32px, 3.5vw, 52px); font-weight: 800; line-height: 1; letter-spacing: 0.02em; text-wrap: balance; overflow-wrap: anywhere; }
 .hub-lede { margin: 24px 0 0; color: var(--hub-muted); font-size: clamp(17px, 1.6vw, 25px); letter-spacing: 0.04em; }

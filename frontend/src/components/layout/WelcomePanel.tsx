@@ -10,7 +10,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { useNavigationTranslation, useUiTranslation, type UiMessage } from '@/lib/uiI18n'
 import { CATEGORY_ICONS, FEATURE_ICONS } from './Rail'
 import { loadHubPhrase } from './hubPhrases'
-import { HubLaser } from './HubLaser'
+import GradientASCII from './GradientASCII'
 import '@fontsource/doto/latin-800.css'
 import '@fontsource/geist-mono/latin-400.css'
 import './WelcomePanel.css'
@@ -143,9 +143,20 @@ export function WelcomePanel() {
   return (
     <div data-hub-page>
       <HubSidebar />
-      <HubLaser />
       <main className="hub-main">
         <header className="hub-hero">
+          <div className="hub-hero-background" aria-hidden="true">
+            <GradientASCII
+              colors={['#1e3fd8', '#f6f8ff', '#a5d8ff', '#38bdf8']}
+              shape="horizon"
+              characters=" =+xX0S8#@"
+              cellSize={18}
+              density={0.8}
+              dpr={1}
+              mouseInteraction={false}
+              clickEffect="none"
+            />
+          </div>
           <div className="hub-greeting">
             <p className="hub-eyebrow hub-workspace-label"><span className="hub-workspace-mark" aria-hidden="true" />{t('Workspace')}</p>
             <h1>{t(phrase.title)}</h1>
