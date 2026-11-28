@@ -150,3 +150,30 @@ func TestDefaultPaletteReadableTextAndActions(t *testing.T) {
 		}
 	}
 }
+
+func TestViceSunsetReadablePalette(t *testing.T) {
+	theme := viceSunsetTheme()
+	if theme.Meta["skin"] != "vice-sunset" || theme.Meta["mode"] != "dark" {
+		t.Fatal("Vice Sunset must load its scoped dark skin")
+	}
+	for _, result := range NewThemeManager().CheckContrast(theme) {
+		if !result.AANormal {
+			t.Errorf("%s contrast %.2f is below AA", result.Pair, result.Ratio)
+		}
+	}
+	for _, surface := range []string{"surface-0", "surface-1", "surface-2", "surface-3", "surface-4"} {
+		bg, err := relativeLuminance(theme.Colors[surface])
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, text := range []string{"text-1", "text-2", "text-3", "text-4"} {
+			fg, err := relativeLuminance(theme.Colors[text])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ratio := contrastRatio(fg, bg); ratio < 4.5 {
+				t.Errorf("%s/%s contrast %.2f", text, surface, ratio)
+			}
+		}
+	}
+}

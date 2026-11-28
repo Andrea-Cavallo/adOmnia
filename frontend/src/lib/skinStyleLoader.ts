@@ -1,4 +1,5 @@
 const skinLoaders: Record<string, () => Promise<unknown>> = {
+  'vice-sunset': () => import('@/styles/skin-vice-sunset.css'),
   sketch: () => Promise.all([
     import('@/styles/skin-sketch.css'),
     import('@fontsource/architects-daughter/400.css'),

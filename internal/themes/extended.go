@@ -633,6 +633,7 @@ func (tm *ThemeManager) checkForChanges(skinsDir string) {
 func (tm *ThemeManager) GetExtendedBuiltinThemes() []Theme {
 	return []Theme{
 		staticCitrineTheme(),
+		viceSunsetTheme(),
 		{
 			ID:          "builtin-terminal-green",
 			Name:        "Terminal Green",

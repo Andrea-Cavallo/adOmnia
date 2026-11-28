@@ -1,3 +1,4 @@
+import viceSunsetJSON from '../../../internal/themes/skins/vice-sunset.json?raw'
 import staticCitrineJSON from '../../../internal/themes/skins/static-citrine.json?raw'
 import type { Theme } from '@/stores/themes'
 
@@ -5,6 +6,7 @@ import type { Theme } from '@/stores/themes'
 // Keep default palettes aligned with internal/themes/themes.go and globals.css.
 export const BUILTIN_THEME_FALLBACKS: Theme[] = [
   JSON.parse(staticCitrineJSON) as Theme,
+  JSON.parse(viceSunsetJSON) as Theme,
   {
     "id": "builtin-dark",
     "name": "adOmnia Dark",

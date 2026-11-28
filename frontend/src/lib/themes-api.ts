@@ -1,5 +1,4 @@
 import type { Theme } from '@/stores/themes'
-import { BUILTIN_THEME_FALLBACKS } from './builtinThemeFallbacks'
 import * as ThemeManagerBindings from '../../bindings/github.com/Andrea-Cavallo/adOmnia/thememanager'
 
 declare global {
@@ -150,9 +149,9 @@ export async function setActiveThemeId(id: string): Promise<boolean> {
 export async function getBuiltinThemes(): Promise<Theme[]> {
   try {
     const themes = await getThemeManager().GetBuiltinThemes()
-    return themes.length ? themes : BUILTIN_THEME_FALLBACKS
+    return themes.length ? themes : (await import('./builtinThemeFallbacks')).BUILTIN_THEME_FALLBACKS
   } catch {
-    return BUILTIN_THEME_FALLBACKS
+    return (await import('./builtinThemeFallbacks')).BUILTIN_THEME_FALLBACKS
   }
 }
 

@@ -1,0 +1,73 @@
+{
+  "id": "builtin-vice-sunset",
+  "name": "Vice Sunset · GTA VI",
+  "author": "adOmnia",
+  "version": "1.0.0",
+  "description": "GTA VI-inspired Miami sunset: midnight plum, flamingo pink, warm peach and ocean turquoise.",
+  "colors": {
+    "surface-0": "#15101F",
+    "surface-1": "#1D162B",
+    "surface-2": "#271D37",
+    "surface-3": "#322644",
+    "surface-4": "#403253",
+    "text-1": "#FFF3EE",
+    "text-2": "#E5D3E6",
+    "text-3": "#C4ADC9",
+    "text-4": "#B6A0BD",
+    "border-1": "#463451",
+    "border-2": "#695173",
+    "border-3": "#A68AB3",
+    "accent": "#FF91BC",
+    "accent-hover": "#FFB1CF",
+    "accent-light": "#FFD0DF",
+    "accent-dark": "#EE7EAB",
+    "accent-glow": "rgba(255, 145, 188, 0.16)",
+    "on-accent": "#211326",
+    "success": "#7AE4CB",
+    "warning": "#FFD29C",
+    "error": "#FF9C9F",
+    "danger": "#FF9C9F",
+    "info": "#9ACFFF",
+    "method-get": "#7AE4CB",
+    "method-post": "#FFD29C",
+    "method-put": "#9ACFFF",
+    "method-patch": "#D5B3FF",
+    "method-delete": "#FF9C9F",
+    "method-head": "#BCE9F4",
+    "method-options": "#E5D3E6",
+    "json-key": "#FFACCF",
+    "json-string": "#7AE4CB",
+    "json-number": "#FFD29C",
+    "json-bool": "#D5B3FF",
+    "json-null": "#B6A0BD",
+    "json-array": "#9ACFFF",
+    "json-object": "#E5D3E6",
+    "json-bracket-1": "#FFD29C",
+    "json-bracket-2": "#FF91BC",
+    "json-bracket-3": "#7AE4CB"
+  },
+  "fonts": {
+    "sans": "'Inter', 'Segoe UI', sans-serif",
+    "mono": "'JetBrains Mono', monospace",
+    "serif": "'Georgia', serif"
+  },
+  "spacing": {},
+  "radii": {
+    "sm": "4px",
+    "md": "6px",
+    "lg": "8px",
+    "xl": "12px"
+  },
+  "shadows": {
+    "sm": "none",
+    "md": "0 4px 16px #0B071433",
+    "lg": "0 16px 40px #0B071499"
+  },
+  "meta": {
+    "builtin": "true",
+    "mode": "dark",
+    "skin": "vice-sunset"
+  },
+  "createdAt": "",
+  "updatedAt": ""
+}

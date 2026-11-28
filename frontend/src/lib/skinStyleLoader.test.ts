@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+vi.mock('@/styles/skin-vice-sunset.css', () => ({}))
 vi.mock('@/styles/skin-terminal-green.css', () => ({}))
 vi.mock('@/styles/skin-static-citrine.css', () => ({}))
 vi.mock('@/styles/skin-sketch.css', () => ({}))
@@ -19,6 +20,9 @@ describe('optional skin styles', () => {
     await first
     await loadSkinStyles('terminal-green')
     await loadSkinStyles('static-citrine')
+    const vice = loadSkinStyles('vice-sunset')
+    expect(loadSkinStyles('vice-sunset')).toBe(vice)
+    await vice
     expect(loadSkinStyles('sketch')).toBe(first)
   })
 })

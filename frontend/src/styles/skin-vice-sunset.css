@@ -1,0 +1,18 @@
+html[data-skin='vice-sunset'] { color-scheme: dark; }
+[data-skin='vice-sunset'] ::selection { background: #FF91BC; color: #211326; }
+[data-skin='vice-sunset'] :is(.bg-accent, .bg-accent-light, .glass-action) {
+  color: var(--color-on-accent);
+}
+[data-skin='vice-sunset'] .glass-action {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+[data-skin='vice-sunset'] .glass-action::before,
+[data-skin='vice-sunset'] .glass-action::after { display: none; }
+[data-skin='vice-sunset'] .glass-action:hover { background: var(--color-accent-hover); }
+[data-skin='vice-sunset'] :is(button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid #7AE4CB;
+  outline-offset: 2px;
+}

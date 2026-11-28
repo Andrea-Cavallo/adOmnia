@@ -764,6 +764,7 @@ WebSocket connections live in the API workspace, with the same layout as REST re
 | F1.12 | **HTTP Method Tokens** | Colors for method-get/post/put/patch/delete/head. |
 | F1.13 | **Theme Provider** | React context that applies CSS custom properties to the root. |
 | F1.14 | **Personal Appearance** | Primary/base colors, monochrome dark/light defaults, isolated and temporary whole-app previews, and up to 50 named local profiles. Readable surface/text/action shades are derived automatically. Cancel or leaving Appearance restores the saved style. Settings schema 14 preserves existing explicit accents and custom themes. |
+| F1.15 | **Vice Sunset skin** | GTA VI-inspired midnight-plum surfaces, flamingo-pink actions, peach and turquoise syntax, keyboard focus indicators and WCAG AA text contrast. Select Vice Sunset · GTA VI in Appearance; uses the same portable JSON palette in desktop and browser. |
 
 ---
 
