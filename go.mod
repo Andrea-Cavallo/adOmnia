@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.19
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.74.7
-	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.13
+	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.64.0
 	github.com/aymanbagabas/go-pty v0.2.3
 	github.com/digitorus/pdf v0.3.0
 	github.com/digitorus/pdfsign v1.0.0
@@ -21,18 +21,18 @@ require (
 	github.com/gaissmai/bart v0.30.0
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/google/pprof v0.0.0-20261026192309-dbd0ed30aa88
-	github.com/gorilla/websocket v1.5.3
+	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/jhump/protoreflect v1.19.0
 	github.com/miekg/dns v1.1.73
 	github.com/nats-io/nats.go v1.56.0
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
 	github.com/rabbitmq/amqp091-go v1.16.0
-	github.com/redis/go-redis/v9 v9.23.0
+	github.com/redis/go-redis/v9 v9.24.0
 	github.com/romshark/jscan v1.2.0
 	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/tetratelabs/wazero v1.12.0
-	github.com/tidwall/gjson v1.20.2
+	github.com/tidwall/gjson v1.20.6
 	github.com/tidwall/sjson v1.2.9
 	github.com/ulikunitz/xz v0.5.17
 	github.com/wI2L/jsondiff v0.7.1
@@ -41,13 +41,13 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	github.com/zalando/go-keyring v0.2.8
 	go.etcd.io/bbolt v1.5.0
-	go.mongodb.org/mongo-driver/v2 v2.9.2
+	go.mongodb.org/mongo-driver/v2 v2.10.1
 	go.opentelemetry.io/proto/otlp v1.11.1
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e
 	golang.org/x/mod v0.43.0
 	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.25.0
-	golang.org/x/sys v0.49.0
+	golang.org/x/sys v0.50.0
 	golang.org/x/tools v0.52.0
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
