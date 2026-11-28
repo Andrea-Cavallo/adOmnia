@@ -22,6 +22,16 @@ func (lt *LoadTest) Start(scenario loadtest.Scenario) (string, error) {
 	return lt.manager.Start(scenario)
 }
 
+// StartPlan runs a Flow Builder stress plan — the same file `adomnia stress` runs in CI —
+// with the app's variables (vault resolved), dataset rows and transport settings.
+func (lt *LoadTest) StartPlan(plan loadtest.Plan, input loadtest.FlowInput) (string, error) {
+	scenario, err := plan.Scenario(input)
+	if err != nil {
+		return "", err
+	}
+	return lt.manager.Start(scenario)
+}
+
 // Stop ends the run with that id; its partial result arrives as aborted.
 func (lt *LoadTest) Stop(runID string) { lt.manager.Stop(runID) }
 

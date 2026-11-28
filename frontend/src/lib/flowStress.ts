@@ -1,12 +1,14 @@
-import type { ExecuteRequestResult } from '@/lib/executeRequest'
 import type { FlowGraphDefinition } from '@/lib/flowStorage'
-import { runApiFlow, type RunEntry } from '@/lib/flowRunner'
-import { createStressAccumulator, type StressSample, type StressStats } from '@/lib/flowStressStats'
-import type { RequestItem } from '@/lib/types'
-import { stressBuiltinVars, stressDatasetRow, type StressDataset, type StressDatasetMode } from '@/lib/flowStressDataset'
+import type { StressSample, StressStats } from '@/lib/flowStressStats'
+import type { StressDataset, StressDatasetMode } from '@/lib/flowStressDataset'
+import { runStressPlan, type LoadTestPlan } from '@/lib/loadtest-api'
+import { toStressSamples, toStressStats } from '@/lib/flowStressResult'
+import { resolveVaultReferences } from '@/lib/vaultRefs'
+import { useSettingsStore } from '@/stores/settings'
+import { useHostsStore } from '@/stores/hosts'
 
-export const MAX_STRESS_VUS = 200
-export const STRESS_SAMPLE_CAP = 200_000
+/** Engine limit (internal/loadtest/scenario.go). */
+export const MAX_STRESS_VUS = 2000
 
 export type StressScenario = 'custom' | 'smoke' | 'load' | 'spike' | 'soak'
 
@@ -74,13 +76,10 @@ export interface StressRun {
 
 export interface RunFlowStressOptions {
   initialVars: Record<string, string>
+  flowName?: string
   signal?: AbortSignal
-  execute?: (request: RequestItem, vars: Record<string, string>, options?: { signal?: AbortSignal; record?: boolean }) => Promise<ExecuteRequestResult>
   onProgress?: (progress: StressProgress) => void
-  progressIntervalMs?: number
-  sampleCap?: number
   dataset?: StressDataset
-  random?: () => number
 }
 
 export function validateStressConfig(config: FlowStressConfig): string[] {
@@ -88,13 +87,13 @@ export function validateStressConfig(config: FlowStressConfig): string[] {
   const between = (value: number, min: number, max: number) => Number.isFinite(value) && value >= min && value <= max
   if (!Number.isInteger(config.vus) || !between(config.vus, 1, MAX_STRESS_VUS)) errors.push(`Virtual users must be a whole number between 1 and ${MAX_STRESS_VUS}.`)
   if (!between(config.rampUpS, 0, 600)) errors.push('Ramp-up must be between 0 and 600 seconds.')
-  if (config.mode === 'iterations' && (!Number.isInteger(config.iterations) || !between(config.iterations, 1, 100_000))) errors.push('Iterations must be a whole number between 1 and 100000.')
-  if (config.mode === 'duration' && !between(config.durationS, 1, 3600)) errors.push('Duration must be between 1 and 3600 seconds.')
+  if (config.mode === 'iterations' && (!Number.isInteger(config.iterations) || !between(config.iterations, 1, 10_000_000))) errors.push('Iterations must be a whole number between 1 and 10000000.')
+  if (config.mode === 'duration' && !between(config.durationS, 1, 86_400)) errors.push('Duration must be between 1 and 86400 seconds.')
   if (config.mode === 'stages') {
     if (!config.stages?.length || config.stages.length > 8) errors.push('A staged workload needs between 1 and 8 stages.')
     if (config.stages?.length && Math.max(...config.stages.map((item) => item.targetVus)) < 1) errors.push('At least one stage must target one or more virtual users.')
     config.stages?.forEach((item, index) => {
-      if (!between(item.durationS, 0.05, 3600)) errors.push(`Stage ${index + 1} duration must be between 0.05 and 3600 seconds.`)
+      if (!between(item.durationS, 0.05, 86_400)) errors.push(`Stage ${index + 1} duration must be between 0.05 and 86400 seconds.`)
       if (!Number.isInteger(item.targetVus) || !between(item.targetVus, 0, MAX_STRESS_VUS)) errors.push(`Stage ${index + 1} users must be between 0 and ${MAX_STRESS_VUS}.`)
       if (!between(item.rampS, 0, item.durationS)) errors.push(`Stage ${index + 1} ramp must fit inside its duration.`)
     })
@@ -109,176 +108,50 @@ export function validateStressConfig(config: FlowStressConfig): string[] {
   return errors
 }
 
-function sleep(ms: number, signal: AbortSignal) {
-  if (signal.aborted) return Promise.resolve(false)
-  if (ms <= 0) return Promise.resolve(true)
-  return new Promise<boolean>((resolve) => {
-    const onAbort = () => { clearTimeout(timer); resolve(false) }
-    const timer = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve(true) }, ms)
-    signal.addEventListener('abort', onAbort, { once: true })
-  })
-}
-
 /**
- * Runs a flow concurrently: `vus` loops each repeat `runApiFlow` with their own
- * variable context until the iteration budget or the duration is spent.
+ * Runs the flow on the Go load testing engine with the very plan the CI export writes, so
+ * the dock and `adomnia stress` measure the same thing. Variables are resolved here (vault),
+ * the app's TLS, client certificate and hosts map go with them.
  */
 export async function runFlowStress(graph: FlowGraphDefinition, config: FlowStressConfig, options: RunFlowStressOptions): Promise<StressRun> {
   const errors = validateStressConfig(config)
   if (errors.length) throw new Error(errors[0])
+  if (options.signal?.aborted) throw new Error('Stopped before start')
 
-  const controller = new AbortController()
-  const userAbort = () => controller.abort()
-  if (options.signal?.aborted) controller.abort()
-  options.signal?.addEventListener('abort', userAbort, { once: true })
-
-  const cap = options.sampleCap ?? STRESS_SAMPLE_CAP
   const startedAt = new Date().toISOString()
-  const start = performance.now()
-  const elapsed = () => performance.now() - start
-  const acc = createStressAccumulator(config.apdexTMs ?? 500)
-  const samples: StressSample[] = []
-  let truncated = false
-  let claimed = 0
-  let iterationsDone = 0
-  let activeVus = 0
-
-  const stages = config.stages ?? []
-  const stagedDurationS = stages.reduce((total, item) => total + item.durationS, 0)
-  const peakVus = config.mode === 'stages' ? Math.max(0, ...stages.map((item) => item.targetVus)) : config.vus
-  const stageAt = (elapsedMs: number) => {
-    let offsetS = 0
-    for (const item of stages) {
-      if (elapsedMs / 1000 < offsetS + item.durationS) return { item, offsetS, elapsedInStageS: elapsedMs / 1000 - offsetS }
-      offsetS += item.durationS
-    }
-    return undefined
-  }
-  const targetAt = (elapsedMs: number) => {
-    const current = stageAt(elapsedMs)
-    if (!current) return 0
-    const index = stages.indexOf(current.item)
-    const previous = index > 0 ? stages[index - 1].targetVus : 0
-    if (current.item.rampS <= 0 || current.elapsedInStageS >= current.item.rampS) return current.item.targetVus
-    return Math.max(0, Math.round(previous + (current.item.targetVus - previous) * (current.elapsedInStageS / current.item.rampS)))
-  }
-  const measuredTime = (elapsedMs: number) => {
-    if (config.mode !== 'stages') return Math.max(0, elapsedMs - (config.warmupS ?? 0) * 1000)
-    let offsetMs = 0
-    let measuredMs = 0
-    stages.forEach((item) => {
-      const stageMs = item.durationS * 1000
-      if (item.measure) measuredMs += Math.max(0, Math.min(stageMs, elapsedMs - offsetMs))
-      offsetMs += stageMs
-    })
-    return measuredMs
-  }
-
-  const progress = (): StressProgress => {
-    const elapsedMs = elapsed()
-    return { stats: acc.snapshot(elapsedMs, measuredTime(elapsedMs)), iterationsDone, activeVus, elapsedMs, truncated }
-  }
-  const ticker = options.onProgress ? setInterval(() => options.onProgress?.(progress()), options.progressIntervalMs ?? 500) : undefined
-  // Duration mode: in-flight iterations are cut at the deadline and not counted.
-  const deadlineMs = config.mode === 'duration' ? config.durationS * 1000 : config.mode === 'stages' ? stagedDurationS * 1000 : 0
-  const deadline = deadlineMs ? setTimeout(() => controller.abort(), deadlineMs) : undefined
-
-  const claim = () => {
-    if (controller.signal.aborted) return -1
-    if (config.mode === 'iterations' && claimed >= config.iterations) return -1
-    claimed += 1
-    return claimed - 1
-  }
-
-  const record = (entry: RunEntry | undefined, vu: number, iteration: number) => {
-    // Only request steps are load; anything finishing after abort is noise.
-    if (!entry?.response || controller.signal.aborted) return
-    const finishedMs = elapsed()
-    const phase = config.mode === 'stages' ? stageAt(finishedMs)?.item : undefined
-    const measured = phase ? phase.measure : finishedMs >= (config.warmupS ?? 0) * 1000
-    const sample: StressSample = {
-      t: Math.round(finishedMs),
-      vu,
-      iteration,
-      nodeId: entry.nodeId,
-      step: entry.nodeLabel,
-      status: entry.status,
-      httpStatus: entry.httpStatus || undefined,
-      latencyMs: entry.response.ms > 0 ? Math.round(entry.response.ms) : undefined,
-      stepMs: Math.round(entry.durationMs),
-      bytes: entry.response.size,
-      error: entry.error,
-      phase: phase?.label,
-      measured,
-    }
-    acc.add(sample, measured)
-    if (samples.length < cap) samples.push(sample)
-    else truncated = true
-  }
-
-  const runVu = async (vu: number) => {
-    if (config.mode !== 'stages' && !await sleep((vu * config.rampUpS * 1000) / config.vus, controller.signal)) return
-    let active = false
-    const setActive = (next: boolean) => {
-      if (active === next) return
-      active = next
-      activeVus += next ? 1 : -1
-      acc.activity(elapsed(), activeVus)
-    }
-    try {
-      let first = true
-      for (;;) {
-        if (config.mode === 'stages') {
-          const eligible = vu < targetAt(elapsed())
-          setActive(eligible)
-          // oxlint-disable-next-line eslint/no-await-in-loop -- a virtual user is a sequential loop: poll, think, run an iteration
-          if (!eligible) { if (!await sleep(50, controller.signal)) break; first = true; continue }
-        } else setActive(true)
-        // oxlint-disable-next-line eslint/no-await-in-loop -- think time between iterations of one virtual user
-        if (!first && !await sleep(config.thinkTimeMs, controller.signal)) break
-        const iteration = claim()
-        if (iteration < 0) break
-        const vars = {
-          ...options.initialVars,
-          ...stressDatasetRow(options.dataset, config.datasetMode ?? 'shared', vu, iteration, options.random),
-          ...stressBuiltinVars(vu, iteration),
-        }
-        // oxlint-disable-next-line eslint/no-await-in-loop -- iterations of one virtual user run strictly in order
-        const result = await runApiFlow(graph, {
-          initialVars: vars,
-          signal: controller.signal,
-          execute: options.execute,
-          onEntry: (entries) => record(entries[entries.length - 1], vu, iteration),
-        })
-        if (controller.signal.aborted) break
-        const phase = config.mode === 'stages' ? stageAt(elapsed())?.item : undefined
-        const measured = phase ? phase.measure : elapsed() >= (config.warmupS ?? 0) * 1000
-        acc.iteration(!result.entries.some((entry) => entry.status === 'failed'), measured)
-        iterationsDone += 1
-        first = false
-      }
-    } finally {
-      setActive(false)
-    }
-  }
-
+  const vars = await resolveVaultReferences(options.initialVars)
+  const requests = useSettingsStore.getState().settings.requests
+  const hostsMap = useHostsStore.getState().getActiveEntries().map((e) => ({ host: e.host, ip: e.ip, enabled: e.enabled }))
+  const plan = { format: 'adomnia-flow-stress-plan', version: 1, flowName: options.flowName ?? '', graph, config } as unknown as LoadTestPlan
+  const run = runStressPlan(plan, {
+    vars,
+    dataset: options.dataset?.rows,
+    transport: {
+      skipTlsVerify: requests.skipCertVerify ?? false,
+      clientCertPem: requests.clientCertPem ?? '',
+      clientCertPassphrase: requests.clientCertPassphrase ?? '',
+      hostsMap,
+    },
+  }, (p) => {
+    if (!p.snapshot) return
+    options.onProgress?.({ stats: toStressStats(p.snapshot), iterationsDone: p.iterations, activeVus: p.vus, elapsedMs: Math.round(p.elapsedS * 1000), truncated: p.snapshot.timelineTruncated ?? false })
+  })
+  const onAbort = () => run.stop()
+  options.signal?.addEventListener('abort', onAbort, { once: true })
   try {
-    await Promise.all(Array.from({ length: peakVus }, (_, vu) => runVu(vu)))
+    const result = await run.result
+    const stats = toStressStats(result)
+    options.onProgress?.({ stats, iterationsDone: (result.iterations ?? 0), activeVus: 0, elapsedMs: Math.round(result.totalTimeMs), truncated: result.timelineTruncated ?? false })
+    return {
+      config,
+      startedAt: result.startedAt ?? startedAt,
+      finishedAt: result.endedAt ?? new Date().toISOString(),
+      status: result.aborted ? 'stopped' : 'completed',
+      stats,
+      samples: toStressSamples(result.timeline),
+      truncated: result.timelineTruncated ?? false,
+    }
   } finally {
-    clearInterval(ticker)
-    clearTimeout(deadline)
-    options.signal?.removeEventListener('abort', userAbort)
-  }
-
-  const final = progress()
-  options.onProgress?.(final)
-  return {
-    config,
-    startedAt,
-    finishedAt: new Date().toISOString(),
-    status: options.signal?.aborted ? 'stopped' : 'completed',
-    stats: final.stats,
-    samples,
-    truncated,
+    options.signal?.removeEventListener('abort', onAbort)
   }
 }

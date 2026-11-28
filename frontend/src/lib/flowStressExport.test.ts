@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StressRun } from './flowStress'
-import { createStressAccumulator, type StressSample } from './flowStressStats'
+import type { StressSample } from './flowStressStats'
+import { createStressAccumulator } from './__fixtures__/stressStatsFixture'
 import { baselineStep, deltaPct, parseStressJson, sparklinePoints, stressCsv, stressFileName, stressHtml, stressJson, stressJUnit, stressPlanFileName, stressPlanJson, utf8ToBase64 } from './flowStressExport'
 import { DEFAULT_FLOW_SETTINGS } from './flowStorage'
 

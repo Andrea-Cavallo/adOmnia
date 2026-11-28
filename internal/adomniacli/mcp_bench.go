@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrea-Cavallo/adOmnia/internal/loadtest"
 	"github.com/Andrea-Cavallo/adOmnia/internal/procutil"
 )
 
@@ -27,8 +28,8 @@ func (s *mcpServer) stressRun(planPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read plan: %w", err)
 	}
-	var plan stressPlan
-	if err := json.Unmarshal(data, &plan); err != nil || plan.Format != "adomnia-flow-stress-plan" || plan.Version != 1 {
+	var plan loadtest.Plan
+	if err := json.Unmarshal(data, &plan); err != nil || plan.Format != loadtest.PlanFormat || plan.Version != 1 {
 		return "", fmt.Errorf("invalid or unsupported stress plan")
 	}
 	result, err := executeStressPlan(plan, nil, nil)

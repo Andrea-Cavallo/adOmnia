@@ -3,6 +3,7 @@ package adomniacli
 
 import (
 	"bufio"
+	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"encoding/xml"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/collectionfs"
 	"github.com/Andrea-Cavallo/adOmnia/internal/collectionresolve"
+	"github.com/Andrea-Cavallo/adOmnia/internal/headless"
 	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
 	"github.com/Andrea-Cavallo/adOmnia/internal/oascontract"
@@ -239,7 +241,7 @@ func executeCollection(collection collectionfs.Collection, bail bool, vars map[s
 	summary.Total = len(requests)
 	for _, req := range requests {
 		effectiveVars := mergeRunVars(req.Vars, vars)
-		resolvedVars, vaultErr := resolveVaultVars(effectiveVars)
+		resolvedVars, vaultErr := headless.ResolveVaultVars(effectiveVars)
 		var result RequestResult
 		if vaultErr != nil {
 			result = RequestResult{ID: req.Request.ID, Name: req.Request.Name, Method: strings.ToUpper(req.Request.Method), URL: req.Request.URL, Outcome: "failed", Message: vaultErr.Error()}
@@ -301,73 +303,20 @@ func normalizeFolderFilter(value string) string {
 
 func executeRequest(req requestcontract.Request, vars map[string]string, jarID string, contractValidator *oascontract.Validator) RequestResult {
 	result := RequestResult{ID: req.ID, Name: req.Name, Method: strings.ToUpper(req.Method), URL: req.URL}
-	if _, err := runHeadlessScript(req.Scripts.Pre, vars, nil); err != nil {
-		result.Outcome = "failed"
-		result.Message = err.Error()
-		return result
+	out := headless.Execute(context.Background(), req, vars, headless.Options{
+		JarID:    jarID,
+		Validate: func(resp httpexec.HTTPExecResponse) string { return contractValidator.Validate(req, resp) },
+	})
+	result.Duration = out.Latency.Milliseconds()
+	result.Status = out.Response.Status
+	switch {
+	case out.Skipped != "":
+		result.Outcome, result.Message = "skipped", out.Skipped
+	case out.Error != "":
+		result.Outcome, result.Message = "failed", out.Error
+	default:
+		result.Outcome = "passed"
 	}
-	originalAuth := req.Auth
-	prepared, err := prepareHeadlessAuth(req, vars)
-	if err != nil {
-		result.Outcome = "failed"
-		result.Message = err.Error()
-		return result
-	}
-	payload, skipReason, err := requestcontract.BuildHTTPPayload(prepared, requestcontract.Options{Vars: vars, DefaultTime: 30000})
-	if skipReason != "" {
-		result.Outcome = "skipped"
-		result.Message = skipReason
-		return result
-	}
-	if err != nil {
-		result.Outcome = "failed"
-		result.Message = err.Error()
-		return result
-	}
-	if originalAuth.Type == "aws4" {
-		if err := applyAWS4(&payload, originalAuth, vars, time.Now()); err != nil {
-			result.Outcome = "failed"
-			result.Message = err.Error()
-			return result
-		}
-	}
-	payload.CookieJarID = jarID
-	start := time.Now()
-	raw := httpexec.Execute(mustJSON(payload))
-	result.Duration = time.Since(start).Milliseconds()
-	var resp httpexec.HTTPExecResponse
-	if err := json.Unmarshal([]byte(raw), &resp); err != nil {
-		result.Outcome = "failed"
-		result.Message = err.Error()
-		return result
-	}
-	result.Status = resp.Status
-	if resp.Error != nil {
-		result.Outcome = "failed"
-		result.Message = resp.Error.Message
-		return result
-	}
-	if _, err := runHeadlessScript(req.Scripts.Post, vars, &resp); err != nil {
-		result.Outcome = "failed"
-		result.Message = err.Error()
-		return result
-	}
-	if _, err := runHeadlessScript(req.Scripts.Tests, vars, &resp); err != nil {
-		result.Outcome = "failed"
-		result.Message = err.Error()
-		return result
-	}
-	if message := contractValidator.Validate(req, resp); message != "" {
-		result.Outcome = "failed"
-		result.Message = message
-		return result
-	}
-	if message := requestcontract.EvaluateAssertions(req.Assertions, resp); message != "" {
-		result.Outcome = "failed"
-		result.Message = message
-		return result
-	}
-	result.Outcome = "passed"
 	return result
 }
 
@@ -504,9 +453,4 @@ func renderJUnit(summary RunSummary) ([]byte, error) {
 
 func secondsString(ms int64) string {
 	return fmt.Sprintf("%.3f", float64(ms)/1000)
-}
-
-func mustJSON(v any) string {
-	data, _ := jsonutil.Marshal(v)
-	return string(data)
 }

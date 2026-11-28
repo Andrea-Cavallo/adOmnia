@@ -1,4 +1,4 @@
-package adomniacli
+package headless
 
 import (
 	"encoding/json/v2"
@@ -10,19 +10,19 @@ import (
 	"github.com/dop251/goja"
 )
 
-type scriptTest struct {
+type ScriptTest struct {
 	Name  string
 	Error string
 }
 
-func runHeadlessScript(source string, vars map[string]string, response *httpexec.HTTPExecResponse) ([]scriptTest, error) {
+func RunScript(source string, vars map[string]string, response *httpexec.HTTPExecResponse) ([]ScriptTest, error) {
 	if strings.TrimSpace(source) == "" {
 		return nil, nil
 	}
 	runtime := goja.New()
 	timer := time.AfterFunc(2*time.Second, func() { runtime.Interrupt("script execution timed out") })
 	defer timer.Stop()
-	tests := []scriptTest{}
+	tests := []ScriptTest{}
 	environment := map[string]any{
 		"get":   func(key string) string { return vars[key] },
 		"set":   func(key string, value any) { vars[key] = fmt.Sprint(value) },
@@ -42,11 +42,11 @@ func runHeadlessScript(source string, vars map[string]string, response *httpexec
 		name := call.Argument(0).String()
 		fn, ok := goja.AssertFunction(call.Argument(1))
 		if !ok {
-			tests = append(tests, scriptTest{Name: name, Error: "test callback required"})
+			tests = append(tests, ScriptTest{Name: name, Error: "test callback required"})
 			return goja.Undefined()
 		}
 		_, err := fn(goja.Undefined())
-		item := scriptTest{Name: name}
+		item := ScriptTest{Name: name}
 		if err != nil {
 			item.Error = err.Error()
 		}

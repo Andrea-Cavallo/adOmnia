@@ -8,20 +8,426 @@ import { Create as $Create } from "@wailsio/runtime";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as httpexec$0 from "../httpexec/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as requestcontract$0 from "../requestcontract/models.js";
+
+export class Condition {
+    /**
+     * status | variable | header | body
+     */
+    "source": string;
+    "path": string;
+    "operator": string;
+    "value": string;
+
+    /** Creates a new Condition instance. */
+    constructor($$source: Partial<Condition> = {}) {
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("operator" in $$source)) {
+            this["operator"] = "";
+        }
+        if (!("value" in $$source)) {
+            this["value"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Condition instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Condition {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Condition($$parsedSource as Partial<Condition>);
+    }
+}
+
+export class Edge {
+    "source": string;
+    "target": string;
+
+    /**
+     * next | success | error | true | false | else
+     */
+    "branch": string;
+
+    /** Creates a new Edge instance. */
+    constructor($$source: Partial<Edge> = {}) {
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("target" in $$source)) {
+            this["target"] = "";
+        }
+        if (!("branch" in $$source)) {
+            this["branch"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Edge instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Edge {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Edge($$parsedSource as Partial<Edge>);
+    }
+}
+
+/**
+ * Flow is a Flow Builder graph run by every VU, with the variables and data it starts from.
+ * Its JSON is the graph the Flow Builder writes (and the CI plan exports).
+ */
+export class Flow {
+    "name"?: string;
+    "graph": Graph;
+
+    /**
+     * environment, vault already resolved
+     */
+    "vars"?: { [_ in string]?: string };
+    "dataset"?: { [_ in string]?: string }[];
+
+    /**
+     * shared (default) | per-vu | random
+     */
+    "datasetMode"?: string;
+    "transport"?: Transport | null;
+
+    /** Creates a new Flow instance. */
+    constructor($$source: Partial<Flow> = {}) {
+        if (!("graph" in $$source)) {
+            this["graph"] = (new Graph());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Flow instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Flow {
+        const $$createField1_0 = $$createType0;
+        const $$createField2_0 = $$createType1;
+        const $$createField3_0 = $$createType2;
+        const $$createField5_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("graph" in $$parsedSource) {
+            $$parsedSource["graph"] = $$createField1_0($$parsedSource["graph"]);
+        }
+        if ("vars" in $$parsedSource) {
+            $$parsedSource["vars"] = $$createField2_0($$parsedSource["vars"]);
+        }
+        if ("dataset" in $$parsedSource) {
+            $$parsedSource["dataset"] = $$createField3_0($$parsedSource["dataset"]);
+        }
+        if ("transport" in $$parsedSource) {
+            $$parsedSource["transport"] = $$createField5_0($$parsedSource["transport"]);
+        }
+        return new Flow($$parsedSource as Partial<Flow>);
+    }
+}
+
+/**
+ * FlowInput is what the caller adds to a plan: variables, data rows and, in the app, the
+ * transport settings.
+ */
+export class FlowInput {
+    "vars"?: { [_ in string]?: string };
+    "dataset"?: { [_ in string]?: string }[];
+    "transport"?: Transport | null;
+
+    /** Creates a new FlowInput instance. */
+    constructor($$source: Partial<FlowInput> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FlowInput instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FlowInput {
+        const $$createField0_0 = $$createType1;
+        const $$createField1_0 = $$createType2;
+        const $$createField2_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("vars" in $$parsedSource) {
+            $$parsedSource["vars"] = $$createField0_0($$parsedSource["vars"]);
+        }
+        if ("dataset" in $$parsedSource) {
+            $$parsedSource["dataset"] = $$createField1_0($$parsedSource["dataset"]);
+        }
+        if ("transport" in $$parsedSource) {
+            $$parsedSource["transport"] = $$createField2_0($$parsedSource["transport"]);
+        }
+        return new FlowInput($$parsedSource as Partial<FlowInput>);
+    }
+}
+
+/**
+ * Gates are the pass/fail rules of a run, evaluated on the measured requests.
+ */
+export class Gates {
+    /**
+     * APDEX threshold T, default 500 ms
+     */
+    "apdexTMs"?: number;
+
+    /**
+     * 0 disables
+     */
+    "minApdex"?: number;
+
+    /**
+     * 0 disables
+     */
+    "maxP95Ms"?: number;
+
+    /**
+     * nil disables; 0 means no error tolerated
+     */
+    "maxErrorPct"?: number | null;
+
+    /**
+     * 0 disables
+     */
+    "minRps"?: number;
+
+    /** Creates a new Gates instance. */
+    constructor($$source: Partial<Gates> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Gates instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Gates {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Gates($$parsedSource as Partial<Gates>);
+    }
+}
+
+export class Graph {
+    "nodes": Node[];
+    "edges": Edge[];
+    "settings": {"maxSteps"?: number};
+
+    /** Creates a new Graph instance. */
+    constructor($$source: Partial<Graph> = {}) {
+        if (!("nodes" in $$source)) {
+            this["nodes"] = [];
+        }
+        if (!("edges" in $$source)) {
+            this["edges"] = [];
+        }
+        if (!("settings" in $$source)) {
+            this["settings"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Graph instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Graph {
+        const $$createField0_0 = $$createType6;
+        const $$createField1_0 = $$createType8;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("nodes" in $$parsedSource) {
+            $$parsedSource["nodes"] = $$createField0_0($$parsedSource["nodes"]);
+        }
+        if ("edges" in $$parsedSource) {
+            $$parsedSource["edges"] = $$createField1_0($$parsedSource["edges"]);
+        }
+        return new Graph($$parsedSource as Partial<Graph>);
+    }
+}
+
+export class Mapping {
+    "name": string;
+
+    /**
+     * status | header | body | expression
+     */
+    "source": string;
+    "path": string;
+    "fallback": string;
+
+    /** Creates a new Mapping instance. */
+    constructor($$source: Partial<Mapping> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("fallback" in $$source)) {
+            this["fallback"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Mapping instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Mapping {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Mapping($$parsedSource as Partial<Mapping>);
+    }
+}
+
+export class Node {
+    "id": string;
+
+    /**
+     * start | request | condition | extract | end
+     */
+    "type": string;
+    "label": string;
+    "config": NodeConfig;
+
+    /** Creates a new Node instance. */
+    constructor($$source: Partial<Node> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("config" in $$source)) {
+            this["config"] = (new NodeConfig());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Node instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Node {
+        const $$createField3_0 = $$createType9;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("config" in $$parsedSource) {
+            $$parsedSource["config"] = $$createField3_0($$parsedSource["config"]);
+        }
+        return new Node($$parsedSource as Partial<Node>);
+    }
+}
+
+export class NodeConfig {
+    "request"?: requestcontract$0.Request | null;
+    "expectedStatus"?: string;
+    "retryCount"?: number;
+    "delayMs"?: number;
+    "extractions"?: Mapping[];
+    "condition"?: Condition | null;
+    "endState"?: string;
+
+    /** Creates a new NodeConfig instance. */
+    constructor($$source: Partial<NodeConfig> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new NodeConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): NodeConfig {
+        const $$createField0_0 = $$createType11;
+        const $$createField4_0 = $$createType13;
+        const $$createField5_0 = $$createType15;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("request" in $$parsedSource) {
+            $$parsedSource["request"] = $$createField0_0($$parsedSource["request"]);
+        }
+        if ("extractions" in $$parsedSource) {
+            $$parsedSource["extractions"] = $$createField4_0($$parsedSource["extractions"]);
+        }
+        if ("condition" in $$parsedSource) {
+            $$parsedSource["condition"] = $$createField5_0($$parsedSource["condition"]);
+        }
+        return new NodeConfig($$parsedSource as Partial<NodeConfig>);
+    }
+}
+
+/**
+ * Plan is a flow with its Flow Stress configuration.
+ */
+export class Plan {
+    "format": string;
+    "version": number;
+    "flowName": string;
+    "graph": Graph;
+    "config": StressConfig;
+
+    /** Creates a new Plan instance. */
+    constructor($$source: Partial<Plan> = {}) {
+        if (!("format" in $$source)) {
+            this["format"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = 0;
+        }
+        if (!("flowName" in $$source)) {
+            this["flowName"] = "";
+        }
+        if (!("graph" in $$source)) {
+            this["graph"] = (new Graph());
+        }
+        if (!("config" in $$source)) {
+            this["config"] = (new StressConfig());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Plan instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Plan {
+        const $$createField3_0 = $$createType0;
+        const $$createField4_0 = $$createType16;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("graph" in $$parsedSource) {
+            $$parsedSource["graph"] = $$createField3_0($$parsedSource["graph"]);
+        }
+        if ("config" in $$parsedSource) {
+            $$parsedSource["config"] = $$createField4_0($$parsedSource["config"]);
+        }
+        return new Plan($$parsedSource as Partial<Plan>);
+    }
+}
 
 /**
  * Scenario is everything a run needs. It is the unit that LT-4 saves as a workspace file.
+ * The target is either one Request (resolved by the app: auth, cookies, TLS already applied)
+ * or a Flow (a graph whose steps the engine resolves headless, like `adomnia stress`).
  */
 export class Scenario {
     "name"?: string;
-    "request": httpexec$0.HTTPExecRequest;
+    "request"?: httpexec$0.HTTPExecRequest | null;
+    "flow"?: Flow | null;
     "workload": Workload;
+    "gates"?: Gates | null;
 
     /** Creates a new Scenario instance. */
     constructor($$source: Partial<Scenario> = {}) {
-        if (!("request" in $$source)) {
-            this["request"] = (new httpexec$0.HTTPExecRequest());
-        }
         if (!("workload" in $$source)) {
             this["workload"] = (new Workload());
         }
@@ -33,25 +439,36 @@ export class Scenario {
      * Creates a new Scenario instance from a string or object.
      */
     static createFrom($$source: any = {}): Scenario {
-        const $$createField1_0 = $$createType0;
-        const $$createField2_0 = $$createType1;
+        const $$createField1_0 = $$createType18;
+        const $$createField2_0 = $$createType20;
+        const $$createField3_0 = $$createType21;
+        const $$createField4_0 = $$createType23;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("request" in $$parsedSource) {
             $$parsedSource["request"] = $$createField1_0($$parsedSource["request"]);
         }
+        if ("flow" in $$parsedSource) {
+            $$parsedSource["flow"] = $$createField2_0($$parsedSource["flow"]);
+        }
         if ("workload" in $$parsedSource) {
-            $$parsedSource["workload"] = $$createField2_0($$parsedSource["workload"]);
+            $$parsedSource["workload"] = $$createField3_0($$parsedSource["workload"]);
+        }
+        if ("gates" in $$parsedSource) {
+            $$parsedSource["gates"] = $$createField4_0($$parsedSource["gates"]);
         }
         return new Scenario($$parsedSource as Partial<Scenario>);
     }
 }
 
 /**
- * Stage ramps linearly from the previous stage's target (0 for the first) to TargetVUs.
+ * Stage moves from the previous stage's target (0 for the first) to TargetVUs: linearly over
+ * the whole stage, or — with RampS — over the first RampS seconds, then holds (0 = jump).
  */
 export class Stage {
+    "label"?: string;
     "durationS": number;
     "targetVUs": number;
+    "rampS"?: number | null;
 
     /**
      * warm-up or cool-down: sent, not measured
@@ -80,6 +497,126 @@ export class Stage {
 }
 
 /**
+ * StressConfig is the workload as the Flow Stress dock describes it.
+ */
+export class StressConfig {
+    "vus": number;
+    "rampUpS"?: number;
+
+    /**
+     * iterations | duration | stages
+     */
+    "mode": string;
+    "iterations"?: number;
+    "durationS"?: number;
+    "thinkTimeMs"?: number;
+    "warmupS"?: number;
+    "stages"?: StressStage[];
+    "datasetMode"?: string;
+    "apdexTMs"?: number;
+    "minApdex"?: number;
+    "maxP95Ms"?: number;
+
+    /**
+     * absent = no error tolerated
+     */
+    "maxErrorPct"?: number | null;
+    "minRps"?: number;
+
+    /** Creates a new StressConfig instance. */
+    constructor($$source: Partial<StressConfig> = {}) {
+        if (!("vus" in $$source)) {
+            this["vus"] = 0;
+        }
+        if (!("mode" in $$source)) {
+            this["mode"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new StressConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): StressConfig {
+        const $$createField7_0 = $$createType25;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("stages" in $$parsedSource) {
+            $$parsedSource["stages"] = $$createField7_0($$parsedSource["stages"]);
+        }
+        return new StressConfig($$parsedSource as Partial<StressConfig>);
+    }
+}
+
+/**
+ * StressStage holds TargetVUs after reaching it in RampS seconds.
+ */
+export class StressStage {
+    "label": string;
+    "durationS": number;
+    "targetVus": number;
+    "rampS": number;
+    "measure": boolean;
+
+    /** Creates a new StressStage instance. */
+    constructor($$source: Partial<StressStage> = {}) {
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+        if (!("durationS" in $$source)) {
+            this["durationS"] = 0;
+        }
+        if (!("targetVus" in $$source)) {
+            this["targetVus"] = 0;
+        }
+        if (!("rampS" in $$source)) {
+            this["rampS"] = 0;
+        }
+        if (!("measure" in $$source)) {
+            this["measure"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new StressStage instance from a string or object.
+     */
+    static createFrom($$source: any = {}): StressStage {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new StressStage($$parsedSource as Partial<StressStage>);
+    }
+}
+
+/**
+ * Transport carries the app's request settings onto every step (the CLI has none).
+ */
+export class Transport {
+    "skipTlsVerify"?: boolean;
+    "clientCertPem"?: string;
+    "clientCertPassphrase"?: string;
+    "hostsMap"?: httpexec$0.HostMapEntry[];
+
+    /** Creates a new Transport instance. */
+    constructor($$source: Partial<Transport> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Transport instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Transport {
+        const $$createField3_0 = $$createType27;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("hostsMap" in $$parsedSource) {
+            $$parsedSource["hostsMap"] = $$createField3_0($$parsedSource["hostsMap"]);
+        }
+        return new Transport($$parsedSource as Partial<Transport>);
+    }
+}
+
+/**
  * Workload says how the requests are generated.
  */
 export class Workload {
@@ -101,6 +638,11 @@ export class Workload {
      * the first N are sent but not measured
      */
     "warmupIterations"?: number;
+
+    /**
+     * without stages: the first S seconds are not measured
+     */
+    "warmupS"?: number;
 
     /**
      * pause of a VU between iterations
@@ -126,7 +668,7 @@ export class Workload {
      * Creates a new Workload instance from a string or object.
      */
     static createFrom($$source: any = {}): Workload {
-        const $$createField4_0 = $$createType3;
+        const $$createField4_0 = $$createType29;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("stages" in $$parsedSource) {
             $$parsedSource["stages"] = $$createField4_0($$parsedSource["stages"]);
@@ -136,7 +678,33 @@ export class Workload {
 }
 
 // Private type creation functions
-const $$createType0 = httpexec$0.HTTPExecRequest.createFrom;
-const $$createType1 = Workload.createFrom;
-const $$createType2 = Stage.createFrom;
-const $$createType3 = $Create.Array($$createType2);
+const $$createType0 = Graph.createFrom;
+const $$createType1 = $Create.Map($Create.Any, $Create.Any);
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = Transport.createFrom;
+const $$createType4 = $Create.Nullable($$createType3);
+const $$createType5 = Node.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = Edge.createFrom;
+const $$createType8 = $Create.Array($$createType7);
+const $$createType9 = NodeConfig.createFrom;
+const $$createType10 = requestcontract$0.Request.createFrom;
+const $$createType11 = $Create.Nullable($$createType10);
+const $$createType12 = Mapping.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = Condition.createFrom;
+const $$createType15 = $Create.Nullable($$createType14);
+const $$createType16 = StressConfig.createFrom;
+const $$createType17 = httpexec$0.HTTPExecRequest.createFrom;
+const $$createType18 = $Create.Nullable($$createType17);
+const $$createType19 = Flow.createFrom;
+const $$createType20 = $Create.Nullable($$createType19);
+const $$createType21 = Workload.createFrom;
+const $$createType22 = Gates.createFrom;
+const $$createType23 = $Create.Nullable($$createType22);
+const $$createType24 = StressStage.createFrom;
+const $$createType25 = $Create.Array($$createType24);
+const $$createType26 = httpexec$0.HostMapEntry.createFrom;
+const $$createType27 = $Create.Array($$createType26);
+const $$createType28 = Stage.createFrom;
+const $$createType29 = $Create.Array($$createType28);

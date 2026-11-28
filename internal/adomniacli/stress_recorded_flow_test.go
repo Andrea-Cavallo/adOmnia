@@ -109,7 +109,7 @@ func TestStressRejectsGraphWithoutEntryPoint(t *testing.T) {
 	if code := Run([]string{"stress", path}, &stdout, &stderr); code == 0 {
 		t.Fatalf("graph with no entry point passed: %s%s", stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "no request") {
+	if !strings.Contains(stderr.String(), "no entry point") {
 		t.Fatalf("error does not explain the empty run: %s", stderr.String())
 	}
 }

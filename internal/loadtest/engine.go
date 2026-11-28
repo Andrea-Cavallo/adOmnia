@@ -2,6 +2,7 @@ package loadtest
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -10,9 +11,32 @@ import (
 	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
 )
 
-// sender is one request of the target. *httpexec.Client implements it; tests use fakes.
+// target is what one VU iteration runs: the single request, or the whole flow.
+type target interface {
+	iterate(ctx context.Context, vu, iteration int) (samples []sample, failed bool)
+}
+
+// sender is one request already resolved by the app. *httpexec.Client implements it.
 type sender interface {
 	Send(ctx context.Context) httpexec.Outcome
+}
+
+// requestTarget turns a sender into a one-step target.
+type requestTarget struct {
+	send sender
+	step string
+}
+
+func (t requestTarget) iterate(ctx context.Context, _, _ int) ([]sample, bool) {
+	started := time.Now()
+	out := t.send.Send(ctx)
+	s := sample{stepID: "request", step: t.step, started: started, latency: out.Latency, status: out.Status, bytes: out.Bytes, errCode: out.ErrCode, errMsg: out.ErrMsg, canceled: out.Canceled}
+	// INVALID_URL and PSD2_ERR fail before the network; everything else reached it.
+	s.sent = out.ErrCode != "INVALID_URL" && out.ErrCode != "PSD2_ERR"
+	if s.errCode == "" && (s.status < 200 || s.status >= 400) {
+		s.errCode = "HTTP"
+	}
+	return []sample{s}, !s.ok()
 }
 
 // controlTick is how often the VU controller follows the stage ramp.
@@ -24,46 +48,84 @@ func Run(ctx context.Context, s Scenario, progress func(Progress)) (Result, erro
 	if err := s.Validate(); err != nil {
 		return Result{}, err
 	}
-	maxConns := s.Workload.VUs
+	conns := max(s.Workload.VUs, s.Workload.Count, 1)
 	for _, st := range s.Workload.Stages {
-		maxConns = max(maxConns, st.TargetVUs)
+		conns = max(conns, st.TargetVUs)
 	}
-	client, err := httpexec.NewClient(s.Request, max(maxConns, s.Workload.Count))
+	if s.Flow != nil {
+		pool := httpexec.NewPool(conns)
+		defer pool.Close()
+		return run(ctx, s, newFlowTarget(s.Flow, pool), progress), nil
+	}
+	client, err := httpexec.NewClient(*s.Request, conns)
 	if err != nil {
 		return Result{}, err
 	}
 	defer client.Close()
-	return run(ctx, s, client, progress), nil
+	step := s.Name
+	if step == "" {
+		step = s.Request.Method + " " + s.Request.URL
+	}
+	return run(ctx, s, requestTarget{send: client, step: step}, progress), nil
 }
 
-func run(ctx context.Context, s Scenario, target sender, progress func(Progress)) Result {
+func run(ctx context.Context, s Scenario, t target, progress func(Progress)) Result {
 	start := time.Now()
-	rec := newRecorder(start)
+	apdexT := 0.0
+	if s.Gates != nil {
+		apdexT = s.Gates.ApdexTMs
+	}
+	rec := newRecorder(start, apdexT, maxTimelineSize)
 	state := &runState{}
 
 	stopProgress := make(chan struct{})
 	progressDone := make(chan struct{})
 	go func() {
 		defer close(progressDone)
-		reportProgress(rec, state, start, stopProgress, progress)
+		reportProgress(rec, state, s.Workload, start, stopProgress, progress)
 	}()
 
 	if s.Workload.Executor == ExecutorProbe {
-		runProbe(ctx, s.Workload, target, rec, state)
+		runProbe(ctx, s.Workload, t, rec, state)
 	} else {
-		runVUs(ctx, s.Workload, target, rec, state)
+		runVUs(ctx, s.Workload, t, rec, state)
 	}
 	close(stopProgress)
 	<-progressDone
 
-	end := time.Now()
 	rec.flush() // the last, partial second
-	res := rec.result(end)
+	res := rec.result(time.Now())
 	res.Name = s.Name
 	res.Executor = s.Workload.Executor
 	res.Aborted = ctx.Err() != nil
 	res.MaxVUs = max(res.MaxVUs, int(state.peak.Load()))
+	res.GateFailures = evaluateGates(s.Gates, res)
 	return res
+}
+
+// evaluateGates lists the rules the run broke; nothing measured fails every active gate.
+func evaluateGates(g *Gates, r Result) []string {
+	if g == nil {
+		return nil
+	}
+	var out []string
+	measured := r.Successful + r.Failed
+	if measured == 0 {
+		return []string{"no measured request to evaluate the gates"}
+	}
+	if g.MaxP95Ms > 0 && r.P95Ms > g.MaxP95Ms {
+		out = append(out, fmt.Sprintf("p95 %.0fms exceeds %.0fms", r.P95Ms, g.MaxP95Ms))
+	}
+	if g.MaxErrorPct != nil && r.ErrorRate > *g.MaxErrorPct {
+		out = append(out, fmt.Sprintf("error rate %.1f%% exceeds %.1f%%", r.ErrorRate, *g.MaxErrorPct))
+	}
+	if g.MinRPS > 0 && r.Throughput < g.MinRPS {
+		out = append(out, fmt.Sprintf("throughput %.1f req/s is below %.1f", r.Throughput, g.MinRPS))
+	}
+	if g.MinApdex > 0 && r.Apdex != nil && r.Apdex.Score < g.MinApdex {
+		out = append(out, fmt.Sprintf("APDEX %.3f is below %.3f", r.Apdex.Score, g.MinApdex))
+	}
+	return out
 }
 
 // runState is what the progress reporter reads while the executor runs.
@@ -84,7 +146,7 @@ func (s *runState) setVUs(n int) {
 	}
 }
 
-func reportProgress(rec *recorder, state *runState, start time.Time, stop <-chan struct{}, progress func(Progress)) {
+func reportProgress(rec *recorder, state *runState, w Workload, start time.Time, stop <-chan struct{}, progress func(Progress)) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
@@ -96,17 +158,23 @@ func reportProgress(rec *recorder, state *runState, start time.Time, stop <-chan
 			if progress == nil {
 				continue
 			}
-			sent, failed, measured := rec.totals()
+			sent, failed, measured, iterations := rec.totals()
+			stage := int(state.stage.Load())
 			p := Progress{
-				ElapsedS:  round2(now.Sub(start).Seconds()),
-				VUs:       b.VUs,
-				Stage:     int(state.stage.Load()),
-				Measuring: state.measuring.Load(),
-				Sent:      sent,
-				Failed:    failed,
-				RPS:       float64(b.Reqs),
-				P95Ms:     b.P95Ms,
-				Last:      b,
+				ElapsedS:   round2(now.Sub(start).Seconds()),
+				VUs:        b.VUs,
+				Stage:      stage,
+				Measuring:  state.measuring.Load(),
+				Sent:       sent,
+				Failed:     failed,
+				Iterations: iterations,
+				RPS:        float64(b.Reqs),
+				P95Ms:      b.P95Ms,
+				Last:       b,
+				Snapshot:   rec.snapshot(now),
+			}
+			if stage >= 0 && stage < len(w.Stages) {
+				p.StageLabel = w.Stages[stage].Label
 			}
 			if measured > 0 {
 				p.ErrorRate = round2(float64(failed) / float64(measured) * 100)
@@ -116,8 +184,8 @@ func reportProgress(rec *recorder, state *runState, start time.Time, stop <-chan
 	}
 }
 
-// runProbe sends Count single requests, the i-th GapMs·i after the start (0 = all at once).
-func runProbe(ctx context.Context, w Workload, target sender, rec *recorder, state *runState) {
+// runProbe runs Count single iterations, the i-th GapMs·i after the start (0 = all at once).
+func runProbe(ctx context.Context, w Workload, t target, rec *recorder, state *runState) {
 	state.stage.Store(-1)
 	state.measuring.Store(true)
 	state.setVUs(w.Count)
@@ -127,8 +195,8 @@ func runProbe(ctx context.Context, w Workload, target sender, rec *recorder, sta
 			if w.GapMs > 0 && !sleepCtx(ctx, time.Duration(i*w.GapMs)*time.Millisecond) {
 				return
 			}
-			started := time.Now()
-			rec.record(target.Send(ctx), started, true)
+			samples, failed := t.iterate(ctx, i, i)
+			rec.iteration(samples, failed, true, i+1, i+1)
 		})
 	}
 	wg.Wait()
@@ -136,8 +204,8 @@ func runProbe(ctx context.Context, w Workload, target sender, rec *recorder, sta
 }
 
 // runVUs is the closed model: a controller keeps the number of running VUs on the stage ramp,
-// each VU repeats the request until it is told to stop, the iterations run out or ctx ends.
-func runVUs(ctx context.Context, w Workload, target sender, rec *recorder, state *runState) {
+// each VU repeats the target until it is told to stop, the iterations run out or ctx ends.
+func runVUs(ctx context.Context, w Workload, t target, rec *recorder, state *runState) {
 	start := time.Now()
 	var (
 		wg         sync.WaitGroup
@@ -146,8 +214,11 @@ func runVUs(ctx context.Context, w Workload, target sender, rec *recorder, state
 		exhausted  = make(chan struct{})
 		closeOnce  sync.Once
 	)
-	vu := func(stop <-chan struct{}) {
-		for {
+	vu := func(id int, stop <-chan struct{}) {
+		for first := true; ; first = false {
+			if !first && w.ThinkTimeMs > 0 && !sleepCtx(ctx, time.Duration(w.ThinkTimeMs)*time.Millisecond) {
+				return
+			}
 			select {
 			case <-ctx.Done():
 				return
@@ -163,11 +234,8 @@ func runVUs(ctx context.Context, w Workload, target sender, rec *recorder, state
 				return
 			}
 			measured := state.measuring.Load() && n > int64(w.WarmupIterations)
-			started := time.Now()
-			rec.record(target.Send(ctx), started, measured)
-			if w.ThinkTimeMs > 0 && !sleepCtx(ctx, time.Duration(w.ThinkTimeMs)*time.Millisecond) {
-				return
-			}
+			samples, failed := t.iterate(ctx, id, int(n-1))
+			rec.iteration(samples, failed, measured, id+1, int(n))
 		}
 	}
 
@@ -183,8 +251,9 @@ control:
 		}
 		for len(stops) < want {
 			stop := make(chan struct{})
+			id := len(stops)
 			stops = append(stops, stop)
-			wg.Go(func() { vu(stop) })
+			wg.Go(func() { vu(id, stop) })
 		}
 		for len(stops) > want { // a stopped VU finishes the iteration it is in
 			last := len(stops) - 1
@@ -212,13 +281,21 @@ control:
 func targetVUs(w Workload, elapsed time.Duration) (vus, stage int, measuring, done bool) {
 	e := elapsed.Seconds()
 	if len(w.Stages) == 0 {
-		return w.VUs, -1, true, w.DurationS > 0 && e >= w.DurationS
+		return w.VUs, -1, e >= w.WarmupS, w.DurationS > 0 && e >= w.DurationS
 	}
 	from, begin := 0, 0.0
 	for i, st := range w.Stages {
 		if e < begin+st.DurationS {
-			frac := (e - begin) / st.DurationS
-			return int(math.Round(float64(from) + float64(st.TargetVUs-from)*frac)), i, !st.Unmeasured, false
+			ramp := st.DurationS
+			if st.RampS != nil {
+				ramp = *st.RampS
+			}
+			within := e - begin
+			measuring := !st.Unmeasured && e >= w.WarmupS
+			if ramp <= 0 || within >= ramp {
+				return st.TargetVUs, i, measuring, false
+			}
+			return int(math.Round(float64(from) + float64(st.TargetVUs-from)*within/ramp)), i, measuring, false
 		}
 		from, begin = st.TargetVUs, begin+st.DurationS
 	}

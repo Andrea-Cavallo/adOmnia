@@ -114,7 +114,7 @@ export function FlowStressPanel({ graph, flowName, blockedReason, getInitialVars
     setProgress(null)
     setNotice(null)
     try {
-      const nextRun = await runFlowStress(graph, config, { initialVars: getInitialVars(), signal: controller.signal, onProgress: setProgress, dataset: dataset ?? undefined })
+      const nextRun = await runFlowStress(graph, config, { initialVars: getInitialVars(), flowName, signal: controller.signal, onProgress: setProgress, dataset: dataset ?? undefined })
       setRun(nextRun)
       if (nextRun.stats.totalRequests > 0) setHistory(saveStressHistory(flowName, nextRun))
     } catch (error) {

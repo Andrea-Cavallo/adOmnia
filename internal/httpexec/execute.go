@@ -190,7 +190,13 @@ func executeHTTPRequest(parent context.Context, req HTTPExecRequest) HTTPExecRes
 	// Each call owns its transport (TLS, hosts map and PSD2 differ per request),
 	// so the idle sockets must be released here instead of waiting for the GC.
 	defer transport.CloseIdleConnections()
+	resp, _ := send(parent, client, req, true)
+	return resp
+}
 
+// send performs req with client and reads the whole body (50 MB cap). The duration is the
+// time to the last body byte, in full precision; HTTPExecResponse.Ms carries it in ms.
+func send(parent context.Context, client *http.Client, req HTTPExecRequest, withBase64 bool) (HTTPExecResponse, time.Duration) {
 	timeoutMs := req.TimeoutMs
 	if timeoutMs <= 0 {
 		timeoutMs = 30000
@@ -213,7 +219,7 @@ func executeHTTPRequest(parent context.Context, req HTTPExecRequest) HTTPExecRes
 	method := strings.ToUpper(req.Method)
 	httpReq, err := http.NewRequestWithContext(ctx, method, req.URL, bodyReader)
 	if err != nil {
-		return HTTPExecResponse{Error: &HTTPExecError{Code: "INVALID_URL", Message: err.Error()}}
+		return HTTPExecResponse{Error: &HTTPExecError{Code: "INVALID_URL", Message: err.Error()}}, 0
 	}
 
 	for k, v := range req.Headers {
@@ -222,7 +228,7 @@ func executeHTTPRequest(parent context.Context, req HTTPExecRequest) HTTPExecRes
 
 	start := time.Now()
 	httpResp, err := client.Do(httpReq)
-	elapsed := time.Since(start).Milliseconds()
+	elapsed := time.Since(start)
 
 	if err != nil {
 		code := "CONN_ERR"
@@ -236,16 +242,16 @@ func executeHTTPRequest(parent context.Context, req HTTPExecRequest) HTTPExecRes
 		if code == "CANCELED" {
 			msg = "Request cancelled"
 		}
-		return HTTPExecResponse{Ms: elapsed, Error: &HTTPExecError{Code: code, Message: msg}}
+		return HTTPExecResponse{Ms: elapsed.Milliseconds(), Error: &HTTPExecError{Code: code, Message: msg}}, elapsed
 	}
 	defer httpResp.Body.Close()
 
 	limited := io.LimitReader(httpResp.Body, 50<<20) // 50 MB response cap
 	bodyBytes, err := io.ReadAll(limited)
-	elapsed = time.Since(start).Milliseconds()
+	elapsed = time.Since(start)
 
 	if err != nil {
-		return HTTPExecResponse{Ms: elapsed, Error: &HTTPExecError{Code: "READ_ERR", Message: err.Error()}}
+		return HTTPExecResponse{Ms: elapsed.Milliseconds(), Error: &HTTPExecError{Code: "READ_ERR", Message: err.Error()}}, elapsed
 	}
 
 	respHeaders := make(map[string]string, len(httpResp.Header))
@@ -255,32 +261,44 @@ func executeHTTPRequest(parent context.Context, req HTTPExecRequest) HTTPExecRes
 
 	statusText := strings.TrimPrefix(httpResp.Status, fmt.Sprintf("%d ", httpResp.StatusCode))
 
-	return HTTPExecResponse{
+	resp := HTTPExecResponse{
 		Status:      httpResp.StatusCode,
 		StatusText:  statusText,
 		Headers:     respHeaders,
 		Body:        string(bodyBytes),
-		BodyBase64:  base64.StdEncoding.EncodeToString(bodyBytes),
 		ContentType: httpResp.Header.Get("Content-Type"),
-		Ms:          elapsed,
+		Ms:          elapsed.Milliseconds(),
 		Size:        len(bodyBytes),
 	}
+	if withBase64 {
+		resp.BodyBase64 = base64.StdEncoding.EncodeToString(bodyBytes)
+	}
+	return resp, elapsed
 }
 
 // buildClient prepares the transport and client for req: PSD2 headers and QWAC, mTLS, hosts
 // map, adOmnia's proxy/CA policy and the redirect rules. Execute builds one per call; the load
 // test Client builds one and reuses it, so both send with the same configuration.
 func buildClient(req *HTTPExecRequest) (*http.Client, *http.Transport, *HTTPExecError) {
+	transport, execErr := buildTransport(req)
+	if execErr != nil {
+		return nil, nil, execErr
+	}
+	return newClient(transport, req), transport, nil
+}
+
+// buildTransport applies PSD2 (headers and QWAC), mTLS, the hosts map and the proxy/CA policy.
+func buildTransport(req *HTTPExecRequest) (*http.Transport, *HTTPExecError) {
 	tlsCfg := &tls.Config{InsecureSkipVerify: req.SkipTLSVerify} //nolint:gosec
 	if err := preparePSD2(req, tlsCfg); err != nil {
-		return nil, nil, &HTTPExecError{Code: "PSD2_ERR", Message: err.Error()}
+		return nil, &HTTPExecError{Code: "PSD2_ERR", Message: err.Error()}
 	}
 
 	// mTLS: load a client certificate when a PEM path is configured.
 	if strings.TrimSpace(req.ClientCertPEM) != "" && (req.PSD2 == nil || !req.PSD2.Enabled) {
 		cert, err := loadClientCert(req.ClientCertPEM, req.ClientCertPassphrase)
 		if err != nil {
-			return nil, nil, &HTTPExecError{Code: "MTLS_ERR", Message: err.Error()}
+			return nil, &HTTPExecError{Code: "MTLS_ERR", Message: err.Error()}
 		}
 		tlsCfg.Certificates = []tls.Certificate{cert}
 	}
@@ -291,15 +309,19 @@ func buildClient(req *HTTPExecRequest) (*http.Client, *http.Transport, *HTTPExec
 	}
 	// Proxy e CA aziendali di adOmnia; le richieste dell'utente non sono bloccate dal modo offline.
 	if err := netpolicy.Apply(transport); err != nil {
-		return nil, nil, &HTTPExecError{Code: "NETWORK_SETTINGS", Message: err.Error()}
+		return nil, &HTTPExecError{Code: "NETWORK_SETTINGS", Message: err.Error()}
 	}
+	return transport, nil
+}
 
+// newClient wraps transport with req's cookie jar and redirect rules.
+func newClient(transport *http.Transport, req *HTTPExecRequest) *http.Client {
 	client := &http.Client{Transport: transport, Jar: getCookieJar(req.CookieJarID)}
 	if !req.FollowRedirects {
 		client.CheckRedirect = func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
-		return client, transport, nil
+		return client
 	}
 	maxRedirects := req.MaxRedirects
 	if maxRedirects <= 0 {
@@ -317,7 +339,7 @@ func buildClient(req *HTTPExecRequest) (*http.Client, *http.Transport, *HTTPExec
 		}
 		return nil
 	}
-	return client, transport, nil
+	return client
 }
 
 func preparePSD2(req *HTTPExecRequest, tlsCfg *tls.Config) error {

@@ -129,7 +129,7 @@ stesso hash di scenario sono confrontabili, altrimenti il confronto lo segnala.
 | # | Contenuto | Fatto quando |
 |---|---|---|
 | LT-1 ✅ | Motore: `Scenario`, executor `vus` + `probe`, target HTTP via `httpexec.Client`, binding `LoadTest` Start/Stop/Running, eventi `loadtest:progress`/`loadtest:finished`. Il drawer passa al motore nuovo. | fatto 2026-11-28, vedi §10 |
-| LT-2 | Target flow (logica da `adomniacli/stress.go`) + `adomnia stress` come wrapper. Flow Stress UI sul motore Go, `flowStress.ts` rimosso. | stesso scenario, stesso server: app e CLI riportano gli stessi conteggi e p95 entro il 5% |
+| LT-2 ✅ | Target flow (logica da `adomniacli/stress.go`) + `adomnia stress` come wrapper. Flow Stress UI sul motore Go, runner JS rimosso. | stesso scenario, stesso server: app e CLI riportano gli stessi conteggi e p95 entro il 5% |
 | LT-3 | Executor `arrival-rate` con correzione coordinated omission, `droppedIterations`, saturazione del generatore. | test: server che si blocca 2 s → il p99 lo riflette; RPS raggiunto entro ±2% |
 | LT-4 | File scenario `.adomnia/loadtests`, seed, dataset, manifest, storico bbolt + migrazione. | stesso seed → stessa sequenza di dati e think time (test deterministico) |
 | LT-5 | Soglie live + abort, confronto run, export HTML/JUnit/CSV dal JSON canonico. | JUnit fallisce in CI quando una soglia salta; exit code 1 |

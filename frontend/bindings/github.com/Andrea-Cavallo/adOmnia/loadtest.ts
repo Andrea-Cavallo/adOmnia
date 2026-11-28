@@ -30,6 +30,14 @@ export function Start(scenario: loadtest$0.Scenario): $CancellablePromise<string
 }
 
 /**
+ * StartPlan runs a Flow Builder stress plan — the same file `adomnia stress` runs in CI —
+ * with the app's variables (vault resolved), dataset rows and transport settings.
+ */
+export function StartPlan(plan: loadtest$0.Plan, input: loadtest$0.FlowInput): $CancellablePromise<string> {
+    return $Call.ByID(3203347571, plan, input);
+}
+
+/**
  * Stop ends the run with that id; its partial result arrives as aborted.
  */
 export function Stop(runID: string): $CancellablePromise<void> {

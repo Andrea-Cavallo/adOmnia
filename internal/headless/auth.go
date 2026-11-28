@@ -1,4 +1,4 @@
-package adomniacli
+package headless
 
 import (
 	"crypto/hmac"
@@ -10,13 +10,14 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/httpexec"
 	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
-func prepareHeadlessAuth(req requestcontract.Request, vars map[string]string) (requestcontract.Request, error) {
+func PrepareAuth(req requestcontract.Request, vars map[string]string) (requestcontract.Request, error) {
 	switch req.Auth.Type {
 	case "oauth2":
 		token, err := fetchOAuth2Token(req.Auth, vars)
@@ -31,17 +32,51 @@ func prepareHeadlessAuth(req requestcontract.Request, vars map[string]string) (r
 	return req, nil
 }
 
+// tokenCache keeps OAuth2 access tokens until shortly before they expire, so a load test or a
+// long run does not ask the identity provider for a token on every request.
+// ponytail: process-wide map without eviction; tokens are few (one per credential set).
+var tokenCache sync.Map // key -> cachedToken
+
+type cachedToken struct {
+	token   string
+	expires time.Time
+}
+
 func fetchOAuth2Token(auth requestcontract.Auth, vars map[string]string) (string, error) {
+	key := oauth2CacheKey(auth, vars)
+	if v, ok := tokenCache.Load(key); ok {
+		if cached := v.(cachedToken); time.Now().Before(cached.expires) {
+			return cached.token, nil
+		}
+	}
+	token, expiresIn, err := requestOAuth2Token(auth, vars)
+	if err != nil {
+		return "", err
+	}
+	// Renew 30 s early; a token without expires_in is not cached (its lifetime is unknown).
+	if expiresIn > 30 {
+		tokenCache.Store(key, cachedToken{token: token, expires: time.Now().Add(time.Duration(expiresIn-30) * time.Second)})
+	}
+	return token, nil
+}
+
+// oauth2CacheKey identifies a credential set; the secret enters only as a hash.
+func oauth2CacheKey(auth requestcontract.Auth, vars map[string]string) string {
+	sub := func(v string) string { return requestcontract.SubstituteVars(v, vars) }
+	return sha256Hex(strings.Join([]string{auth.OAuth2GrantType, sub(auth.OAuth2TokenURL), sub(auth.OAuth2ClientID), sub(auth.OAuth2ClientSecret), sub(auth.OAuth2Scope), sub(auth.Username), sub(auth.Password), sub(auth.OAuth2RefreshToken)}, "|"))
+}
+
+func requestOAuth2Token(auth requestcontract.Auth, vars map[string]string) (string, int64, error) {
 	grant := strings.TrimSpace(auth.OAuth2GrantType)
 	if grant == "" {
 		grant = "client_credentials"
 	}
 	if grant == "authorization_code_pkce" || grant == "authorization_code" {
-		return "", fmt.Errorf("OAuth2 interactive authorization is not available headless; provide a refresh token or use client_credentials")
+		return "", 0, fmt.Errorf("OAuth2 interactive authorization is not available headless; provide a refresh token or use client_credentials")
 	}
 	tokenURL := requestcontract.SubstituteVars(auth.OAuth2TokenURL, vars)
 	if tokenURL == "" {
-		return "", fmt.Errorf("OAuth2 token URL is required")
+		return "", 0, fmt.Errorf("OAuth2 token URL is required")
 	}
 	values := url.Values{"grant_type": []string{grant}}
 	add := func(key, value string) {
@@ -62,10 +97,10 @@ func fetchOAuth2Token(auth requestcontract.Auth, vars map[string]string) (string
 	case "refresh_token":
 		add("refresh_token", auth.OAuth2RefreshToken)
 		if values.Get("refresh_token") == "" {
-			return "", fmt.Errorf("OAuth2 refresh token is required")
+			return "", 0, fmt.Errorf("OAuth2 refresh token is required")
 		}
 	default:
-		return "", fmt.Errorf("OAuth2 grant %q is not supported headless", grant)
+		return "", 0, fmt.Errorf("OAuth2 grant %q is not supported headless", grant)
 	}
 	raw := httpexec.Execute(mustJSON(httpexec.HTTPExecRequest{
 		Method: "POST", URL: tokenURL, Headers: map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
@@ -73,18 +108,19 @@ func fetchOAuth2Token(auth requestcontract.Auth, vars map[string]string) (string
 	}))
 	var response httpexec.HTTPExecResponse
 	if err := json.Unmarshal([]byte(raw), &response); err != nil {
-		return "", fmt.Errorf("decode OAuth2 response: %w", err)
+		return "", 0, fmt.Errorf("decode OAuth2 response: %w", err)
 	}
 	if response.Error != nil {
-		return "", fmt.Errorf("OAuth2 token request: %s", response.Error.Message)
+		return "", 0, fmt.Errorf("OAuth2 token request: %s", response.Error.Message)
 	}
 	var body struct {
 		AccessToken      string `json:"access_token"`
+		ExpiresIn        int64  `json:"expires_in"`
 		Error            string `json:"error"`
 		ErrorDescription string `json:"error_description"`
 	}
 	if err := json.Unmarshal([]byte(response.Body), &body); err != nil {
-		return "", fmt.Errorf("decode OAuth2 token body: %w", err)
+		return "", 0, fmt.Errorf("decode OAuth2 token body: %w", err)
 	}
 	if body.AccessToken == "" {
 		message := body.ErrorDescription
@@ -94,12 +130,12 @@ func fetchOAuth2Token(auth requestcontract.Auth, vars map[string]string) (string
 		if message == "" {
 			message = "token endpoint returned no access_token"
 		}
-		return "", fmt.Errorf("OAuth2 token request: %s", message)
+		return "", 0, fmt.Errorf("OAuth2 token request: %s", message)
 	}
-	return body.AccessToken, nil
+	return body.AccessToken, body.ExpiresIn, nil
 }
 
-func applyAWS4(payload *httpexec.HTTPExecRequest, auth requestcontract.Auth, vars map[string]string, now time.Time) error {
+func ApplyAWS4(payload *httpexec.HTTPExecRequest, auth requestcontract.Auth, vars map[string]string, now time.Time) error {
 	accessKey := requestcontract.SubstituteVars(auth.AWSAccessKeyID, vars)
 	secretKey := requestcontract.SubstituteVars(auth.AWSSecretKey, vars)
 	if accessKey == "" || secretKey == "" {
@@ -151,7 +187,7 @@ func applyAWS4(payload *httpexec.HTTPExecRequest, auth requestcontract.Auth, var
 	return nil
 }
 
-func resolveVaultVars(vars map[string]string) (map[string]string, error) {
+func ResolveVaultVars(vars map[string]string) (map[string]string, error) {
 	out := make(map[string]string, len(vars))
 	for key, value := range vars {
 		if !strings.HasPrefix(strings.TrimSpace(value), "vault:") {

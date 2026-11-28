@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_STRESS_CONFIG } from './flowStress'
 import { analyzeStressRun } from './flowStressAnalysis'
-import { createStressAccumulator, type StressSample } from './flowStressStats'
+import type { StressSample } from './flowStressStats'
+import { createStressAccumulator } from './__fixtures__/stressStatsFixture'
 
 function stats(latencies: number[], failed = 0) {
   const acc = createStressAccumulator()

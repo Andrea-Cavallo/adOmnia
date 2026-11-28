@@ -13,20 +13,21 @@ import (
 	"time"
 
 	"github.com/Andrea-Cavallo/adOmnia/internal/jsonutil"
+	"github.com/Andrea-Cavallo/adOmnia/internal/loadtest"
 	"github.com/Andrea-Cavallo/adOmnia/internal/requestcontract"
 )
 
 func writeStressPlan(t *testing.T, url string, maxP95 float64) string {
 	t.Helper()
-	plan := stressPlan{Format: "adomnia-flow-stress-plan", Version: 1, FlowName: "Checkout CI"}
-	plan.Config = stressConfig{VUs: 2, Mode: "iterations", Iterations: 4, ApdexTMs: 500, MinApdex: .8, MaxP95Ms: maxP95, MaxErrorPct: 0}
+	plan := loadtest.Plan{Format: "adomnia-flow-stress-plan", Version: 1, FlowName: "Checkout CI"}
+	plan.Config = loadtest.StressConfig{VUs: 2, Mode: "iterations", Iterations: 4, ApdexTMs: 500, MinApdex: .8, MaxP95Ms: maxP95, MaxErrorPct: new(0.0)}
 	plan.Graph.Settings.MaxSteps = 10
-	plan.Graph.Nodes = []stressNode{
+	plan.Graph.Nodes = []loadtest.Node{
 		{ID: "start", Type: "start", Label: "Start"},
-		{ID: "request", Type: "request", Label: "Health", Config: stressNodeConfig{ExpectedStatus: "2xx", Request: &requestcontract.Request{ID: "health", Name: "Health", Method: "GET", URL: url}}},
-		{ID: "end", Type: "end", Label: "Done", Config: stressNodeConfig{EndState: "success"}},
+		{ID: "request", Type: "request", Label: "Health", Config: loadtest.NodeConfig{ExpectedStatus: "2xx", Request: &requestcontract.Request{ID: "health", Name: "Health", Method: "GET", URL: url}}},
+		{ID: "end", Type: "end", Label: "Done", Config: loadtest.NodeConfig{EndState: "success"}},
 	}
-	plan.Graph.Edges = []stressEdge{{Source: "start", Target: "request", Branch: "next"}, {Source: "request", Target: "end", Branch: "success"}}
+	plan.Graph.Edges = []loadtest.Edge{{Source: "start", Target: "request", Branch: "next"}, {Source: "request", Target: "end", Branch: "success"}}
 	data, err := jsonutil.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -95,15 +96,15 @@ func TestStressPreservesDataHandoffsAndFailureBranches(t *testing.T) {
 	request := func(id, path string) *requestcontract.Request {
 		return &requestcontract.Request{ID: id, Name: id, Method: "GET", URL: server.URL + path}
 	}
-	plan := stressPlan{Format: "adomnia-flow-stress-plan", Version: 1, FlowName: "AI recovery", Config: stressConfig{VUs: 1, Mode: "iterations", Iterations: 1, ApdexTMs: 500, MaxErrorPct: 100}}
+	plan := loadtest.Plan{Format: "adomnia-flow-stress-plan", Version: 1, FlowName: "AI recovery", Config: loadtest.StressConfig{VUs: 1, Mode: "iterations", Iterations: 1, ApdexTMs: 500, MaxErrorPct: new(100.0)}}
 	plan.Graph.Settings.MaxSteps = 10
-	plan.Graph.Nodes = []stressNode{
-		{ID: "a", Type: "request", Label: "A", Config: stressNodeConfig{Request: request("a", "/a"), ExpectedStatus: "2xx", Extractions: []stressMapping{{Name: "customerId", Source: "body", Path: "customer.id"}}}},
-		{ID: "b", Type: "request", Label: "B", Config: stressNodeConfig{Request: request("b", "/b/{{customerId}}"), ExpectedStatus: "2xx"}},
-		{ID: "d", Type: "request", Label: "D", Config: stressNodeConfig{Request: request("d", "/recover/{{customerId}}"), ExpectedStatus: "2xx"}},
-		{ID: "end", Type: "end", Label: "Done", Config: stressNodeConfig{EndState: "success"}},
+	plan.Graph.Nodes = []loadtest.Node{
+		{ID: "a", Type: "request", Label: "A", Config: loadtest.NodeConfig{Request: request("a", "/a"), ExpectedStatus: "2xx", Extractions: []loadtest.Mapping{{Name: "customerId", Source: "body", Path: "customer.id"}}}},
+		{ID: "b", Type: "request", Label: "B", Config: loadtest.NodeConfig{Request: request("b", "/b/{{customerId}}"), ExpectedStatus: "2xx"}},
+		{ID: "d", Type: "request", Label: "D", Config: loadtest.NodeConfig{Request: request("d", "/recover/{{customerId}}"), ExpectedStatus: "2xx"}},
+		{ID: "end", Type: "end", Label: "Done", Config: loadtest.NodeConfig{EndState: "success"}},
 	}
-	plan.Graph.Edges = []stressEdge{{Source: "a", Target: "b", Branch: "success"}, {Source: "b", Target: "d", Branch: "error"}, {Source: "d", Target: "end", Branch: "success"}}
+	plan.Graph.Edges = []loadtest.Edge{{Source: "a", Target: "b", Branch: "success"}, {Source: "b", Target: "d", Branch: "error"}, {Source: "d", Target: "end", Branch: "success"}}
 	data, _ := jsonutil.Marshal(plan)
 	path := filepath.Join(t.TempDir(), "recovery.stress.json")
 	_ = os.WriteFile(path, data, 0600)

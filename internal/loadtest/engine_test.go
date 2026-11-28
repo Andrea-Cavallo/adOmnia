@@ -30,12 +30,12 @@ func (f *fakeSender) Send(ctx context.Context) httpexec.Outcome {
 }
 
 func scenario(w Workload) Scenario {
-	return Scenario{Request: httpexec.HTTPExecRequest{Method: "GET", URL: "http://127.0.0.1:1/x"}, Workload: w}
+	return Scenario{Request: &httpexec.HTTPExecRequest{Method: "GET", URL: "http://127.0.0.1:1/x"}, Workload: w}
 }
 
 func TestIterationsAreExactAndWarmupIsNotMeasured(t *testing.T) {
 	target := &fakeSender{status: 200, latency: 5 * time.Millisecond}
-	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, VUs: 8, Iterations: 500, WarmupIterations: 50}), target, nil)
+	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, VUs: 8, Iterations: 500, WarmupIterations: 50}), requestTarget{send: target}, nil)
 
 	if got := target.calls.Load(); got != 500 {
 		t.Fatalf("sent %d requests, want exactly 500", got)
@@ -58,7 +58,7 @@ func TestPercentilesFollowTheLatencyDistribution(t *testing.T) {
 		}
 		return httpexec.Outcome{Status: 200, Latency: lat}
 	})
-	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, VUs: 1, Iterations: 1000}), target, nil)
+	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, VUs: 1, Iterations: 1000}), requestTarget{send: target}, nil)
 	if !near(res.P50Ms, 10) || !near(res.P95Ms, 200) || !near(res.P99Ms, 200) || !near(res.MaxMs, 200) {
 		t.Fatalf("p50/p95/p99/max = %v/%v/%v/%v, want 10/200/200/200 (±1%%)", res.P50Ms, res.P95Ms, res.P99Ms, res.MaxMs)
 	}
@@ -76,7 +76,7 @@ func TestFailuresAreGroupedByCause(t *testing.T) {
 			return httpexec.Outcome{Status: 200, Latency: time.Millisecond}
 		}
 	})
-	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, VUs: 2, Iterations: 400}), target, nil)
+	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, VUs: 2, Iterations: 400}), requestTarget{send: target}, nil)
 	if res.Failed != 200 || res.ErrorRate != 50 {
 		t.Fatalf("failed=%d errorRate=%v, want 200 and 50%%", res.Failed, res.ErrorRate)
 	}
@@ -90,7 +90,7 @@ func TestFailuresAreGroupedByCause(t *testing.T) {
 
 func TestProbeSendsEachRequestOnceAndHonoursTheGap(t *testing.T) {
 	target := &fakeSender{status: 204, latency: time.Millisecond}
-	res := run(context.Background(), scenario(Workload{Executor: ExecutorProbe, Count: 4, GapMs: 40}), target, nil)
+	res := run(context.Background(), scenario(Workload{Executor: ExecutorProbe, Count: 4, GapMs: 40}), requestTarget{send: target}, nil)
 	if target.calls.Load() != 4 || res.Successful != 4 || res.MaxVUs != 4 {
 		t.Fatalf("calls=%d ok=%d maxVUs=%d, want 4/4/4", target.calls.Load(), res.Successful, res.MaxVUs)
 	}
@@ -111,7 +111,7 @@ func TestStopEndsTheRunAndMarksItAborted(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(150*time.Millisecond, cancel)
 	begun := time.Now()
-	res := run(ctx, scenario(Workload{Executor: ExecutorVUs, VUs: 5, DurationS: 30}), target, nil)
+	res := run(ctx, scenario(Workload{Executor: ExecutorVUs, VUs: 5, DurationS: 30}), requestTarget{send: target}, nil)
 	if took := time.Since(begun); took > 2*time.Second {
 		t.Fatalf("stop took %v, want the run to end right after cancel", took)
 	}
@@ -147,7 +147,7 @@ func TestStagesRampLinearlyAndSkipUnmeasuredTime(t *testing.T) {
 
 func TestStagedRunReachesTheTargetVUs(t *testing.T) {
 	target := &fakeSender{status: 200, latency: time.Millisecond, delay: 5 * time.Millisecond}
-	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, Stages: []Stage{{DurationS: 0.3, TargetVUs: 6}, {DurationS: 0.3, TargetVUs: 6}}}), target, nil)
+	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, Stages: []Stage{{DurationS: 0.3, TargetVUs: 6}, {DurationS: 0.3, TargetVUs: 6}}}), requestTarget{send: target}, nil)
 	if res.MaxVUs != 6 {
 		t.Fatalf("max VUs = %d, want 6", res.MaxVUs)
 	}
@@ -160,7 +160,7 @@ func TestProgressIsReportedEverySecond(t *testing.T) {
 	target := &fakeSender{status: 200, latency: time.Millisecond, delay: 2 * time.Millisecond}
 	var mu sync.Mutex
 	var got []Progress
-	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, VUs: 2, DurationS: 2.2}), target, func(p Progress) {
+	res := run(context.Background(), scenario(Workload{Executor: ExecutorVUs, VUs: 2, DurationS: 2.2}), requestTarget{send: target}, func(p Progress) {
 		mu.Lock()
 		got = append(got, p)
 		mu.Unlock()
@@ -188,7 +188,7 @@ func TestRunAgainstARealServer(t *testing.T) {
 	defer srv.Close()
 
 	s := Scenario{
-		Request:  httpexec.HTTPExecRequest{Method: "GET", URL: srv.URL, Headers: map[string]string{"X-Token": "abc"}, TimeoutMs: 2000},
+		Request:  &httpexec.HTTPExecRequest{Method: "GET", URL: srv.URL, Headers: map[string]string{"X-Token": "abc"}, TimeoutMs: 2000},
 		Workload: Workload{Executor: ExecutorVUs, VUs: 10, Iterations: 300},
 	}
 	res, err := Run(context.Background(), s, nil)
@@ -229,7 +229,7 @@ func TestValidateRejectsScenariosThatCannotRun(t *testing.T) {
 func TestManagerRunsOneAtATimeAndStops(t *testing.T) {
 	m := NewManager()
 	m.runFn = func(ctx context.Context, s Scenario, p func(Progress)) (Result, error) {
-		return run(ctx, s, &fakeSender{status: 200, latency: time.Millisecond, delay: 10 * time.Millisecond}, p), nil
+		return run(ctx, s, requestTarget{send: &fakeSender{status: 200, latency: time.Millisecond, delay: 10 * time.Millisecond}}, p), nil
 	}
 	finished := make(chan Finished, 1)
 	m.SetEmitter(func(event string, payload any) {
@@ -271,8 +271,29 @@ type senderFunc func(context.Context) httpexec.Outcome
 
 func (f senderFunc) Send(ctx context.Context) httpexec.Outcome { return f(ctx) }
 
-func getReq(u string) httpexec.HTTPExecRequest {
-	return httpexec.HTTPExecRequest{Method: "GET", URL: u}
+func getReq(u string) *httpexec.HTTPExecRequest {
+	return &httpexec.HTTPExecRequest{Method: "GET", URL: u}
 }
 
 func near(got, want float64) bool { return got >= want*0.99 && got <= want*1.01 }
+
+// A refused connection has no server latency (a few ms of connect) and must not make a broken
+// target look fast; a failure is a frustrated user, never a satisfied one.
+func TestFailuresStayOutOfThePercentilesAndAreFrustrated(t *testing.T) {
+	var n atomic.Int64
+	target := senderFunc(func(context.Context) httpexec.Outcome {
+		if n.Add(1)%2 == 0 {
+			return httpexec.Outcome{ErrCode: "CONN_ERR", ErrMsg: "connection refused", Latency: time.Millisecond}
+		}
+		return httpexec.Outcome{Status: 200, Latency: 100 * time.Millisecond}
+	})
+	s := scenario(Workload{Executor: ExecutorVUs, VUs: 1, Iterations: 10})
+	s.Gates = &Gates{ApdexTMs: 500}
+	res := run(context.Background(), s, requestTarget{send: target}, nil)
+	if !near(res.P50Ms, 100) || !near(res.MinMs, 100) {
+		t.Fatalf("p50=%v min=%v, want 100 ms: refused connections are not latencies", res.P50Ms, res.MinMs)
+	}
+	if res.Apdex == nil || res.Apdex.Satisfied != 5 || res.Apdex.Frustrated != 5 || res.Apdex.Score != 0.5 {
+		t.Fatalf("apdex = %+v, want 5 satisfied, 5 frustrated, score 0.5", res.Apdex)
+	}
+}

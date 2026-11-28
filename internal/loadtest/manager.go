@@ -65,7 +65,7 @@ func (m *Manager) Start(s Scenario) (string, error) {
 
 func (m *Manager) execute(ctx context.Context, id string, s Scenario, done chan struct{}) {
 	defer close(done)
-	devlog.Info("loadtest", "run started", map[string]any{"runId": id, "executor": s.Workload.Executor, "url": s.Request.URL})
+	devlog.Info("loadtest", "run started", map[string]any{"runId": id, "executor": s.Workload.Executor, "flow": s.Flow != nil})
 	res, err := m.runFn(ctx, s, func(p Progress) {
 		p.RunID = id
 		m.send(EventProgress, p)

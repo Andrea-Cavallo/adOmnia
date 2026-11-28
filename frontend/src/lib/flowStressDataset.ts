@@ -35,22 +35,3 @@ export function parseStressDataset(text: string, name = 'dataset.csv'): StressDa
   const rows = nonEmpty.slice(1).map((values) => Object.fromEntries(columns.map((column, index) => [column, values[index] ?? ''])))
   return { name, columns, rows }
 }
-
-export function stressDatasetRow(dataset: StressDataset | undefined, mode: StressDatasetMode, vu: number, iteration: number, random = Math.random): Record<string, string> {
-  if (!dataset?.rows.length) return {}
-  const index = mode === 'per-vu'
-    ? vu % dataset.rows.length
-    : mode === 'random'
-      ? Math.min(dataset.rows.length - 1, Math.floor(random() * dataset.rows.length))
-      : iteration % dataset.rows.length
-  return { ...dataset.rows[index] }
-}
-
-export function stressBuiltinVars(vu: number, iteration: number): Record<string, string> {
-  return {
-    __vu: String(vu + 1),
-    __iteration: String(iteration + 1),
-    __timestamp: String(Date.now()),
-    __uuid: crypto.randomUUID(),
-  }
-}
